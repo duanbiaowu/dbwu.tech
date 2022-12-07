@@ -2,48 +2,48 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>洋芋土豆</title>
-    <link>/</link>
+    <link>https://duanbiaowu.github.io/</link>
     <description>洋芋土豆</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 07 Dec 2022 11:58:47 +0800</lastBuildDate>
     
-    <atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://duanbiaowu.github.io/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>到哪来</title>
-      <link>/post/%E5%88%B0%E5%93%AA%E6%9D%A5/</link>
+      <link>https://duanbiaowu.github.io/post/%E5%88%B0%E5%93%AA%E6%9D%A5/</link>
       <pubDate>Wed, 07 Dec 2022 11:58:47 +0800</pubDate>
       
-      <guid>/post/%E5%88%B0%E5%93%AA%E6%9D%A5/</guid>
+      <guid>https://duanbiaowu.github.io/post/%E5%88%B0%E5%93%AA%E6%9D%A5/</guid>
       <description></description>
     </item>
     
     <item>
       <title>从哪来</title>
-      <link>/post/%E4%BB%8E%E5%93%AA%E6%9D%A5/</link>
+      <link>https://duanbiaowu.github.io/post/%E4%BB%8E%E5%93%AA%E6%9D%A5/</link>
       <pubDate>Wed, 07 Dec 2022 11:58:39 +0800</pubDate>
       
-      <guid>/post/%E4%BB%8E%E5%93%AA%E6%9D%A5/</guid>
+      <guid>https://duanbiaowu.github.io/post/%E4%BB%8E%E5%93%AA%E6%9D%A5/</guid>
       <description></description>
     </item>
     
     <item>
       <title>我是谁</title>
-      <link>/post/%E6%88%91%E6%98%AF%E8%B0%81/</link>
+      <link>https://duanbiaowu.github.io/post/%E6%88%91%E6%98%AF%E8%B0%81/</link>
       <pubDate>Wed, 07 Dec 2022 11:58:32 +0800</pubDate>
       
-      <guid>/post/%E6%88%91%E6%98%AF%E8%B0%81/</guid>
+      <guid>https://duanbiaowu.github.io/post/%E6%88%91%E6%98%AF%E8%B0%81/</guid>
       <description></description>
     </item>
     
     <item>
       <title>Hello World</title>
-      <link>/post/hello-world/</link>
+      <link>https://duanbiaowu.github.io/post/hello-world/</link>
       <pubDate>Wed, 07 Dec 2022 11:36:59 +0800</pubDate>
       
-      <guid>/post/hello-world/</guid>
+      <guid>https://duanbiaowu.github.io/post/hello-world/</guid>
       <description>&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-go&#34; data-lang=&#34;go&#34;&gt;&lt;span style=&#34;color:#f92672&#34;&gt;package&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;
     
 &lt;span style=&#34;color:#66d9ef&#34;&gt;func&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;() {
