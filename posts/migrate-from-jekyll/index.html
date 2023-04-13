@@ -10,7 +10,7 @@
 <meta name="author" content="" /><meta property="og:title" content="Migrate to Hugo from Jekyll" />
 <meta property="og:description" content="Move static content to static Jekyll has a rule that any directory not starting with _ will be copied as-is to the _site output." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://duanbiaowu.github.io/posts/migrate-from-jekyll/" />
+<meta property="og:url" content="https://dbwu.tech/posts/migrate-from-jekyll/" />
 <meta property="article:published_time" content="2014-03-10T00:00:00+00:00" />
 <meta property="article:modified_time" content="2014-03-10T00:00:00+00:00" />
 
@@ -20,7 +20,7 @@
 
 <meta name="generator" content="Hugo 0.68.3" />
     
-    <script src="https://duanbiaowu.github.io/js/mathjax-config.js" defer></script>
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
@@ -39,20 +39,20 @@
         onload="renderMathInElement(document.body);"></script>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha256-l85OmPOjvil/SOvVt3HnSSjzF1TUMyT9eV0c2BzEGzU=" crossorigin="anonymous" />
-  <link rel="stylesheet" href="https://duanbiaowu.github.io/fontawesome/css/all.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
   
     
     <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
   
   
-  <link rel="stylesheet" type="text/css" href="https://duanbiaowu.github.io/css/styles.css" /></head>
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles.css" /></head>
 
 <body>
   <div id="container">
     <header>
       
       <h1>
-        <a href="https://duanbiaowu.github.io/">蛮荆</a>
+        <a href="https://dbwu.tech/">蛮荆</a>
       </h1>
 
       <ul id="social-media">
@@ -70,13 +70,13 @@
     <ul>
         
         <li>
-            <a class="" href="https://duanbiaowu.github.io/posts/">
+            <a class="" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>Posts</span>
             </a>
         </li>
         
         <li>
-            <a class="" href="https://duanbiaowu.github.io/tags/">
+            <a class="" href="https://dbwu.tech/tags/">
                 <i class="fa-li fa  fa-lg"></i><span>Tags</span>
             </a>
         </li>
@@ -101,7 +101,7 @@
     
       
 <div class="featured_image">
-    <a href="https://duanbiaowu.github.io/posts/migrate-from-jekyll/" title="Migrate to Hugo from Jekyll">
+    <a href="https://dbwu.tech/posts/migrate-from-jekyll/" title="Migrate to Hugo from Jekyll">
         <img src="">
     </a>
 </div>
@@ -124,7 +124,7 @@ With Jekyll, something that looked like</p>
 </code></pre>
 <p>Additionally, you&rsquo;ll want any files that should reside at the root (such as <code>CNAME</code>) to be moved to <code>static</code>.</p>
 <h2 id="create-your-hugo-configuration-file">Create your Hugo configuration file</h2>
-<p>Hugo can read your configuration as JSON, YAML or TOML. Hugo supports parameters custom configuration too. Refer to the <a href="https://duanbiaowu.github.io/overview/configuration/">Hugo configuration documentation</a> for details.</p>
+<p>Hugo can read your configuration as JSON, YAML or TOML. Hugo supports parameters custom configuration too. Refer to the <a href="https://dbwu.tech/overview/configuration/">Hugo configuration documentation</a> for details.</p>
 <h2 id="set-your-configuration-publish-folder-to-_site">Set your configuration publish folder to <code>_site</code></h2>
 <p>The default is for Jekyll to publish to <code>_site</code> and for Hugo to publish to <code>public</code>. If, like me, you have <a href="http://blog.blindgaenger.net/generate_github_pages_in_a_submodule.html"><code>_site</code> mapped to a git submodule on the <code>gh-pages</code> branch</a>, you&rsquo;ll want to do one of two alternatives:</p>
 <ol>
@@ -146,10 +146,10 @@ With Jekyll, something that looked like</p>
 </li>
 </ol>
 <h2 id="convert-jekyll-templates-to-hugo-templates">Convert Jekyll templates to Hugo templates</h2>
-<p>That&rsquo;s the bulk of the work right here. The documentation is your friend. You should refer to <a href="http://jekyllrb.com/docs/templates/">Jekyll&rsquo;s template documentation</a> if you need to refresh your memory on how you built your blog and <a href="https://duanbiaowu.github.io/layout/templates/">Hugo&rsquo;s template</a> to learn Hugo&rsquo;s way.</p>
+<p>That&rsquo;s the bulk of the work right here. The documentation is your friend. You should refer to <a href="http://jekyllrb.com/docs/templates/">Jekyll&rsquo;s template documentation</a> if you need to refresh your memory on how you built your blog and <a href="https://dbwu.tech/layout/templates/">Hugo&rsquo;s template</a> to learn Hugo&rsquo;s way.</p>
 <p>As a single reference data point, converting my templates for <a href="http://heyitsalex.net/">heyitsalex.net</a> took me no more than a few hours.</p>
 <h2 id="convert-jekyll-plugins-to-hugo-shortcodes">Convert Jekyll plugins to Hugo shortcodes</h2>
-<p>Jekyll has <a href="http://jekyllrb.com/docs/plugins/">plugins</a>; Hugo has <a href="https://duanbiaowu.github.io/doc/shortcodes/">shortcodes</a>. It&rsquo;s fairly trivial to do a port.</p>
+<p>Jekyll has <a href="http://jekyllrb.com/docs/plugins/">plugins</a>; Hugo has <a href="https://dbwu.tech/doc/shortcodes/">shortcodes</a>. It&rsquo;s fairly trivial to do a port.</p>
 <h3 id="implementation">Implementation</h3>
 <p>As an example, I was using a custom <a href="https://github.com/alexandre-normand/alexandre-normand/blob/74bb12036a71334fdb7dba84e073382fc06908ec/_plugins/image_tag.rb"><code>image_tag</code></a> plugin to generate figures with caption when running Jekyll. As I read about shortcodes, I found Hugo had a nice built-in shortcode that does exactly the same thing.</p>
 <p>Jekyll&rsquo;s plugin:</p>
@@ -247,7 +247,7 @@ Liquid::Template.register_tag('image', Jekyll::ImageTag)
 </article>
 
 <article>
-    <img src="https://duanbiaowu.github.io/images/wechat.png">
+    <img src="https://dbwu.tech/images/wechat.png">
 </article>
 
 <article>
@@ -265,7 +265,7 @@ Liquid::Template.register_tag('image', Jekyll::ImageTag)
         </li>
         <li>
         
-            <a href="https://duanbiaowu.github.io/posts/hugoisforlovers/">Getting Started with Hugo <i class="fa fa-chevron-circle-right"></i> </a>
+            <a href="https://dbwu.tech/posts/hugoisforlovers/">Getting Started with Hugo <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>
@@ -350,14 +350,14 @@ Liquid::Template.register_tag('image', Jekyll::ImageTag)
             <li>
                 <h6>Copyright © 2022 - <a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
                     Rendered by <a href="https://themes.gohugo.io/themes/hugo-kiera" title="Hugo">Hugo</a> |
-                    <a href="https://duanbiaowu.github.io/index.xml">RSS </a></h6>
+                    <a href="https://dbwu.tech/index.xml">RSS </a></h6>
             </li>
             
             
         </ul>
     </footer>
 </div>
-<script src="https://duanbiaowu.github.io/js/scripts.js"></script>
+<script src="https://dbwu.tech/js/scripts.js"></script>
 
 
 </body>
