@@ -12,74 +12,56 @@
    
    
      <item>
-       <title>Go Quick Start</title>
-       <link>https://dbwu.tech/posts/feature-image/</link>
-       <pubDate>Wed, 01 Jan 2020 00:00:00 +0800</pubDate>
-       
-       <guid>https://dbwu.tech/posts/feature-image/</guid>
-       <description>这本书是写什么的？ 这是一本 Go 语言快速入门手册，目标读者是有任一编程语言基础，希望以最快的时间 (比如一个周末) 入门 Go 语言。</description>
-     </item>
-   
-     <item>
-       <title>Markdown Syntax Guide</title>
-       <link>https://dbwu.tech/posts/markdown-syntax/</link>
-       <pubDate>Mon, 11 Mar 2019 00:00:00 +0000</pubDate>
-       
-       <guid>https://dbwu.tech/posts/markdown-syntax/</guid>
-       <description>&lt;p&gt;This article offers a sample of basic Markdown syntax that can be used in Hugo content files, also it shows whether basic HTML elements are decorated with CSS in a Hugo theme.&lt;/p&gt;</description>
-     </item>
-   
-     <item>
        <title>Style Guide</title>
-       <link>https://dbwu.tech/posts/style-guide/</link>
+       <link>https://dbwu.tech/post_bak/style-guide/</link>
        <pubDate>Tue, 14 Nov 2017 10:57:55 -0500</pubDate>
        
-       <guid>https://dbwu.tech/posts/style-guide/</guid>
+       <guid>https://dbwu.tech/post_bak/style-guide/</guid>
        <description>Headings Heading 1 Heading 2 Heading 3 Heading 4 Heading 5 Heading 6  Headings with Text Heading 1 Lorem ipsum dolor sit amet, adipiscing elit.</description>
      </item>
    
      <item>
        <title>Image Style Guide</title>
-       <link>https://dbwu.tech/posts/image-content/</link>
+       <link>https://dbwu.tech/post_bak/image-content/</link>
        <pubDate>Tue, 14 Nov 2017 08:08:17 -0500</pubDate>
        
-       <guid>https://dbwu.tech/posts/image-content/</guid>
+       <guid>https://dbwu.tech/post_bak/image-content/</guid>
        <description>Veniam est eu adipisicing reprehenderit do sit sint elit sint.</description>
      </item>
    
      <item>
        <title>Creating a New Theme</title>
-       <link>https://dbwu.tech/posts/creating-a-new-theme/</link>
+       <link>https://dbwu.tech/post_bak/creating-a-new-theme/</link>
        <pubDate>Sun, 28 Sep 2014 00:00:00 +0000</pubDate>
        
-       <guid>https://dbwu.tech/posts/creating-a-new-theme/</guid>
+       <guid>https://dbwu.tech/post_bak/creating-a-new-theme/</guid>
        <description>Introduction This tutorial will show you how to create a simple theme in Hugo.</description>
      </item>
    
      <item>
        <title>(Hu)go Template Primer</title>
-       <link>https://dbwu.tech/posts/goisforlovers/</link>
+       <link>https://dbwu.tech/post_bak/goisforlovers/</link>
        <pubDate>Wed, 02 Apr 2014 00:00:00 +0000</pubDate>
        
-       <guid>https://dbwu.tech/posts/goisforlovers/</guid>
+       <guid>https://dbwu.tech/post_bak/goisforlovers/</guid>
        <description>Hugo uses the excellent go html/template library for its template engine.</description>
      </item>
    
      <item>
        <title>Getting Started with Hugo</title>
-       <link>https://dbwu.tech/posts/hugoisforlovers/</link>
+       <link>https://dbwu.tech/post_bak/hugoisforlovers/</link>
        <pubDate>Wed, 02 Apr 2014 00:00:00 +0000</pubDate>
        
-       <guid>https://dbwu.tech/posts/hugoisforlovers/</guid>
+       <guid>https://dbwu.tech/post_bak/hugoisforlovers/</guid>
        <description>Step 1.</description>
      </item>
    
      <item>
        <title>Migrate to Hugo from Jekyll</title>
-       <link>https://dbwu.tech/posts/migrate-from-jekyll/</link>
+       <link>https://dbwu.tech/post_bak/migrate-from-jekyll/</link>
        <pubDate>Mon, 10 Mar 2014 00:00:00 +0000</pubDate>
        
-       <guid>https://dbwu.tech/posts/migrate-from-jekyll/</guid>
+       <guid>https://dbwu.tech/post_bak/migrate-from-jekyll/</guid>
        <description>Move static content to static Jekyll has a rule that any directory not starting with _ will be copied as-is to the _site output.</description>
      </item>
    

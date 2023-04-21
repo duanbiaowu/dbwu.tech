@@ -13,11 +13,6 @@
   </url>
   
   <url>
-    <loc>https://dbwu.tech/tags/go/</loc>
-    <lastmod>2020-01-01T00:00:00+08:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://dbwu.tech/posts/feature-image/</loc>
     <lastmod>2020-01-01T00:00:00+08:00</lastmod>
   </url>
@@ -65,71 +60,6 @@
   <url>
     <loc>https://dbwu.tech/tags/themes/</loc>
     <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/layout/</loc>
-    <lastmod>2017-11-14T10:57:55-05:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/style-guide/</loc>
-    <lastmod>2017-11-14T10:57:55-05:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/image-content/</loc>
-    <lastmod>2017-11-14T08:08:17-05:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/categories/images/</loc>
-    <lastmod>2017-11-14T08:08:17-05:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/creating-a-new-theme/</loc>
-    <lastmod>2014-09-28T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/goisforlovers/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/categories/development/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/development/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/hugoisforlovers/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/categories/golang/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/hugo/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/templates/</loc>
-    <lastmod>2014-04-02T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/migrate-from-jekyll/</loc>
-    <lastmod>2014-03-10T00:00:00+00:00</lastmod>
   </url>
   
 </urlset>
