@@ -6,7 +6,7 @@
   <title>Go 1.20 发布了 - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="前言 这几天所有的热度都集中到了 ChatGPT，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术， 恰巧这时 兔兔大佬 发来了灵魂拷问 &hellip;" />
+<meta name="description" content="前言 这几天所有的热度都集中到了 ChatGPT，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术，恰巧这时 兔兔大佬 发来了灵魂拷问 &hellip;" />
 <meta name="author" content="" />
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 1.20 发布了" />
 <meta property="og:description" content="总体来说，Go 1.20 版本基本没有新的功能和特性，在旧的版本基础上，按图索骥即可。" />
@@ -121,9 +121,8 @@
     
 
     <h2 id="前言">前言</h2>
-<p>这几天所有的热度都集中到了 <code>ChatGPT</code>，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术，
-恰巧这时 <strong>兔兔大佬</strong> 发来了灵魂拷问 &hellip;</p>
-<p><img src="../images/go1.20_intro.png" alt="你写不写?"></p>
+<p>这几天所有的热度都集中到了 <code>ChatGPT</code>，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术，恰巧这时 <strong>兔兔大佬</strong> 发来了灵魂拷问 &hellip;</p>
+<p><img src="https://dbwu.tech/images/go1.20_intro.png" alt="你写不写?"></p>
 <p>果然，<strong>我的驱动力主要来自外界</strong>，于是乎，就有了官网文章的这篇翻译版 (官方文章中不重要的细节忽略了，想一览无余的读者参考附录链接 1)。</p>
 <h2 id="pgo">PGO</h2>
 <p>Go 1.20 发布了 <code>配置文件引导优化 (PGO)</code> 的预览版，使编译器能够根据运行时配置文件信息，执行应用程序和工作负载的特定性优化。
