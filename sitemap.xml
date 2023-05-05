@@ -4,62 +4,66 @@
   
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2020-01-01T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2020-01-01T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
   </url>
   
   <url>
-    <loc>https://dbwu.tech/posts/feature-image/</loc>
-    <lastmod>2020-01-01T00:00:00+08:00</lastmod>
+    <loc>https://dbwu.tech/tags/tools/</loc>
+    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
   </url>
   
   <url>
-    <loc>https://dbwu.tech/tags/golang/</loc>
-    <lastmod>2020-01-01T00:00:00+08:00</lastmod>
+    <loc>https://dbwu.tech/posts/image_tool/</loc>
+    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/</loc>
-    <lastmod>2020-01-01T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/chatgpt/</loc>
+    <lastmod>2023-04-03T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/chatgpt/</loc>
+    <lastmod>2023-04-03T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/memory_model/</loc>
+    <lastmod>2023-02-24T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/golang/</loc>
+    <lastmod>2023-02-24T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/version_semantics/</loc>
+    <lastmod>2023-02-24T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>
+    <lastmod>2023-02-24T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/go1.20/</loc>
+    <lastmod>2023-02-11T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/categories/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/css/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/html/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/categories/layout/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/markdown/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/posts/markdown-syntax/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/themes/</loc>
-    <lastmod>2019-03-11T00:00:00+00:00</lastmod>
   </url>
   
 </urlset>

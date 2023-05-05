@@ -1,0 +1,265 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>技术文章配图指南 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="为什么技术文章需要配图？一图胜千言。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="技术文章配图指南" />
+<meta property="og:description" content="为什么技术文章需要配图？一图胜千言。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/image_tool/" />
+<meta property="article:published_time" content="2023-04-04T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-04-04T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="技术文章配图指南"/>
+<meta name="twitter:description" content="为什么技术文章需要配图？一图胜千言。"/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>技术文章配图指南</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/tools">Tools</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <blockquote>
+<p>为什么技术文章需要配图？一图胜千言。</p>
+</blockquote>
+<h2 id="原则">原则</h2>
+<ul>
+<li>准确地传递和表达上下文内容</li>
+<li>符合相关领域规范标准 (如 流程图, UML, 泳道图等)</li>
+<li>不影响写作的效率 (尽可能高效)</li>
+</ul>
+<p>满足以上三点要求后，如果作者还有额外的时间，可以对配图做进一步的优化工作: 是否美观、风格是否一致、配色、线条、比例、留白等设计视觉要素。</p>
+<p>本文以 <code>Go 语言</code> 开发为例，分享一下笔者常用的几个配图工具，其他语言的开发者可以作为参考，所有工具都在 <code>Reference</code> 列表。</p>
+<h2 id="自动化工具">自动化工具</h2>
+<h3 id="uml">UML</h3>
+<p><code>go-plantuml</code> 可以根据 <code>Go</code> 代码自动生成对应的 <code>plantuml</code> 文件，支持单个文件或整个目录代码生成。</p>
+<p>生成 <code>plantuml</code> 文件之后，需要安装对应的可视化工具才能查看对应的 <code>UML 图片</code>，不过大多数 IDE 都有对应的插件，直接安装即可。
+这里以笔者使用 <code>Goland</code> 的为例，直接安装 <code>PlantUML Integration</code> 插件就可以看到图片了。</p>
+<p><img src="../images/go-plantuml_demo.png" alt="plantuml 示例图"></p>
+<h3 id="调用关系图">调用关系图</h3>
+<p><code>go-callvis</code> 可以将程序中的 <code>包</code>, <code>对象</code>, <code>方法</code> 等元素的调用关系展示为图片，而且可以通过鼠标操作查看调用链，可以帮助我们在面对复杂的程序结构时，快速理清逻辑主干和实现细节。</p>
+<p><img src="../images/go-callvis_demo.png" alt="go-callvis 示例图"></p>
+<h3 id="goroutine-并发执行图">goroutine 并发执行图</h3>
+<p><code>gotrace</code> 可以分析 <code>go tool trace</code> 命令产生的 <code>trace</code> 结果，并根据结果呈现 <code>3D</code> 并发流的可视化效果。</p>
+<p><img src="../images/pingpong3.gif" alt="gotrace 示例图"></p>
+<h3 id="性能分析">性能分析</h3>
+<p><code>pprof</code> 是官方出品的用于性能可视化分析工具，不需要过多解释了。</p>
+<p><img src="../images/pprof_demo.png" alt="pprof 示例图"></p>
+<h2 id="手动绘图">手动绘图</h2>
+<h3 id="drawio">draw.io</h3>
+<p><code>draw.io</code> 这个大家应该都很熟悉了，也是笔者目前正在使用的绘图工具，工具本身集成了很多常用的元素。</p>
+<p><img src="../images/drawio_demo.png" alt="draw.io 表格示例图"></p>
+<p><img src="../images/drawio_demo2.png" alt="draw.io 对象示例图"></p>
+<h3 id="excalidraw">excalidraw</h3>
+<p><code>excalidraw</code> 绘图有更强的个性化和轻松化风格，图形元素并不是四四方方、一板一眼的严肃风格。</p>
+<p><img src="../images/excalidraw_demo.png" alt="excalidraw 示例图"></p>
+<p><img src="../images/excalidraw_demo2.png" alt="excalidraw 示例图2"></p>
+<h3 id="sketch">Sketch</h3>
+<p><code>Sketch</code> 应该是目前手动绘图的终极工具了，笔者并没有太多使用经验 (<del>正在龟速学习中</del>)，这里仅展示两张官方图片作为示例。</p>
+<p><img src="../images/sketch_demo.png" alt="Sketch 示例图"></p>
+<p><img src="../images/sketch_demo2.png" alt="Sketch 示例图-2"></p>
+<h2 id="配色">配色</h2>
+<p>最后说一下配色，笔者在这块没有调研过太多工具，直接使用的 <code>Coolors</code> 配色推荐，组装了一套自己的配色集合。</p>
+<p><img src="../images/colors_demo.png" alt="Colors 示例图"></p>
+<p><img src="../images/colors_demo4.png" alt="Colors 示例图-2"></p>
+<p>下面是笔者的一套块配色元素集合:</p>
+<p><img src="../images/colors_demo2.png" alt="自定义元素配色"></p>
+<p><img src="../images/colors_demo3.png" alt="自定义元素配色-2"></p>
+<h2 id="小结">小结</h2>
+<p>本文主要分享了笔者常用的几个配图工具，也许读者会思考到: 既然有这么多画图工具，那么为了保持统一风格，是否可以手动绘制所有配图？
+这个问题可以基于两点要素考虑: <strong>时间是否充裕以及手动绘图是否可以媲美专业工具自动生成的绘图</strong>？此外，笔者自己总结了一个小技巧:
+如果一篇文章中超过 <code>70%</code> 的图需要手动绘制，那就全部手动绘制，保持风格的一致性。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://coolors.co/">Colors</a></li>
+<li><a href="https://www.sketch.com/">Sketch</a></li>
+<li><a href="https://app.diagrams.net/">draw.io</a></li>
+<li><a href="https://plantuml.com/">PlantUML</a></li>
+<li><a href="https://github.com/jfeliu007/goplantuml">goplantuml</a></li>
+<li><a href="https://plugins.jetbrains.com/plugin/7017-plantuml-integration">PlantUML Integration</a></li>
+<li><a href="https://github.com/ofabry/go-callvis">go-callvis</a></li>
+<li><a href="https://divan.dev/talks/2016/gophercon/#/">VISUALIZING CONCURRENCY IN GO</a></li>
+<li><a href="https://divan.dev/posts/go_concurrency_visualize/">divan&rsquo;s blog</a></li>
+<li><a href="https://github.com/divan/gotrace">gotrace</a></li>
+<li><a href="https://pkg.go.dev/net/http/pprof">pprof</a></li>
+<li><a href="https://github.com/google/pprof">google/pprof</a></li>
+<li><a href="https://www.graphviz.org/">graphviz</a></li>
+<li><a href="https://excalidraw.com/">excalidraw.com</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/chatgpt/"><i class="fa fa-chevron-circle-left"></i> ChatGPT 初体验</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="技术文章配图指南"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
