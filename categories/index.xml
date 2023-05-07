@@ -55,5 +55,41 @@
        <description>前言 这几天所有的热度都集中到了 ChatGPT，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术，恰巧这时 兔兔大佬 发来了灵魂拷问 &amp;hellip;</description>
      </item>
    
+     <item>
+       <title>Go 逃逸分析</title>
+       <link>https://dbwu.tech/posts/goland_escape/</link>
+       <pubDate>Fri, 03 Feb 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/goland_escape/</guid>
+       <description>Go 语言的编译器使用逃逸分析决定哪些变量分配在栈上，哪些变量分配在堆上。</description>
+     </item>
+   
+     <item>
+       <title>Go 数据竞态</title>
+       <link>https://dbwu.tech/posts/golang_data_race/</link>
+       <pubDate>Thu, 02 Feb 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_data_race/</guid>
+       <description>数据竞态是并发系统编程中最常见和最难调试的错误类型之一。当两个 goroutine 同时访问同一个变量并且至少有一个是写入操作时，就会发生数据竞态。</description>
+     </item>
+   
+     <item>
+       <title>Go 如何实现 implements 功能</title>
+       <link>https://dbwu.tech/posts/golang_implements/</link>
+       <pubDate>Tue, 31 Jan 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_implements/</guid>
+       <description>Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间</description>
+     </item>
+   
+     <item>
+       <title>Go 的面向对象编程</title>
+       <link>https://dbwu.tech/posts/golang_oop/</link>
+       <pubDate>Mon, 30 Jan 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_oop/</guid>
+       <description>Go 语言如何实现封装、继承、多态等面向对象的特性？</description>
+     </item>
+   
  </channel>
 </rss>
