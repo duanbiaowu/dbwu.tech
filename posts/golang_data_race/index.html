@@ -165,7 +165,7 @@ Read by goroutine 185:
 <span style="color:#40ffff">GORACE</span>=<span style="color:#ed9d13">&#34;log_path=/tmp/race/report strip_path_prefix=/my/go/sources/&#34;</span> go <span style="color:#24909d">test</span> -race
 </code></pre></div><h2 id="排除测试">排除测试</h2>
 <p>当在命令中加入 <code>-race</code> 参数时，Go 定义了额外的构建标签 <code>race</code>，这样就可以使用标签在运行 <code>数据竞态检测器</code> 时排除一些代码和测试。
-从本质上来说，其实也就是 <a href="conditional_compilation.md">条件编译</a>。</p>
+从本质上来说，其实也就是 <code>条件编译</code>。</p>
 <h3 id="示例">示例</h3>
 <p>有了 <code>条件编译</code> 之后，运行 <code>go test -race</code> 命令时，这个文件里面的单元测试就会被排除，不会运行。</p>
 <div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// +build !race

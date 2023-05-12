@@ -6,10 +6,37 @@
    <description>Recent content in Golang on 蛮荆</description>
    <generator>Hugo -- gohugo.io</generator>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Fri, 24 Feb 2023 00:00:00 +0800</lastBuildDate>
+   <lastBuildDate>Tue, 18 Apr 2023 00:00:00 +0800</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/golang/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Go 并发模式</title>
+       <link>https://dbwu.tech/posts/golang_concurrency_patterns/</link>
+       <pubDate>Tue, 18 Apr 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_concurrency_patterns/</guid>
+       <description>Go 语言常用的并发模式代码模板，已更新。</description>
+     </item>
+   
+     <item>
+       <title>Go 汇编</title>
+       <link>https://dbwu.tech/posts/golang_asm/</link>
+       <pubDate>Mon, 17 Apr 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_asm/</guid>
+       <description>为什么要学习汇编语言？更加接近硬件底层，性能极致优化，可以降维打击所有高级编程语言。</description>
+     </item>
+   
+     <item>
+       <title>Go 高性能 Tips</title>
+       <link>https://dbwu.tech/posts/golang_performance_tips/</link>
+       <pubDate>Mon, 10 Apr 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_performance_tips/</guid>
+       <description>阅读 Go 标准库和开源框架代码时，经常会发现这些 Tips 的踪迹。</description>
+     </item>
    
      <item>
        <title>技术文章配图指南</title>
@@ -80,7 +107,7 @@
        <pubDate>Tue, 31 Jan 2023 00:00:00 +0800</pubDate>
        
        <guid>https://dbwu.tech/posts/golang_implements/</guid>
-       <description>Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间</description>
+       <description>Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间。</description>
      </item>
    
      <item>

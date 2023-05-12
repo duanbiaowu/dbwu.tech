@@ -271,7 +271,7 @@ main.go:5:14: make(map[string][]int) does not escape
 main.go:6:22: make([]int, weekdays) escapes to heap
 main.go:7:45: []int{...} does not escape
 </code></pre></div><h4 id="避免逃逸方案">避免逃逸方案</h4>
-<p>如果切片容量较小，可以改为使用数组，避免发生逃逸，详情见 <a href="slice_with_array.md">切片和数组性能差异</a>。</p>
+<p>如果切片容量较小，可以改为使用数组，避免发生逃逸。</p>
 <div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
 
 <span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {

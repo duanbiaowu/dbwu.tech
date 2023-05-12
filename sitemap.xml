@@ -4,12 +4,47 @@
   
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-18T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-18T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_concurrency_patterns/</loc>
+    <lastmod>2023-04-18T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/golang/</loc>
+    <lastmod>2023-04-18T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2023-04-18T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/</loc>
+    <lastmod>2023-04-18T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_asm/</loc>
+    <lastmod>2023-04-17T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_performance_tips/</loc>
+    <lastmod>2023-04-10T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2023-04-10T00:00:00+08:00</lastmod>
   </url>
   
   <url>
@@ -19,11 +54,6 @@
   
   <url>
     <loc>https://dbwu.tech/posts/image_tool/</loc>
-    <lastmod>2023-04-04T00:00:00+08:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/</loc>
     <lastmod>2023-04-04T00:00:00+08:00</lastmod>
   </url>
   
@@ -39,11 +69,6 @@
   
   <url>
     <loc>https://dbwu.tech/posts/memory_model/</loc>
-    <lastmod>2023-02-24T00:00:00+08:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/golang/</loc>
     <lastmod>2023-02-24T00:00:00+08:00</lastmod>
   </url>
   
@@ -74,11 +99,6 @@
   
   <url>
     <loc>https://dbwu.tech/posts/golang_data_race/</loc>
-    <lastmod>2023-02-02T00:00:00+08:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/</loc>
     <lastmod>2023-02-02T00:00:00+08:00</lastmod>
   </url>
   
