@@ -12,6 +12,24 @@
    
    
      <item>
+       <title>goroutine 交替打印奇偶数</title>
+       <link>https://dbwu.tech/posts/goroutine_alternate_print/</link>
+       <pubDate>Thu, 20 Apr 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/goroutine_alternate_print/</guid>
+       <description>使用两个 &lt;code&gt;goroutine&lt;/code&gt; 交替并且顺序地打印数字 1&amp;hellip;10, 要求其中一个 &lt;code&gt;goroutine&lt;/code&gt; 打印奇数，另一个 &lt;code&gt;goroutine&lt;/code&gt; 打印偶数。</description>
+     </item>
+   
+     <item>
+       <title>GODEBUG</title>
+       <link>https://dbwu.tech/posts/golang_godebug/</link>
+       <pubDate>Wed, 19 Apr 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_godebug/</guid>
+       <description>GODEBUG 环境变量可以控制程序运行时的调度信息输出，方便开发者了解程序运行内部细节。</description>
+     </item>
+   
+     <item>
        <title>Go 并发模式</title>
        <link>https://dbwu.tech/posts/golang_concurrency_patterns/</link>
        <pubDate>Tue, 18 Apr 2023 00:00:00 +0800</pubDate>
