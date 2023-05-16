@@ -1,0 +1,475 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>sync/atomic Code Review - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="sync/atomic 包提供了原子同步操作原语，整个操作过程无需加锁，也不会产生 goroutine 上下文切换。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync/atomic Code Review" />
+<meta property="og:description" content="sync/atomic 包提供了原子同步操作原语，整个操作过程无需加锁，也不会产生 goroutine 上下文切换。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_atomic/" />
+<meta property="article:published_time" content="2023-04-21T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-04-21T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="sync/atomic Code Review"/>
+<meta name="twitter:description" content="sync/atomic 包提供了原子同步操作原语，整个操作过程无需加锁，也不会产生 goroutine 上下文切换。"/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>sync/atomic Code Review</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>sync/atomic</code> 包提供了原子同步操作原语，整个操作过程无需加锁，也不会产生 <code>goroutine</code> 上下文切换。</p>
+<h2 id="api">API</h2>
+<p><img src="https://dbwu.tech/images/atomicop.png" alt="atomic API"></p>
+<p><code>Swap</code> 操作由 SwapT 系列函数 (例如 SwapInt32, SwapInt64) 实现，等价于如下的原子操作：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">old = *addr
+*addr = new
+<span style="color:#6ab825;font-weight:bold">return</span> old
+</code></pre></div><p><code>CAS</code> 操作由 CompareAndSwapT 系列函数 (例如 CompareAndSwapInt32, CompareAndSwapInt64) 实现，等价于如下的原子操作：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">if</span> *addr == old {
+    *addr = new
+    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+}
+<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</code></pre></div><p><code>Add</code> 操作由 AddT 系列函数 (例如 AddInt32, AddInt64) 实现，等价于如下的原子操作：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">*addr += delta
+<span style="color:#6ab825;font-weight:bold">return</span> *addr
+</code></pre></div><p><code>Load And Store</code> 操作由 LoadT and StoreT 系列函数 (例如 LoadInt32, LoadInt64) 实现，等价于如下的原子操作：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">*addr = val
+</code></pre></div><h2 id="内部实现">内部实现</h2>
+<p>我们来探究一下 <code>sync/atomic</code> 包的内部实现，文件目录路径为 <code>$GOROOT/src/sync/atomic</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。
+需要注意的是，该文件内只给出了函数的定义，函数的实现为在对应的 <code>asm.s</code> 汇编文件中。</p>
+<h3 id="函数声明">函数声明</h3>
+<p><code>Swap</code>, <code>CAS</code> 等操作的函数原型全部定义在 <code>doc.go</code> 文件中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 在 386 上， 64 位函数使用的指令在 Pentium MMX 之前不可用
+</span><span style="color:#999;font-style:italic">// 在非 Linux ARM 上，64 位函数使用的指令在 ARMv6k core 之前不可使用
+</span><span style="color:#999;font-style:italic">// 在 ARM 上，386 和 32 位 MIPS，调用方负责以原子的方式访问 64 位对齐的 64 位字
+</span><span style="color:#999;font-style:italic">// 全局变量、局部变量、已经分配的结构体、数组、切片中的第一个字可以依赖于 64 位对齐
+</span><span style="color:#999;font-style:italic"></span>
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">SwapInt32</span>(addr *<span style="color:#6ab825;font-weight:bold">int32</span>, new <span style="color:#6ab825;font-weight:bold">int32</span>) (old <span style="color:#6ab825;font-weight:bold">int32</span>)
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">SwapInt64</span>(addr *<span style="color:#6ab825;font-weight:bold">int64</span>, new <span style="color:#6ab825;font-weight:bold">int64</span>) (old <span style="color:#6ab825;font-weight:bold">int64</span>)
+
+...
+
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">StoreUintptr</span>(addr *<span style="color:#6ab825;font-weight:bold">uintptr</span>, val <span style="color:#6ab825;font-weight:bold">uintptr</span>)
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">StorePointer</span>(addr *unsafe.Pointer, val unsafe.Pointer)
+
+</code></pre></div><h3 id="函数实现">函数实现</h3>
+<p><code>Swap</code>, <code>CAS</code> 等操作的函数实现全部在 <code>asm.s</code> 汇编文件中，但是该文件中的函数并不是直接实现，而是 “套了一层壳”，
+最终的实现在平台体系结构对应的汇编文件中，目录为<code>$GOROOT/src/runtime/internal/atomic</code>。
+例如: 笔者的 Go 版本为 <code>go1.19 linux/amd64</code>, 那么就会跳转到 <code>runtime/internal/atomic/atomic_amd64.s</code> 文件对应的函数。</p>
+<p><img src="https://dbwu.tech/images/atomicarch.png" alt="不同平台体系结构的实现"></p>
+<p>这里以 <code>·SwapInt32</code> 汇编函数为例，来看下函数的跳转和实现。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># asm.s 文件</span>
+
+TEXT ·SwapInt32(SB),NOSPLIT,<span style="color:#40ffff">$0</span>
+	JMP	runtime∕internal∕atomic·Xchg(SB)
+</code></pre></div><p>函数的实现中使用了 <code>JMP</code> 跳转指令，最终跳转到了文件 <code>$GOROOT/src/runtime/internal/atomic/atomic_amd64.s</code> 中的 <code>·Xchg</code> 函数。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// atomic_amd64.s 文件
+</span><span style="color:#999;font-style:italic"></span>
+TEXT <span style="color:#a61717;background-color:#e3d2d2">·</span><span style="color:#447fcf">Xchg</span>(SB), NOSPLIT, <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0</span>-<span style="color:#3677a9">20</span>
+	MOVQ	ptr+<span style="color:#3677a9">0</span>(FP), BX   <span style="color:#999;font-style:italic">// 参数 1，8 字节 *int32 指针
+</span><span style="color:#999;font-style:italic"></span>	MOVL	new+<span style="color:#3677a9">8</span>(FP), AX   <span style="color:#999;font-style:italic">// 参数 2，4 字节 int32
+</span><span style="color:#999;font-style:italic"></span>	XCHGL	AX, <span style="color:#3677a9">0</span>(BX)       <span style="color:#999;font-style:italic">// 交换指令
+</span><span style="color:#999;font-style:italic"></span>	MOVL	AX, ret+<span style="color:#3677a9">16</span>(FP)  <span style="color:#999;font-style:italic">// 交换后的 AX(old value) 写入 FP 伪寄存器返回值位
+</span><span style="color:#999;font-style:italic"></span>	RET
+
+<span style="color:#999;font-style:italic">// 上面的汇编代码等价于如下 Go 代码
+</span><span style="color:#999;font-style:italic">// uint32 Xchg(ptr *uint32, new uint32)
+</span><span style="color:#999;font-style:italic">// Atomically:
+</span><span style="color:#999;font-style:italic">//	old := *ptr
+</span><span style="color:#999;font-style:italic">//	*ptr = new
+</span><span style="color:#999;font-style:italic">//	return old
+</span></code></pre></div><h2 id="atomicvalue">atomic.Value</h2>
+<p>接下来看一下原子数据类型 <code>atomic.Value</code> 的内部实现。</p>
+<h3 id="value-对象">Value 对象</h3>
+<p><code>Value</code> 数据类型提供了一致性原子性的 <code>Swap</code>, <code>CAS</code> 等方法，其中</p>
+<ul>
+<li>Load 方法调用时，Value 的零值返回 nil</li>
+<li>Store 方法一旦被调用，Value 对象就不能再复制</li>
+<li>Value 对象一旦使用后，就不能再复制</li>
+</ul>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> Value <span style="color:#6ab825;font-weight:bold">struct</span> {
+    v any
+}
+</code></pre></div><h3 id="ifacewords-对象">ifaceWords 对象</h3>
+<p><code>ifaceWords</code> 对象是 <code>Value</code> 对象对应的 <code>数据类型 + 值</code> 的内部抽象表示，虽然 <code>Value</code> 对象相关方法的参数类型是 <code>any</code>，但是内部操作的都是 <code>ifaceWords</code> 对象 (通过类型转换机制)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> ifaceWords <span style="color:#6ab825;font-weight:bold">struct</span> {
+	typ  unsafe.Pointer <span style="color:#999;font-style:italic">// 类型
+</span><span style="color:#999;font-style:italic"></span>	data unsafe.Pointer <span style="color:#999;font-style:italic">// 值
+</span><span style="color:#999;font-style:italic"></span>}
+</code></pre></div><p><img src="https://dbwu.tech/images/atomicvalue.png" alt="ifaceWords 对象"></p>
+<h3 id="valueload-方法">Value.Load 方法</h3>
+<p><code>Load</code> 返回最新设置的值，如果未对该值调用过 <code>Store</code> 方法 (Value 处于零值状态)，返回 nil。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (v *Value) <span style="color:#447fcf">Load</span>() (val any) {
+	<span style="color:#999;font-style:italic">// 类型转化
+</span><span style="color:#999;font-style:italic"></span>	vp := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(v))
+	<span style="color:#999;font-style:italic">// 原子获取值类型
+</span><span style="color:#999;font-style:italic"></span>	typ := <span style="color:#447fcf">LoadPointer</span>(&amp;vp.typ)
+    <span style="color:#999;font-style:italic">// 从未调用过 Store 方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> typ == <span style="color:#6ab825;font-weight:bold">nil</span> || typ == unsafe.<span style="color:#447fcf">Pointer</span>(&amp;firstStoreInProgress) {
+		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+	}
+	
+	<span style="color:#999;font-style:italic">// 原子获取值
+</span><span style="color:#999;font-style:italic"></span>	data := <span style="color:#447fcf">LoadPointer</span>(&amp;vp.data)
+	<span style="color:#999;font-style:italic">// 返回值类型转换
+</span><span style="color:#999;font-style:italic"></span>	vlp := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;val))
+	<span style="color:#999;font-style:italic">// 返回值类型
+</span><span style="color:#999;font-style:italic"></span>	vlp.typ = typ
+	<span style="color:#999;font-style:italic">// 返回值数据值
+</span><span style="color:#999;font-style:italic"></span>	vlp.data = data
+	<span style="color:#6ab825;font-weight:bold">return</span>
+}
+</code></pre></div><h3 id="valuestore-方法">Value.Store 方法</h3>
+<p><code>Store</code> 方法设置 <code>Value</code> 对象的值，<strong>对于某个特定的 Value 对象，每次调用 Store 方法时都必须使用相同的数据类型值 (例如第一次存储的是 int 类型, 那么之后调用时必须传递 int 类型)，
+类型不一致时会产生 panic, 传递 nil 参数 ( Store(nil) ) 同样会产生 panic</strong>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (v *Value) <span style="color:#447fcf">Store</span>(val any) {
+	<span style="color:#6ab825;font-weight:bold">if</span> val == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 参数为 nil, 直接 panic
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: store of nil value into Value&#34;</span>)
+	}
+	
+	<span style="color:#999;font-style:italic">// 参数类型转换
+</span><span style="color:#999;font-style:italic"></span>	vp := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(v))
+	<span style="color:#999;font-style:italic">// 返回值类型转换
+</span><span style="color:#999;font-style:italic"></span>	vlp := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;val))
+	
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 原子获取参数值数据类型
+</span><span style="color:#999;font-style:italic"></span>		typ := <span style="color:#447fcf">LoadPointer</span>(&amp;vp.typ)
+		
+		<span style="color:#6ab825;font-weight:bold">if</span> typ == <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#999;font-style:italic">// 如果类型为 nil, 尝试开始第一次 Store
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 禁止抢占（避免操作未完成时，被其他 goroutine 抢占），其他 goroutine 可以使用自旋锁来等待完成
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 同时可以避免 GC 的时候看到 unsafe.Pointer(^uintptr(0)) 这个中间状态的值
+</span><span style="color:#999;font-style:italic"></span>			
+			<span style="color:#447fcf">runtime_procPin</span>() <span style="color:#999;font-style:italic">// 禁止抢占 (具体的实现这里先忽略)
+</span><span style="color:#999;font-style:italic"></span>			
+			<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;vp.typ, <span style="color:#6ab825;font-weight:bold">nil</span>, unsafe.<span style="color:#447fcf">Pointer</span>(&amp;firstStoreInProgress)) {
+				<span style="color:#999;font-style:italic">// 如果设置值的类型时失败
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 说明当前 goroutine 在禁止抢占执行结束前，已经有其他 goroutine 设置完了值类型
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#447fcf">runtime_procUnpin</span>() <span style="color:#999;font-style:italic">// 恢复抢占
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+			}
+			
+			<span style="color:#999;font-style:italic">// 完成第一次 Store 操作
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">StorePointer</span>(&amp;vp.data, vlp.data)
+			<span style="color:#447fcf">StorePointer</span>(&amp;vp.typ, vlp.typ)
+			
+			<span style="color:#447fcf">runtime_procUnpin</span>() <span style="color:#999;font-style:italic">// 恢复抢占 (具体的实现这里先忽略)
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span>
+		}
+		
+		<span style="color:#6ab825;font-weight:bold">if</span> typ == unsafe.<span style="color:#447fcf">Pointer</span>(&amp;firstStoreInProgress) {
+			<span style="color:#999;font-style:italic">// 第一次 Store 操作正在执行中，等待...
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// [待优化项] 因为在第一次 Store 禁用了抢占，所以可以使用自旋锁等待完成
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+		}
+		
+		<span style="color:#999;font-style:italic">// 已经完成了第一次 Store 操作, 检查类型并覆盖数据（检查是否和第一次设置的数据类型一致）
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> typ != vlp.typ {
+			<span style="color:#999;font-style:italic">// 当前数据类型和第一次设置的数据类型不一致，产生 panic
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: store of inconsistently typed value into Value&#34;</span>)
+		}
+		
+		<span style="color:#447fcf">StorePointer</span>(&amp;vp.data, vlp.data)
+		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+}
+</code></pre></div><h3 id="valueswap-方法">Value.Swap 方法</h3>
+<p><code>Swap</code> 方法将新值存储到 <code>Value</code> 对象，并返回 <code>Value</code> 对象的旧值，如果 Value 为空， 则返回 nil。
+<strong>对于某个特定的 Value 对象，每次调用 Swap 方法时都必须使用相同的数据类型值 (例如第一次存储的是 int 类型, 那么之后调用时必须传递 int 类型)，
+类型不一致时会产生 panic, 传递 nil 参数 ( Swap(nil) ) 同样会产生 panic</strong>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (v *Value) <span style="color:#447fcf">Swap</span>(new any) (old any) {
+	<span style="color:#6ab825;font-weight:bold">if</span> new == <span style="color:#6ab825;font-weight:bold">nil</span> {
+        <span style="color:#999;font-style:italic">// 参数为 nil, 直接 panic
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: swap of nil value into Value&#34;</span>)
+	}
+	
+    <span style="color:#999;font-style:italic">// 当前值类型转换
+</span><span style="color:#999;font-style:italic"></span>	vp := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(v))
+	<span style="color:#999;font-style:italic">// 参数类型转换
+</span><span style="color:#999;font-style:italic"></span>	np := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;new))
+	
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 原子获取当前值数据类型
+</span><span style="color:#999;font-style:italic"></span>		typ := <span style="color:#447fcf">LoadPointer</span>(&amp;vp.typ)
+		
+		<span style="color:#6ab825;font-weight:bold">if</span> typ == <span style="color:#6ab825;font-weight:bold">nil</span> {
+            <span style="color:#999;font-style:italic">// Value 对象还没有被设置
+</span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">// 尝试开始第一次 Store 操作
+</span><span style="color:#999;font-style:italic"></span>			
+			<span style="color:#999;font-style:italic">// 流程和 Store 方法内部类型，这里直接省略掉
+</span><span style="color:#999;font-style:italic"></span>			...
+
+			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+		}
+		
+        ...
+		
+        <span style="color:#999;font-style:italic">// 已经完成了第一次 Store 操作, 检查类型并覆盖数据（检查是否和第一次设置的数据类型一致）
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> typ != np.typ {
+			<span style="color:#999;font-style:italic">// 当前数据类型和第一次设置的数据类型不一致，产生 panic
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: swap of inconsistently typed value into Value&#34;</span>)
+		}
+		
+		<span style="color:#999;font-style:italic">// 返回值类型转换
+</span><span style="color:#999;font-style:italic"></span>		op := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;old))
+		op.typ, op.data = np.typ, <span style="color:#447fcf">SwapPointer</span>(&amp;vp.data, np.data)
+		<span style="color:#6ab825;font-weight:bold">return</span> old
+	}
+}
+</code></pre></div><h3 id="valuecompareandswap-方法">Value.CompareAndSwap 方法</h3>
+<p><code>CompareAndSwap</code> 执行 CAS 操作，<strong>对于某个特定的 Value 对象，每次调用 CompareAndSwap 方法时都必须使用相同的数据类型值 (例如第一次存储的是 int 类型, 那么之后调用时必须传递 int 类型)，
+类型不一致时会产生 panic, 传递 nil 参数 ( CompareAndSwap(old, nil) ) 同样会产生 panic</strong>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (v *Value) <span style="color:#447fcf">CompareAndSwap</span>(old, new any) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	<span style="color:#6ab825;font-weight:bold">if</span> new == <span style="color:#6ab825;font-weight:bold">nil</span> {
+        <span style="color:#999;font-style:italic">// 参数为 nil, 直接 panic
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: compare and swap of nil value into Value&#34;</span>)
+	}
+	
+	<span style="color:#999;font-style:italic">// 当前值类型转换
+</span><span style="color:#999;font-style:italic"></span>	vp := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(v))
+	<span style="color:#999;font-style:italic">// 参数新值类型转换
+</span><span style="color:#999;font-style:italic"></span>	np := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;new))
+	<span style="color:#999;font-style:italic">// 参数旧值类型转换
+</span><span style="color:#999;font-style:italic"></span>	op := (*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;old))
+	
+	<span style="color:#6ab825;font-weight:bold">if</span> op.typ != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; np.typ != op.typ {
+		<span style="color:#999;font-style:italic">// 新值和旧值数据类型不一致
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: compare and swap of inconsistently typed values&#34;</span>)
+	}
+	
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 原子获取当前值数据类型
+</span><span style="color:#999;font-style:italic"></span>		typ := <span style="color:#447fcf">LoadPointer</span>(&amp;vp.typ)
+		<span style="color:#6ab825;font-weight:bold">if</span> typ == <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#6ab825;font-weight:bold">if</span> old != <span style="color:#6ab825;font-weight:bold">nil</span> {
+				<span style="color:#999;font-style:italic">// 当前值和参数值类型不一样
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+			}
+
+            <span style="color:#999;font-style:italic">// 流程和 Store 方法内部类型，这里直接省略掉
+</span><span style="color:#999;font-style:italic"></span>			...
+			
+			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+		}
+		
+        ...
+		
+		<span style="color:#6ab825;font-weight:bold">if</span> typ != np.typ {
+			<span style="color:#999;font-style:italic">// 参数新值数据类型和当前值的数据类型不一致，产生 panic
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync/atomic: compare and swap of inconsistently typed value into Value&#34;</span>)
+		}
+		
+		<span style="color:#999;font-style:italic">// CompareAndSwapPointer 函数只能确保 vp.data 从获取到之后没有发生变化
+</span><span style="color:#999;font-style:italic"></span>		data := <span style="color:#447fcf">LoadPointer</span>(&amp;vp.data)
+		
+		<span style="color:#999;font-style:italic">// 拷贝当前值的变量，然后和参数旧值进行比较 
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">var</span> i any
+		<span style="color:#999;font-style:italic">// 当前值类型
+</span><span style="color:#999;font-style:italic"></span>		(*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;i)).typ = typ
+		<span style="color:#999;font-style:italic">// 当前值数据
+</span><span style="color:#999;font-style:italic"></span>		(*ifaceWords)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;i)).data = data
+		<span style="color:#6ab825;font-weight:bold">if</span> i != old {
+			<span style="color:#999;font-style:italic">// 当前值已经发生变化
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+		}
+		
+		<span style="color:#999;font-style:italic">// 调用 CAS 操作 (内部再调用对应的汇编)
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;vp.data, data, np.data)
+	}
+}
+</code></pre></div><h2 id="小结">小结</h2>
+<p><code>atomic</code> 实现了同步算法的底层内存原子操作原语，其内部实现主要是汇编 (各个平台对应各自不同的指令，通过编译器链接)，使用这些函数时需要更加谨慎，
+官方给出的建议是除了特殊的、底层的应用程序外，其他情况最好使用 <code>channel</code> 或其他同步原语来完成 (<del>但是从大多数开源组件实现代码来看，并没有遵守官方的建议</del>)。</p>
+<p>标准库还提供了 <code>atomic.Value</code> 原子数据类型，并且为该类型实现了常见的原子操作，如 <code>Load</code>, <code>Store</code>, <code>CAS</code> 等，
+在实现类似 <code>对象需要原子操作</code> 这样的功能时可以直接复用该类型，例如标准库 <code>context</code> 包的内部实现中里面就用到了 <code>atomic.Value</code>。</p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/goroutine_alternate_print/"><i class="fa fa-chevron-circle-left"></i> goroutine 交替打印奇偶数</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_lockfree/">Go 无锁编程 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="sync/atomic Code Review"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

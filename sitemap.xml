@@ -4,17 +4,37 @@
   
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2023-04-20T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2023-04-20T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_lockfree/</loc>
+    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/tags/golang/</loc>
-    <lastmod>2023-04-20T00:00:00+08:00</lastmod>
+    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/</loc>
+    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_atomic/</loc>
+    <lastmod>2023-04-21T00:00:00+08:00</lastmod>
   </url>
   
   <url>
@@ -23,17 +43,7 @@
   </url>
   
   <url>
-    <loc>https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/</loc>
-    <lastmod>2023-04-20T00:00:00+08:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://dbwu.tech/tags/%E7%AC%94%E8%AF%95/</loc>
-    <lastmod>2023-04-20T00:00:00+08:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>https://dbwu.tech/</loc>
     <lastmod>2023-04-20T00:00:00+08:00</lastmod>
   </url>
   
@@ -93,12 +103,12 @@
   </url>
   
   <url>
-    <loc>https://dbwu.tech/posts/version_semantics/</loc>
+    <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>
     <lastmod>2023-02-24T00:00:00+08:00</lastmod>
   </url>
   
   <url>
-    <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>
+    <loc>https://dbwu.tech/posts/version_semantics/</loc>
     <lastmod>2023-02-24T00:00:00+08:00</lastmod>
   </url>
   
