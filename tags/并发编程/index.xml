@@ -6,10 +6,28 @@
    <description>Recent content in 并发编程 on 蛮荆</description>
    <generator>Hugo -- gohugo.io</generator>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Sat, 22 Apr 2023 00:00:00 +0800</lastBuildDate>
+   <lastBuildDate>Sun, 23 Apr 2023 00:00:00 +0800</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Goland 最佳实践</title>
+       <link>https://dbwu.tech/posts/goland_best_practice/</link>
+       <pubDate>Wed, 10 May 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/goland_best_practice/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>sync.Once Code Review</title>
+       <link>https://dbwu.tech/posts/golang_sync_once/</link>
+       <pubDate>Sun, 23 Apr 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_once/</guid>
+       <description>sync.Once 可以保证某段程序在运行期间的只执行一次，典型的使用场景有初始化配置, 数据库连接等，那么它的内部是如何实现的呢？</description>
+     </item>
    
      <item>
        <title>Go 无锁编程</title>

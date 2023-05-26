@@ -4,31 +4,51 @@
   
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
   </url>
   
   <url>
-    <loc>https://dbwu.tech/posts/golang_lockfree/</loc>
-    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+    <loc>https://dbwu.tech/tags/goland/</loc>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/goland_best_practice/</loc>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/tags/golang/</loc>
-    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
   </url>
   
   <url>
-    <loc>https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/</loc>
-    <lastmod>2023-04-22T00:00:00+08:00</lastmod>
+    <loc>https://dbwu.tech/tags/ide/</loc>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
   </url>
   
   <url>
     <loc>https://dbwu.tech/</loc>
+    <lastmod>2023-05-10T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_sync_once/</loc>
+    <lastmod>2023-04-23T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2023-04-23T00:00:00+08:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://dbwu.tech/posts/golang_lockfree/</loc>
     <lastmod>2023-04-22T00:00:00+08:00</lastmod>
   </url>
   

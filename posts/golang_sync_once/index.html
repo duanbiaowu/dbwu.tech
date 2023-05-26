@@ -1,0 +1,335 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>sync.Once Code Review - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="sync.Once 可以保证某段程序在运行期间的只执行一次，典型的使用场景有初始化配置, 数据库连接等，那么它的内部是如何实现的呢？" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Once Code Review" />
+<meta property="og:description" content="sync.Once 的底层实现原理" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_sync_once/" />
+<meta property="article:published_time" content="2023-04-23T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-04-23T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="sync.Once Code Review"/>
+<meta name="twitter:description" content="sync.Once 的底层实现原理"/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>sync.Once Code Review</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>sync.Once</code> 可以保证某段程序在运行期间的只执行一次，典型的使用场景有初始化配置, 数据库连接等。</p>
+<p><img src="https://dbwu.tech/images/sync_once_flow.png" alt="sync.Once 流程图"></p>
+<h2 id="与-init-函数差异">与 init 函数差异</h2>
+<ul>
+<li><code>init</code> 函数是当所在的 package 首次被加载时执行，若迟迟未被使用，则既浪费了内存，又延长了程序加载时间</li>
+<li><code>sync.Once</code> 方法可以在代码的任意位置初始化和调用，并发场景下是线程安全的，因此可以延迟到使用时再调用 (懒加载)</li>
+</ul>
+<h2 id="示例">示例</h2>
+<p>通过一个小例子展示 <code>sync.Once</code> 的使用方法。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
+
+<span style="color:#6ab825;font-weight:bold">import</span> (
+	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+	<span style="color:#ed9d13">&#34;sync&#34;</span>
+)
+
+<span style="color:#6ab825;font-weight:bold">type</span> Config <span style="color:#6ab825;font-weight:bold">struct</span> {
+	Server <span style="color:#6ab825;font-weight:bold">string</span>
+	Port   <span style="color:#6ab825;font-weight:bold">int</span>
+}
+
+<span style="color:#6ab825;font-weight:bold">var</span> (
+	once   sync.Once
+	config *Config
+)
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">InitConfig</span>() *Config {
+	once.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;mock init ...&#34;</span>) <span style="color:#999;font-style:italic">// 模拟初始化代码
+</span><span style="color:#999;font-style:italic"></span>	})
+
+	<span style="color:#6ab825;font-weight:bold">return</span> config
+}
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+	<span style="color:#999;font-style:italic">// 连续调用 5 次初始化方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+		_ = <span style="color:#447fcf">InitConfig</span>()
+	}
+}
+</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
+
+<span style="color:#999;font-style:italic"># 输出如下</span>
+mock init ...
+</code></pre></div><p>从输出的结果中可以看到，虽然我们调用了 5 次初始化配置方法，但是真正的初始化方法只执行了 1 次，实现了设计模式中 <code>单例模式</code> 的效果。</p>
+<p><img src="https://dbwu.tech/images/sync_once_test.png" alt="方法调用结果"></p>
+<h2 id="内部实现">内部实现</h2>
+<p>接下来，我们来探究一下 <code>sync.Once</code> 的内部实现，文件路径为 <code>$GOROOT/src/sync/once.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h3 id="once-结构体">Once 结构体</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> sync
+
+<span style="color:#6ab825;font-weight:bold">import</span> (
+	<span style="color:#ed9d13">&#34;sync/atomic&#34;</span>
+)
+
+<span style="color:#999;font-style:italic">// Once 是一个只执行一次操作的对象
+</span><span style="color:#999;font-style:italic">// Once 一旦使用后，便不能再复制
+</span><span style="color:#999;font-style:italic">//
+</span><span style="color:#999;font-style:italic">// 在 Go 内存模型术语中，once.Do(f) 中函数 f 的返回值会在 once.Do() 函数返回前完成同步
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Once <span style="color:#6ab825;font-weight:bold">struct</span> {
+	done <span style="color:#6ab825;font-weight:bold">uint32</span>
+	m    Mutex
+}
+</code></pre></div><p><code>sync.Once</code> 的结构体有 2 个字段，<code>m</code> 表示持有一个互斥锁，这是并发调用场景下 <code>只执行一次</code> 的保证，
+<code>done</code> 字段表示调用是否已完成，使用的字段类型是 <code>uint32</code>, 这样就可以使用标准库中 <code>atomic</code> 包里面 <code>*Uint32</code> 系列方法了，</p>
+<p><strong>为什么没有使用 <code>bool</code> 类型呢？</strong> 因为标准库中 <code>atomic</code> 包并未提供针对 <code>bool</code> 类型的相关方法，如果适用 <code>bool</code> 类型，操作时就需要转换为 <code>指针</code> 类型，
+然后使用 <code>atomic.*Pointer</code> 系列方法操作，这样会造成内存占用过多 (<code>bool</code> 占用 1 个字节，<code>指针</code> 占用 8 个字节) 和性能损耗 (参数类型转换)。</p>
+<h3 id="done-字段">done 字段</h3>
+<p><img src="https://dbwu.tech/images/sync_once.png" alt="sync.Once 结构体"></p>
+<p><code>done</code> 作为结构体的第一个字段，<strong>能够减少 CPU 指令</strong>，也就是能够提升性能，具体来说:</p>
+<p>热路径 <code>hot path</code> 是程序非常频繁执行的一系列指令，<code>sync.Once</code> 绝大部分场景都会访问 <code>done</code> 字段，所以 <code>done</code> 字段是处于 <code>hot path</code> 上的，这样一来 <code>hot path</code> 编译后的机器码指令更少，性能更高。</p>
+<p><strong>为什么放在第一个字段就能够减少指令呢</strong>？因为结构体第一个字段的地址和结构体的指针是相同的，如果是第一个字段，直接对结构体的指针解引用即可。
+如果是其他的字段，除了结构体指针外，还需要计算与第一个值的 <code>偏移量</code>。在机器码中，偏移量是随指令传递的附加值，CPU 需要做一次偏移值与指针的加法运算，
+才能获取要访问的值的地址，因此访问第一个字段的机器码更紧凑，速度更快。</p>
+<h3 id="do-方法">Do 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 当且仅当第一次调用实例 Once 的 Do 方法时，Do 去调用函数 f
+</span><span style="color:#999;font-style:italic">// 换句话说，调用 once.Do(f) 多次时，只有第一次调用会调用函数 f，即使 f 函数在每次调用中有不同的参数值
+</span><span style="color:#999;font-style:italic"></span>
+<span style="color:#999;font-style:italic">// 并发调用 Do 函数时，需要等到其中的一个函数 f 执行之后才会返回
+</span><span style="color:#999;font-style:italic">// 所以函数 f 中不能调用同一个 once 实例的 Do 函数 (递归调用)，否则会发生死锁
+</span><span style="color:#999;font-style:italic">// 如果函数 f 内部 panic, Do 函数同样认为其已经返回，将来再次调用 Do 函数时，将不再执行函数 f
+</span><span style="color:#999;font-style:italic">// 所以这就要求我们写出健壮的 f 函数
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (o *Once) <span style="color:#447fcf">Do</span>(f <span style="color:#6ab825;font-weight:bold">func</span>()) {
+    <span style="color:#999;font-style:italic">// 下面是一个错误的实现
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// if atomic.CompareAndSwapUint32(&amp;o.done, 0, 1) {
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">//   f()
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// } 
+</span><span style="color:#999;font-style:italic"></span>	
+    <span style="color:#999;font-style:italic">// 错误原因分析: 
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 这里以数据库连接场景为例，在并发调用情况下，假设其中 1 个 goroutine 正在执行函数 f (初始化连接)，
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 此时其他的 goroutine 将不会等待这个 goroutine 执行完成，而是会直接返回，
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 如果连接发生了一些延迟，导致函数 f 还未执行完成，那么此时连接其实还未建立，
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 但是其他的 goroutine 认为函数 f 已经执行完成，连接已建立，可以开始使用了
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 最后当其他 goroutine 使用未建立的连接操作时，产生报错
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// 要解决上面的问题， 就需要确保当前函数返回时， 函数 f 已经执行完成，
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这就是 slow path 退回到互斥锁的原因，以及为什么 atomic.StoreUint32 需要延迟到函数 f 返回之后
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">LoadUint32</span>(&amp;o.done) == <span style="color:#3677a9">0</span> {
+		o.<span style="color:#447fcf">doSlow</span>(f) <span style="color:#999;font-style:italic">// slow-path 允许内联
+</span><span style="color:#999;font-style:italic"></span>	}
+}
+</code></pre></div><p><img src="https://dbwu.tech/images/sync_once_error_demo.png" alt="错误实现示例"></p>
+<h3 id="doslow-方法">doSlow 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (o *Once) <span style="color:#447fcf">doSlow</span>(f <span style="color:#6ab825;font-weight:bold">func</span>()) {
+	<span style="color:#999;font-style:italic">// 并发场景下，可能会有多个 goroutine 执行到这里
+</span><span style="color:#999;font-style:italic"></span>    o.m.<span style="color:#447fcf">Lock</span>()  <span style="color:#999;font-style:italic">// 但是只有 1 个 goroutine 能获取到互斥锁
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">defer</span> o.m.<span style="color:#447fcf">Unlock</span>()
+	
+	<span style="color:#999;font-style:italic">// 注意下面临界区内的判断和修改
+</span><span style="color:#999;font-style:italic"></span>	
+    <span style="color:#999;font-style:italic">// 在 atomic.LoadUint32 时为 0 ，不等于获取到锁之后也是 0，所以需要二次检测
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为已经获取到互斥锁，根据 Go 的同步原语约束，对于字段 done 的修改需要在获取到互斥锁之前同步
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以这里直接访问字段即可，不需要调用 atomic.LoadUint32 方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果有其他 goroutine 已经修改了字段 done，那么就不会进入条件分支，没有任何影响 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> o.done == <span style="color:#3677a9">0</span> {
+		<span style="color:#999;font-style:italic">// 只要函数 f 成功执行过一次，就将 o.done 修改为 1
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这样其他 goroutine 就不会再执行了，从而保证了函数 f() 只会执行一次，
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里必须使用 atomic.StoreUint32 方法来满足 Go 的同步原语约束
+</span><span style="color:#999;font-style:italic"></span>        <span style="color:#6ab825;font-weight:bold">defer</span> atomic.<span style="color:#447fcf">StoreUint32</span>(&amp;o.done, <span style="color:#3677a9">1</span>)
+        <span style="color:#447fcf">f</span>()
+    }
+}
+</code></pre></div><p><img src="https://dbwu.tech/images/sync_once_ok_demo.png" alt="正确实现示例"></p>
+<h2 id="小结">小结</h2>
+<p><code>sync.Once</code> 的源代码只有短短十几行，看似简单的条件分支背后充斥着 <code>并发执行</code>, <code>原子操作</code>, <code>同步原语</code> 等基础原理，
+深入理解这些原理之后，可以帮助我们更好地构建并发系统，解决并发编程中遇到的问题。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://geektutu.com/post/hpg-sync-once.html">Go sync.Once</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_lockfree/"><i class="fa fa-chevron-circle-left"></i> Go 无锁编程</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/goland_best_practice/">Goland 最佳实践 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="sync.Once Code Review"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
