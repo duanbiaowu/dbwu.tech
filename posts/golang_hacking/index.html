@@ -1,0 +1,375 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>runtime/HACKING.md - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="最近阅读标准库源代码时，偶然间发现 runtime 包下面的一个 markdown 文件，大致读了一下，感觉对理解 GMP 调度的基础概念和标准库中的各类注解指令非常有帮助，决定翻译出来，正好提高一下自己的英文水平。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="runtime/HACKING.md" />
+<meta property="og:description" content="最近阅读标准库源代码时，偶然间发现 runtime 包下面的一个 markdown 文件，大致读了一下，感觉对理解 GMP 调度的基础概念和标准库中的各类注解指令非常有帮助，决定翻译出来，正好提高一下自己的英文水平。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_hacking/" />
+<meta property="article:published_time" content="2023-05-11T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-05-11T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="runtime/HACKING.md"/>
+<meta name="twitter:description" content="最近阅读标准库源代码时，偶然间发现 runtime 包下面的一个 markdown 文件，大致读了一下，感觉对理解 GMP 调度的基础概念和标准库中的各类注解指令非常有帮助，决定翻译出来，正好提高一下自己的英文水平。"/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>runtime/HACKING.md</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E7%BF%BB%E8%AF%91">翻译</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="前言">前言</h2>
+<p>最近阅读标准库源代码时，偶然间发现 <code>runtime</code> 包下面的一个 <code>markdown</code> 文件，大致读了一下，感觉对理解 <code>GMP</code> 的基础概念和各类 <code>注解指令</code> 非常有帮助，决定翻译出来，正好提高一下自己的英文水平。</p>
+<p>文件路径为 <code>$GOROOT/src/runtime/HACKING.md</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="概述">概述</h2>
+<p>本文档随时会更新且有可能随着时间变化而过时，文档的目的在于阐明编写 runtime 代码和普通代码之间的差异，所以关注的是一些普遍的概念而非具体的细节。</p>
+<h2 id="调度器结构">调度器结构</h2>
+<p><strong>调度器</strong> 管理着 <code>runtime</code> 中三个非常重要的资源: <code>G</code> <code>M</code> <code>P</code>, 即使你不编写底层调度器相关代码，也应该理解着三个概念。</p>
+<h2 id="g-m-p">G M P</h2>
+<p>一个 <code>G</code> 是一个 <code>goroutine</code>, 通过 <code>runtime.g</code> 结构体对象表示，当一个 <code>goroutine</code> 退出时，<code>g</code> 对象会被放入空闲 <code>g</code> 对象池中，便于后续的 <code>goroutine</code> 复用。</p>
+<p>一个 <code>M</code> 是一个 <code>系统线程</code>，可以执行用户的 Go 代码、runtime 代码、系统调用、空闲等待，通过 <code>runtime.m</code> 结构体对象表示，同一时间可能有任意数量的 <code>M</code> 阻塞在系统调用。</p>
+<p>一个 <code>P</code> 是执行用户代码所需要的资源，例如调度器状态和内存分配器状态，通过 <code>runtime.p</code> 结构体对象表示，<code>P</code> 的数量和 <code>GOMAXPROCS</code> 完全相等。
+一个 <code>P</code> 可以理解为操作系统调度器中的 CPU, <code>P</code> 的类型就像 CPU 的状态，可以将一些共享的数据放到 <code>P</code> 对象中，进而提升性能。</p>
+<blockquote>
+<p><strong>调度器</strong> 的工作是将一个需要执行代码的 <code>G</code>, 一个负责具体执行的 <code>M</code> 和一个拥有执行所需资源的 <code>P</code> 匹配关联起来，当一个 <code>M</code> 执行代码过程中陷入系统调用时，
+需要将其关联的 <code>P</code> 归还到空闲的对象池中，等到该 <code>M</code> 系统调用结束后被唤醒时，需要再次从空闲的对象池中获取一个 <code>P</code> 继续执行剩下的代码。</p>
+</blockquote>
+<p>所有的 <code>g</code> <code>m</code> <code>p</code> 结构体对象都是分配在堆上的，而且在程序结束之前不会释放，但是它们的内存使用很稳定 (这里应该是指不会出现内存泄漏等问题)，
+正因为如此，<code>runtime</code> 在调度器的底层实现中可以避免写屏障。</p>
+<h3 id="getg-和-getgmcurg">getg() 和 getg().m.curg</h3>
+<p>调用 <code>getg().m.curg</code> 获取当前用户的 <code>g</code>。</p>
+<p><code>getg()</code> 也可以返回当前的 <code>g</code>, 但是如果当前正在系统栈或信号栈上面执行，那么返回的是当前的 <code>M</code> 的 <code>g0</code> 或者 <code>gsingnal</code>, 这通常不是你想要的。</p>
+<p>如果要判断当前执行的是 <code>系统栈</code> 还是 <code>用户栈</code>，可以使用 <code>getg() == getg().m.curg</code> 表达式。</p>
+<h2 id="栈">栈</h2>
+<p>每个存活的 <code>G</code> 都有一个关联的 <code>用户栈</code> 来执行用户代码，<code>用户栈</code> 刚开始很小 (例如 2KB)，然后动态增长或收缩。</p>
+<p>每个 <code>M</code> 都有一个关联的 <code>系统栈</code> (也称为 <code>g0</code> 栈，因为这个栈也是通过 G 实现的)，在 Unix 平台上，还有一个信号栈 (也称为 gsignal 栈)。
+系统栈和信号栈不能增长，但是其本身足够运行任何 <code>runtime</code> 和 <code>cgo</code> 代码 (在纯 Go 二进制中为 8K, 在 cgo 二进制中由系统分配)。</p>
+<p><code>runtime</code> 代码经常调用 <code>systemstack</code>, <code>mcall</code>, <code>asmcgocall</code> 暂时切换到系统栈去执行一些任务，这些任务不能被抢占、不能增长用户栈或者切换用户 <code>goroutine</code> 。
+运行在系统栈上的代码隐式包含了不可抢占的语义，同时 <code>GC</code> 不会扫描系统栈，当一个 <code>M</code> 在系统栈上运行时，当前用户栈不会被运行。</p>
+<h2 id="nosplit-函数">nosplit 函数</h2>
+<p>大多数函数在开始执行时都会检查栈指针，并和当前 <code>G</code> 的栈关联绑定，如果栈需要增长，调用 <code>morestack</code>。</p>
+<p>函数可以通过标记注解为 <code>//go:nosplit</code> (在汇编中为 <code>NOSPLIT</code>) 来表示其不需要检查指针和绑定 <code>G</code>, 这有如下作用:</p>
+<ul>
+<li>函数必须运行在用户栈，但是不能调用栈增长，因为这可能会导致死锁</li>
+<li>函数必须不可被抢占</li>
+<li>函数可能没有关联有效的 <code>G</code>，例如函数运行在 <code>runtime</code> 启动前，或者其调用了 <code>cgo</code> 或信号处理</li>
+</ul>
+<p>Splittable 函数确保栈上有一定的空间供 <code>nosplit</code> 函数运行，并且链接器检查 <code>nosplit</code> 函数调用的任何静态链都不能越界。</p>
+<p>任何有 <code>//go:nosplit</code> 注解标记的函数应该在文档中说明其为什么是 <code>nosplit</code> 的。</p>
+<h2 id="错误处理和报告">错误处理和报告</h2>
+<p>用户代码中产生的错误如果可以被恢复，通常使用 <code>panic</code> 来抛出错误，然而在一些场景中，<code>panic</code> 可能会导致立刻生效的致命错误，例如在系统栈中调用 mallocgc。</p>
+<p>大部分 <code>runtime</code> 错误是不可恢复的，这时应该使用 <code>throw</code> 打印堆栈跟踪信息并立刻结束进程，通常情况下，调用 <code>throw</code> 应该传入一个字符串常量以避免内存分配，
+根据约定，错误的详细信息应该以 <code>runtime:</code> 字符串作为前缀，并在调用 <code>throw</code> 之前使用 print 或 println 打印出来。</p>
+<p>对于用户代码导致的不可恢复的错误 (例如并发读写一个 map)，使用 <code>fatal</code>。</p>
+<p>为了调试 <code>runtime</code> 错误，有两个比较实用的构建和运行选项 <code>GOTRACEBACK=system</code> 或 <code>GOTRACEBACK=crash</code>, panic 和 fatal 的输出描述来自 <code>GOTRACEBACK</code>,
+<code>throw</code> 的输出包含 <code>runtime frames</code> 和所有 <code>goroutine</code> 的元数据，等于加了选项 <code>GOTRACEBACK=system</code> 的效果，<code>throw</code> 是否导致程序崩溃取决于 <code>GOTRACEBACK</code>。</p>
+<h2 id="同步">同步</h2>
+<p><code>runtime</code> 有多种同步机制，这些机制不仅语义上不同，而且和 <code>goroutine</code> 调度器以及操作系统调度器之间的交互也不一样。</p>
+<p>最简单的是 <code>mutex</code> 互斥锁，提供了 lock 和 unlock 方法，主要用于短时间内保护一些共享数据 (<strong>互斥锁保护的临界区应尽可能地小</strong>)，在 <code>mutex</code> 上阻塞时会直接阻塞整个 <code>M</code>,
+不会和 Go 调度器进行交互。这意味着在 <code>runtime</code> 底层调用 <code>mutex</code> 是安全的，因为它会防止任何关联的 <code>G</code> 和 <code>P</code> 被重新调度 (因为 M 被阻塞了)。</p>
+<p><code>rwmutex</code> 读写锁和 <code>mutex</code> 机制一样，这里不再赘述。</p>
+<p>对于一次性通知，使用 <code>note</code>, 它提供了 <code>notesleep</code> 和 <code>notewakeup</code> 两个方法，和传统的 UNIX 的 sleep/wakeup 不同，note 不会产生竞态，
+所以如果 <code>notewakeup</code> 发生了，<code>notesleep</code> 就会立即返回。note 在使用后可以通过 <code>noteclear</code> 重置，但是 noteclear 不能和 notesleep, notewakeup 产生竞争。
+和 <code>mutex</code> 类似，在 note 上阻塞时会直接阻塞整个 <code>M</code>, 然而 note 提供了不同的方式来调用 sleep, notesleep 会防止任何关联的 G 和 P 被重新调度 (因为 M 被阻塞了)，
+<code>notesleep</code> 的执行过程像阻塞在 <code>系统调用</code> 一样，允许 <code>P</code> 被重用以便运行另外的 <code>G</code>, 但是这依然比直接阻塞一个 <code>G</code> 效率要低，因为这需要耗费一个 <code>M</code>。</p>
+<p>如果需要直接和 <code>goroutine</code> 调度器进行交互，可以使用 <code>gopark</code> 和 <code>goready</code>, gopark 挂起当前的 goroutine (将其状态变为等待) 并将其从 <strong>调度器的运行队列中</strong> 移除，
+然后调度另外一个 g<code>oroutine</code> 到当前的 <code>M</code> 和 <code>P</code>, goready 将一个挂起的 <code>goroutine</code> 的状态恢复到可运行并将其放入调度器的运行队列中。</p>
+<p><strong>总结如下</strong>:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Blocks</strong></th>
+<th><strong>Blocks</strong></th>
+<th><strong>Blocks</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Interface</strong></td>
+<td>G</td>
+<td>M</td>
+<td>P</td>
+</tr>
+<tr>
+<td>(rw)mutex</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>note</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y/N</td>
+</tr>
+<tr>
+<td>park</td>
+<td>Y</td>
+<td>N</td>
+<td>N</td>
+</tr>
+</tbody>
+</table>
+<h2 id="原子性">原子性</h2>
+<p><code>runtime</code> 使用 runtime/internal/atomic 包中自带的原子操作，这个包对应着 <code>sync/atomic</code>, 两者的区别在于由于历史原因导致的方法名差异，
+以及 <code>runtime</code> 包有一些必需的额外方法。</p>
+<p>一般情况下，我们对于 <code>runtime</code> 中的原子相关使用非常谨慎，并尽可能避免不必要的原子操作，如果一个变量已经被种同步机制所保护，那么对该变量的访问就不需要是原子操作了，
+具体的原因如下:</p>
+<ul>
+<li>使用非原子操作和原子操作可以使代码可读性更好，对于一个变量的原子访问意味着该变量在别的地方可能存在并发操作</li>
+<li>非原子操作允许自动竞态检测，<code>runtime</code> 当前没有竞态检测器，原子访问会使竞态检测器忽略检测，非原子访问可以通过竞态检测器来检测是否会发生竞争</li>
+<li>非原子操作可以提高性能</li>
+</ul>
+<p><strong>对于任何共享变量的非原子操作，都应该在文档中说明变量是如何被保护的</strong>。</p>
+<p>常见的将原子操作和非原子操作混合在一起的场景:</p>
+<ul>
+<li>大部分都是读操作，写操作时变量被锁保护，在被锁保护的 <strong>临界区内</strong>，读操作不是必须为原子的，但是写操作必须是原子的，在被锁保护的 <strong>临界区外</strong>，读操作必须是原子的</li>
+<li>仅在 SWT 期间发生的读操作，且 <code>STW</code> 期间不会发生写操作，这时读操作不需要是原子的</li>
+</ul>
+<p>虽然理论上是这样，但是 Go 内存模型给出的建议依然成立: &ldquo;不要自作聪明&rdquo; (这里应该是指编写并发程序时，应该严格遵守 Go 内存模型约束),
+<strong><code>runtime</code> 的性能虽然很重要，但是健壮性更重要</strong>。</p>
+<h2 id="堆外内存">堆外内存</h2>
+<p>一般情况下，<code>runtime</code> 会尝试使用常规的堆内存，然而在某些情况下 <code>runtime</code> 必须分配一些不被 <code>GC</code> 管理的堆外对象。如果这些堆外对象是内存管理的一部分，
+或者调用方还未获取到一个 <code>P</code> (例如在调度器完成初始化之前)，那这就是很有必要的。</p>
+<p><strong>申请堆外内存的方式有三种</strong>:</p>
+<ul>
+<li>sysAlloc 直接从操作系统获取内存，申请的内存大小必须是系统内存页大小的整数倍，可以通过 sysFree 进行释放</li>
+<li>persistentalloc 将多个小的内存申请合并到一个 sysAlloc 来避免内存碎片，但是通过 persistentalloc 申请的内存无法被释放</li>
+<li>fixalloc 是一个 SLAB 风格的内存分配器，分配固定大小的内存，通过 fixalloc 分配的内存可以被释放，但是只可以被同等大小的 fixalloc 池复用，所以 fixalloc 只能被相同类型的对象复用</li>
+</ul>
+<p>一般情况下，使用上述三种方法分配内存的类型都应该标记为 <code>//go:notinheap</code>。</p>
+<p>分配在堆外的内存不应该持有堆上的对象指针，除非遵守了下列规则:</p>
+<ul>
+<li>堆外内存持有的堆上对象的所有指针必须是 <code>GC</code> 的根对象，更详细地来说，所有指针必须可以通过一个全局变量访问到或者显式地添加 <code>runtime.markroot</code> 注解标记</li>
+<li>如果内存被重用了，堆指针在被标记为 <code>GC</code> 根对象并且对 <code>GC</code> 可见之前，必须初始化为零值，否则 <code>GC</code> 可能观察到过期的堆指针</li>
+</ul>
+<h2 id="零值初始化和归零">零值初始化和归零</h2>
+<p>在 <code>runtime</code> 中有两种类型的零值初始化，具体取决于内存是否已经初始化为一个类型安全的状态。</p>
+<p>如果内存不是一个类型安全的状态，意味着刚被分配并且第一次初始化使用，这时可能会包含一些不可预料的值 (类似 C 语言的中的变量未初始化)，
+所以必须使用 <code>memclrNoHeapPointers</code>  进行初始化或者只进行不包含指针的写操作，这样就不会触发写屏障。</p>
+<p>内存可以调用  <code>typedmemclr</code> 或 <code>memclrHasPointers</code> 完成零值初始化并设置状态为类型安全，这样会触发写屏障。</p>
+<h2 id="runtime-独有的编译器指令">Runtime 独有的编译器指令</h2>
+<p>除了 &ldquo;go doc compile&rdquo; 文档中标记的 &ldquo;//go:&rdquo; 之外，编译器仅在 <code>runtime</code> 包中支持一些额外的指令。</p>
+<h3 id="gosystemstack">go:systemstack</h3>
+<p><code>go:systemstack</code> 表明一个函数必须在系统栈上执行，这会通过一个特殊的函数预执行检查来动态验证。</p>
+<h3 id="gonowritebarrier">go:nowritebarrier</h3>
+<p><code>go:nowritebarrier</code> 告知编译器如果函数发生了写屏障，就触发一个错误 (这不会阻止写屏障的发生，只是一个简单的断言)。</p>
+<p>通常在没有写屏障的理想情况下，应该使用 <code>go:nowritebarrierrec</code>. <code>go:nowritebarrier</code>, 但这不是必需的。</p>
+<h3 id="gonowritebarrierrec-and-goyeswritebarrierrec">go:nowritebarrierrec and go:yeswritebarrierrec</h3>
+<p><code>go:nowritebarrierrec</code> 告知编译器如果函数发生了递归调用，直到执行到有 <code>go:yeswritebarrierrec</code> 标记的函数为止，如果包含写屏障的话，就触发一个错误。</p>
+<p>从逻辑上来说，编译器会在调用图上依次从每个有 <code>go:nowritebarrierrec</code> 标记的函数开始，如果其遇到了包含写屏障的函数，就触发一个错误，
+直到遇到有 <code>go:yeswritebarrierrec</code> 标记的函数终止。</p>
+<p><code>go:nowritebarrierrec</code> 用来实现写屏障以避免无限循环。</p>
+<p>上述两种指令在调度器中都有被使用，写屏障需要一个活跃的 P (<code>getg().m.p != nil</code>)，但调度器代码经常在没有活跃的 <code>P</code> 的情况下运行，在这种情况下，
+<code>go:nowritebarrierrec</code> 会用在释放 P 的函数和没有 P 的函数上面，<code>go:yeswritebarrierrec</code> 会用到重新获取到 <code>P</code> 的代码上面。
+因为这些都是函数级别的注解，所以释放 <code>P</code> 和获取 <code>P</code> 的功能代码必须被拆分为两个函数。</p>
+<h3 id="gouintptrkeepalive">go:uintptrkeepalive</h3>
+<p><code>//go:uintptrkeepalive</code> 指令必须跟在函数声明后面。</p>
+<p>指令表明了函数的 uintptr 参数可能是一个指针并且在调用期间保持存活，即使从类型推断来看，调用期间根本用不到该参数。</p>
+<p>指令和 <code>//go:uintptrescapes</code> 类似，但是不强制参数发生逃逸，由于栈增长无法辨识这些参数，因为该指令必须和 <code>//go:nosplit</code> 搭配使用
+(在标记函数和调用传递过程中) 以防止栈增长。</p>
+<p>从指针到 uintptr 的转换必须出现在函数的调用方参数列表中 (也就是调用方必须正确完成类型转换)，该指令用于一些底层的系统调用的具体实现。</p>
+<h3 id="gonotinheap">go:notinheap</h3>
+<p><code>go:notinheap</code> 用于类型声明，表明一个类型不能被分配在 <code>GC</code> 堆上或栈上，尤其是指向该类型的指针在 <code>runtime.inheap</code> 指令检测中应该失败。</p>
+<p>该类型可以被用于全局变量、堆外内存上的对象:</p>
+<ul>
+<li><code>new(T)</code>, <code>make([]T)</code>, <code>append([]T, ...)</code> 和隐式地将 <code>T</code> 分配到堆上是不允许的 (虽然隐式的分配在 runtime 中一直都不允许)</li>
+<li>一个指向普通类型的指针 (<code>unsafe.Pointer</code> 除外) 不能被转换为一个指向 <code>go:notinheap</code> 类型的指针，即使两者的底层类型相同</li>
+<li>任何包含 <code>go:notinheap</code> 的类型自身也是 <code>go:notinheap</code> 类型，如果结构体和数组包含 <code>go:notinheap</code> 元素，它们自身也是 <code>go:notinheap</code> 类型，
+Maps 和 channels 不允许有 <code>go:notinheap</code> 类型，简单地来说，任何隐式的 <code>go:notinheap</code> 类型都必须显式地标记为 <code>go:notinheap</code>。</li>
+<li>指向 <code>go:notinheap</code> 类型的指针的写屏障可以忽略</li>
+</ul>
+<p>最后说一下 <code>go:notinheap</code> 真正的好处：<code>runtime</code> 在底层内部数据结构中使用它来规避调度器和内存分配器的内存屏障，以达到避免非法检查和提高性能的目的，
+这种机制是相当安全的并且不会降低 <code>runtime</code> 的可读性。</p>
+<h2 id="笔者寄语">笔者寄语</h2>
+<p>本文翻译自官方标准库源文件 <code>runtime/HACKING.md</code>, 希望读者在读完本文后，能够理解 <code>GMP</code> 的基础概念和各类指令的作用，为进一步阅读标准库源代码打下坚实的基础。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/memory_model/">Go Memory Model</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/goland_best_practice/"><i class="fa fa-chevron-circle-left"></i> Goland 最佳实践</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="runtime/HACKING.md"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
