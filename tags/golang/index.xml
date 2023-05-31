@@ -6,10 +6,19 @@
    <description>Recent content in Golang on 蛮荆</description>
    <generator>Hugo -- gohugo.io</generator>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Thu, 11 May 2023 00:00:00 +0800</lastBuildDate>
+   <lastBuildDate>Fri, 12 May 2023 00:00:00 +0800</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/golang/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>context.Context Code Review</title>
+       <link>https://dbwu.tech/posts/golang_context/</link>
+       <pubDate>Fri, 12 May 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_context/</guid>
+       <description>context.Context 类型表示上下文信息，作用是在 API 通信、进程通信、函数调用之间传递超时时间、取消信号和其他数据值。</description>
+     </item>
    
      <item>
        <title>runtime/HACKING.md</title>
