@@ -1,0 +1,817 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>time/Timer Code Review - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Go 语言中的计时器常用于定期执行某个操作或者在指定时间内执行某个操作，例如实现超时、周期性执行任务等场景，主要通过标准库的 time 包中的相关方法来实现，如 time.After(), time.Tick() 等。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="time/Timer Code Review" />
+<meta property="og:description" content="Go 语言中的计时器常用于定期执行某个操作或者在指定时间内执行某个操作，例如实现超时、周期性执行任务等场景，主要通过标准库的 time 包中的相关方法来实现，如 time.After(), time.Tick() 等。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_timer/" />
+<meta property="article:published_time" content="2023-06-10T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-06-10T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="time/Timer Code Review"/>
+<meta name="twitter:description" content="Go 语言中的计时器常用于定期执行某个操作或者在指定时间内执行某个操作，例如实现超时、周期性执行任务等场景，主要通过标准库的 time 包中的相关方法来实现，如 time.After(), time.Tick() 等。"/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>time/Timer Code Review</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>Go 语言中的计时器常用于定期执行某个操作或者在指定时间内执行某个操作，主要通过标准库的 time 包中的相关方法来实现，如 time.After(), time.Tick() 等。
+相信读者已经可以熟练掌握应用层面，本文主要分析计时器功能的内部代码实现。</p>
+<h2 id="k-叉堆">K 叉堆</h2>
+<p>在正式分析源代码之前，我们首先简单了解下 <code>K 叉堆</code> 这种数据结构。</p>
+<blockquote>
+<p><strong>K 叉堆</strong>（k-ary heap）是一种基于二叉树 (K=2) 的变体堆数据结构，在 K 叉堆中，每个节点最多有 K 个子节点。</p>
+</blockquote>
+<blockquote>
+<p>K 叉堆和二叉堆一样，单个节点只和其父节点、子节点之间有约束关系，邻居节点之间没有任何约束关系。</p>
+</blockquote>
+<p><strong>K 叉堆</strong> 满足如下条件:</p>
+<ol>
+<li>K 叉堆是一棵完全二叉树结构，除了叶子节点外，所有非叶子节点层都完全填充  (如果叶子节点也被完全填充，那就是一颗满二叉树)</li>
+<li>和二叉堆一样，也可以分为最小 K 叉堆和最大 K 叉堆
+<ul>
+<li>最大 K 叉堆: 根节点的值大于其所有子节点的值</li>
+<li>最小 K 叉堆: 根节点的值小于其所有子节点的值</li>
+</ul>
+</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 示例: 三叉最大堆</span>
+
+         <span style="color:#3677a9">10</span>
+     /    |   <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>   <span style="color:#3677a9">7</span>      <span style="color:#3677a9">9</span>     <span style="color:#3677a9">8</span>
+ / | <span style="color:#ed9d13">\ </span>  /
+<span style="color:#3677a9">4</span>  <span style="color:#3677a9">6</span>  <span style="color:#3677a9">5</span> <span style="color:#3677a9">7</span>
+
+
+<span style="color:#999;font-style:italic"># 示例: 三叉最小堆</span>
+
+         <span style="color:#3677a9">10</span>
+      /   |  <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    <span style="color:#3677a9">12</span>    <span style="color:#3677a9">11</span>  <span style="color:#3677a9">13</span>
+  / | <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span><span style="color:#3677a9">14</span> <span style="color:#3677a9">15</span> <span style="color:#3677a9">18</span> 
+</code></pre></div><p>使用 <code>K 叉堆</code> 可以实现类似于二叉堆的功能，快速取出最小（或最大）元素，并维护堆的元素有序性，时间复杂度都是 <code>O(logK N)</code>,
+但是 K 叉堆的层级更低 (因为底数 K 更大)，所以 K 叉堆的插入和删除操作时间复杂度实际上更低一些。
+此外，二叉堆对数组的访问范围更大也更加随机，但是 K 叉堆更集中于数组的前部，对局部性缓存更友好，有助于提升性能。</p>
+<h2 id="源码路径">源码路径</h2>
+<p>计时器的源代码文件路径为 <code>$GOROOT/src/runtime/time.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="数据结构">数据结构</h2>
+<h3 id="四叉堆">四叉堆</h3>
+<p>Go 的计时器实现选择了 <code>四叉堆</code> 数据结构 (因为时间涉及先后，所以是最小四叉堆)，每个节点保存 4 个 <code>timer</code> 对象，缓存数据局部性比二叉堆好 (极端情况下性能可以翻倍)，
+没有选择更多的叉树堆，应该是在性能和实际应用场景方面做的折衷 (毕竟大多数业务中定时器数量不会太多)。</p>
+<p><img src="https://dbwu.tech/images/timerheap.jpeg" alt="四叉堆数据结构示意图"></p>
+<p>下面是一个典型的的计时器堆结构示意图 (时间单位部分只保留 分-秒):</p>
+<p><img src="https://dbwu.tech/images/timerheap2.png" alt="计时器四叉堆示意图"></p>
+<h3 id="计时器对象">计时器对象</h3>
+<p><code>timer</code> 对象是计时器的运行时表示，存储在处理器 P 的 <code>四叉堆</code> 结构中，然后由处理器中的 <code>goroutine</code> 负责执行计时器的回调函数。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> timer <span style="color:#6ab825;font-weight:bold">struct</span> {
+	<span style="color:#999;font-style:italic">// 计时器关联的处理器
+</span><span style="color:#999;font-style:italic"></span>	pp puintptr
+
+	<span style="color:#999;font-style:italic">// 计时器下次被唤醒的时间
+</span><span style="color:#999;font-style:italic"></span>	when   <span style="color:#6ab825;font-weight:bold">int64</span>
+	<span style="color:#999;font-style:italic">// 计时器被唤醒的周期时间
+</span><span style="color:#999;font-style:italic"></span>	period <span style="color:#6ab825;font-weight:bold">int64</span>
+	<span style="color:#999;font-style:italic">// 计时器被唤醒时的回调函数
+</span><span style="color:#999;font-style:italic"></span>	f      <span style="color:#6ab825;font-weight:bold">func</span>(any, <span style="color:#6ab825;font-weight:bold">uintptr</span>)
+	<span style="color:#999;font-style:italic">// 计时器被唤醒时的回调函数参数1
+</span><span style="color:#999;font-style:italic"></span>	arg    any
+	<span style="color:#999;font-style:italic">// 计时器被唤醒时的回调函数参数2
+</span><span style="color:#999;font-style:italic"></span>	seq    <span style="color:#6ab825;font-weight:bold">uintptr</span>
+
+	<span style="color:#999;font-style:italic">// 当计时器处于 timerModifiedXX 状态时，设置 when 字段
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 详情见 modtimer 函数
+</span><span style="color:#999;font-style:italic"></span>	nextwhen <span style="color:#6ab825;font-weight:bold">int64</span>
+
+	<span style="color:#999;font-style:italic">// 计时器状态
+</span><span style="color:#999;font-style:italic"></span>	status atomic.Uint32
+}
+</code></pre></div><h3 id="p-的计时器字段">P 的计时器字段</h3>
+<p>每个处理器 P 中有一个用于存储计时器的四叉堆数据字段 (timers)，这样可以提高数据局部性性能，并且避免了不同处理器之间的锁争用。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> p <span style="color:#6ab825;font-weight:bold">struct</span> {
+	<span style="color:#999;font-style:italic">// 处理器中第一个时间器被唤醒的时间
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是时间最早的计时器
+</span><span style="color:#999;font-style:italic"></span>    timer0When atomic.Int64
+	
+	<span style="color:#999;font-style:italic">// 计时器操作锁
+</span><span style="color:#999;font-style:italic"></span>	timersLock mutex
+
+	<span style="color:#999;font-style:italic">// 存储计时器的四叉堆
+</span><span style="color:#999;font-style:italic"></span>	timers []*timer
+
+	<span style="color:#999;font-style:italic">// 计时器数量
+</span><span style="color:#999;font-style:italic"></span>	numTimers atomic.Uint32
+
+	<span style="color:#999;font-style:italic">// 处于 timerDeleted 状态的计时器数量
+</span><span style="color:#999;font-style:italic"></span>	deletedTimers atomic.Uint32
+}
+</code></pre></div><h3 id="g-的计时器字段">G 的计时器字段</h3>
+<p>每个 <code>goroutine</code> 中引用了一个计时器，毕竟 <code>goroutine</code> 是负责具体干活的。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> g <span style="color:#6ab825;font-weight:bold">struct</span> {
+	timer *timer 
+}
+</code></pre></div><h3 id="关系示意图">关系示意图</h3>
+<p>每个处理器中的计时器最终都需要分配给 goroutine 来负责具体的执行。</p>
+<p><img src="https://dbwu.tech/images/timerstructure.png" alt="处理器和计时器结构示意图"></p>
+<h2 id="10-种状态">10 种状态</h2>
+<p>定时器共有 10 种状态来表示整个生命周期中的相关操作和状态变化，关联的是 <code>timer</code> 对象的 <code>status</code> 字段。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">const</span> (
+	<span style="color:#999;font-style:italic">// 初始状态
+</span><span style="color:#999;font-style:italic"></span>	timerNoStatus = <span style="color:#6ab825;font-weight:bold">iota</span>
+
+    <span style="color:#999;font-style:italic">// 等待启动
+</span><span style="color:#999;font-style:italic"></span>	timerWaiting
+
+	<span style="color:#999;font-style:italic">// 运行
+</span><span style="color:#999;font-style:italic"></span>	timerRunning
+
+	<span style="color:#999;font-style:italic">// 删除 (不会再次运行)
+</span><span style="color:#999;font-style:italic"></span>	timerDeleted
+
+	<span style="color:#999;font-style:italic">// 正在删除中
+</span><span style="color:#999;font-style:italic"></span>	timerRemoving
+
+	<span style="color:#999;font-style:italic">// 已经从堆中删除
+</span><span style="color:#999;font-style:italic"></span>	timerRemoved
+
+	<span style="color:#999;font-style:italic">// 正在修改中
+</span><span style="color:#999;font-style:italic"></span>	timerModifying
+
+	<span style="color:#999;font-style:italic">// 被修改到了更早的时间 (具体的值关联到了 nextwhen 字段)
+</span><span style="color:#999;font-style:italic"></span>	timerModifiedEarlier
+
+	<span style="color:#999;font-style:italic">// 被修改到了更晚的时间 (具体的值关联到了 nextwhen 字段)
+</span><span style="color:#999;font-style:italic"></span>	timerModifiedLater
+
+	<span style="color:#999;font-style:italic">// 已经被修改并正在移动中 (四叉堆数据变化)
+</span><span style="color:#999;font-style:italic"></span>	timerMoving
+)
+</code></pre></div><h2 id="状态机">状态机</h2>
+<p>根据标准库中源代码的注释，我们可以画出如下状态机图示。</p>
+<p><img src="https://dbwu.tech/images/timer_fsm.png" alt="计时器状态机"></p>
+<h2 id="算法">算法</h2>
+<p>现在我们有了定时器数据结构和对应的示意图，剩下的就是基于数据结构形成的算法部分，开始愉快地阅读源代码。:-)</p>
+<h3 id="新增计时器">新增计时器</h3>
+<p>函数 <code>addtimer</code> 用于新增计时器。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">addtimer</span>(t *timer) {
+	<span style="color:#999;font-style:italic">// 参数合法性检测
+</span><span style="color:#999;font-style:italic"></span>    ...
+	
+	<span style="color:#999;font-style:italic">// 计时器状态修改为等待启动
+</span><span style="color:#999;font-style:italic"></span>	t.status.<span style="color:#447fcf">Store</span>(timerWaiting)
+	
+	when := t.when
+
+	<span style="color:#999;font-style:italic">// 禁止抢占
+</span><span style="color:#999;font-style:italic"></span>	mp := <span style="color:#447fcf">acquirem</span>()
+
+	pp := <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>()
+	<span style="color:#999;font-style:italic">// 获取计时器操作锁
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">lock</span>(&amp;pp.timersLock)
+	<span style="color:#999;font-style:italic">// 清理处理器中的定时器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">cleantimers</span>(pp)
+	<span style="color:#999;font-style:italic">// 将参数计时器加入处理器的四叉堆中
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">doaddtimer</span>(pp, t)
+	<span style="color:#999;font-style:italic">// 释放计时器操作锁
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">unlock</span>(&amp;pp.timersLock)
+
+	<span style="color:#999;font-style:italic">// 触发调度: 唤醒网络轮询器中休眠的线程
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">wakeNetPoller</span>(when)
+
+	<span style="color:#447fcf">releasem</span>(mp)
+}
+</code></pre></div><p>函数 <code>doaddtimer</code> 用于将计时器添加到指定的处理器中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">doaddtimer</span>(pp *p, t *timer) {
+	<span style="color:#999;font-style:italic">// 计时器的唤醒和执行依赖于网络轮询器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> netpollInited.<span style="color:#447fcf">Load</span>() == <span style="color:#3677a9">0</span> {
+		<span style="color:#999;font-style:italic">// 如果网络轮询器未初始化
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 那就先进行其初始化
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">netpollGenericInit</span>()
+	}
+
+    <span style="color:#999;font-style:italic">// 计时器关联处理器
+</span><span style="color:#999;font-style:italic"></span>	t.pp.<span style="color:#447fcf">set</span>(pp)
+	<span style="color:#999;font-style:italic">// 先将计时器添加到四叉堆尾部
+</span><span style="color:#999;font-style:italic"></span>	i := <span style="color:#24909d">len</span>(pp.timers)
+	pp.timers = <span style="color:#24909d">append</span>(pp.timers, t)
+	<span style="color:#999;font-style:italic">// 然后通过向上调整 (排序) 操作将计时器放到对应的位置
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">siftupTimer</span>(pp.timers, i)
+	<span style="color:#999;font-style:italic">// 如果计时器调整后位于四叉堆第一个元素
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 更新处理器的第一个计时器的唤醒时间
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> t == pp.timers[<span style="color:#3677a9">0</span>] {
+		pp.timer0When.<span style="color:#447fcf">Store</span>(t.when)
+	}
+	<span style="color:#999;font-style:italic">// 更新计时器数量
+</span><span style="color:#999;font-style:italic"></span>	pp.numTimers.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+}
+</code></pre></div><h3 id="修改计时器">修改计时器</h3>
+<p>函数 <code>modtimer</code> 用于修改计时器，该函数会被网络轮训器、<code>Ticker.Reset</code>、<code>Timer.Reset</code> 方法调用。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">modtimer</span>(t *timer, when, period <span style="color:#6ab825;font-weight:bold">int64</span>, f <span style="color:#6ab825;font-weight:bold">func</span>(any, <span style="color:#6ab825;font-weight:bold">uintptr</span>), arg any, seq <span style="color:#6ab825;font-weight:bold">uintptr</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+    <span style="color:#999;font-style:italic">// 参数合法性检测
+</span><span style="color:#999;font-style:italic"></span>    ...
+	
+	status := <span style="color:#24909d">uint32</span>(timerNoStatus)
+	wasRemoved := <span style="color:#6ab825;font-weight:bold">false</span>
+	<span style="color:#6ab825;font-weight:bold">var</span> pending <span style="color:#6ab825;font-weight:bold">bool</span>
+	<span style="color:#6ab825;font-weight:bold">var</span> mp *m
+loop:
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 状态机内部变化
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里可以对照着上面的状态机图示查看源代码
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> status = t.status.<span style="color:#447fcf">Load</span>(); status {
+		<span style="color:#6ab825;font-weight:bold">case</span> timerWaiting, timerModifiedEarlier, timerModifiedLater:
+            ...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerNoStatus, timerRemoved:
+			...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerDeleted:
+            ...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerRunning, timerRemoving, timerMoving:
+            ...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerModifying:
+            ...
+		<span style="color:#6ab825;font-weight:bold">default</span>:
+			<span style="color:#447fcf">badTimer</span>()
+		}
+	}
+
+	t.period = period
+	t.f = f
+	t.arg = arg
+	t.seq = seq
+
+	<span style="color:#6ab825;font-weight:bold">if</span> wasRemoved {
+		<span style="color:#999;font-style:italic">// 如果计时器已经被删除
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 创建新的计时器
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这部分代码和 addtimer 函数内部代码几乎一致，这里直接省略 ...
+</span><span style="color:#999;font-style:italic"></span>        ...
+	} <span style="color:#6ab825;font-weight:bold">else</span> {
+		<span style="color:#999;font-style:italic">// 计时器可能位于另一个处理器的四叉堆中
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    读者可以思考一下为什么会出现这种情况
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果直接修改 when 字段，另一个处理器的四叉堆就乱序了
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 因此将新的 when 值放入 nextwhen 字段
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 并让另一个处理器在四叉堆调整时设置 when 字段
+</span><span style="color:#999;font-style:italic"></span>		t.nextwhen = when
+
+		<span style="color:#999;font-style:italic">// 默认计时器被修改到了更晚的时间
+</span><span style="color:#999;font-style:italic"></span>		newStatus := <span style="color:#24909d">uint32</span>(timerModifiedLater)
+		<span style="color:#6ab825;font-weight:bold">if</span> when &lt; t.when {
+			<span style="color:#999;font-style:italic">// 如果修改后时间小于修改前时间
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 将状态设置为 timerModifiedEarlier
+</span><span style="color:#999;font-style:italic"></span>			newStatus = timerModifiedEarlier
+		}
+
+		<span style="color:#999;font-style:italic">// 如果修改后时间小于修改前时间
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 触发调度: 唤醒网络轮询器中休眠的线程
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> newStatus == timerModifiedEarlier {
+			<span style="color:#447fcf">wakeNetPoller</span>(when)
+		}
+	}
+
+	<span style="color:#6ab825;font-weight:bold">return</span> pending
+}
+</code></pre></div><h3 id="删除计时器">删除计时器</h3>
+<p>函数 <code>deltimer</code> 用于删除计时器。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 计时器可能位于另一个处理器的四叉堆中
+</span><span style="color:#999;font-style:italic">// 所以不能直接将其删除，否则另一个处理器的四叉堆就乱序了
+</span><span style="color:#999;font-style:italic">// 只能将其状态标记为 “删除” (类似软删除机制)
+</span><span style="color:#999;font-style:italic">// 最后由计时器所在处理器删除
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">deltimer</span>(t *timer) <span style="color:#6ab825;font-weight:bold">bool</span> {
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 状态机内部变化
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里可以对照着上面的状态机图示查看源代码
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> s := t.status.<span style="color:#447fcf">Load</span>(); s {
+		<span style="color:#6ab825;font-weight:bold">case</span> timerWaiting, timerModifiedLater:
+			...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerModifiedEarlier:
+            ...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerDeleted, timerRemoving, timerRemoved:
+            ...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerRunning, timerMoving:
+			...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerNoStatus:
+			...
+		<span style="color:#6ab825;font-weight:bold">case</span> timerModifying:
+            ...
+		<span style="color:#6ab825;font-weight:bold">default</span>:
+			<span style="color:#447fcf">badTimer</span>()
+		}
+	}
+}
+</code></pre></div><p>函数 <code>dodeltimer0</code> 用于删除当前处理器四叉堆的堆顶计时器。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">dodeltimer0</span>(pp *p) {
+	<span style="color:#999;font-style:italic">// 删除堆顶计时器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 通过将堆顶计时器替换为堆中最后一个计时器实现
+</span><span style="color:#999;font-style:italic"></span>	last := <span style="color:#24909d">len</span>(pp.timers) - <span style="color:#3677a9">1</span>
+	<span style="color:#6ab825;font-weight:bold">if</span> last &gt; <span style="color:#3677a9">0</span> {
+		pp.timers[<span style="color:#3677a9">0</span>] = pp.timers[last]
+	}
+	pp.timers[last] = <span style="color:#6ab825;font-weight:bold">nil</span>
+	pp.timers = pp.timers[:last]
+	
+	<span style="color:#999;font-style:italic">// 删除完成后，重新进行堆排序
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> last &gt; <span style="color:#3677a9">0</span> {
+		<span style="color:#447fcf">siftdownTimer</span>(pp.timers, <span style="color:#3677a9">0</span>)
+	}
+	<span style="color:#447fcf">updateTimer0When</span>(pp)
+	n := pp.numTimers.<span style="color:#447fcf">Add</span>(-<span style="color:#3677a9">1</span>)
+}
+</code></pre></div><h3 id="清除定时器">清除定时器</h3>
+<p>函数 <code>cleantimers</code> 用于清除计时器。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">cleantimers</span>(pp *p) {
+	gp := <span style="color:#447fcf">getg</span>()
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 四叉堆为空时直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(pp.timers) == <span style="color:#3677a9">0</span> {
+			<span style="color:#6ab825;font-weight:bold">return</span>
+		}
+
+		<span style="color:#999;font-style:italic">// 取出四叉堆顶的计时器
+</span><span style="color:#999;font-style:italic"></span>		t := pp.timers[<span style="color:#3677a9">0</span>]
+		
+		<span style="color:#999;font-style:italic">// 只处理三种状态的计时器
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> s := t.status.<span style="color:#447fcf">Load</span>(); s {
+		<span style="color:#6ab825;font-weight:bold">case</span> timerDeleted:
+			<span style="color:#999;font-style:italic">// 将计时器状态修改为正在删除中
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(s, timerRemoving) {
+				<span style="color:#6ab825;font-weight:bold">continue</span>
+			}
+			<span style="color:#999;font-style:italic">// 删除计时器
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">dodeltimer0</span>(pp)
+			<span style="color:#999;font-style:italic">// 将计时器状态修改为已删除
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(timerRemoving, timerRemoved) {
+				<span style="color:#447fcf">badTimer</span>()
+			}
+			<span style="color:#999;font-style:italic">// 计时器数量减 1 
+</span><span style="color:#999;font-style:italic"></span>			pp.deletedTimers.<span style="color:#447fcf">Add</span>(-<span style="color:#3677a9">1</span>)
+		<span style="color:#6ab825;font-weight:bold">case</span> timerModifiedEarlier, timerModifiedLater:
+			<span style="color:#999;font-style:italic">// 将计时器状态修改为正在移动中
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(s, timerMoving) {
+				<span style="color:#6ab825;font-weight:bold">continue</span>
+			}
+			<span style="color:#999;font-style:italic">// 更新计时器下次被唤醒时间
+</span><span style="color:#999;font-style:italic"></span>			t.when = t.nextwhen
+			<span style="color:#999;font-style:italic">// 首先删除计时器
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">dodeltimer0</span>(pp)
+			<span style="color:#999;font-style:italic">// 然后将计时器加入四叉堆中
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">doaddtimer</span>(pp, t)
+			<span style="color:#999;font-style:italic">// 将计时器状态修改为等待启动
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(timerMoving, timerWaiting) {
+				<span style="color:#447fcf">badTimer</span>()
+			}
+		<span style="color:#6ab825;font-weight:bold">default</span>:
+			<span style="color:#6ab825;font-weight:bold">return</span>
+		}
+	}
+}
+</code></pre></div><h3 id="调整计时器">调整计时器</h3>
+<p>函数 <code>adjusttimers</code> 用于调整计时器，内部主要处理三种状态的计时器:</p>
+<ol>
+<li>timerDeleted</li>
+<li>timerModifiedEarlier</li>
+<li>timerModifiedLater</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">adjusttimers</span>(pp *p, now <span style="color:#6ab825;font-weight:bold">int64</span>) {
+	...
+
+	<span style="color:#6ab825;font-weight:bold">var</span> moved []*timer
+	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">len</span>(pp.timers); i++ {
+		<span style="color:#999;font-style:italic">// 遍历四叉堆，逐个处理计时器
+</span><span style="color:#999;font-style:italic"></span>		t := pp.timers[i]
+		
+		<span style="color:#6ab825;font-weight:bold">switch</span> s := t.status.<span style="color:#447fcf">Load</span>(); s {
+		<span style="color:#6ab825;font-weight:bold">case</span> timerDeleted:
+			<span style="color:#6ab825;font-weight:bold">if</span> t.status.<span style="color:#447fcf">CompareAndSwap</span>(s, timerRemoving) {
+				<span style="color:#999;font-style:italic">// 删除计时器
+</span><span style="color:#999;font-style:italic"></span>				changed := <span style="color:#447fcf">dodeltimer</span>(pp, i)
+				<span style="color:#999;font-style:italic">// 将计时器状态修改为已删除
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(timerRemoving, timerRemoved) {
+					<span style="color:#447fcf">badTimer</span>()
+				}
+				<span style="color:#999;font-style:italic">// 计时器数量减 1 
+</span><span style="color:#999;font-style:italic"></span>				pp.deletedTimers.<span style="color:#447fcf">Add</span>(-<span style="color:#3677a9">1</span>)
+			}
+		<span style="color:#6ab825;font-weight:bold">case</span> timerModifiedEarlier, timerModifiedLater:
+			<span style="color:#6ab825;font-weight:bold">if</span> t.status.<span style="color:#447fcf">CompareAndSwap</span>(s, timerMoving) {
+				<span style="color:#999;font-style:italic">// 更新计时器下次被唤醒时间
+</span><span style="color:#999;font-style:italic"></span>				t.when = t.nextwhen
+                <span style="color:#999;font-style:italic">// 首先删除计时器
+</span><span style="color:#999;font-style:italic"></span>				changed := <span style="color:#447fcf">dodeltimer</span>(pp, i)
+				<span style="color:#999;font-style:italic">// 然后将计数器放入一个单独的队列
+</span><span style="color:#999;font-style:italic"></span>				moved = <span style="color:#24909d">append</span>(moved, t)
+			}
+			
+         ...
+		}
+	}
+
+	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(moved) &gt; <span style="color:#3677a9">0</span> {
+		<span style="color:#999;font-style:italic">// 
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">addAdjustedTimers</span>(pp, moved)
+	}
+
+	<span style="color:#6ab825;font-weight:bold">if</span> verifyTimers {
+		<span style="color:#999;font-style:italic">// 检测四叉堆中的计时器是否存在异常
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">verifyTimerHeap</span>(pp)
+	}
+}
+</code></pre></div><p>函数 <code>dodeltimer</code> 用于删除处理器中指定索引的计时器，并返回四叉堆排序中受到影响的计时器索引最小值，其内部实现和 <code>dodeltimer0</code> 函数差不多，这里不在赘述。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">dodeltimer</span>(pp *p, i <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+    ...
+}
+</code></pre></div><p>函数 <code>addAdjustedTimers</code> 将参数计时器队列中的所有计时器加入四叉堆中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">addAdjustedTimers</span>(pp *p, moved []*timer) {
+	<span style="color:#6ab825;font-weight:bold">for</span> _, t := <span style="color:#6ab825;font-weight:bold">range</span> moved {
+		<span style="color:#447fcf">doaddtimer</span>(pp, t)
+		<span style="color:#999;font-style:italic">// 将计时器状态修改为等待唤醒
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(timerMoving, timerWaiting) {
+			<span style="color:#447fcf">badTimer</span>()
+		}
+	}
+}
+</code></pre></div><h3 id="运行计时器">运行计时器</h3>
+<p>函数 <code>runtimer</code> 用于计时器运行，内部会检查四叉堆的堆顶计时器，如果堆顶计时器准备就绪可以启动运行，那就直接运行并在运行完成后删除或更新该计时器 (取决于计时器的具体类型)。
+如果有计时器运行，返回 0，如果没有计时器，返回 -1, 如果没有可运行的计时器，返回堆顶计时器的下次启动时间。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">runtimer</span>(pp *p, now <span style="color:#6ab825;font-weight:bold">int64</span>) <span style="color:#6ab825;font-weight:bold">int64</span> {
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 四叉堆顶元素
+</span><span style="color:#999;font-style:italic"></span>		t := pp.timers[<span style="color:#3677a9">0</span>]
+
+        <span style="color:#999;font-style:italic">// 状态机内部变化
+</span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 这里可以对照着上面的状态机图示查看源代码
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> s := t.status.<span style="color:#447fcf">Load</span>(); s {
+		<span style="color:#6ab825;font-weight:bold">case</span> timerWaiting:
+			<span style="color:#6ab825;font-weight:bold">if</span> t.when &gt; now {
+				<span style="color:#999;font-style:italic">// 没有可运行的计时器，返回堆顶计时器的下次启动时间
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> t.when
+			}
+			
+			<span style="color:#999;font-style:italic">// 运行计时器
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">runOneTimer</span>(pp, t, now)
+			<span style="color:#999;font-style:italic">// 有计时器运行，返回 0
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+
+		<span style="color:#6ab825;font-weight:bold">case</span> timerDeleted:
+            <span style="color:#999;font-style:italic">// 删除堆顶计时器
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">dodeltimer0</span>(pp)
+			<span style="color:#999;font-style:italic">// 计时器数量减 1 
+</span><span style="color:#999;font-style:italic"></span>			pp.deletedTimers.<span style="color:#447fcf">Add</span>(-<span style="color:#3677a9">1</span>)
+			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(pp.timers) == <span style="color:#3677a9">0</span> {
+				<span style="color:#999;font-style:italic">// 如果没有计时器，返回 -1
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+			}
+
+		...
+	}
+}
+</code></pre></div><p>函数 <code>runOneTimer</code> 用于运行单个计时器。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">runOneTimer</span>(pp *p, t *timer, now <span style="color:#6ab825;font-weight:bold">int64</span>) {
+	f := t.f
+	arg := t.arg
+	seq := t.seq
+
+	<span style="color:#999;font-style:italic">// 如果计时器唤醒周期大于 0
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> t.period &gt; <span style="color:#3677a9">0</span> {
+		<span style="color:#999;font-style:italic">// 修改计时器下一次运行时间
+</span><span style="color:#999;font-style:italic"></span>		delta := t.when - now
+		t.when += t.period * (<span style="color:#3677a9">1</span> + -delta/t.period)
+		<span style="color:#6ab825;font-weight:bold">if</span> t.when &lt; <span style="color:#3677a9">0</span> {
+			t.when = maxWhen
+		}
+		<span style="color:#999;font-style:italic">// 更新计时器在四叉堆中的排序 (位置)
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">siftdownTimer</span>(pp.timers, <span style="color:#3677a9">0</span>)
+		<span style="color:#999;font-style:italic">// 修改计时器状态为等待启动
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(timerRunning, timerWaiting) {
+			<span style="color:#447fcf">badTimer</span>()
+		}
+		<span style="color:#447fcf">updateTimer0When</span>(pp)
+	} <span style="color:#6ab825;font-weight:bold">else</span> {
+		<span style="color:#999;font-style:italic">// 如果计时器唤醒周期小于 0
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将计时器从堆中删除
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">dodeltimer0</span>(pp)
+		<span style="color:#999;font-style:italic">// 将计时器状态改为初始状态
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !t.status.<span style="color:#447fcf">CompareAndSwap</span>(timerRunning, timerNoStatus) {
+			<span style="color:#447fcf">badTimer</span>()
+		}
+	}
+
+	<span style="color:#999;font-style:italic">// 执行计时器回调函数
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">f</span>(arg, seq)
+
+	...
+}
+</code></pre></div><h2 id="调度器触发条件">调度器触发条件</h2>
+<h3 id="调度器">调度器</h3>
+<p>函数 <code>checkTimers</code> 用于运行指定处理器中的计时器，有两个调用方:</p>
+<ol>
+<li>runtime.findRunnable 函数用于获取可运行的 goroutine</li>
+<li>runtime.stealWork 函数用于从其他处理器窃取 goroutine 或者计时器</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">checkTimers</span>(pp *p, now <span style="color:#6ab825;font-weight:bold">int64</span>) (rnow, pollUntil <span style="color:#6ab825;font-weight:bold">int64</span>, ran <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	<span style="color:#999;font-style:italic">// 选出离当前时间最近的计时器
+</span><span style="color:#999;font-style:italic"></span>	next := pp.timer0When.<span style="color:#447fcf">Load</span>()
+	nextAdj := pp.timerModifiedEarliest.<span style="color:#447fcf">Load</span>()
+	<span style="color:#6ab825;font-weight:bold">if</span> next == <span style="color:#3677a9">0</span> || (nextAdj != <span style="color:#3677a9">0</span> &amp;&amp; nextAdj &lt; next) {
+		next = nextAdj
+	}
+
+	<span style="color:#6ab825;font-weight:bold">if</span> next == <span style="color:#3677a9">0</span> {
+		<span style="color:#999;font-style:italic">// 没有可以启动运行的计时器
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> now, <span style="color:#3677a9">0</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+	}
+
+	<span style="color:#6ab825;font-weight:bold">if</span> now == <span style="color:#3677a9">0</span> {
+        <span style="color:#999;font-style:italic">// 如果参数 now 为 0，将其设置为当前时间
+</span><span style="color:#999;font-style:italic"></span>		now = <span style="color:#447fcf">nanotime</span>()
+	}
+	
+	<span style="color:#999;font-style:italic">// 没有可以启动的计时器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> now &lt; next {
+		<span style="color:#999;font-style:italic">// 如果参数处理器和当前处理器不一致，直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果需要删除的计时器数量比例低于 25%，直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> pp != <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>() || <span style="color:#24909d">int</span>(pp.deletedTimers.<span style="color:#447fcf">Load</span>()) &lt;= <span style="color:#24909d">int</span>(pp.numTimers.<span style="color:#447fcf">Load</span>()/<span style="color:#3677a9">4</span>) {
+			<span style="color:#6ab825;font-weight:bold">return</span> now, next, <span style="color:#6ab825;font-weight:bold">false</span>
+		}
+	}
+
+
+	<span style="color:#999;font-style:italic">// 如果处理器中还有计时器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 首先进行一次调整，详情见: adjusttimers 函数 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(pp.timers) &gt; <span style="color:#3677a9">0</span> {
+		<span style="color:#447fcf">adjusttimers</span>(pp, now)
+		<span style="color:#6ab825;font-weight:bold">for</span> <span style="color:#24909d">len</span>(pp.timers) &gt; <span style="color:#3677a9">0</span> {
+			<span style="color:#999;font-style:italic">// 计时器运行
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> tw := <span style="color:#447fcf">runtimer</span>(pp, now); tw != <span style="color:#3677a9">0</span> {
+				<span style="color:#6ab825;font-weight:bold">if</span> tw &gt; <span style="color:#3677a9">0</span> {
+					<span style="color:#999;font-style:italic">// 如果没有可运行的计时器，使用堆顶计时器的下次启动时间
+</span><span style="color:#999;font-style:italic"></span>					pollUntil = tw
+				}
+				<span style="color:#6ab825;font-weight:bold">break</span>
+			}
+			ran = <span style="color:#6ab825;font-weight:bold">true</span>
+		}
+	}
+
+	<span style="color:#999;font-style:italic">// 如果参数处理器和当前处理器一致 (避免锁争用)
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 并且需要删除的计时器数量比例高于 25%
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 删除处理器的四叉堆中状态被标记为 timerDeleted 的所有计时器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> pp == <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>() &amp;&amp; <span style="color:#24909d">int</span>(pp.deletedTimers.<span style="color:#447fcf">Load</span>()) &gt; <span style="color:#24909d">len</span>(pp.timers)/<span style="color:#3677a9">4</span> {
+		<span style="color:#447fcf">clearDeletedTimers</span>(pp)
+	}
+	
+	<span style="color:#6ab825;font-weight:bold">return</span> now, pollUntil, ran
+}
+</code></pre></div><h3 id="系统监控">系统监控</h3>
+<h4 id="获取最近的计时器">获取最近的计时器</h4>
+<p>函数 <code>timeSleepUntil</code> 返回所有处理器中离当前时间最近的计时器的启动时间，如果没有任何计时器，就返回常量 <code>maxWhen</code>。</p>
+<blockquote>
+<p>该函数只能被 sysmon 函数 (监控线程方法) 和 checkdead (检测死锁) 函数调用。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">timeSleepUntil</span>() <span style="color:#6ab825;font-weight:bold">int64</span> {
+	next := <span style="color:#24909d">int64</span>(maxWhen)
+
+	<span style="color:#999;font-style:italic">// 遍历所有处理器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, pp := <span style="color:#6ab825;font-weight:bold">range</span> allp {
+		w := pp.timer0When.<span style="color:#447fcf">Load</span>()
+		<span style="color:#6ab825;font-weight:bold">if</span> w != <span style="color:#3677a9">0</span> &amp;&amp; w &lt; next {
+			next = w
+		}
+
+		<span style="color:#999;font-style:italic">// 获取处于临时转换状态的计时器时间
+</span><span style="color:#999;font-style:italic"></span>		w = pp.timerModifiedEarliest.<span style="color:#447fcf">Load</span>()
+		<span style="color:#6ab825;font-weight:bold">if</span> w != <span style="color:#3677a9">0</span> &amp;&amp; w &lt; next {
+			next = w
+		}
+	}
+
+	<span style="color:#6ab825;font-weight:bold">return</span> next
+}
+</code></pre></div><h4 id="sysmon-监控">sysmon 监控</h4>
+<p><code>sysmon</code> 监控在之前的 <code>GMP 调度器</code> 一文中已经提到过，这里不再赘述，着重看一下内部调用 <code>timeSleepUntil</code> 函数的部分。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysmon</span>() {
+	...
+	
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		...
+		
+		now := <span style="color:#447fcf">nanotime</span>()
+		<span style="color:#6ab825;font-weight:bold">if</span> debug.schedtrace &lt;= <span style="color:#3677a9">0</span> &amp;&amp; (sched.gcwaiting.<span style="color:#447fcf">Load</span>() || sched.npidle.<span style="color:#447fcf">Load</span>() == gomaxprocs) {
+			<span style="color:#6ab825;font-weight:bold">if</span> sched.gcwaiting.<span style="color:#447fcf">Load</span>() || sched.npidle.<span style="color:#447fcf">Load</span>() == gomaxprocs {
+				<span style="color:#999;font-style:italic">// 获取最近的计时器的启动时间
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 根据计时器的启动时间调整休眠时间，便于第一时间启动定时器
+</span><span style="color:#999;font-style:italic"></span>				next := <span style="color:#447fcf">timeSleepUntil</span>()
+				<span style="color:#6ab825;font-weight:bold">if</span> next &gt; now {
+                    ...
+				}
+			}
+		}
+		
+		...
+	}
+}
+</code></pre></div><h2 id="小结">小结</h2>
+<p>本文着重介绍了 Go 中计时器的数据结构和状态操作相关的算法，Go 的计时器采用 <code>四叉堆</code> 数据结构并且直接绑定到处理器 P 上，
+通过 <code>GMP</code> 全局调度体系可以直接管理所有处理器中的计时器，并且使单个计时器的启动延迟最小化。文中没有摘录计时器四叉堆的算法相关代码，
+感兴趣的读者可以自行阅读 runtime.siftupTimer, runtime.siftdownTimer 两个函数。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/golang_gmp/">GMP 调度器</a></li>
+<li><a href="https://golang.dbwu.tech/performance/timer/">高性能 timer</a></li>
+<li><a href="https://en.wikipedia.org/wiki/D-ary_heap">d-ary heap</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Quadradic_heap">Quadradic heap</a></li>
+<li><a href="https://www.geeksforgeeks.org/k-ary-heap/">K-ary Heap</a></li>
+<li><a href="https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-timer/">Go 语言设计与实现</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_gmp/"><i class="fa fa-chevron-circle-left"></i> GMP Scheduler Code Review</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="time/Timer Code Review"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

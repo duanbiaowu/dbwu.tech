@@ -1,0 +1,1553 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>GMP Scheduler Code Review - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Go 语言中的 GMP 是指用于管理 goroutine 的调度器，其内部使用了一种称为 M:N 的调度模型，其中 M 个用户级 goroutine 被分配到 N 个内核级线程上执行。调度器负责将 goroutine 分配给处理器 P, 并在需要时将 goroutine 从一个处理器 P 转移到另一个处理器 P &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="GMP Scheduler Code Review" />
+<meta property="og:description" content="Go 语言中的 GMP 是指用于管理 goroutine 的调度器，其内部使用了一种称为 M:N 的调度模型，其中 M 个用户级 goroutine 被分配到 N 个内核级线程上执行。调度器负责将 goroutine 分配给处理器 P, 并在需要时将 goroutine 从一个处理器 P 转移到另一个处理器 P ..." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_gmp/" />
+<meta property="article:published_time" content="2023-06-09T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-06-09T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="GMP Scheduler Code Review"/>
+<meta name="twitter:description" content="Go 语言中的 GMP 是指用于管理 goroutine 的调度器，其内部使用了一种称为 M:N 的调度模型，其中 M 个用户级 goroutine 被分配到 N 个内核级线程上执行。调度器负责将 goroutine 分配给处理器 P, 并在需要时将 goroutine 从一个处理器 P 转移到另一个处理器 P ..."/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>GMP Scheduler Code Review</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p><strong>G</strong>: 表示 <code>goroutine</code></p>
+<p><strong>M</strong>: 表示 操作系统的 <code>线程</code></p>
+<p><strong>P</strong>: 表示 <code>处理器</code>，运行在线程上的 <code>本地调度器</code></p>
+</blockquote>
+<h2 id="内部实现">内部实现</h2>
+<p>本文主要研究一下 <code>GMP</code> 调度器的内部实现，相关文件目录为 <code>$GOROOT/src/runtime</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="gmp-数据结构">GMP 数据结构</h2>
+<p><code>G</code> <code>M</code> <code>P</code> 相关的数据结构定义，全部定义在 <code>$GOROOT/src/runtime/runtime2.go</code> 文件中。</p>
+<h2 id="g">G</h2>
+<blockquote>
+<p>goroutine 只存在于 Go 语言的运行时，是 Go 语言在用户态提供的线程，但是内存占用和上下文切换开销更少，同时启动速度更快。
+作为一种粒度更细的资源调度单元，能够在高并发的场景下更高效地利用机器的 CPU 资源。</p>
+</blockquote>
+<h3 id="stack-对象">stack 对象</h3>
+<p><code>stack</code> 对象表示 <code>goroutine</code> 执行栈内存范围，栈的上下边界分别是 [lo, hi), 两侧没有隐式的数据结构 (有些运行时对象会有隐式数据结构)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> stack <span style="color:#6ab825;font-weight:bold">struct</span> {
+	lo <span style="color:#6ab825;font-weight:bold">uintptr</span>
+	hi <span style="color:#6ab825;font-weight:bold">uintptr</span>
+}
+</code></pre></div><h3 id="g-对象">g 对象</h3>
+<blockquote>
+<p><code>goroutine</code> 的运行时表示。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> g <span style="color:#6ab825;font-weight:bold">struct</span> {
+	<span style="color:#999;font-style:italic">// stack 描述了栈的实际上下边界 [stack.lo, stack.hi)
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// stackguard0 是在 Go 栈增长 prologue 中用来和 sp 寄存器做比较
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 正常情况下，stackguard0 = stack.lo+StackGuard, 但是可以用 StackPreempt 触发抢占
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// stackguard1 是在 C 栈增长 prologue 中用来和 sp 寄存器做比较
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在 g0 和 gsignal 栈上，stackguard1 = stack.lo+StackGuard
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在其他栈上，stackguard1 = ~0 (按 0 取反), 触发 morestack 调用(并 crash)
+</span><span style="color:#999;font-style:italic"></span>	stack       stack   
+	stackguard0 <span style="color:#6ab825;font-weight:bold">uintptr</span> 
+	stackguard1 <span style="color:#6ab825;font-weight:bold">uintptr</span> 
+
+	_panic    *_panic <span style="color:#999;font-style:italic">// _panic 链表头节点
+</span><span style="color:#999;font-style:italic"></span>	_defer    *_defer <span style="color:#999;font-style:italic">// _defer 链表头节点
+</span><span style="color:#999;font-style:italic"></span>	m         *m      <span style="color:#999;font-style:italic">// 当前关联的 m (线程)
+</span><span style="color:#999;font-style:italic"></span>	sched     gobuf   <span style="color:#999;font-style:italic">// goroutine 调度相关数据
+</span><span style="color:#999;font-style:italic"></span>
+	...
+
+	atomicstatus <span style="color:#6ab825;font-weight:bold">uint32</span> <span style="color:#999;font-style:italic">// goroutine 状态
+</span><span style="color:#999;font-style:italic"></span>	stackLock    <span style="color:#6ab825;font-weight:bold">uint32</span> <span style="color:#999;font-style:italic">// sigprof/scang lock
+</span><span style="color:#999;font-style:italic"></span>	goid         <span style="color:#6ab825;font-weight:bold">int64</span>  <span style="color:#999;font-style:italic">// goroutine ID (对应用层不可见，但是可以通过其他方法获取到，详情见 #扩展阅读)
+</span><span style="color:#999;font-style:italic"></span>
+	...
+
+	preempt       <span style="color:#6ab825;font-weight:bold">bool</span> <span style="color:#999;font-style:italic">// 抢占信号
+</span><span style="color:#999;font-style:italic"></span>	preemptStop   <span style="color:#6ab825;font-weight:bold">bool</span> <span style="color:#999;font-style:italic">// 抢占时将状态修改成 _Gpreempted
+</span><span style="color:#999;font-style:italic"></span>	preemptShrink <span style="color:#6ab825;font-weight:bold">bool</span> <span style="color:#999;font-style:italic">// 在同步安全的临界区收缩栈
+</span><span style="color:#999;font-style:italic"></span>
+	...
+}
+</code></pre></div><h3 id="sudog-对象">sudog 对象</h3>
+<p><code>sudog</code> 对象表示等待队列里面的 <code>goroutine</code> 对象, 比如向 <code>channel</code> 发送/接收数据时。</p>
+<p><code>sudog</code> 对象主要作为一层中间抽象层，因为 <code>goroutine</code> 和同步对象之间是多对多关系，一个 <code>goroutine</code> 可能在多个等待队列中，可以有多个 <code>sudog</code>,
+同时，多个 <code>goroutine</code> 也可能在等待同一个同步对象，一个对象可以有多个 <code>sudog</code>。</p>
+<p>为了提升程序的运行时性能，<code>sudog</code> 对象从一个特殊的对象池中分配，调用 <code>acquireSudog</code> 函数分配，<code>releaseSudog</code> 函数归还。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> sudog <span style="color:#6ab825;font-weight:bold">struct</span> {
+	g *g
+
+	next *sudog
+	prev *sudog
+	
+	acquiretime <span style="color:#6ab825;font-weight:bold">int64</span>
+	releasetime <span style="color:#6ab825;font-weight:bold">int64</span>
+	ticket      <span style="color:#6ab825;font-weight:bold">uint32</span>
+
+	<span style="color:#999;font-style:italic">// isSelect 表示一个 g 是否正处于 select
+</span><span style="color:#999;font-style:italic"></span>	isSelect <span style="color:#6ab825;font-weight:bold">bool</span>
+	
+	<span style="color:#999;font-style:italic">// 如果 goroutine 因为 channel c 传递值被唤醒，success 的值为 true
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 goroutine 因为 channel c 关闭被唤醒，success 的值为 false
+</span><span style="color:#999;font-style:italic"></span>	success <span style="color:#6ab825;font-weight:bold">bool</span>
+
+    ...
+}
+</code></pre></div><h3 id="gobuf-对象">gobuf 对象</h3>
+<p><code>gobuf</code> 对象表示 <code>goroutine</code> 的运行现场表示，该对象在调度器保存数据或者恢复上下文的时候用到，<code>sp</code> 和 <code>pc</code> 寄存器字段用来存储或者恢复寄存器中的值，改变程序即将执行的代码。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> gobuf <span style="color:#6ab825;font-weight:bold">struct</span> {
+	sp   <span style="color:#6ab825;font-weight:bold">uintptr</span>    <span style="color:#999;font-style:italic">// sp 寄存器
+</span><span style="color:#999;font-style:italic"></span>	pc   <span style="color:#6ab825;font-weight:bold">uintptr</span>    <span style="color:#999;font-style:italic">// pc 寄存器
+</span><span style="color:#999;font-style:italic"></span>	g    guintptr   <span style="color:#999;font-style:italic">// goroutine 对象指针
+</span><span style="color:#999;font-style:italic"></span>	ret  <span style="color:#6ab825;font-weight:bold">uintptr</span>    <span style="color:#999;font-style:italic">// 系统调用返回值
+</span><span style="color:#999;font-style:italic"></span>	lr   <span style="color:#6ab825;font-weight:bold">uintptr</span>    <span style="color:#999;font-style:italic">// arm 上用的寄存器，amd64 忽略
+</span><span style="color:#999;font-style:italic"></span>}
+</code></pre></div><h3 id="状态列表">状态列表</h3>
+<p><code>goroutine</code> 的状态列表，最常见是 <code>_Grunnable</code>, <code>_Grunning</code>, <code>_Gwaiting</code>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">const</span> (
+	<span style="color:#999;font-style:italic">// goroutine 刚被分配并且还没有被初始化
+</span><span style="color:#999;font-style:italic"></span>    _Gidle = <span style="color:#6ab825;font-weight:bold">iota</span> <span style="color:#999;font-style:italic">// 0
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 处于运行队列中，没有在执行代码，没有栈的所有权
+</span><span style="color:#999;font-style:italic"></span>	_Grunnable <span style="color:#999;font-style:italic">// 1
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 可以执行代码并且拥有有栈的所有权，M 和 P 已经设置并且有效
+</span><span style="color:#999;font-style:italic"></span>	_Grunning <span style="color:#999;font-style:italic">// 2
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 正在执行系统调用，没有在执行代码，拥有栈的所有权但是不在运行队列中，此外，M 已经设置
+</span><span style="color:#999;font-style:italic"></span>	_Gsyscall <span style="color:#999;font-style:italic">// 3
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 处于阻塞中，没有在执行代码并且不在运行队列中，但是可能存在于 Channel 的等待队列上
+</span><span style="color:#999;font-style:italic"></span>	_Gwaiting <span style="color:#999;font-style:italic">// 4
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// 没有使用这个状态，但是被硬编码到了 gbd 脚本中
+</span><span style="color:#999;font-style:italic"></span>	_Gmoribund_unused <span style="color:#999;font-style:italic">// 5
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 没有被使用 (可能已经退出或刚刚初始化)，没有在执行代码，可能存在分配的栈
+</span><span style="color:#999;font-style:italic"></span>	_Gdead <span style="color:#999;font-style:italic">// 6
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// 没有使用这个状态
+</span><span style="color:#999;font-style:italic"></span>	_Genqueue_unused <span style="color:#999;font-style:italic">// 7
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 的栈正在被移动，没有在执行代码并且不在运行队列中
+</span><span style="color:#999;font-style:italic"></span>	_Gcopystack <span style="color:#999;font-style:italic">// 8
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 由于抢占而阻塞，等待唤醒
+</span><span style="color:#999;font-style:italic"></span>	_Gpreempted <span style="color:#999;font-style:italic">// 9
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// GC 正在扫描栈空间，没有在执行代码，可以与上述其他状态同时存在
+</span><span style="color:#999;font-style:italic"></span>	_Gscan          = <span style="color:#3677a9">0x1000</span>
+	
+	<span style="color:#999;font-style:italic">// 下面几个是组合状态
+</span><span style="color:#999;font-style:italic"></span>	_Gscanrunnable  = _Gscan + _Grunnable  <span style="color:#999;font-style:italic">// 0x1001
+</span><span style="color:#999;font-style:italic"></span>	_Gscanrunning   = _Gscan + _Grunning   <span style="color:#999;font-style:italic">// 0x1002
+</span><span style="color:#999;font-style:italic"></span>	_Gscansyscall   = _Gscan + _Gsyscall   <span style="color:#999;font-style:italic">// 0x1003
+</span><span style="color:#999;font-style:italic"></span>	_Gscanwaiting   = _Gscan + _Gwaiting   <span style="color:#999;font-style:italic">// 0x1004
+</span><span style="color:#999;font-style:italic"></span>	_Gscanpreempted = _Gscan + _Gpreempted <span style="color:#999;font-style:italic">// 0x1009
+</span><span style="color:#999;font-style:italic"></span>)
+</code></pre></div><h2 id="m">M</h2>
+<blockquote>
+<p>调度器最多可以创建 10000 个线程，但是其中大多数的线程都不会执行用户代码（例如陷入系统调用或 IO 调用），最多只会有 GOMAXPROCS 个活跃线程能够正常运行。
+在默认情况下，运行时会将 GOMAXPROCS 设置成当前机器的核数，我们也可以在程序中使用 runtime.GOMAXPROCS 来改变最大的活跃线程数。</p>
+</blockquote>
+<h3 id="三种类型">三种类型</h3>
+<ul>
+<li><strong>主线程 m</strong> : 全局变量 <code>runtime.m0</code> 表示 (全局只有一个实例)</li>
+<li><strong>sysmon m</strong> :  监控线程 (全局只有一个实例)</li>
+<li><strong>用户线程 m</strong> : 和处理器 <code>p</code> 绑定，执行具体的 <code>goroutine</code> 逻辑代码</li>
+</ul>
+<h3 id="m-对象">m 对象</h3>
+<blockquote>
+<p><code>线程</code> 的运行时表示。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> m <span style="color:#6ab825;font-weight:bold">struct</span> {
+	g0      *g              <span style="color:#999;font-style:italic">// 执行调度的 goroutine
+</span><span style="color:#999;font-style:italic"></span>
+	...
+	
+	curg          *g        <span style="color:#999;font-style:italic">// 当前运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>	
+	p             puintptr  <span style="color:#999;font-style:italic">// 正在运行代码的处理器 (如果为 nil, 说明当前没有代码运行)
+</span><span style="color:#999;font-style:italic"></span>	nextp         puintptr  <span style="color:#999;font-style:italic">// 暂存的处理器
+</span><span style="color:#999;font-style:italic"></span>	oldp          puintptr  <span style="color:#999;font-style:italic">// 执行系统调用之前使用线程的处理器
+</span><span style="color:#999;font-style:italic"></span>	
+	id            <span style="color:#6ab825;font-weight:bold">int64</span>     <span style="color:#999;font-style:italic">// ID
+</span><span style="color:#999;font-style:italic"></span>	preemptoff    <span style="color:#6ab825;font-weight:bold">string</span>    <span style="color:#999;font-style:italic">// 如果不为空，保持当前 goroutine 在这个 m 上运行
+</span><span style="color:#999;font-style:italic"></span>	
+	spinning      <span style="color:#6ab825;font-weight:bold">bool</span>      <span style="color:#999;font-style:italic">// m 正在积极寻找活儿干
+</span><span style="color:#999;font-style:italic"></span>	blocked       <span style="color:#6ab825;font-weight:bold">bool</span>      <span style="color:#999;font-style:italic">// m 阻塞在 note
+</span><span style="color:#999;font-style:italic"></span>	incgo         <span style="color:#6ab825;font-weight:bold">bool</span>      <span style="color:#999;font-style:italic">// m 正在执行 cgo 调用
+</span><span style="color:#999;font-style:italic"></span>	
+	ncgocall      <span style="color:#6ab825;font-weight:bold">uint64</span>      <span style="color:#999;font-style:italic">// cgo 调用总次数
+</span><span style="color:#999;font-style:italic"></span>	ncgo          <span style="color:#6ab825;font-weight:bold">int32</span>       <span style="color:#999;font-style:italic">// 当前正在运行的 cgo 调用次数
+</span><span style="color:#999;font-style:italic"></span>	
+	...
+}
+</code></pre></div><h2 id="p">P</h2>
+<blockquote>
+<p>处理器是线程和 goroutine 的中间层，提供线程需要的上下文环境，负责调度线程上的等待队列，通过处理器 P 的调度，
+每一个内核线程都能够执行多个 goroutine，它能在 goroutine 进行一些 I/O 操作时及时让出计算资源，提高线程的资源利用率。</p>
+</blockquote>
+<h3 id="p-对象">p 对象</h3>
+<blockquote>
+<p><code>处理器（p)</code> 的运行时表示，<code>线程(m)</code> 必须持有 (绑定) <code>p</code> 才可以运行 <code>goroutine</code>。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> p <span style="color:#6ab825;font-weight:bold">struct</span> {
+	id          <span style="color:#6ab825;font-weight:bold">int32</span>       <span style="color:#999;font-style:italic">// ID
+</span><span style="color:#999;font-style:italic"></span>	status      <span style="color:#6ab825;font-weight:bold">uint32</span>      <span style="color:#999;font-style:italic">// p 的状态
+</span><span style="color:#999;font-style:italic"></span>	schedtick   <span style="color:#6ab825;font-weight:bold">uint32</span>      <span style="color:#999;font-style:italic">// 调度时自增
+</span><span style="color:#999;font-style:italic"></span>	syscalltick <span style="color:#6ab825;font-weight:bold">uint32</span>      <span style="color:#999;font-style:italic">// 系统调用时自增
+</span><span style="color:#999;font-style:italic"></span>	sysmontick  sysmontick  <span style="color:#999;font-style:italic">// sysmon 最后观察到的 tick 时间
+</span><span style="color:#999;font-style:italic"></span>	m           muintptr    <span style="color:#999;font-style:italic">// 关联的 m 的指针，如果 p 处于空闲状态，指针为 nil
+</span><span style="color:#999;font-style:italic"></span>	
+    ...
+
+	deferpool    []*_defer      <span style="color:#999;font-style:italic">// 可用的 _defer 对象池
+</span><span style="color:#999;font-style:italic"></span>	deferpoolbuf [<span style="color:#3677a9">32</span>]*_defer    <span style="color:#999;font-style:italic">// _defer 对象池
+</span><span style="color:#999;font-style:italic"></span>	
+	goidcache    <span style="color:#6ab825;font-weight:bold">uint64</span>         <span style="color:#999;font-style:italic">// 缓存 goroutine ID, 优化 runtime·sched.goidgen
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// goroutine 运行队列，访问时无需加锁
+</span><span style="color:#999;font-style:italic"></span>	runqhead <span style="color:#6ab825;font-weight:bold">uint32</span>         <span style="color:#999;font-style:italic">// runnable 队列头索引
+</span><span style="color:#999;font-style:italic"></span>	runqtail <span style="color:#6ab825;font-weight:bold">uint32</span>         <span style="color:#999;font-style:italic">// runnable 队列尾索引
+</span><span style="color:#999;font-style:italic"></span>	runq     [<span style="color:#3677a9">256</span>]guintptr  <span style="color:#999;font-style:italic">// runnable 队列 (环形队列，数据结构为数组，元素数量最多为 256)
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// runnext 如果不等于 nil, 表示下一个可运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明它已经被当前 goroutine 修改为 ready 状态，并且比队列中的其他 goroutine 拥有更高的优先级
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果运行 goroutine 对应的时间片中还有剩余的时间，那么直接运行这个 goroutine，而不是放入队列中
+</span><span style="color:#999;font-style:italic"></span>	runnext guintptr
+
+    ...
+}
+</code></pre></div><h3 id="状态列表-1">状态列表</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">const</span> (
+	<span style="color:#999;font-style:italic">// 处理器没有在执行代码或者调度，处于空闲状态
+</span><span style="color:#999;font-style:italic"></span>	_Pidle = <span style="color:#6ab825;font-weight:bold">iota</span> <span style="color:#999;font-style:italic">// 0
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 处理器被线程 M 持有，并且正在执行代码或者调度
+</span><span style="color:#999;font-style:italic"></span>	_Prunning <span style="color:#999;font-style:italic">// 1
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 处理器没有在执行代码，线程陷入系统调用
+</span><span style="color:#999;font-style:italic"></span>	_Psyscall <span style="color:#999;font-style:italic">// 2
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 处理器被线程 M 持有，由于 GC 被停止
+</span><span style="color:#999;font-style:italic"></span>	_Pgcstop  <span style="color:#999;font-style:italic">// 3
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 处理器不再被使用
+</span><span style="color:#999;font-style:italic"></span>	_Pdead    <span style="color:#999;font-style:italic">// 4
+</span><span style="color:#999;font-style:italic"></span>)
+</code></pre></div><h3 id="gmp-数据结构关系图">GMP 数据结构关系图</h3>
+<p><img src="https://dbwu.tech/images/GMP.png" alt="GMP数据结构关系图"></p>
+<h2 id="小结">小结</h2>
+<p>上文主要对 <code>GMP</code> 调度中的数据结构部分做了简单的概述:</p>
+<ul>
+<li><code>g</code> 对象表示 <code>goroutine</code>, 是用来执行具体的任务的 (也就是干活的)</li>
+<li><code>m</code> 对象表示 <code>线程</code>, 和真正的 <code>操作系统线程</code> 绑定之后，就可以执行具体的 <code>goroutine</code> 代码了</li>
+<li><code>p</code> 表示处理器，作为抽象中间层用来管理 <code>goroutine</code> 队列以及调度 <code>goroutine</code> 到具体的 <code>m</code> 上执行</li>
+</ul>
+<p>除此之外:</p>
+<ul>
+<li><code>sudog</code> 对象包装了一层 <code>g</code>, 用来表示在队列中等待的 <code>goroutine</code> 对象</li>
+<li><code>gobuf</code> 对象包装了一层 <code>g</code>, 用来表示 <code>goroutine</code> 的运行现场，在调度器保存数据或者恢复上下文的时候可以用到</li>
+</ul>
+<p>最后，我们列出了 <code>g</code> 和 <code>p</code> 对象的不同状态值，这些值在程序整个生命周期内的调度过程中都会使用到。</p>
+<h2 id="调度器数据结构">调度器数据结构</h2>
+<h3 id="schedt-对象">schedt 对象</h3>
+<p><code>schedt</code> 对象是全局调度器的运行时表示，全局只有一个 <code>schedt</code> 对象实例，定义在 <code>$GOROOT/src/runtime/runtime2.go</code> 文件中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> schedt <span style="color:#6ab825;font-weight:bold">struct</span> {
+	goidgen   <span style="color:#6ab825;font-weight:bold">uint64</span> <span style="color:#999;font-style:italic">// 原子性访问，保持在 struct 顶部，确保 32 位系统上对齐
+</span><span style="color:#999;font-style:italic"></span>	lastpoll  <span style="color:#6ab825;font-weight:bold">uint64</span> <span style="color:#999;font-style:italic">// network poll 的最后时间，如果为 0, 说明正在 poll
+</span><span style="color:#999;font-style:italic"></span>	pollUntil <span style="color:#6ab825;font-weight:bold">uint64</span> <span style="color:#999;font-style:italic">// 当前 poll 的休眠时间
+</span><span style="color:#999;font-style:italic"></span>
+	lock mutex
+
+	<span style="color:#999;font-style:italic">// 增加 nmidle, nmidlelocked, nmsys, nmfreed 这几个值的时候, 确保调用 checkdead()
+</span><span style="color:#999;font-style:italic"></span>	midle        muintptr <span style="color:#999;font-style:italic">// 空闲的 m 队列
+</span><span style="color:#999;font-style:italic"></span>	nmidle       <span style="color:#6ab825;font-weight:bold">int32</span>    <span style="color:#999;font-style:italic">// 空闲的 m 数量
+</span><span style="color:#999;font-style:italic"></span>	nmidlelocked <span style="color:#6ab825;font-weight:bold">int32</span>    <span style="color:#999;font-style:italic">// 空闲的被锁住的 m 数量
+</span><span style="color:#999;font-style:italic"></span>	mnext        <span style="color:#6ab825;font-weight:bold">int64</span>    <span style="color:#999;font-style:italic">// 预创建的 m 数量，该数量会作为下一个创建的 m 的 ID
+</span><span style="color:#999;font-style:italic"></span>	maxmcount    <span style="color:#6ab825;font-weight:bold">int32</span>    <span style="color:#999;font-style:italic">// 允许的 m 数量上限
+</span><span style="color:#999;font-style:italic"></span>	nmsys        <span style="color:#6ab825;font-weight:bold">int32</span>    <span style="color:#999;font-style:italic">// 因为死锁未计算的系统 m 数量
+</span><span style="color:#999;font-style:italic"></span>	nmfreed      <span style="color:#6ab825;font-weight:bold">int64</span>    <span style="color:#999;font-style:italic">// 累计释放的 m 数量
+</span><span style="color:#999;font-style:italic"></span>
+	ngsys <span style="color:#6ab825;font-weight:bold">uint32</span>          <span style="color:#999;font-style:italic">// 系统 goroutine 数量，原子性更新
+</span><span style="color:#999;font-style:italic"></span>
+	pidle      puintptr   <span style="color:#999;font-style:italic">// 空闲的处理器队列
+</span><span style="color:#999;font-style:italic"></span>	npidle     <span style="color:#6ab825;font-weight:bold">uint32</span>     <span style="color:#999;font-style:italic">// 空闲的处理器数量
+</span><span style="color:#999;font-style:italic"></span>	
+	runq     gQueue       <span style="color:#999;font-style:italic">// 全局可运行 goroutine 队列
+</span><span style="color:#999;font-style:italic"></span>	runqsize <span style="color:#6ab825;font-weight:bold">int32</span>        <span style="color:#999;font-style:italic">// 全局可运行 goroutine 数量
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// dead 状态的 goroutine 的全局缓存
+</span><span style="color:#999;font-style:italic"></span>	gFree <span style="color:#6ab825;font-weight:bold">struct</span> {
+		lock    mutex
+		stack   gList <span style="color:#999;font-style:italic">// Gs with stacks
+</span><span style="color:#999;font-style:italic"></span>		noStack gList <span style="color:#999;font-style:italic">// Gs without stacks
+</span><span style="color:#999;font-style:italic"></span>		n       <span style="color:#6ab825;font-weight:bold">int32</span>
+	}
+
+	<span style="color:#999;font-style:italic">// sudog 对象的集中缓存
+</span><span style="color:#999;font-style:italic"></span>	sudoglock  mutex
+	sudogcache *sudog
+
+	<span style="color:#999;font-style:italic">// 可用的 _defer 对象的集中缓存
+</span><span style="color:#999;font-style:italic"></span>	deferlock mutex
+	deferpool *_defer
+
+	<span style="color:#999;font-style:italic">// 当 m 被设置了 m.exited 标记之后，会挂载到 freem 链表上面等待被释放
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 链表使用 m.freelink 字段链接
+</span><span style="color:#999;font-style:italic"></span>	freem *m
+
+    ...
+}
+</code></pre></div><p><code>schedt</code> 对象字段非常多 (毕竟是全局调度器)，这里我们重点关注 3 个字段:</p>
+<ul>
+<li><code>midle</code> 表示空闲的 <code>线程 (m)</code>，数据结构是指针，具体的 <code>get + set</code> 操作是通过 <code>指针 + 位置偏移量</code> 实现的</li>
+<li><code>pidle</code> 表示空闲的 <code>处理器 (p)</code>，数据结构和 <code>midle</code> 类似</li>
+<li><code>runq</code> 表示可运行的 <code>goroutine (g)</code> 队列, 数据结构是链表</li>
+</ul>
+<p><img src="https://dbwu.tech/images/schedt.png" alt="schedt 对象"></p>
+<h2 id="调度算法">调度算法</h2>
+<p>现在我们已经对 <code>GMP</code> 和全局调度器的数据结构有了初步的了解，接下来通过分析调度算法代码，了解整个调度过程以及数据结构和状态的变化。调度相关的大部分方法定义在 <code>$GOROOT/src/runtime/proc.go</code> 文件中。</p>
+<p>本文主要分析下面的几个核心部分:</p>
+<ul>
+<li>调度器初始化</li>
+<li>调度循环</li>
+<li>goroutine 创建与初始化</li>
+<li>goroutine 休眠与唤醒</li>
+<li>系统调用</li>
+<li>线程管理</li>
+<li>主线程</li>
+<li>监控线程</li>
+</ul>
+<h2 id="调度器初始化">调度器初始化</h2>
+<h3 id="schedinit-方法">schedinit 方法</h3>
+<p><code>schedinit</code> 方法用来初始化调度器。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">schedinit</span>() {
+	...
+	
+	_g_ := <span style="color:#447fcf">getg</span>()
+    
+	<span style="color:#999;font-style:italic">// 设置线程数量上限
+</span><span style="color:#999;font-style:italic"></span>	sched.maxmcount = <span style="color:#3677a9">10000</span>
+    <span style="color:#999;font-style:italic">// STW
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">worldStopped</span>()
+
+	...
+
+	<span style="color:#999;font-style:italic">// 操作加锁
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">lock</span>(&amp;sched.lock)
+	sched.lastpoll = <span style="color:#24909d">uint64</span>(<span style="color:#447fcf">nanotime</span>())
+	procs := ncpu
+	<span style="color:#999;font-style:italic">// 从环境变量获取线程数量
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> n, ok := <span style="color:#447fcf">atoi32</span>(<span style="color:#447fcf">gogetenv</span>(<span style="color:#ed9d13">&#34;GOMAXPROCS&#34;</span>)); ok &amp;&amp; n &gt; <span style="color:#3677a9">0</span> {
+		procs = n
+	}
+    <span style="color:#999;font-style:italic">// 更新处理器数量
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">procresize</span>(procs) != <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 调度器初始化时，不应该有运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;unknown runnable goroutine during bootstrap&#34;</span>)
+	}
+    <span style="color:#999;font-style:italic">// 操作释放锁
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">unlock</span>(&amp;sched.lock)
+	
+    ...
+}
+</code></pre></div><h3 id="procresize-方法">procresize 方法</h3>
+<p><code>allp</code> 是一个 <code>runtime</code> 包内的全局变量，用来存放处理器 <code>P</code>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">var</span> (
+    allp []*p
+)
+</code></pre></div><p><code>procresize</code> 方法用于更新处理器 <code>P</code> 的数量，在操作期间，必须加锁并且执行 <code>STW</code>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">procresize</span>(nprocs <span style="color:#6ab825;font-weight:bold">int32</span>) *p {
+    ...
+	
+	<span style="color:#999;font-style:italic">// 如果全局处理器数量少于期望处理器数量
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 先进行扩容
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> nprocs &gt; <span style="color:#24909d">int32</span>(<span style="color:#24909d">len</span>(allp)) {
+		...
+	}
+	
+	<span style="color:#999;font-style:italic">// 初始化新增的处理器对象
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := old; i &lt; nprocs; i++ {
+		pp := allp[i]
+		<span style="color:#6ab825;font-weight:bold">if</span> pp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+			pp = <span style="color:#24909d">new</span>(p)
+		}
+		pp.<span style="color:#447fcf">init</span>(i)
+	}
+
+	...
+
+	<span style="color:#999;font-style:italic">// 释放不再使用的处理器对象
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := nprocs; i &lt; old; i++ {
+		p := allp[i]
+		p.<span style="color:#447fcf">destroy</span>()
+	}
+	
+	<span style="color:#999;font-style:italic">// 使全局处理器数量和期望处理器数量保持一致
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">int32</span>(<span style="color:#24909d">len</span>(allp)) != nprocs {
+		allp = allp[:nprocs]
+	}
+
+	<span style="color:#999;font-style:italic">// 除了当前处理器之外的所有处理器，设置为空闲状态
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 然后放入全局调度器的空闲队列
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> runnablePs *p
+	<span style="color:#6ab825;font-weight:bold">for</span> i := nprocs - <span style="color:#3677a9">1</span>; i &gt;= <span style="color:#3677a9">0</span>; i-- {
+		p := allp[i]
+		<span style="color:#6ab825;font-weight:bold">if</span> _g_.m.p.<span style="color:#447fcf">ptr</span>() == p {
+			<span style="color:#6ab825;font-weight:bold">continue</span>
+		}
+		p.status = _Pidle
+		
+        ...
+	}
+	
+	<span style="color:#6ab825;font-weight:bold">return</span> runnablePs
+}
+</code></pre></div><h3 id="pidleput-方法">pidleput 方法</h3>
+<p><code>pidleput</code> 方法将处理器 <code>P</code> 放入全局调度器的空闲队列。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">pidleput</span>(_p_ *p) {
+	...
+	
+	<span style="color:#999;font-style:italic">// 将 P 放入队列头部
+</span><span style="color:#999;font-style:italic"></span>	_p_.link = sched.pidle
+	sched.pidle.<span style="color:#447fcf">set</span>(_p_)
+    <span style="color:#999;font-style:italic">// 队列元素数量 + 1
+</span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">Xadd</span>(&amp;sched.npidle, <span style="color:#3677a9">1</span>) 
+}
+</code></pre></div><h3 id="调度器初始化流程图">调度器初始化流程图</h3>
+<p><img src="https://dbwu.tech/images/schedinit.png" alt="调度器初始化"></p>
+<h2 id="goroutine-创建与初始化">goroutine 创建与初始化</h2>
+<h3 id="newproc-方法">newproc 方法</h3>
+<p><code>newproc</code> 方法用于创建一个新的 <code>goroutine</code> 来运行参数函数 fn, 新创建的 <code>goroutine</code> 会被放入处理器的队列等待运行，
+编译器会将应用层的 <code>go ...</code> 代码语句 (例如 <code>go func() {...}</code>) 转换为 <code>newproc</code> 函数调用。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newproc</span>(fn *funcval) {
+	<span style="color:#999;font-style:italic">// 获取当前 G
+</span><span style="color:#999;font-style:italic"></span>	gp := <span style="color:#447fcf">getg</span>()
+	<span style="color:#999;font-style:italic">// 获取调用方的 sp 寄存器
+</span><span style="color:#999;font-style:italic"></span>	pc := <span style="color:#447fcf">getcallerpc</span>()
+	
+	<span style="color:#447fcf">systemstack</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+        <span style="color:#999;font-style:italic">// 获取新的 goroutine 对象
+</span><span style="color:#999;font-style:italic"></span>		newg := <span style="color:#447fcf">newproc1</span>(fn, gp, pc)
+
+        <span style="color:#999;font-style:italic">// 获取处理器
+</span><span style="color:#999;font-style:italic"></span>		_p_ := <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>()
+        <span style="color:#999;font-style:italic">// 将 goroutine 加入处理器的运行队列
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">runqput</span>(_p_, newg, <span style="color:#6ab825;font-weight:bold">true</span>)        
+
+		<span style="color:#6ab825;font-weight:bold">if</span> mainStarted {
+			<span style="color:#447fcf">wakep</span>()
+		}
+	})
+}
+</code></pre></div><h3 id="newproc1-方法">newproc1 方法</h3>
+<p><code>newproc1</code> 方法用于创建一个状态为 <code>_Grunnable (可运行)</code> 的 <code>goroutine</code> 对象, 将参数赋值到 <code>goroutine</code> 对象对应的字段，调用方负责将新创建的 <code>goroutine</code> 添加到调度器。</p>
+<p><strong>具体的内部过程可以概述为</strong>:</p>
+<ol>
+<li>优先从本地队列获取获取一个 goroutine 对象</li>
+<li>如果本地队列为空，那么从全局队列窃取</li>
+<li>如果本地队列和全局队列都没有获取到对象，就初始化一个新的 goroutine 对象</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">const</span> (
+	<span style="color:#999;font-style:italic">// 最小栈空间: 2KB
+</span><span style="color:#999;font-style:italic"></span>    _StackMin = <span style="color:#3677a9">2048</span>
+)
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newproc1</span>(fn *funcval, callergp *g, callerpc <span style="color:#6ab825;font-weight:bold">uintptr</span>) *g {
+	_g_ := <span style="color:#447fcf">getg</span>()
+
+	<span style="color:#999;font-style:italic">// 获取当前处理器 P
+</span><span style="color:#999;font-style:italic"></span>	_p_ := _g_.m.p.<span style="color:#447fcf">ptr</span>()
+	newg := <span style="color:#447fcf">gfget</span>(_p_)  
+	<span style="color:#6ab825;font-weight:bold">if</span> newg == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 创建一个栈空间大小为 2KB 的 goroutine
+</span><span style="color:#999;font-style:italic"></span>		newg = <span style="color:#447fcf">malg</span>(_StackMin)  
+		<span style="color:#447fcf">casgstatus</span>(newg, _Gidle, _Gdead)
+	}
+
+	...
+
+	<span style="color:#999;font-style:italic">// 设置 goroutine 对象字段
+</span><span style="color:#999;font-style:italic"></span>	newg.gopc = callerpc
+	newg.ancestors = <span style="color:#447fcf">saveAncestors</span>(callergp)
+	newg.startpc = fn.fn
+
+    <span style="color:#999;font-style:italic">// goroutine 状态设置为 _Grunnable
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">casgstatus</span>(newg, _Gdead, _Grunnable)
+
+	<span style="color:#6ab825;font-weight:bold">return</span> newg
+}
+</code></pre></div><h3 id="gfget-方法">gfget 方法</h3>
+<p><code>gfget</code> 方法用于从空闲队列中获取一个 <code>goroutine</code> 对象，优先从本地队列获取，如果本地队列为空，从调度器全局队列获取 <code>32</code> 个 <code>goroutine</code>, 放到本地队列中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">gfget</span>(_p_ *p) *g {
+retry:
+	<span style="color:#6ab825;font-weight:bold">if</span> _p_.gFree.<span style="color:#447fcf">empty</span>() &amp;&amp; (!sched.gFree.stack.<span style="color:#447fcf">empty</span>() || !sched.gFree.noStack.<span style="color:#447fcf">empty</span>()) {
+		<span style="color:#6ab825;font-weight:bold">for</span> _p_.gFree.n &lt; <span style="color:#3677a9">32</span> {
+			<span style="color:#999;font-style:italic">// 优先从栈队列中获取
+</span><span style="color:#999;font-style:italic"></span>			gp := sched.gFree.stack.<span style="color:#447fcf">pop</span>()
+			<span style="color:#6ab825;font-weight:bold">if</span> gp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+				<span style="color:#999;font-style:italic">// 如果栈队列取不到，从非栈队列获取
+</span><span style="color:#999;font-style:italic"></span>				gp = sched.gFree.noStack.<span style="color:#447fcf">pop</span>()
+				<span style="color:#6ab825;font-weight:bold">if</span> gp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+					<span style="color:#6ab825;font-weight:bold">break</span>
+				}
+			}
+            <span style="color:#999;font-style:italic">// 全局队列元素数量减 1
+</span><span style="color:#999;font-style:italic"></span>			sched.gFree.n--
+			<span style="color:#999;font-style:italic">// 将对象加入本地队列
+</span><span style="color:#999;font-style:italic"></span>			_p_.gFree.<span style="color:#447fcf">push</span>(gp)
+            <span style="color:#999;font-style:italic">// 本地队列元素数量加 1 
+</span><span style="color:#999;font-style:italic"></span>			_p_.gFree.n++
+		}
+		
+		<span style="color:#6ab825;font-weight:bold">goto</span> retry
+	}
+	
+	<span style="color:#999;font-style:italic">// 从本地队列取一个 goroutine
+</span><span style="color:#999;font-style:italic"></span>	gp := _p_.gFree.<span style="color:#447fcf">pop</span>() 
+	<span style="color:#6ab825;font-weight:bold">if</span> gp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+	}
+
+    <span style="color:#999;font-style:italic">// 本地队列元素数量减 1
+</span><span style="color:#999;font-style:italic"></span>	_p_.gFree.n--
+	
+	<span style="color:#6ab825;font-weight:bold">return</span> gp
+}
+</code></pre></div><h3 id="malg-方法">malg 方法</h3>
+<p><code>malg</code> 方法用于创建一个新的 <code>goroutine</code> 对象并返回。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">malg</span>(stacksize <span style="color:#6ab825;font-weight:bold">int32</span>) *g {
+	newg := <span style="color:#24909d">new</span>(g)
+
+	<span style="color:#999;font-style:italic">// 分配 goroutine 的栈空间
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果是调度器申请创建 goroutine，栈空间是 2KB
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> stacksize &gt;= <span style="color:#3677a9">0</span> {
+        ...
+	}
+	<span style="color:#6ab825;font-weight:bold">return</span> newg
+}
+</code></pre></div><h3 id="runqput-方法">runqput 方法</h3>
+<p><code>runqput</code> 方法用于将 <code>goroutine</code> 对象放入本地运行队列，根据参数 <code>next</code> 可以分为下面 3 种情况:</p>
+<ol>
+<li>如果 next 为 false 且队列未满, 将 goroutine 放入本地运行队列</li>
+<li>如果 next 为 false 且队列已满, 将 goroutine 放入全局运行队列</li>
+<li>如果 next 为 true, 将 goroutine 设置为处理器下一个运行任务</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">runqput</span>(_p_ *p, gp *g, next <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	<span style="color:#6ab825;font-weight:bold">if</span> next {
+	retryNext:
+		oldnext := _p_.runnext
+		<span style="color:#999;font-style:italic">// 将参数 goroutine 设置为处理器下一个运行任务
+</span><span style="color:#999;font-style:italic"></span>		gp = oldnext.<span style="color:#447fcf">ptr</span>()
+	}
+
+retry:
+	...
+	
+	<span style="color:#6ab825;font-weight:bold">if</span> t-h &lt; <span style="color:#24909d">uint32</span>(<span style="color:#24909d">len</span>(_p_.runq)) {
+		<span style="color:#999;font-style:italic">// 本地队列未满的情况下，放入完成后直接返回
+</span><span style="color:#999;font-style:italic"></span>		atomic.<span style="color:#447fcf">StoreRel</span>(&amp;_p_.runqtail, t+<span style="color:#3677a9">1</span>)
+		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">runqputslow</span>(_p_, gp, h, t) {
+		<span style="color:#999;font-style:italic">// 放入全局队列完成后，直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+	<span style="color:#6ab825;font-weight:bold">goto</span> retry
+}
+</code></pre></div><h3 id="runqputslow-方法">runqputslow 方法</h3>
+<p><code>runqputslow</code> 方法用于将参数 <code>goroutine</code> 和本地运行队列中的一批 <code>goroutine</code> 全部放入全局队列。</p>
+<p><strong>具体的内部过程可以概述为</strong>:</p>
+<ol>
+<li>从本地队列获取一半的 goroutine + 参数 goroutine 放入一个 <strong>临时队列</strong></li>
+<li>如果是随机调度的话，将临时队列元素顺序打乱</li>
+<li>将临时队列中的 goroutine 放入全局队列</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">runqputslow</span>(_p_ *p, gp *g, h, t <span style="color:#6ab825;font-weight:bold">uint32</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+	<span style="color:#999;font-style:italic">// 批量 goroutine 队列
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> batch [<span style="color:#24909d">len</span>(_p_.runq)/<span style="color:#3677a9">2</span> + <span style="color:#3677a9">1</span>]*g
+
+	<span style="color:#999;font-style:italic">// 第一步，先从本地队列获取一半的 goroutine
+</span><span style="color:#999;font-style:italic"></span>	n := t - h
+	n = n / <span style="color:#3677a9">2</span>
+
+	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">0</span>); i &lt; n; i++ {
+		batch[i] = _p_.runq[(h+i)%<span style="color:#24909d">uint32</span>(<span style="color:#24909d">len</span>(_p_.runq))].<span style="color:#447fcf">ptr</span>()
+	}
+
+    <span style="color:#999;font-style:italic">// 把参数 goroutine 加入到批量 goroutine 队列末尾
+</span><span style="color:#999;font-style:italic"></span>	batch[n] = gp 
+
+	<span style="color:#999;font-style:italic">// 第二步，如果是随机调度的话，将队列数组随机乱序
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> randomizeScheduler {
+		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">1</span>); i &lt;= n; i++ {
+			j := <span style="color:#447fcf">fastrandn</span>(i + <span style="color:#3677a9">1</span>)
+			batch[i], batch[j] = batch[j], batch[i]
+		}
+	}
+	
+	<span style="color:#999;font-style:italic">// 第三步，将队列数组中的 goroutine 构建为链表结构
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">0</span>); i &lt; n; i++ {
+		batch[i].schedlink.<span style="color:#447fcf">set</span>(batch[i+<span style="color:#3677a9">1</span>])
+	}
+	<span style="color:#6ab825;font-weight:bold">var</span> q gQueue
+	<span style="color:#999;font-style:italic">// 将队列头部元素放入链表头节点
+</span><span style="color:#999;font-style:italic"></span>	q.head.<span style="color:#447fcf">set</span>(batch[<span style="color:#3677a9">0</span>])
+    <span style="color:#999;font-style:italic">// 将队列头部元素放入链表尾节点
+</span><span style="color:#999;font-style:italic"></span>	q.tail.<span style="color:#447fcf">set</span>(batch[n])  
+
+    <span style="color:#999;font-style:italic">// 最后一步，将 goroutine 链表放入全局队列中
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">globrunqputbatch</span>(&amp;q, <span style="color:#24909d">int32</span>(n+<span style="color:#3677a9">1</span>))
+	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+}
+</code></pre></div><h3 id="goroutine-创建与初始化流程图">goroutine 创建与初始化流程图</h3>
+<p><img src="https://dbwu.tech/images/goroutine_init.png" alt="goroutine 创建与初始化流程图"></p>
+<h2 id="调度循环">调度循环</h2>
+<p><strong>调度器初始化完成之后，会进入调度主流程</strong> (其实就是一个大循环)。</p>
+<h3 id="mstart-方法">mstart 方法</h3>
+<p><code>mstart</code> 方法由汇编语言实现，内部会调用 <code>mstart1</code> 方法，最后依次调用 <code>schedule</code>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mstart</span>()
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mstart0</span>() {
+	_g_ := <span style="color:#447fcf">getg</span>()
+	
+	<span style="color:#447fcf">mstart1</span>()
+}
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mstart1</span>() {
+	_g_ := <span style="color:#447fcf">getg</span>()
+	
+	<span style="color:#447fcf">schedule</span>()
+}
+</code></pre></div><h3 id="schedule-方法">schedule 方法</h3>
+<p><code>schedule</code> 方法是调度过程的核心大循环，每次循环时找到一个可运行的 <code>goroutine</code> 执行。</p>
+<p><strong>为了尽可能保证调度的公平性，调度每循环 61 次，就会检查全局运行队列并取出一个 <code>goroutine</code> 运行，如果不这样做的话，可能产生的极端情况就是全局队列的里面的 <code>goroutine</code> 永远得不到执行</strong>。</p>
+<p>至于为什么会选择质数 61，感兴趣的读者可以看看 <a href="https://github.com/golang/go/issues/34981">这个链接</a> :-)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">schedule</span>() {
+	_g_ := <span style="color:#447fcf">getg</span>()
+	
+	...
+
+top:
+	<span style="color:#6ab825;font-weight:bold">var</span> gp *g
+	<span style="color:#6ab825;font-weight:bold">var</span> inheritTime <span style="color:#6ab825;font-weight:bold">bool</span>
+
+	...
+	
+    <span style="color:#999;font-style:italic">// 调度每循环 61 次，执行一个全局队列中的 goroutine
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">if</span> _g_.m.p.<span style="color:#447fcf">ptr</span>().schedtick%<span style="color:#3677a9">61</span> == <span style="color:#3677a9">0</span> &amp;&amp; sched.runqsize &gt; <span style="color:#3677a9">0</span> {
+        gp = <span style="color:#447fcf">globrunqget</span>(_g_.m.p.<span style="color:#447fcf">ptr</span>(), <span style="color:#3677a9">1</span>)
+    }
+
+    <span style="color:#999;font-style:italic">// 从本地队列获取可运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> gp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		gp, inheritTime = <span style="color:#447fcf">runqget</span>(_g_.m.p.<span style="color:#447fcf">ptr</span>())     
+	}
+    <span style="color:#999;font-style:italic">// 阻塞获取可运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> gp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		gp, inheritTime = <span style="color:#447fcf">findrunnable</span>() 
+	}
+
+	...
+
+	<span style="color:#447fcf">execute</span>(gp, inheritTime)
+}
+</code></pre></div><h3 id="findrunnable-方法">findrunnable 方法</h3>
+<p><code>findrunnable</code> 方法会阻塞执行，直至找到一个可运行的 <code>goroutine</code>, 该方法会依次尝试从下面几个地方获取 <code>goroutine</code>:</p>
+<ol>
+<li>本地队列</li>
+<li>全局队列</li>
+<li>网络轮询器 (netpoll)</li>
+<li>从其他处理器队列窃取</li>
+</ol>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">findrunnable</span>() (gp *g, inheritTime <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	_g_ := <span style="color:#447fcf">getg</span>()
+
+top:
+	_p_ := _g_.m.p.<span style="color:#447fcf">ptr</span>()
+	
+	...
+
+	<span style="color:#999;font-style:italic">// 尝试从本地运行队列获取
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> gp, inheritTime := <span style="color:#447fcf">runqget</span>(_p_); gp != <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#6ab825;font-weight:bold">return</span> gp, inheritTime
+	}
+
+	<span style="color:#999;font-style:italic">// 尝试从全局运行队列获取
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> sched.runqsize != <span style="color:#3677a9">0</span> {
+        ...
+	}
+
+	<span style="color:#999;font-style:italic">// 尝试从网络轮询器获取
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">netpollinited</span>() &amp;&amp; atomic.<span style="color:#447fcf">Load</span>(&amp;netpollWaiters) &gt; <span style="color:#3677a9">0</span> &amp;&amp; atomic.<span style="color:#447fcf">Load64</span>(&amp;sched.lastpoll) != <span style="color:#3677a9">0</span> {
+        ...
+	}
+
+	<span style="color:#999;font-style:italic">// 尝试从其他处理器窃取 goroutine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果自旋的 m 数量大于等于运行的 p 数量的一半，那么进入阻塞 (不会执行 if 分支内代码)
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这样做是为了防止当线程过多并且程序的并行数很少时，造成不必要的 CPU 消耗
+</span><span style="color:#999;font-style:italic"></span>	procs := <span style="color:#24909d">uint32</span>(gomaxprocs)
+	<span style="color:#6ab825;font-weight:bold">if</span> _g_.m.spinning || <span style="color:#3677a9">2</span>*atomic.<span style="color:#447fcf">Load</span>(&amp;sched.nmspinning) &lt; procs-atomic.<span style="color:#447fcf">Load</span>(&amp;sched.npidle) {
+        ...
+	}
+
+    ...
+	
+	<span style="color:#6ab825;font-weight:bold">if</span> _g_.m.spinning {
+		_g_.m.spinning = <span style="color:#6ab825;font-weight:bold">false</span>
+		
+		<span style="color:#999;font-style:italic">// 再次检查所有运行队列
+</span><span style="color:#999;font-style:italic"></span>		_p_ = <span style="color:#447fcf">checkRunqsNoP</span>(allpSnapshot, idlepMaskSnapshot)
+		<span style="color:#6ab825;font-weight:bold">if</span> _p_ != <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#6ab825;font-weight:bold">goto</span> top
+		}
+
+        <span style="color:#999;font-style:italic">// 再次检查 GC 是否有空闲可用的 goroutine
+</span><span style="color:#999;font-style:italic"></span>		_p_, gp = <span style="color:#447fcf">checkIdleGCNoP</span>()
+		<span style="color:#6ab825;font-weight:bold">if</span> _p_ != <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#6ab825;font-weight:bold">return</span> gp, <span style="color:#6ab825;font-weight:bold">false</span>
+		}
+		
+		...
+	}
+
+	<span style="color:#999;font-style:italic">// 再次尝试从网络轮询器获取
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">netpollinited</span>() &amp;&amp; (atomic.<span style="color:#447fcf">Load</span>(&amp;netpollWaiters) &gt; <span style="color:#3677a9">0</span> || pollUntil != <span style="color:#3677a9">0</span>) &amp;&amp; atomic.<span style="color:#447fcf">Xchg64</span>(&amp;sched.lastpoll, <span style="color:#3677a9">0</span>) != <span style="color:#3677a9">0</span> {
+		...
+	}
+	
+	<span style="color:#999;font-style:italic">// 接着循环，直至获取到 goroutine 才能返回
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">goto</span> top
+}
+</code></pre></div><h3 id="execute-方法">execute 方法</h3>
+<p><code>execute</code> 方法用于将参数 <code>goroutine</code> 调度到当前 <code>M</code> 运行，如果参数 inheritTime 等于 true, <code>goroutine</code> 可以直接继承当前时间片中的剩余时间，否则它会启动一个新的时间片。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">execute</span>(gp *g, inheritTime <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	_g_ := <span style="color:#447fcf">getg</span>()
+	
+	<span style="color:#999;font-style:italic">// 首先建立 G 和 M 的关联绑定关系
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将 M 的当前 G 字段指向 gp
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// gp 的 m 字段 指向 m
+</span><span style="color:#999;font-style:italic"></span>	_g_.m.curg = gp
+	gp.m = _g_.m    
+
+    <span style="color:#999;font-style:italic">// 此时 goroutine 在状态变为运行之前就已经分配了 M
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以可以直接运行
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 更改 goroutine 状态
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">casgstatus</span>(gp, _Grunnable, _Grunning)
+
+    ...
+
+	<span style="color:#999;font-style:italic">// 汇编实现
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 执行参数 goroutine, 执行完之后跳转到 goexit1 方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">gogo</span>(&amp;gp.sched) 
+}
+</code></pre></div><h3 id="goexit-方法">Goexit 方法</h3>
+<p><code>Goexit</code> 方法用于终止调用方 <code>goroutine</code> 的运行, 不会影响到其他的 <code>goroutine</code>。</p>
+<p><code>Goexit</code> 在终止 <code>goroutine</code> 之前会运行所有 <code>defer</code> 函数，和 <code>panic</code> 不同的是，调用 <code>recover</code> 函数捕获不到 <code>Goexit</code> 的任何错误。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Goexit</span>() {
+	gp := <span style="color:#447fcf">getg</span>()
+	
+	<span style="color:#999;font-style:italic">// 运行所有 defer
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+		d := gp._defer
+		<span style="color:#6ab825;font-weight:bold">if</span> d == <span style="color:#6ab825;font-weight:bold">nil</span> {
+            <span style="color:#6ab825;font-weight:bold">break</span>
+        }
+		...
+	}
+	<span style="color:#447fcf">goexit1</span>()
+}
+</code></pre></div><h3 id="goexit1-方法">goexit1 方法</h3>
+<p><code>goexit1</code> 方法用于终止 <code>goroutine</code> 运行。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">goexit1</span>() {
+	<span style="color:#999;font-style:italic">// 汇编实现
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">mcall</span>(goexit0)
+}
+</code></pre></div><h3 id="goexit0-方法">goexit0 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 在 g0 上继续调度 
+</span><span style="color:#999;font-style:italic">// goexit continuation on g0.
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">goexit0</span>(gp *g) {
+	_g_ := <span style="color:#447fcf">getg</span>()
+	_p_ := _g_.m.p.<span style="color:#447fcf">ptr</span>()
+
+    <span style="color:#999;font-style:italic">// 继续调用 schedule
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">schedule</span>() 
+}
+</code></pre></div><h3 id="调度循环流程图">调度循环流程图</h3>
+<p><img src="https://dbwu.tech/images/schedule.png" alt="调度循环流程图"></p>
+<h2 id="小结-1">小结</h2>
+<p>本文主要对 <code>GMP</code> 调度中的调度器初始化、goroutine 创建与初始化和调度循环三个部分做了详细的代码分析，下面的五个部分将放到下一篇文章中展开。</p>
+<ul>
+<li>goroutine 休眠与唤醒</li>
+<li>系统调用</li>
+<li>线程管理</li>
+<li>主线程</li>
+<li>监控线程</li>
+</ul>
+<h2 id="goroutine-休眠与唤醒">goroutine 休眠与唤醒</h2>
+<h3 id="gopark-方法">gopark 方法</h3>
+<p><code>gopark</code> 方法用于将参数 <code>goroutine</code> 状态设置为等待 (休眠)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">gopark</span>(unlockf <span style="color:#6ab825;font-weight:bold">func</span>(*g, unsafe.Pointer) <span style="color:#6ab825;font-weight:bold">bool</span>, lock unsafe.Pointer, reason waitReason, traceEv <span style="color:#6ab825;font-weight:bold">byte</span>, traceskip <span style="color:#6ab825;font-weight:bold">int</span>) {
+    ...
+	
+	<span style="color:#999;font-style:italic">// 汇编实现，跳转到 park_m 方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">mcall</span>(park_m)
+}
+</code></pre></div><h3 id="park_m-方法">park_m 方法</h3>
+<p><code>park_m</code> 方法用于切换参数 <code>goroutine</code> 状态以及解除和 <code>M</code> 的绑定关系，最后跳转到 <code>schedule</code> 方法再次进行调度。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">park_m</span>(gp *g) {
+    ...
+
+	<span style="color:#999;font-style:italic">// 切换 goroutine 状态
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">casgstatus</span>(gp, _Grunning, _Gwaiting)
+    <span style="color:#999;font-style:italic">// 解除 M 和 goroutine 的绑定关系
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">dropg</span>()
+	<span style="color:#999;font-style:italic">// 继续调度
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">schedule</span>()
+}
+</code></pre></div><h3 id="goready-方法">goready 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">goready</span>(gp *g, traceskip <span style="color:#6ab825;font-weight:bold">int</span>) {
+	<span style="color:#447fcf">systemstack</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+		<span style="color:#447fcf">ready</span>(gp, traceskip, <span style="color:#6ab825;font-weight:bold">true</span>)
+	})
+}
+</code></pre></div><h3 id="ready-方法">ready 方法</h3>
+<p><code>ready</code> 方法用于将参数 <code>goroutine</code> 的状态切换至 <code>_Grunnable</code> 并将其放入队列等待被调度。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ready</span>(gp *g, traceskip <span style="color:#6ab825;font-weight:bold">int</span>, next <span style="color:#6ab825;font-weight:bold">bool</span>) {
+    ...
+	
+	<span style="color:#999;font-style:italic">// 将休眠状态的 goroutine 唤醒并放入运行队列
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">casgstatus</span>(gp, _Gwaiting, _Grunnable)
+	<span style="color:#447fcf">runqput</span>(_g_.m.p.<span style="color:#447fcf">ptr</span>(), gp, next)
+	<span style="color:#447fcf">wakep</span>()
+}
+</code></pre></div><h3 id="wakep-方法">wakep 方法</h3>
+<p><code>wakep</code> 方法尝试增加一个新的处理器 <code>P</code> 来执行 <code>goroutine</code>, 一般会在 <code>goroutine</code> 状态变可运行时调用 (例如 <code>newproc</code> 方法和 <code>ready</code> 方法)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">wakep</span>() {
+    ...
+	
+	<span style="color:#447fcf">startm</span>(<span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">true</span>)
+}
+</code></pre></div><h3 id="startm-方法">startm 方法</h3>
+<p><code>startm</code> 方法调度一些 <code>M</code> 来运行处理器 <code>P</code> 队列中的 <code>goroutine</code> (如果有必要的情况下，会创建新的 M)，如果参数 p 等于 nil,
+尝试获取一个空闲的 <code>P</code>, 如果没有获取到, 就什么都不做。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startm</span>(_p_ *p, spinning <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	nmp := <span style="color:#447fcf">mget</span>()
+	<span style="color:#6ab825;font-weight:bold">if</span> nmp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 没有空闲可用的 M, 创建一个新的 
+</span><span style="color:#999;font-style:italic"></span>		id := <span style="color:#447fcf">mReserveID</span>()
+		<span style="color:#447fcf">newm</span>(fn, _p_, id)
+		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+	
+	...
+}
+</code></pre></div><h3 id="mget-方法">mget 方法</h3>
+<p><code>mget</code> 方法尝试从空闲的 <code>M</code> 队列中获取一个 <code>M</code>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mget</span>() *m {
+	mp := sched.midle.<span style="color:#447fcf">ptr</span>()
+	<span style="color:#6ab825;font-weight:bold">if</span> mp != <span style="color:#6ab825;font-weight:bold">nil</span> {
+		sched.midle = mp.schedlink
+		sched.nmidle--
+	}
+	<span style="color:#6ab825;font-weight:bold">return</span> mp
+}
+</code></pre></div><h3 id="newm-方法">newm 方法</h3>
+<p><code>newm</code> 方法用于创建一个新的 <code>M</code>,</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">//go:nowritebarrierrec
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newm</span>(fn <span style="color:#6ab825;font-weight:bold">func</span>(), _p_ *p, id <span style="color:#6ab825;font-weight:bold">int64</span>) {
+	<span style="color:#447fcf">newm1</span>(mp)
+}
+
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newm1</span>(mp *m) {
+	<span style="color:#447fcf">newosproc</span>(mp)
+}
+</code></pre></div><h3 id="newosproc-方法">newosproc 方法</h3>
+<p><code>newosproc</code> 方法用于创建 <code>操作系统线程</code>，方法定义在 <code>$GOROOT/src/runtime/os_linux.go</code> 文件中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newosproc</span>(mp *m) {
+	<span style="color:#999;font-style:italic">// 通过系统调用 clone 创建线程
+</span><span style="color:#999;font-style:italic"></span>	ret := <span style="color:#447fcf">clone</span>(cloneFlags, stk, unsafe.<span style="color:#447fcf">Pointer</span>(mp), unsafe.<span style="color:#447fcf">Pointer</span>(mp.g0), unsafe.<span style="color:#447fcf">Pointer</span>(abi.<span style="color:#447fcf">FuncPCABI0</span>(mstart)))
+	
+	...
+}
+</code></pre></div><h3 id="休眠与唤醒流程图">休眠与唤醒流程图</h3>
+<p><img src="https://dbwu.tech/images/gopark.png" alt="休眠与唤醒流程图"></p>
+<h2 id="系统调用">系统调用</h2>
+<h3 id="entersyscall-方法">entersyscall 方法</h3>
+<p><code>entersyscall</code> 方法表示标准的系统调用方法，通过获取调用方的 <code>sp</code> 和 <code>pc</code> 寄存器，然后调用 <code>reentersyscall</code>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">entersyscall</span>() {
+	<span style="color:#447fcf">reentersyscall</span>(<span style="color:#447fcf">getcallerpc</span>(), <span style="color:#447fcf">getcallersp</span>())
+}
+</code></pre></div><h3 id="reentersyscall-方法">reentersyscall 方法</h3>
+<p><code>reentersyscall</code> 方法根据参数 <code>sp</code> 和 <code>pc</code> 寄存器执行系统调用。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">reentersyscall</span>(pc, sp <span style="color:#6ab825;font-weight:bold">uintptr</span>) {
+	<span style="color:#999;font-style:italic">// 获取 goroutine
+</span><span style="color:#999;font-style:italic"></span>	_g_ := <span style="color:#447fcf">getg</span>()
+
+	<span style="color:#999;font-style:italic">// 禁止抢占，因为 goroutine 处于系统调用状态
+</span><span style="color:#999;font-style:italic"></span>	_g_.m.locks++
+
+	<span style="color:#999;font-style:italic">// 保证没有调用其他函数触发的栈分裂/栈增长
+</span><span style="color:#999;font-style:italic"></span>	_g_.stackguard0 = stackPreempt
+	_g_.throwsplit = <span style="color:#6ab825;font-weight:bold">true</span>
+	
+	<span style="color:#999;font-style:italic">// 保存 pc 和 sp 寄存器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">save</span>(pc, sp)
+	_g_.syscallsp = sp
+	_g_.syscallpc = pc
+	
+	<span style="color:#999;font-style:italic">// 更新 goroutine 状态
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#447fcf">casgstatus</span>(_g_, _Grunning, _Gsyscall)
+
+	<span style="color:#999;font-style:italic">// 将 goroutine 的处理器和线程解除绑定 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (高性能 Tips: 陷入系统调用后，把线程让出来，给其他资源使用)
+</span><span style="color:#999;font-style:italic"></span>	_g_.m.syscalltick = _g_.m.p.<span style="color:#447fcf">ptr</span>().syscalltick
+	_g_.sysblocktraced = <span style="color:#6ab825;font-weight:bold">true</span>
+	pp := _g_.m.p.<span style="color:#447fcf">ptr</span>()
+	pp.m = <span style="color:#3677a9">0</span>
+	_g_.m.oldp.<span style="color:#447fcf">set</span>(pp)
+	_g_.m.p = <span style="color:#3677a9">0</span>
+	
+	<span style="color:#999;font-style:italic">// 更新处理器状态
+</span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">Store</span>(&amp;pp.status, _Psyscall)
+	<span style="color:#6ab825;font-weight:bold">if</span> sched.gcwaiting != <span style="color:#3677a9">0</span> {
+		<span style="color:#447fcf">systemstack</span>(entersyscall_gcwait)
+		<span style="color:#447fcf">save</span>(pc, sp)
+	}
+
+	_g_.m.locks--
+}
+</code></pre></div><h3 id="exitsyscall-方法">exitsyscall 方法</h3>
+<p><code>exitsyscall</code> 方法表示系统调用结束，<code>goroutine</code> 重新进入调度流程。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">exitsyscall</span>() {
+    <span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">exitsyscallfast</span>(oldp) {
+		<span style="color:#999;font-style:italic">// exitsyscallfast 返回 true 
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明存在空闲的处理器可以运行 goroutine
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> sched.disable.user &amp;&amp; !<span style="color:#447fcf">schedEnabled</span>(_g_) {
+            <span style="color:#999;font-style:italic">// 执行调度
+</span><span style="color:#999;font-style:italic"></span>            <span style="color:#447fcf">Gosched</span>()
+        }
+		<span style="color:#6ab825;font-weight:bold">return</span>
+    }
+    
+    <span style="color:#999;font-style:italic">// 执行调度
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#447fcf">mcall</span>(exitsyscall0)
+	
+	...
+}
+</code></pre></div><h3 id="gosched-方法">Gosched 方法</h3>
+<p><code>Gosched</code> 方法会主动让出处理器给其他 <code>goroutine</code> 运行，它不会挂起当前的 <code>goroutine</code>, 因此当前的 <code>goroutine</code> 可能会调度到其他处理器上运行。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Gosched</span>() {
+	<span style="color:#999;font-style:italic">// 汇编实现
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 最后依然会跳转到 schedule 方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">mcall</span>(gosched_m)
+}
+</code></pre></div><h3 id="gosched_m-方法">gosched_m 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">gosched_m</span>(gp *g) {
+	<span style="color:#447fcf">goschedImpl</span>(gp)
+}
+</code></pre></div><h3 id="goschedimpl-方法">goschedImpl 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">goschedImpl</span>(gp *g) {
+    <span style="color:#999;font-style:italic">// 再次触发调度
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">schedule</span>()  
+}
+</code></pre></div><h3 id="系统调用流程图">系统调用流程图</h3>
+<p><img src="https://dbwu.tech/images/entersyscall.png" alt="系统调用流程图"></p>
+<h2 id="线程管理相关方法">线程管理相关方法</h2>
+<h3 id="lockosthread-方法">LockOSThread 方法</h3>
+<p><code>LockOSThread</code> 方法将 <code>goroutine</code> 绑定到当前操作系统线程，绑定之后，<code>goroutine</code> 将一直在该线程上运行 (这是一个相对底层的运行 API, 一般业务开发用不到)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">LockOSThread</span>() {
+	<span style="color:#447fcf">dolockOSThread</span>()
+}
+</code></pre></div><h3 id="dolockosthread-方法">dolockOSThread 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">dolockOSThread</span>() {
+	...
+}
+</code></pre></div><h3 id="unlockosthread-方法">UnlockOSThread 方法</h3>
+<p><code>UnlockOSThread</code> 方法是 <code>LockOSThread</code> 方法的逆方法 (解除线程和 <code>goroutine</code> 绑定关系)。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">UnlockOSThread</span>() {
+	<span style="color:#447fcf">dounlockOSThread</span>()
+}
+</code></pre></div><h3 id="dounlockosthread-方法">dounlockOSThread 方法</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">dounlockOSThread</span>() {
+	...
+}
+</code></pre></div><h2 id="主线程">主线程</h2>
+<p><strong>主线程只能在 <code>runtime.m0</code> 线程上面运行，全局只有一个实例</strong>。</p>
+<h3 id="main">main</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+	g := <span style="color:#447fcf">getg</span>()
+	
+	<span style="color:#6ab825;font-weight:bold">if</span> goarch.PtrSize == <span style="color:#3677a9">8</span> {
+		<span style="color:#999;font-style:italic">// 64 位最大栈内存 ≈ 1GB
+</span><span style="color:#999;font-style:italic"></span>		maxstacksize = <span style="color:#3677a9">1000000000</span>
+	} <span style="color:#6ab825;font-weight:bold">else</span> {
+        <span style="color:#999;font-style:italic">// 32 位最大栈内存 ≈ 250MB
+</span><span style="color:#999;font-style:italic"></span>		maxstacksize = <span style="color:#3677a9">250000000</span>
+	}
+
+	<span style="color:#999;font-style:italic">// 最大堆栈内存
+</span><span style="color:#999;font-style:italic"></span>	maxstackceiling = <span style="color:#3677a9">2</span> * maxstacksize
+	
+	<span style="color:#999;font-style:italic">// 允许 newproc 方法启动新的线程
+</span><span style="color:#999;font-style:italic"></span>	mainStarted = <span style="color:#6ab825;font-weight:bold">true</span>
+
+	<span style="color:#6ab825;font-weight:bold">if</span> GOARCH != <span style="color:#ed9d13">&#34;wasm&#34;</span> { 
+		<span style="color:#999;font-style:italic">// 启动监控线程
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">systemstack</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+			<span style="color:#447fcf">newm</span>(sysmon, <span style="color:#6ab825;font-weight:bold">nil</span>, -<span style="color:#3677a9">1</span>)
+		})
+	}
+	
+    ...
+	
+	fn := main_main
+	<span style="color:#447fcf">fn</span>()
+
+    ...
+
+	<span style="color:#447fcf">exit</span>(<span style="color:#3677a9">0</span>)
+}
+</code></pre></div><h3 id="主线程流程图">主线程流程图</h3>
+<p><img src="https://dbwu.tech/images/runtime_main.png" alt="主线程流程图"></p>
+<h2 id="监控线程">监控线程</h2>
+<p><strong><code>监控线程</code> 运行时不需要处理器 (因为其在独立的线程上运行, 和主线程 <code>m0</code> 一样，全局只有一个实例)</strong>。</p>
+<h3 id="sysmon-方法">sysmon 方法</h3>
+<p><code>sysmon</code> 方法的内部实现是一个无限循环，可以等价于一个后台守护进程，<strong>执行任务 -&gt; 休眠 -&gt; 执行任务</strong> 循环往复。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysmon</span>() {
+    <span style="color:#999;font-style:italic">// 死锁检测
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">checkdead</span>() 
+
+	lasttrace := <span style="color:#24909d">int64</span>(<span style="color:#3677a9">0</span>)
+    <span style="color:#999;font-style:italic">// 没有唤醒任意 goroutine 的连续周期
+</span><span style="color:#999;font-style:italic"></span>	idle := <span style="color:#3677a9">0</span>
+	<span style="color:#999;font-style:italic">// 休眠时间
+</span><span style="color:#999;font-style:italic"></span>	delay := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">0</span>)  
+
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#6ab825;font-weight:bold">if</span> idle == <span style="color:#3677a9">0</span> {
+            <span style="color:#999;font-style:italic">// 初始休眠时间 20us
+</span><span style="color:#999;font-style:italic"></span>			delay = <span style="color:#3677a9">20</span>
+		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> idle &gt; <span style="color:#3677a9">50</span> {
+            <span style="color:#999;font-style:italic">// 1ms 之后, 休眠时间翻倍 (循环执行了 50 次并且每次都没有唤醒的 goroutine)
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明基本没有可以运行的任务
+</span><span style="color:#999;font-style:italic"></span>			delay *= <span style="color:#3677a9">2</span>
+		}
+		<span style="color:#6ab825;font-weight:bold">if</span> delay &gt; <span style="color:#3677a9">10</span>*<span style="color:#3677a9">1000</span> {
+            <span style="color:#999;font-style:italic">// 最大休眠时间 10ms
+</span><span style="color:#999;font-style:italic"></span>			delay = <span style="color:#3677a9">10</span> * <span style="color:#3677a9">1000</span>
+		}
+        <span style="color:#999;font-style:italic">// 调用 usleep 函数休眠
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">usleep</span>(delay)   
+		
+		<span style="color:#999;font-style:italic">// 运行计时器
+</span><span style="color:#999;font-style:italic"></span>		now := <span style="color:#447fcf">nanotime</span>()
+		<span style="color:#6ab825;font-weight:bold">if</span> debug.schedtrace &lt;= <span style="color:#3677a9">0</span> &amp;&amp; (sched.gcwaiting != <span style="color:#3677a9">0</span> || atomic.<span style="color:#447fcf">Load</span>(&amp;sched.npidle) == <span style="color:#24909d">uint32</span>(gomaxprocs)) {
+			
+			<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">Load</span>(&amp;sched.gcwaiting) != <span style="color:#3677a9">0</span> || atomic.<span style="color:#447fcf">Load</span>(&amp;sched.npidle) == <span style="color:#24909d">uint32</span>(gomaxprocs) {
+				syscallWake := <span style="color:#6ab825;font-weight:bold">false</span>
+				next, _ := <span style="color:#447fcf">timeSleepUntil</span>()
+				<span style="color:#6ab825;font-weight:bold">if</span> next &gt; now {
+					<span style="color:#999;font-style:italic">// 如果存在需要被唤醒的计时器
+</span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 保证唤醒周期足够短，提高抽样正确率
+</span><span style="color:#999;font-style:italic"></span>					...
+				}
+				
+				<span style="color:#6ab825;font-weight:bold">if</span> syscallWake {
+					<span style="color:#999;font-style:italic">// 被唤醒之后
+</span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 更新唤醒连续周期和休眠时间
+</span><span style="color:#999;font-style:italic"></span>					idle = <span style="color:#3677a9">0</span>
+					delay = <span style="color:#3677a9">20</span>
+				}
+			}
+		}
+
+		
+		<span style="color:#999;font-style:italic">// 更新 now 变量时间
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 避免上面的 &#34;计时器部分&#34; 代码执行了过长时间，影响时间精度 
+</span><span style="color:#999;font-style:italic"></span>		now = <span style="color:#447fcf">nanotime</span>()
+		
+		<span style="color:#999;font-style:italic">// 如果距离最后一次网络轮询时间已超过 10ms, 执行一次网络循环操作
+</span><span style="color:#999;font-style:italic"></span>		lastpoll := <span style="color:#24909d">int64</span>(atomic.<span style="color:#447fcf">Load64</span>(&amp;sched.lastpoll))
+		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">netpollinited</span>() &amp;&amp; lastpoll != <span style="color:#3677a9">0</span> &amp;&amp; lastpoll+<span style="color:#3677a9">10</span>*<span style="color:#3677a9">1000</span>*<span style="color:#3677a9">1000</span> &lt; now {
+			atomic.<span style="color:#447fcf">Cas64</span>(&amp;sched.lastpoll, <span style="color:#24909d">uint64</span>(lastpoll), <span style="color:#24909d">uint64</span>(now))
+			<span style="color:#999;font-style:italic">// 非阻塞模式 - 返回一个 goroutine 队列
+</span><span style="color:#999;font-style:italic"></span>			list := <span style="color:#447fcf">netpoll</span>(<span style="color:#3677a9">0</span>) 
+			<span style="color:#6ab825;font-weight:bold">if</span> !list.<span style="color:#447fcf">empty</span>() {
+				<span style="color:#999;font-style:italic">// 如果网络轮询返回的队列不为空，
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 说明存在需要处理的网络 IO 操作
+</span><span style="color:#999;font-style:italic"></span>				
+				<span style="color:#999;font-style:italic">// 将 goroutine 放入队列之前
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 需要减少空闲锁定的 M 数量 (模拟还有 1 个 M 在运行)
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 这样可以避免下述情况发生:
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//     injectglist() 方法获取了所有的处理器 P
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//     但在它开始运行 M 之前
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//     另一个 M 从系统调用返回，发现没有处于等待状态的 goroutine, 也没有其他 M 在运行，误报死锁...
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#447fcf">incidlelocked</span>(-<span style="color:#3677a9">1</span>)
+				<span style="color:#999;font-style:italic">// 将 goroutine 放入队列
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#447fcf">injectglist</span>(&amp;list)  
+				<span style="color:#447fcf">incidlelocked</span>(<span style="color:#3677a9">1</span>)
+			}
+		}
+		
+		<span style="color:#999;font-style:italic">// 接收阻塞在系统调用上面的 goroutine
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 抢占长时间运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">retake</span>(now) != <span style="color:#3677a9">0</span> {
+			idle = <span style="color:#3677a9">0</span>
+		} <span style="color:#6ab825;font-weight:bold">else</span> {
+			idle++
+		}
+	
+		<span style="color:#999;font-style:italic">// 检测是否需要强制 GC
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> t := (gcTrigger{kind: gcTriggerTime, now: now}); t.<span style="color:#447fcf">test</span>() &amp;&amp; atomic.<span style="color:#447fcf">Load</span>(&amp;forcegc.idle) != <span style="color:#3677a9">0</span> {
+            <span style="color:#999;font-style:italic">// 将执行 GC 操作的 goroutine 放入队列
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">injectglist</span>(&amp;list)  
+		}
+		
+        ...
+	}
+}
+</code></pre></div><h3 id="checkdead-方法">checkdead 方法</h3>
+<p><code>checkdead</code> 方法用于死锁检测，<strong>检测方法基于正在运行的线程数量，如果为 0, 说明发生了死锁</strong>，该方法没有返回值，检测到死锁之后，直接报错。</p>
+<blockquote>
+<p>运行线程数量 = 系统线程总数量 - 空闲线程数量 - 锁定线程数量 - 系统调用线程数量</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">checkdead</span>() {
+	<span style="color:#6ab825;font-weight:bold">var</span> run0 <span style="color:#6ab825;font-weight:bold">int32</span>
+	<span style="color:#999;font-style:italic">// 获取运行线程的数量
+</span><span style="color:#999;font-style:italic"></span>	run := <span style="color:#447fcf">mcount</span>() - sched.nmidle - sched.nmidlelocked - sched.nmsys
+	<span style="color:#6ab825;font-weight:bold">if</span> run &gt; run0 {
+		<span style="color:#999;font-style:italic">// 运行线程数量大于 0, 说明不存在死锁
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+	<span style="color:#6ab825;font-weight:bold">if</span> run &lt; <span style="color:#3677a9">0</span> {
+        <span style="color:#999;font-style:italic">// 运行线程数量 &lt; 0, 报错
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">print</span>(...)
+		<span style="color:#447fcf">throw</span>(...)
+	}
+
+	<span style="color:#999;font-style:italic">// 运行线程数量等于 0 的情况下，继续检查
+</span><span style="color:#999;font-style:italic"></span>	grunning := <span style="color:#3677a9">0</span>
+	<span style="color:#447fcf">forEachG</span>(<span style="color:#6ab825;font-weight:bold">func</span>(gp *g) {
+		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isSystemGoroutine</span>(gp, <span style="color:#6ab825;font-weight:bold">false</span>) {
+			<span style="color:#999;font-style:italic">// 如果是 main goroutine 调用, 直接返回
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span>
+		}
+		
+		s := <span style="color:#447fcf">readgstatus</span>(gp)
+		<span style="color:#6ab825;font-weight:bold">switch</span> s &amp;^ _Gscan {
+		<span style="color:#999;font-style:italic">// 运行线程数量等于 0 
+</span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 并且有 goroutine 状态处于 _Gwaiting 或 _Gpreempted 时
+</span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// grunning 计数器 + 1
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> _Gwaiting,
+			_Gpreempted:
+			grunning++
+			
+        <span style="color:#999;font-style:italic">// 运行线程数量等于 0 
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 并且有 goroutine 状态处于 [_Grunnable, _Grunning, _Gsyscall] 集合
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明存在死锁，直接报错
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> _Grunnable,
+			_Grunning,
+			_Gsyscall:
+            <span style="color:#24909d">print</span>(...)
+            <span style="color:#447fcf">throw</span>(...)
+		}
+	})
+	
+	<span style="color:#999;font-style:italic">// grunning 计数器等于 0 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 当所有的 goroutine 状态都处于 [_Grunnable, _Grunning, _Gsyscall] 集合
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明 main goroutine 调用了 runtime.Goexit() 方法
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> grunning == <span style="color:#3677a9">0</span> {
+        ...
+	}
+
+	<span style="color:#999;font-style:italic">// grunning 计数器不等于 0 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明存在等待的 goroutine, 但是不存在运行的 goroutine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 检查所有处理器 (全局变量 allgs) 的计时器
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, _p_ := <span style="color:#6ab825;font-weight:bold">range</span> allp {
+		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(_p_.timers) &gt; <span style="color:#3677a9">0</span> {
+			<span style="color:#999;font-style:italic">// 如果任一处理器的计时器时间大于 0, 直接退出
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span>
+		}
+	}
+	
+	<span style="color:#999;font-style:italic">// 如果所有处理器都没有等待的计时器，说明存在死锁，直接报错
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;all goroutines are asleep - deadlock!&#34;</span>)
+}
+</code></pre></div><h3 id="mcount-方法">mcount 方法</h3>
+<p><code>mcount</code> 方法用于获取 <strong>操作系统线程</strong> 总数量。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mcount</span>() <span style="color:#6ab825;font-weight:bold">int32</span> {
+	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">int32</span>(sched.mnext - sched.nmfreed)
+}
+</code></pre></div><h3 id="foreachg-方法">forEachG 方法</h3>
+<p><code>forEachG</code> 方法对所有的 <code>goroutine</code> (全局变量 allgs) 执行回调方法。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">forEachG</span>(fn <span style="color:#6ab825;font-weight:bold">func</span>(gp *g)) {
+	<span style="color:#6ab825;font-weight:bold">for</span> _, gp := <span style="color:#6ab825;font-weight:bold">range</span> allgs {
+		<span style="color:#447fcf">fn</span>(gp)
+	}
+}
+</code></pre></div><h3 id="injectglist-方法">injectglist 方法</h3>
+<p><code>injectglist</code> 方法将参数队列中的所有 <code>goroutine</code> 加入到队列中，具体的处理逻辑如下:</p>
+<ul>
+<li>如果当前的 <code>goroutine</code> 没有绑定处理器 <code>P</code> (那么显然是主线程或监控线程)，将参数队列中的所有 <code>goroutine</code> 加入到全局队列，并启动空闲的线程来运行 <code>goroutine</code></li>
+<li>否则，向全局队列添加 <code>N</code> 个 <code>goroutine</code> (N 等于空闲的处理器 P 数量)，剩下的 <code>goroutine</code> 添加到当前处理器 <code>P</code> 的队列中</li>
+</ul>
+<blockquote>
+<p>所以分配 <code>goroutine</code> 到运行队列时，并不是 “雨露均沾”，而是优先将大多数分配到本地处理器 P, 通过数据局部性质 (data locality) 来提升性能。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">injectglist</span>(glist *gList) {
+	<span style="color:#999;font-style:italic">// 将参数队列中的所有 goroutine 状态从等待改为可运行
+</span><span style="color:#999;font-style:italic"></span>	head := glist.head.<span style="color:#447fcf">ptr</span>()
+	<span style="color:#6ab825;font-weight:bold">for</span> gp := head; gp != <span style="color:#6ab825;font-weight:bold">nil</span>; gp = gp.schedlink.<span style="color:#447fcf">ptr</span>() {
+		<span style="color:#447fcf">casgstatus</span>(gp, _Gwaiting, _Grunnable)
+	}
+
+	<span style="color:#999;font-style:italic">// 将参数队列中的所有 goroutine 数据结构改为链表
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> q gQueue
+	q.head.<span style="color:#447fcf">set</span>(head)
+	q.tail.<span style="color:#447fcf">set</span>(tail)
+	*glist = gList{}
+
+	<span style="color:#999;font-style:italic">// 启动空闲的线程来运行 goroutine
+</span><span style="color:#999;font-style:italic"></span>	startIdle := <span style="color:#6ab825;font-weight:bold">func</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) {
+		<span style="color:#6ab825;font-weight:bold">for</span> ; n != <span style="color:#3677a9">0</span> &amp;&amp; sched.npidle != <span style="color:#3677a9">0</span>; n-- {
+			<span style="color:#447fcf">startm</span>(<span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
+		}
+	}
+
+	pp := <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>()
+	<span style="color:#6ab825;font-weight:bold">if</span> pp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 当前 goroutine 没有绑定处理器
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将所有 goroutine 放入全局队列，然后返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">globrunqputbatch</span>(&amp;q, <span style="color:#24909d">int32</span>(qsize))
+		<span style="color:#447fcf">startIdle</span>(qsize)
+		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+
+	<span style="color:#999;font-style:italic">// 向全局队列添加 N 个 goroutine (N 等于空闲的处理器 P 数量)
+</span><span style="color:#999;font-style:italic"></span>	npidle := <span style="color:#24909d">int</span>(atomic.<span style="color:#447fcf">Load</span>(&amp;sched.npidle))
+	<span style="color:#6ab825;font-weight:bold">var</span> globq gQueue
+	<span style="color:#6ab825;font-weight:bold">var</span> n <span style="color:#6ab825;font-weight:bold">int</span>
+	<span style="color:#6ab825;font-weight:bold">for</span> n = <span style="color:#3677a9">0</span>; n &lt; npidle &amp;&amp; !q.<span style="color:#447fcf">empty</span>(); n++ {
+		g := q.<span style="color:#447fcf">pop</span>()
+		globq.<span style="color:#447fcf">pushBack</span>(g)
+	}
+	<span style="color:#6ab825;font-weight:bold">if</span> n &gt; <span style="color:#3677a9">0</span> {
+		<span style="color:#447fcf">globrunqputbatch</span>(&amp;globq, <span style="color:#24909d">int32</span>(n))
+	}
+	
+    <span style="color:#999;font-style:italic">// 将剩下的 goroutine 添加到当前处理器 P 的运行队列中
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !q.<span style="color:#447fcf">empty</span>() {
+		<span style="color:#447fcf">runqputbatch</span>(pp, &amp;q, qsize)
+	}
+}
+</code></pre></div><h3 id="retake-方法">retake 方法</h3>
+<p><code>retake</code> 方法用于抢占处理器，主要有两种抢占方式:</p>
+<ol>
+<li>当处理器处于 <code>运行</code> 或 <code>系统调用</code> 状态时，如果当前时间距离最后一次调度时间超过 <code>10ms</code>, 抢占当前处理器</li>
+<li>当处理器处于 <code>_系统调用</code> 状态时，如果等待的过程中经历了一轮调度，抢占当前处理器</li>
+</ol>
+<p>方法的内部实现中有个细节需要注意: <strong>不能使用 <code>range</code> 遍历 <code>allp</code>, 因为在整个遍历过程中，可能会有解锁再次加锁的情况 (也就意味着 allp 会发生变化)，
+所以在循环的 &ldquo;条件判断表达式&rdquo; 部分，每次需要重新获取 allp 的长度</strong>。这里涉及到一个基础知识点:</p>
+<blockquote>
+<p>for 遍历和 for + range 遍历计算长度的方式不一样。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// goroutine 运行多长时间会被抢占
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> forcePreemptNS = <span style="color:#3677a9">10</span> * <span style="color:#3677a9">1000</span> * <span style="color:#3677a9">1000</span> <span style="color:#999;font-style:italic">// 10ms
+</span><span style="color:#999;font-style:italic"></span>
+<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">retake</span>(now <span style="color:#6ab825;font-weight:bold">int64</span>) <span style="color:#6ab825;font-weight:bold">uint32</span> {
+	n := <span style="color:#3677a9">0</span>
+	
+	<span style="color:#999;font-style:italic">// 加锁全局处理器切片, 防止数据竞态产生的问题
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">lock</span>(&amp;allpLock)
+	
+	<span style="color:#999;font-style:italic">// 使用 for 遍历 allp
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">len</span>(allp); i++ {
+		_p_ := allp[i]
+		<span style="color:#6ab825;font-weight:bold">if</span> _p_ == <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#999;font-style:italic">// 如果 procresize 方法扩容了 allp 切片
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 但是没有创建新的 P, 则跳过
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+		}
+        s := _p_.status
+
+		<span style="color:#999;font-style:italic">// 抢占逻辑 - 1
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> s == _Prunning || s == _Psyscall {
+			t := <span style="color:#24909d">int64</span>(_p_.schedtick)
+			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">int64</span>(pd.schedtick) != t {
+				...
+			} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> pd.schedwhen+forcePreemptNS &lt;= now {
+				<span style="color:#999;font-style:italic">// 如果距离最后一次调度超过 10ms, 抢占处理器
+</span><span style="color:#999;font-style:italic"></span>				<span style="color:#447fcf">preemptone</span>(_p_)
+			}
+		}
+
+        <span style="color:#999;font-style:italic">// 抢占逻辑 - 2
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> s == _Psyscall {
+			t := <span style="color:#24909d">int64</span>(_p_.syscalltick)
+			<span style="color:#999;font-style:italic">// 等待的过程中经历了一轮调度
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !sysretake &amp;&amp; <span style="color:#24909d">int64</span>(pd.syscalltick) != t {
+				...
+			}
+			<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">Cas</span>(&amp;_p_.status, s, _Pidle) {
+				<span style="color:#447fcf">handoffp</span>(_p_)
+			}
+		}
+	}
+	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">uint32</span>(n)
+}
+</code></pre></div><h3 id="监控线程流程图">监控线程流程图</h3>
+<p><img src="https://dbwu.tech/images/sysmon.png" alt="监控线程流程图"></p>
+<h2 id="faq">FAQ</h2>
+<h3 id="每个-p-可以存放多少个-goroutine-">每个 P 可以存放多少个 goroutine ？</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> p <span style="color:#6ab825;font-weight:bold">struct</span> {
+	<span style="color:#999;font-style:italic">// goroutine 队列
+</span><span style="color:#999;font-style:italic"></span>    runq    [<span style="color:#3677a9">256</span>]guintptr
+    <span style="color:#999;font-style:italic">// 拥有最高优先级的 goroutine
+</span><span style="color:#999;font-style:italic"></span>    runnext guintptr
+}
+</code></pre></div><p>通过源码可以看到，每个 <code>P</code> 一共可以放 257 个 <code>goroutine</code>。</p>
+<h3 id="p-存在的好处是什么">P 存在的好处是什么？</h3>
+<p>直观上看，有了 <code>G</code> 表示的 goroutine (具体的任务)，<code>M</code> 表示的线程 (具体的执行单位)，那么只需要让两者进行关联绑定，<code>M</code> 不断执行其队列中 <code>G</code> 即可，
+为什么要加入一个中间层 <code>P</code> 呢？<strong>最核心的问题依然是性能</strong>。</p>
+<p><img src="https://dbwu.tech/images/gmp_lacking_p.png" alt="没有 P 导致的问题"></p>
+<p><strong>假设现在没有中间层 <code>P</code></strong>, 将会遇到如下问题:</p>
+<ol>
+<li>IO 操作阻塞: 当 <code>M</code> 陷入 IO 调用时 (如网络、文件、数据库等) 会阻塞等待，浪费 CPU 资源</li>
+<li>系统调用操作阻塞: 当 <code>M</code> 陷入系统调用时会阻塞等待，浪费 CPU 资源</li>
+<li>M 队列负载不均衡: 每个 <code>M</code> 中 <code>G</code> 的数量以及执行时常可能出现很大的差异: 例如有的 <code>M</code> 中有很多 <code>G</code> 等待运行，有的 <code>M</code> 则完全没有 <code>G</code> 而处于空转状态，浪费 CPU 资源</li>
+<li>数据局部性问题: <code>G</code> 被切换到其他 <code>M</code> 执行时，当前 <code>M</code> 缓存数据失效</li>
+<li>G 的关联问题: 每个 <code>G</code> 在关联 <code>M</code> 时会引起锁争用，如果要在这一步实现均衡分配，会增加底层和应用层代码的复杂度 (例如根据 G 的任务类型或各个 M 中的 G 数量，选择合理的 M 进行关联)</li>
+<li>全局锁问题: 每个 <code>G</code> 的相关操作和调度都需要加全局锁</li>
+</ol>
+<p><strong>有了中间层 <code>P</code> 之后</strong>，上面的几个问题可以得到有效解决:</p>
+<ol>
+<li>IO 操作阻塞: 挂起当前 <code>M</code>，取消关联的 <code>P</code>，此时 <code>P</code> 可以重新选择一个 <code>M</code> 运行</li>
+<li>系统调用操作阻塞: 挂起当前 <code>M</code>，取消关联的 <code>P</code>，此时 <code>P</code> 可以重新选择一个 <code>M</code> 运行</li>
+<li>M 队列负载不均衡: 通过 <code>全局队列 + 窃取机制</code> 解决</li>
+<li>数据局部性问题: 使用 <code>P</code> 来调度 <code>G</code> 并缓存 <code>G</code> 的数据，<code>M</code> 只负责具体的执行工作</li>
+<li>G 的关联问题: <code>G</code> 优先放入绑定的本地 <code>P</code> 队列, 其次放入全局队列，最小化锁争用</li>
+<li>全局锁问题: <code>G</code> 优先放入绑定的本地 <code>P</code> 队列, 其次放入全局队列，最小化锁争用</li>
+</ol>
+<h2 id="小结-2">小结</h2>
+<p><img src="https://dbwu.tech/images/GMP_2.png" alt="GMP 调度概览图"></p>
+<p>本文主要对 <code>GMP</code> 调度中涉及到的五个部分做了代码分析:</p>
+<ul>
+<li>goroutine 休眠与唤醒</li>
+<li>系统调用</li>
+<li>线程管理</li>
+<li>主线程</li>
+<li>监控线程</li>
+</ul>
+<p>写到这里，长达一万五千多字的 <code>GMP</code> 调度器代码分析就结束了。</p>
+<p>我们分别从 <code>数据结构</code>、<code>调度算法</code>、<code>线程</code> 三个部分来分析 <code>GMP</code> 调度器的设计与实现，相对于整个 <code>GMP 调度模型</code> 来说，这还远远不够。
+例如具体的底层调用机制、系统中断及上下文切换机制、具体功能的汇编实现等等，本文没有进行深入的分析，主要因为这是一个庞大的网状知识体系结构，
+短短三篇文章难以全面覆盖，同时笔者也确实没有足够的时间把细节逐一完善。</p>
+<p>希望这篇文章可以抛砖引玉，吸引感兴趣的读者进行更深入的探索，做出更高质量的成果分享。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-goroutine/">Go 设计与实现</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://www.yuque.com/aceld/golang/srxd6d#5c3da99e">Go调度器调度场景过程全解析</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_context/"><i class="fa fa-chevron-circle-left"></i> context.Context Code Review</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_timer/">time/Timer Code Review <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="GMP Scheduler Code Review"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
