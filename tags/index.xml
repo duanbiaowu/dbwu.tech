@@ -6,10 +6,28 @@
    <description>Recent content in 标签 on 蛮荆</description>
    <generator>Hugo -- gohugo.io</generator>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Sat, 10 Jun 2023 00:00:00 +0800</lastBuildDate>
+   <lastBuildDate>Tue, 13 Jun 2023 00:00:00 +0800</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Go 内存管理概述</title>
+       <link>https://dbwu.tech/posts/golang_memory/</link>
+       <pubDate>Tue, 13 Jun 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_memory/</guid>
+       <description>Go 语言的底层内存分配实现方案参考了 TCMalloc, 通过多级缓存机制、 内存对象大小分类来完成不同的分配策略以提升性能。</description>
+     </item>
+   
+     <item>
+       <title>goroutine 泄漏与检测</title>
+       <link>https://dbwu.tech/posts/golang_goroutine_leak/</link>
+       <pubDate>Sun, 11 Jun 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_goroutine_leak/</guid>
+       <description>Go 语言内置 GC，因此一般不会内存泄漏，但是 goroutine 可能会发生泄漏，泄漏的 goroutine 引用的内存同样无法被 GC 正常回收 &amp;hellip;</description>
+     </item>
    
      <item>
        <title>time/Timer Code Review</title>
