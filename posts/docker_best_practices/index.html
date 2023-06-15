@@ -1,0 +1,643 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Docker 官方提供的最佳实践 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Docker 官方提供的最佳实践" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/docker_best_practices/" />
+<meta property="article:published_time" content="2023-03-29T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-03-29T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Docker 官方提供的最佳实践"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Docker 官方提供的最佳实践</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/dockre">Dockre</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E4%BA%91%E5%8E%9F%E7%94%9F">云原生</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h1 id="前言">前言</h1>
+<blockquote>
+<p>文章有点长，如果是碎片化阅读，建议逐个阅读小标题，对优化有个基本印象即可。</p>
+</blockquote>
+<h1 id="docker-开发最佳实践">Docker 开发最佳实践</h1>
+<p>下面是官方总结的使用 Docker 的工程实践。</p>
+<h2 id="如何保持小的镜像体积">如何保持小的镜像体积</h2>
+<p>启动容器或服务时，体积小的镜像可以更快地通过网络拉取并更快地加载到内存中，下面是一些使用经验：</p>
+<ul>
+<li><strong>从合适的基础镜像开始</strong>。例如，如果需要 JDK，请考虑使用官方 openjdk 镜像，而不是从通用的 ubuntu 镜像开始并使用 Dockerfile 构建 openjdk</li>
+<li><strong>使用多阶段构建</strong>。例如，可以使用 maven 镜像构建 Java 应用程序，然后重置为 tomcat 镜像，并将 Java 项目复制到正确的位置以完成部署，所有这些操作都在同一个 Dockerfile 中
+这意味着最终的镜像不包含构建引入的所有库和依赖项，而只包含运行它们所需的工件和环境</li>
+<li>如果需要使用不包含多阶段构建的 Docker 版本，请尝试通过 <strong>最小化 Dockerfile 中单独的 RUN 命令的数量来减少镜像中的层数</strong>
+可以通过将多个命令合并到单个 RUN 行并使用 shell 的机制将它们组合在一起来实现。如下两种命令形式，第一种在镜像中创建两个层，而第二种只创建一个层</li>
+</ul>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 创建两个层</span>
+RUN apt-get -y update
+RUN apt-get install -y python    
+</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 创建一个层</span>
+RUN apt-get -y update &amp;&amp; apt-get install -y python
+</code></pre></div><ul>
+<li>如果有多个具有共同点的镜像，请考虑 <strong>使用共享组件创建基础镜像，并以此为基础创建其他的镜像</strong>。 Docker 只需要加载一次公共镜像层，因为它们会被缓存</li>
+<li><strong>保持生产镜像精简但允许调试</strong>，请考虑使用生产镜像作为调试镜像的基础镜像，可以在生产镜像之上添加额外的测试或调试工具</li>
+<li><strong>构建镜像时，始终使用有意义的标签来标记它们</strong>，这些标签将版本信息、预期目标（例如生产或测试）、稳定性或在不同环境中部署应用程序时有用的其他信息进行编码</li>
+</ul>
+<h2 id="如何保存应用数据">如何保存应用数据</h2>
+<ul>
+<li>避免使用存储驱动程序将应用程序数据存储在容器的可写层中，这会增加容器的大小，并且从 I/O 的角度来看，效率低于使用卷或绑定挂载</li>
+<li>一种适合使用绑定挂载的情况是在开发期间，当想要挂载源目录或刚刚构建到容器中的二进制文件时</li>
+<li>生产环境使用卷存储数据</li>
+<li>生产环境使用 secrets 存储服务使用的敏感应用程序数据，使用 configs 存储配置文件等非敏感数据</li>
+</ul>
+<h2 id="使用-cicd-进行测试和部署">使用 CI/CD 进行测试和部署</h2>
+<ul>
+<li>当对源代码进行更改或创建拉取请求时，使用 Docker Hub 或其他 CI/CD 管道自动构建和标记 Docker 镜像并对其进行测试</li>
+<li>通过要求开发、测试和安全团队: 在将镜像部署到生产环境之前对镜像进行签名，这样，镜像部署到生产环境之前，已经过开发、测试和安全团队的测试验证</li>
+</ul>
+<h2 id="开发环境和生产环境的区别">开发环境和生产环境的区别</h2>
+<table>
+<thead>
+<tr>
+<th align="left">开发环境      </th>
+<th>生产环境</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">使用挂载点映射使容器可以访问源代码</td>
+<td>使用卷存储数据</td>
+</tr>
+<tr>
+<td align="left">使用 Docker Desktop</td>
+<td>使用 Docker 引擎，如果可能的话，使用用户映射来更好地隔离 Docker 进程与主机进程</td>
+</tr>
+<tr>
+<td align="left">不用担心时间时钟问题</td>
+<td>始终在 Docker 主机上和每个容器进程中运行 NTP 客户端，并将它们全部同步到同一 NTP 服务器。如果使用 swarm 服务，还要确保每个 Docker 节点将其时钟同步到与容器相同的时间源</td>
+</tr>
+</tbody>
+</table>
+<h1 id="编写-dockerfile-的最佳实践">编写 Dockerfile 的最佳实践</h1>
+<p>这个主题涵盖构建高效镜像的最佳实践。</p>
+<p><code>Docker</code> 通过从 <code>Dockerfile</code> 文件中读取指令来自动构建镜像，<code>Dockerfile</code> 遵循特定格式和指令集，可以在 <code>Dockerfile</code> 文档查询这些指令。</p>
+<p><code>Docker</code> 镜像由只读层组成，每个层代表一个 <code>Dockerfile</code> 指令，每一层都在上一层的基础上增加了变化的部分。</p>
+<p>示例 <code>Dockerfile</code> 文件:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+FROM ubuntu:18.04
+COPY . /app
+RUN make /app
+CMD python /app/app.py
+</code></pre></div><p>下面的指令都会创建一个新的层：</p>
+<ul>
+<li>FROM : 基于 <code>ubuntu:18.04</code> 镜像会创建一个新的层</li>
+<li>COPY : 从当前目录添加文件会创建一个新的层</li>
+<li>RUN  : 构建应用会创建一个新的层</li>
+<li>CMD  : 指定在容器内运行的命令会创建一个新的层</li>
+</ul>
+<h2 id="一般建议和准则">一般建议和准则</h2>
+<h3 id="创建临时容器">创建临时容器</h3>
+<p><code>Dockerfile</code> 定义的镜像生成的容器的，生命周期应该尽可能短暂，短暂意味着容器可以停止和销毁，然后用最快的速度更新配置并启动新的容器。</p>
+<h3 id="使用-dockerignore-文件">使用 .dockerignore 文件</h3>
+<p>如果要排除与构建无关的文件，而不是重构源存储库，请使用 <code>.dockerignore</code> 文件，此文件支持类似于 <code>.gitignore</code> 文件。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># comment</span>
+*/temp*
+*/*/temp*
+temp?
+</code></pre></div><h3 id="使用多阶段构建">使用多阶段构建</h3>
+<blockquote>
+<p>多阶段构建是删除构建依赖的首选方案。</p>
+</blockquote>
+<p><strong>多阶段构建可以大大减小最终镜像的体积，而无需减少中间层和文件的数量</strong>。</p>
+<p>由于镜像是在构建过程的最后阶段完成的，因此可以利用构建缓存来最小化镜像层。</p>
+<p>例如，如果构建包含多个层并且需要确保构建缓存可重用，可以将它们从更改频率较低的顺序排列到更改频率较高的顺序。</p>
+<ol>
+<li>安装构建应用程序所需的工具</li>
+<li>安装或更新库依赖项</li>
+<li>构建应用程序</li>
+</ol>
+<p>示例如下：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+FROM golang:1.16-alpine AS build
+
+<span style="color:#999;font-style:italic"># 安装构建应用程序所需的工具</span>
+<span style="color:#999;font-style:italic"># 运行 `docker build --no-cache .` 更新依赖</span>
+RUN apk add --no-cache git
+RUN go get github.com/golang/dep/cmd/dep
+
+<span style="color:#999;font-style:italic"># 使用 Gopkg.toml 和 Gopkg.lock 列出项目依赖项</span>
+<span style="color:#999;font-style:italic"># 这些层仅在更新 Gopkg 文件时重新构建</span> 
+COPY Gopkg.lock Gopkg.toml /go/src/project/
+WORKDIR /go/src/project/
+
+<span style="color:#999;font-style:italic"># 安装依赖库</span>
+RUN dep ensure -vendor-only
+
+<span style="color:#999;font-style:italic"># 拷贝项目文件并构建</span>
+<span style="color:#999;font-style:italic"># 当项目目录中的文件更改时重建该层</span>
+COPY . /go/src/project/
+RUN go build -o /bin/project
+
+<span style="color:#999;font-style:italic"># 结果位于单层镜像中</span>
+<span style="color:#999;font-style:italic"># scratch 表示一个空白的镜像</span>
+<span style="color:#999;font-style:italic"># 如果以 scratch 为基础镜像，意味着不以任何镜像为基础，接下来所写的指令将作为镜像第一层开始存在</span>
+FROM scratch
+COPY --from=build /bin/project /bin/project
+ENTRYPOINT [<span style="color:#ed9d13">&#34;/bin/project&#34;</span>]
+CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
+</code></pre></div><h4 id="其他示例">其他示例</h4>
+<p><img src="https://dbwu.tech/images/docker_best_practices_9.png" alt="Java 程序多阶段构建示例"></p>
+<h3 id="避免安装不必要的包">避免安装不必要的包</h3>
+<p>避免安装额外的或不必要的包，这样镜像将降低复杂性、减少依赖性、减小文件大小并缩短构建时间。</p>
+<p><img src="https://dbwu.tech/images/docker_best_practices_4.png" alt="删除不必要依赖"></p>
+<hr>
+<p><img src="https://dbwu.tech/images/docker_best_practices_5.png" alt="删除包管理工具的缓存"></p>
+<h3 id="解耦应用">解耦应用</h3>
+<p>一个容器中应该只运行一个进程，将多个应用解耦到不同容器中，保证了容器的横向扩展和复用。
+例如 Web 应用应该包含三个容器：Web 应用、数据库、缓存。</p>
+<p>如果容器相互依赖，可以使用 <code>Docker</code> 容器网络来保证容器之间可以通信。</p>
+<h3 id="尽量减少镜像层数">尽量减少镜像层数</h3>
+<p>只有指令 RUN、COPY、ADD 会创建新的层，其他指令创建临时中间镜像，并且不会增加镜像的体积。</p>
+<p>在可能的情况下，使用多阶段构建，并且只将需要的文件复制到最终镜像中。</p>
+<h3 id="最小化可缓存的执行层">最小化可缓存的执行层</h3>
+<p>每一个 RUN 指令都会被看作是可缓存的执行单元，太多的 RUN 指令会增加镜像的层数，增大镜像体积，而将所有的命令都放到同一个 RUN 指令中又会破坏缓存，从而延缓开发周期。</p>
+<p>当使用包管理器安装软件时，一般都会先更新软件索引信息，然后再安装软件。推荐将更新索引和安装软件放在同一个 RUN 指令中，这样可以形成一个可缓存的执行单元，否则可能会安装旧的软件包。</p>
+<p><img src="https://dbwu.tech/images/docker_best_practices_3.png" alt="最小化可缓存的执行层"></p>
+<h3 id="对多行参数进行排序">对多行参数进行排序</h3>
+<p>尽可能通过按字典顺序对多行参数进行排序来简化修改，同时有助于避免包重复并使列表更容易更新。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>  bzr <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>  cvs <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>  git <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>  mercurial <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>  subversion <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>  &amp;&amp; rm -rf /var/lib/apt/lists/*
+</code></pre></div><h3 id="利用构建缓存">利用构建缓存</h3>
+<p>构建镜像时，<code>Docker</code> 会逐行执行 <code>Dockerfile</code> 中的指令，并按照指定的顺序执行每条指令。
+在检查每条指令时，<code>Docker</code> 会在其缓存中查找可以重用的镜像，而不是创建新的镜像。</p>
+<p><strong>一旦缓存失效，所有后续的 <code>Dockerfile</code> 命令都会生成新镜像并且不会使用缓存，最佳实践是把不经常更改的行放到最前面，更改改动的行放到最后面。</strong>。</p>
+<p><img src="https://dbwu.tech/images/docker_best_practices_1.png" alt="构建顺序影响缓存的利用率"></p>
+<p>如果想禁用缓存，可以在 <code>docker build</code> 命令中使用 <code>--no-cache=true</code> 选项。如果确实需要让 <code>Docker</code> 使用其缓存， 就需要知道 <code>Docker</code> 的基本规则：</p>
+<ul>
+<li>从一个基础镜像开始（FROM 指令指定），下一条指令将和该基础镜像的所有子镜像进行匹配，检查这些子镜像被创建时使用的指令是否和被检查的指令完全一样。
+如果是的话，则可以使用缓存，如果不是，则缓存失效</li>
+<li>大多数情况下，只需要简单地对比 <code>Dockerfile</code> 中的指令和子镜像</li>
+<li>对于 ADD 和 COPY 指令，镜像中对应文件的内容也会被检查，每个文件都会计算出一个校验和。文件的最后修改时间和最后访问时间不会加入校验范围，
+在缓存的查找过程中，会将这些校验和和已存在镜像中的文件校验和进行对比。如果文件有任何改变，比如内容和元数据，则缓存失效。</li>
+<li>除了 ADD 和 COPY 指令，缓存匹配过程不会查看临时容器中的文件来决定缓存是否匹配。例如，当执行完 <code>RUN apt-get -y update</code> 指令后，
+容器中一些文件被更新，但 <code>Docker</code> 不会检查这些文件。这种情况下，只有指令字符串本身被用来匹配缓存。</li>
+</ul>
+<h3 id="只拷贝需要的文件防止缓存溢出">只拷贝需要的文件，防止缓存溢出</h3>
+<p><img src="https://dbwu.tech/images/docker_best_practices_2.png" alt="只拷贝 jar 包"></p>
+<p>当拷贝文件到镜像中时，尽量只拷贝需要的文件，切忌使用 <code>COPY .</code>  指令拷贝整个目录。如果被拷贝的文件内容发生了更改，缓存就会失效。
+在上面的示例中，镜像中只需要构建好的 jar 包，因此只需要拷贝这个文件就行了，这样即使其他不相关的文件发生了更改也不会影响缓存。</p>
+<h2 id="dockerfile-指令">Dockerfile 指令</h2>
+<p>这些建议有助于创建高效且可维护的 <code>Dockerfile</code>。</p>
+<h3 id="from">FROM</h3>
+<p>尽可能使用官方镜像作为基础镜像。<code>Docker</code> 推荐 <code>Alpine</code> 镜像，因为它受到严格控制且体积小（目前不到 6 MB），同时仍然是一个完整的 Linux 发行版。</p>
+<p><img src="https://dbwu.tech/images/docker_best_practices_7.png" alt="使用体积最小的基础镜像"></p>
+<p><strong>使用官方镜像可以节省大量的维护时间，因为官方镜像的所有安装步骤都使用了最佳实践</strong>。如果你有多个项目，可以共享这些镜像层，因为他们都可以使用相同的基础镜像。</p>
+<p>基础镜像的标签风格不同，镜像体积就会不同。slim 风格的镜像是基于 Debian 发行版制作的，而 alpine 风格的镜像是基于体积更小的 Alpine Linux 发行版制作的。
+其中一个明显的区别是：Debian 使用的是 GNU 项目所实现的 C 语言标准库，而 Alpine 使用的是 Musl C 标准库，它被设计用来替代 GNU C 标准库（glibc）的替代品，
+用于嵌入式操作系统和移动设备。因此使用 Alpine 在某些情况下会遇到兼容性问题。 以 openjdk 为例，jre 风格的镜像只包含 Java 运行时，不包含 SDK，这么做也可以大大减少镜像体积。</p>
+<h3 id="label">LABEL</h3>
+<p>可以给镜像添加标签来帮助组织、记录许可信息、辅助自动化构建等。每个标签一行，由 LABEL 开头，后面跟随一个或多个标签对。</p>
+<p><img src="https://dbwu.tech/images/docker_best_practices_8.png" alt="使用更具体的标签"></p>
+<p>基础镜像尽量不要使用 <code>latest</code> 标签。虽然这很方便，但随着时间的推移，latest 镜像可能会发生重大变化。因此在 Dockerfile 中最好指定基础镜像的具体标签。</p>
+<blockquote>
+<p>注意：如果你的字符串中包含空格，必须将字符串放入引号中或者对空格使用转义。如果字符串内容本身就包含引号，必须对引号使用转义。</p>
+</blockquote>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># Set one or more individual labels</span>
+LABEL com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span>
+LABEL <span style="color:#40ffff">vendor1</span>=<span style="color:#ed9d13">&#34;ACME Incorporated&#34;</span>
+LABEL <span style="color:#40ffff">vendor2</span>=ZENITH<span style="color:#ed9d13">\ </span>Incorporated
+LABEL com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
+LABEL com.example.version.is-production=<span style="color:#ed9d13">&#34;&#34;</span>
+</code></pre></div><p>一个镜像可以包含多个标签，但建议将多个标签放入到一个 LABEL 指令中。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># Set multiple labels on one line</span>
+LABEL com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span> com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
+</code></pre></div><p>也可以写成这样:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># Set multiple labels at once, using line-continuation characters to break long lines</span>
+LABEL <span style="color:#40ffff">vendor</span>=ACME<span style="color:#ed9d13">\ </span>Incorporated <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>      com.example.is-beta= <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>      com.example.is-production=<span style="color:#ed9d13">&#34;&#34;</span> <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>      com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span> <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>      com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
+</code></pre></div><h4 id="悬挂镜像">悬挂镜像</h4>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">&lt;none&gt;   &lt;none&gt;    00285df0df87   <span style="color:#3677a9">45</span> days ago   <span style="color:#3677a9">342</span> MB
+</code></pre></div><p>这个镜像原本是有镜像名和标签的，原来为 mongo:3.2，官方镜像发布了新版本后，重新 docker pull mongo:3.2 时，mongo:3.2 这个镜像名被转移到了新的镜像上面，
+而旧的镜像名称和标签被取消，变成了 <code>&lt;none&gt;</code>, 除了 docker pull 之外，docker build 也会导致这种现象，由于新旧镜像同名，旧镜像名称被取消，
+从而出现仓库名、标签均为 <code>&lt;none&gt;</code> 的镜像，这类无标签镜像也被称为 <code>悬挂镜像(dangling image)</code>，可以用下面命令显示：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker image ls -f <span style="color:#40ffff">dangling</span>=<span style="color:#24909d">true</span>
+</code></pre></div><h4 id="无标签镜像">无标签镜像</h4>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker image ls -a
+</code></pre></div><p>执行上述命令会看到很多无标签的镜像，与 <code>悬挂镜像</code> 不同，无标签的镜像很多都是 <code>中间层镜像</code>，是其它镜像所依赖的镜像。
+这些无标签镜像不应该删除，否则会导致上层镜像因为依赖丢失而出错。当然这些镜像也没必要删除，因为相同的依赖层只会存储一份，所以只要删除依赖中间层镜像的镜像之后，这些中间层镜像也会被同步删除。</p>
+<h4 id="多个标签">多个标签</h4>
+<p>镜像的唯一标识是 <code>ID + 摘要</code>，一个镜像可以有多个标签。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 列表 Nginx 镜像的所有标签</span>
+
+$ docker inspect --format=<span style="color:#ed9d13">&#39;{{range $k := .Config.Labels}}{{$k}} {{end}}&#39;</span> nginx
+</code></pre></div><h3 id="run">RUN</h3>
+<p>为了保持 <code>Dockerfile</code> 文件的可读性和可维护性，建议将长的或复杂的 RUN 指令用反斜杠 \ 分割成多行。</p>
+<h4 id="apt-get">apt-get</h4>
+<p>RUN 最常见的场景可能是 apt-get 的应用程序。因为它会安装包，所以 RUN apt-get 命令有几个需要注意的违反直觉的行为。</p>
+<p>始终将 RUN <code>apt-get update</code> 与 <code>apt-get install</code> 组合在同一个 RUN 语句中。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    package-bar <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    package-baz <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    package-foo  <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    &amp;&amp; rm -rf /var/lib/apt/lists/*
+</code></pre></div><p>在 RUN 语句中单独使用 <code>apt-get update</code> 会导致缓存问题和后续的 <code>apt-get install</code> 失败。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+FROM ubuntu:18.04
+RUN apt-get update
+RUN apt-get install -y curl
+</code></pre></div><p>构建镜像后，所有的层都在 <code>Docker</code> 的缓存中，假设后续修改了其中的 <code>apt-get install</code> 添加了一个包:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+FROM ubuntu:18.04
+RUN apt-get update
+RUN apt-get install -y curl nginx
+</code></pre></div><p><code>Docker</code> 发现修改后的 RUN <code>apt-get update </code>指令和之前的完全一样。所以 <code>apt-get update</code> 不会执行，而是使用之前的缓存镜像。
+因为 <code>apt-get update</code> 没有运行，后面的 <code>apt-get install</code> 可能安装的是过时的 curl 和 nginx 版本。</p>
+<p>使用 RUN <code>apt-get update &amp;&amp; apt-get install -y</code> 可以确保 <code>Dockerfiles</code> 每次安装的都是最新版本的包，而且这个过程不需要多余的工作。
+这项技术叫作 <code>cache busting</code>，可以显式指定一个包的版本号来达到 <code>cache-busting</code>，称为 <code>版本固定</code>。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    package-bar <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    package-baz <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    package-foo=1.3.*
+</code></pre></div><p><code>版本固定</code> 强制构建检索特定版本，而不管缓存中有什么，还可以减少由于所需包的意外更改而导致的故障。</p>
+<p>下面是一个格式正确的 RUN 指令，它演示了所有的 <code>apt-get</code> 最佳实践。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    aufs-tools <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    automake <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    build-essential <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    curl <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    dpkg-sig <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    libcap-dev <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    libsqlite3-dev <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    mercurial <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    reprepro <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    ruby1.9.1 <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    ruby1.9.1-dev <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    <span style="color:#40ffff">s3cmd</span>=1.1.* <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span> &amp;&amp; rm -rf /var/lib/apt/lists/*
+</code></pre></div><p>其中 <code>s3cmd</code> 指令指定了一个版本号 1.1.*。如果之前的镜像使用的是更旧的版本，指定新的版本会导致 <code>apt-get update</code> 缓存失效并确保安装的是新版本。
+另外，清理掉 apt 缓存 <code>var/lib/apt/lists</code> 可以减小镜像体积。因为 RUN 指令的开头为 <code>apt-get update</code>，包缓存总是会在 <code>apt-get install</code> 之前更新。</p>
+<p><strong>官方 Debian 和 Ubuntu 镜像会自动运行 apt-get clean，因此不需要显式调用</strong>。</p>
+<h4 id="使用管道">使用管道</h4>
+<p>某些 RUN 命令需要使用管道字符 (|) 将一个命令的输出通过管道传输到另一个命令。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN wget -O - https://some.site | wc -l &gt; /number
+</code></pre></div><p>Docker 使用 /bin/sh -c 解释器执行这些命令，它根据管道中最后一个操作的退出代码确定操作是否成功。</p>
+<p>如果希望命令在管道发生错误时构建失败，在前面添加 <code>set -o pipefail &amp;&amp;</code>。</p>
+<p>示例如下：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN <span style="color:#24909d">set</span> -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number
+</code></pre></div><blockquote>
+<p>注意: 并非所有 shell 都支持 -o pipefail 选项。
+在基于 Debian 的镜像上的 dash shell 等情况下，请考虑使用 RUN 的 exec 形式来明确选择支持 pipefail 选项的 shell。</p>
+</blockquote>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN [<span style="color:#ed9d13">&#34;/bin/bash&#34;</span>, <span style="color:#ed9d13">&#34;-c&#34;</span>, <span style="color:#ed9d13">&#34;set -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number&#34;</span>]
+</code></pre></div><h3 id="cmd">CMD</h3>
+<p>CMD 指令用于执行目标镜像中包含的软件，可以包含参数。</p>
+<p>CMD 大多数情况下都应该以 <code>CMD [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;...]</code> 的形式使用。
+因此，如果创建镜像的目的是为了部署某个服务(比如 Apache)，你可能会执行类似于 <code>CMD [&quot;apache2&quot;, &quot;-DFOREGROUND&quot;]</code> 形式的命令。
+建议任何服务镜像都使用这种形式的命令。</p>
+<p>多数情况下，CMD 都需要一个交互式的 shell (bash, Python, perl 等)，例如 <code>CMD [&quot;perl&quot;, &quot;-de0&quot;]</code> 或者 <code>CMD [&quot;PHP&quot;, &quot;-a&quot;]</code>。
+使用这种形式意味着，当你执行类似 docker run -it python 时，你会进入一个准备好的 shell 中。
+CMD 应该很少以 <code>CMD [&quot;param&quot;, &quot;param&quot;]</code> 的方式与 ENTRYPOINT 结合使用，除非你已经非常熟悉 ENTRYPOINT 的工作原理。</p>
+<h3 id="expose">EXPOSE</h3>
+<p>EXPOSE 指令用于指定容器将要监听的端口。因此，应该为应用程序使用常见的端口。例如，提供 Apache 使用 EXPOSE 80，MongoDB 使用 EXPOSE 27017。</p>
+<h3 id="env">ENV</h3>
+<p>为了使程序更易于运行，可以使用 ENV 为容器中的程序更新 PATH 环境变量。例如 ENV <code>PATH=/usr/local/nginx/bin:$PATH</code> 确保 CMD [&ldquo;nginx&rdquo;] 可以正常工作。</p>
+<p>ENV 指令也可以提供特定容器所需的环境变量，例如 Postgres 的 PGDATA。</p>
+<p>此外，ENV 还可以用于设置常用的版本号，以便更容易维护版本号：</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ENV <span style="color:#40ffff">PG_MAJOR</span>=9.3
+ENV <span style="color:#40ffff">PG_VERSION</span>=9.3.4
+RUN curl -SL https://example.com/postgres-<span style="color:#40ffff">$PG_VERSION</span>.tar.xz | tar -xJC /usr/src/postgres &amp;&amp; …
+ENV <span style="color:#40ffff">PATH</span>=/usr/local/postgres-<span style="color:#40ffff">$PG_MAJOR</span>/bin:<span style="color:#40ffff">$PATH</span>
+</code></pre></div><p>类似于在程序中使用环境变量的场景，使用 ENV 指令以自动更改容器中的环境变量，而无需任何代码变动。</p>
+<p>每个 ENV 行都会创建一个新的镜像层，就像 RUN 命令一样。这意味着即使在新的层中删除环境变量，它仍然存在于这一层中并且可以被导出。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+FROM alpine
+ENV <span style="color:#40ffff">ADMIN_USER</span>=<span style="color:#ed9d13">&#34;mark&#34;</span>
+RUN <span style="color:#24909d">echo</span> <span style="color:#40ffff">$ADMIN_USER</span> &gt; ./mark
+RUN <span style="color:#24909d">unset</span> ADMIN_USER
+</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run --rm <span style="color:#24909d">test</span> sh -c <span style="color:#ed9d13">&#39;echo $ADMIN_USER&#39;</span>
+
+mark
+</code></pre></div><p>从上面的代码输出中，我们可以看到，即使环境变量已经被删除，但是在打印时依然会输出。</p>
+<p>为防止这种情况并真正取消设置环境变量，请使用带有 shell 命令的 RUN 命令，在单个层中设置、使用和取消设置变量。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+FROM alpine
+RUN <span style="color:#24909d">export</span> <span style="color:#40ffff">ADMIN_USER</span>=<span style="color:#ed9d13">&#34;mark&#34;</span> <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    &amp;&amp; <span style="color:#24909d">echo</span> <span style="color:#40ffff">$ADMIN_USER</span> &gt; ./mark <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    &amp;&amp; <span style="color:#24909d">unset</span> ADMIN_USER
+CMD sh
+</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run --rm <span style="color:#24909d">test</span> sh -c <span style="color:#ed9d13">&#39;echo $ADMIN_USER&#39;</span>
+
+<span style="color:#999;font-style:italic"># 什么也没输出</span>
+</code></pre></div><h3 id="add-或-copy">ADD 或 COPY</h3>
+<p>尽管 ADD 和 COPY 在功能上相似，但一般来说，<strong>首选 COPY。那是因为它比 ADD 更透明</strong>。</p>
+<p>COPY 只支持简单将本地文件拷贝到容器中，而 ADD 有一些并不明显的功能（比如本地 tar 提取和远程 URL 支持）。
+因此，ADD 的最佳用例是将本地 tar 文件自动提取到镜像中，例如 ADD rootfs.tar.xz。</p>
+<p>如果你的 Dockerfile 有多个步骤需要使用上下文中不同的文件。单独 COPY 每个文件，而不是一次性的 COPY 所有文件，
+这将保证每个步骤的构建缓存只在特定的文件变化时失效。</p>
+<p>示例如下:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">COPY requirements.txt /tmp/
+
+RUN pip install --requirement /tmp/requirements.txt
+
+COPY . /tmp/
+</code></pre></div><p>如果将 COPY . /tmp/ 放置在 RUN 指令之前，只要 . 目录中任何一个文件变化，都会导致后续指令的缓存失效。</p>
+<p>为了让镜像尽量小，最好不要使用 ADD 指令从远程 URL 获取包，而是使用 curl 和 wget。
+这样可以在文件提取完之后删掉不再需要的文件来避免在镜像中额外添加一层。</p>
+<p>示例如下 (尽量避免这种用法):</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ADD https://example.com/big.tar.xz /usr/src/things/
+RUN tar -xJf /usr/src/things/big.tar.xz -C /usr/src/things
+RUN make -C /usr/src/things all
+</code></pre></div><p>相反，应该这样做:</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN mkdir -p /usr/src/things <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    &amp;&amp; curl -SL https://example.com/big.tar.xz <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    | tar -xJC /usr/src/things <span style="color:#ed9d13">\
+</span><span style="color:#ed9d13"></span>    &amp;&amp; make -C /usr/src/things all
+</code></pre></div><p>上面使用的管道操作，所以没有中间文件需要删除。</p>
+<p>对于不需要 ADD 的 tar 自动提取功能的其他项目，如文件和目录，应该始终使用 COPY。</p>
+<h3 id="entrypoint">ENTRYPOINT</h3>
+<p>ENTRYPOINT 的最佳实践是设置镜像的主要命令，允许该镜像像该命令一样运行，然后使用 CMD 作为默认标志。</p>
+<p>以下是命令行工具 s3cmd 的镜像示例：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ENTRYPOINT [<span style="color:#ed9d13">&#34;s3cmd&#34;</span>]
+CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
+</code></pre></div><p>现在直接运行该镜像创建的容器会显示命令帮助：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run s3cmd
+</code></pre></div><p>或者提供正确的参数来执行某个命令：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run s3cmd ls s3://mybucket
+</code></pre></div><p>这样镜像名可以当成命令行的参考。</p>
+<p>ENTRYPOINT 指令还可以与帮助程序脚本使用，使脚本和上述命令类似的方式运行，即使启动该工具可能需要多个步骤。</p>
+<p>例如，Postgres 官方镜像使用以下脚本作为其 ENTRYPOINT：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#cd2828;font-weight:bold">#!/bin/bash
+</span><span style="color:#cd2828;font-weight:bold"></span><span style="color:#24909d">set</span> -e
+
+<span style="color:#6ab825;font-weight:bold">if</span> [ <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$1</span><span style="color:#ed9d13">&#34;</span> = <span style="color:#ed9d13">&#39;postgres&#39;</span> ]; <span style="color:#6ab825;font-weight:bold">then</span>
+    chown -R postgres <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$PGDATA</span><span style="color:#ed9d13">&#34;</span>
+
+    <span style="color:#6ab825;font-weight:bold">if</span> [ -z <span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">$(</span>ls -A <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$PGDATA</span><span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">)</span><span style="color:#ed9d13">&#34;</span> ]; <span style="color:#6ab825;font-weight:bold">then</span>
+        gosu postgres initdb
+    <span style="color:#6ab825;font-weight:bold">fi</span>
+
+    <span style="color:#24909d">exec</span> gosu postgres <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$@</span><span style="color:#ed9d13">&#34;</span>
+<span style="color:#6ab825;font-weight:bold">fi</span>
+
+<span style="color:#24909d">exec</span> <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$@</span><span style="color:#ed9d13">&#34;</span>
+</code></pre></div><p>该脚本使用了 Bash 的内置命令 exec，所以最后运行的进程就是容器的 PID 为 1 的进程。这样，进程就可以接收到任何发送给容器的 Unix 信号了。</p>
+<p>该脚本可以让用户用几种不同的方式和 Postgres 交互。</p>
+<p>可以很简单地启动 Postgres：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run postgres
+</code></pre></div><p>也可以执行 Postgres 并传递参数：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run postgres postgres --help
+</code></pre></div><p>还可以启动另外一个完全不同的工具，比如 Bash：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run --rm -it postgres bash
+</code></pre></div><h3 id="volume">Volume</h3>
+<p>VOLUME 指令应用于暴露任何数据库存储文件、配置文件或由 Docker 容器创建的文件和目录。
+强烈建议使用 VOLUME 来管理镜像中的可变部分和用户可以改变的部分。</p>
+<h3 id="user">USER</h3>
+<p>如果服务可以在没有权限的情况下运行，请使用 USER 更改为非 root 用户。首先使用类似于下面命令在 Dockerfile 中创建用户和组：</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN groupadd -r postgres &amp;&amp; useradd --no-log-init -r -g postgres postgres
+</code></pre></div><blockquote>
+<p>注意：在镜像中，用户和用户组每次被分配的 UID/GID 都是不确定的，下次重新构建镜像时被分配到的 UID/GID 可能会不一样。
+如果要依赖确定的 UID/GID，你应该显式的指定一个 UID/GID。</p>
+</blockquote>
+<blockquote>
+<p>由于 Go 的 <code>archive/tar</code> 包处理稀疏文件时，有一个未解决的错误，尝试在 Docker 容器中创建具有非常大的 UID 的用户可能会导致磁盘耗尽，
+因为容器层中的 /var/log/faillog 被 NULL (\0) 字符填充，解决方法是将 &ndash;no-log-init 标志传递给 useradd。 Debian/Ubuntu adduser 包装器不支持此标志。</p>
+</blockquote>
+<p>应该避免使用 sudo，因为它不可预期的 TTY 和信号转发行为可能造成的问题比它能解决的问题还多。
+如果你真的需要和 sudo 类似的功能（例如，以 root 权限初始化某个守护进程，以非 root 权限执行它），可以使用 gosu 替代。</p>
+<p>最后，为了减少层数和复杂度，避免频繁地使用 USER 来回切换用户。</p>
+<h3 id="workdir">WORKDIR</h3>
+<p>为了可读性和稳定性，应该始终为 WORKDIR 使用绝对路径。此外，应该使用 WORKDIR 而不是像 RUN cd … &amp;&amp; do-something 这样可读性低、维护性低的指令。</p>
+<h4 id="常见错误">常见错误</h4>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN <span style="color:#24909d">cd</span> /app
+RUN <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;hello&#34;</span> &gt; world.txt
+</code></pre></div><p>如果将这个 Dockerfile 进行构建镜像运行后，会发现找不到 /app/world.txt 文件，或者其内容不是 hello。原因很简单，在 shell 中，
+连续两行是同一个进程执行环境，因此前一个命令修改的内存状态，会直接影响后一个命令，但在 Dockerfile 中，<strong>这两行 RUN 命令的执行环境根本不同，
+是两个完全不同的容器</strong>。这就是对 Dockerfile 构建分层存储的概念不了解所导致的错误。</p>
+<p>如果需要改变以后各层的工作目录的位置，那么应该使用 WORKDIR 指令。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">WORKDIR /app
+
+RUN <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;hello&#34;</span> &gt; world.txt
+如果你的 WORKDIR 指令使用的相对路径，那么所切换的路径与之前的 WORKDIR 有关：
+
+WORKDIR /a
+WORKDIR b
+WORKDIR c
+
+RUN <span style="color:#24909d">pwd</span>
+
+<span style="color:#999;font-style:italic">#  输出结果为 /a/b/c</span>
+</code></pre></div><h3 id="onbuild">ONBUILD</h3>
+<p>当前 Dockerfile 构建完成后执行 ONBUILD 命令。 ONBUILD 在从当前镜像派生的任何子镜像中执行。
+将 ONBUILD 命令视为父 Dockerfile 给子 Dockerfile 的指令。</p>
+<h1 id="reference">Reference</h1>
+<ul>
+<li><a href="https://docs.docker.com/develop/dev-best-practices/">Docker development best practices</a></li>
+<li><a href="https://docs.docker.com/develop/develop-/images/dockerfile_best-practices/">Best practices for writing Dockerfiles</a></li>
+</ul>
+<h1 id="扩展阅读">扩展阅读</h1>
+<ul>
+<li><a href="docker.md">Docker 基础支撑技术概览</a></li>
+<li><a href="https://colobu.com/2018/08/13/create-minimal-docker-image-for-go-applications/">创建最小的Go docker 镜像</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/memory_model/"><i class="fa fa-chevron-circle-left"></i> Go 内存模型</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/chatgpt/">ChatGPT 初体验 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Docker 官方提供的最佳实践"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

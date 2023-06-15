@@ -1,0 +1,769 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>sync.Pool Code Review - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。本文通过底层源代码来分析 sync.Pool 高性能背后的设计与实现&hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Pool Code Review" />
+<meta property="og:description" content="sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_sync_pool/" />
+<meta property="article:published_time" content="2023-06-15T00:00:00+08:00" />
+<meta property="article:modified_time" content="2023-06-15T00:00:00+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="sync.Pool Code Review"/>
+<meta name="twitter:description" content="sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。"/>
+
+<meta name="generator" content="Hugo 0.68.3" />
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>sync.Pool Code Review</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><strong>sync.Pool</strong> 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。</p>
+<p><strong>需要注意的是:</strong> 任何存储在对象池中的元素可能会被随时删除，如果元素是一个资源类的引用，并且该资源仅在对象池中被引用 (没有其他地方引用了)，那么当该元素被对象池删除时，其指向的资源同时也会被释放。</p>
+<h2 id="内部实现">内部实现</h2>
+<p><strong>sync.Pool</strong> 的使用方法相信读者已经熟练掌握，本文主要来探究一下底层源代码实现，文件路径为 <code>$GOROOT/src/sync/pool.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<p>💡 <strong>sync.Pool</strong> 的源代码中细节非常之多，为了阅读体验和效率，笔者几乎没有删减代码，而且也基本对每行代码都做了对应的注解和上下文联系，这是本文的特色，请读者留意。</p>
+<h2 id="数据结构">数据结构</h2>
+<h3 id="全局变量">全局变量</h3>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">var</span> (
+	<span style="color:#999;font-style:italic">// 锁
+</span><span style="color:#999;font-style:italic"></span>	allPoolsMu Mutex
+
+	<span style="color:#999;font-style:italic">// 全局的所有缓存池
+</span><span style="color:#999;font-style:italic"></span>	allPools []*Pool
+
+	<span style="color:#999;font-style:italic">// victim cache 缓存池
+</span><span style="color:#999;font-style:italic"></span>	oldPools []*Pool
+)
+</code></pre></div><h3 id="数据结构图">数据结构图</h3>
+<p>这里假设 <code>runtime.GOMAXPROCS() = 4</code>, 处理器 P 的数量为 4 个，读者在阅读下面的源代码探究过程时，可以对照着结构图进行分析。</p>
+<p><img src="https://dbwu.tech/images/syncpool.png" alt="sync.Pool 数据结构"></p>
+<h3 id="缓存池对象">缓存池对象</h3>
+<p>sync.Pool 包的核心对象，所有的操作都是基于该对象进行的。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// Pool 一旦使用后，便不能再复制
+</span><span style="color:#999;font-style:italic"></span>
+<span style="color:#999;font-style:italic">// 在 Go 内存模型术语中，调用 Put(x) 方法在调用 Get 方法之前同步 
+</span><span style="color:#999;font-style:italic">// 在 Go 内存模型术语中，调用 New 方法在调用 Get 方法之前同步
+</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Pool <span style="color:#6ab825;font-weight:bold">struct</span> {
+    <span style="color:#999;font-style:italic">// noCopy 可以添加到 struct 中，实现 &#34;首次使用之后，无法被复制&#34; 的功能，主要服务于 `go vet`
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 假设一个缓存池对象 A 被对象 B 拷贝了，接着 A 被清空了，B 里面的缓存对象指针指向的对象将会不可控
+</span><span style="color:#999;font-style:italic"></span>	noCopy noCopy
+
+	<span style="color:#999;font-style:italic">// 指向固定长度的数组，数组长度为处理器 P 的个数，转换后其实就是 [P]poolLocal 数组
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    实际的底层数据结构是切片，不过下文中统一用数组描述，读者不必在意这个细节
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 访问时根据处理器 P 的 ID (作为索引) 去访问
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 优化点: 多个 goroutine 使用同一个缓存池时，可以减少竞争，提高性能
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//        类似于分段锁中降低锁粒度的设计理念
+</span><span style="color:#999;font-style:italic"></span>	local     unsafe.Pointer
+	<span style="color:#999;font-style:italic">// local 数组的长度
+</span><span style="color:#999;font-style:italic"></span>	localSize <span style="color:#6ab825;font-weight:bold">uintptr</span>
+	
+    <span style="color:#999;font-style:italic">// 上一轮的 local, 内容语义和 local 一致
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 新一轮 GC 到来时，更新为当前 local 的值
+</span><span style="color:#999;font-style:italic"></span>	victim     unsafe.Pointer
+	
+	<span style="color:#999;font-style:italic">// 上一轮的 localSize, 内容语义和 localSize 一致
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 新一轮 GC 到来时，更新为当前 localSize 的值
+</span><span style="color:#999;font-style:italic"></span>	victimSize <span style="color:#6ab825;font-weight:bold">uintptr</span>
+
+	<span style="color:#999;font-style:italic">// 创建对象的函数
+</span><span style="color:#999;font-style:italic"></span>	New <span style="color:#6ab825;font-weight:bold">func</span>() any  
+}
+</code></pre></div><p>这里引用下维基百科关于 <code>victim cache</code> 的描述:</p>
+<blockquote>
+<p>所谓受害者缓存（Victim Cache），是 CPU 硬件处理缓存的一种技术，是一个与直接匹配或低相联缓存并用的、容量很小的全相联缓存。
+当一个数据块被逐出缓存时，并不直接丢弃，而是暂先进入受害者缓存。如果受害者缓存已满，就替换掉其中一项。当进行缓存标签匹配时，
+在与索引指向标签匹配的同时，并行查看受害者缓存，如果在受害者缓存发现匹配，就将其此数据块与缓存中的不匹配数据块做交换，同时返回给处理器。</p>
+</blockquote>
+<p>简单通俗地来说，就是已经失效的缓存先不清除，保留一段时间，如果保留时间内该缓存又被用到了，就重新启用，如果保留时间内一直没有被用到，就清除。</p>
+<h3 id="poollocal-对象">poolLocal 对象</h3>
+<p>每个处理器 <code>P</code> 都有一个 <code>poolLocal</code> 对象，<code>Get</code> 和 <code>Put</code> 方法会优先操作当前处理器的对象池。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> poolLocal <span style="color:#6ab825;font-weight:bold">struct</span> {
+	poolLocalInternal
+
+	<span style="color:#999;font-style:italic">// CPU Cache 是距离 CPU 最近的 Cache，如果能充分利用，会极大提升程序性能
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 防止伪共享，凑齐 128 bytes 的整数倍 (这个小技巧非常值得学习)
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 什么是CPU 伪共享？
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   CPU CacheLine 通常是以 64 byte 或 128 byte 为单位
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   在缓存池场景中，各个 P 的 poolLocal 以数组形式存储在一起
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   假设 CPU CacheLine 为 128 byte，而 poolLocal 不足 128 byte 时
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   CacheLine 将会带上其他 P 的 poolLocal 的内存数据，以凑齐一个整块的 CacheLine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   如果这时两个相邻的 P 同时在两个不同的 CPU 核上运行，将会同时去覆盖刷新 CacheLine 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   造成 CacheLine 的反复失效，那 CPU Cache 就失去了作用
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">//   例如 两个相邻但是不同的处理器 P (PA, PB) 被分配在同一个 CacheLine
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   此时 PA 要修改, PB 也要修改 (两者去竞争 同一个 CacheLine)
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   当 PA 被修改时，缓存系统强制 PB 所在 CPU 核的 CacheLine 失效
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   当 PB 被修改时，缓存系统强制 PA 所在 CPU 核的 CacheLine 失效
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   最终导致 PA 和 PB 所在 CPU 核的 CacheLine 失效，降低性能
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 如何避免 CPU 伪共享？
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   将需要独立访问的变量放在不同的 CacheLine 中
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   保证和 CacheLine 内存对齐
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// Linux 查看 CacheLine 单位大小
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// $ cat /sys/devices/system/cpu/cpu1/cache/index0/coherency_line_size
+</span><span style="color:#999;font-style:italic"></span>	pad [<span style="color:#3677a9">128</span> - unsafe.<span style="color:#447fcf">Sizeof</span>(poolLocalInternal{})%<span style="color:#3677a9">128</span>]<span style="color:#6ab825;font-weight:bold">byte</span>
+}
+</code></pre></div><h3 id="poollocalinternal-对象">poolLocalInternal 对象</h3>
+<p>poolLocalInternal 对象表示每个处理器 P 的本地对象池。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> poolLocalInternal <span style="color:#6ab825;font-weight:bold">struct</span> {
+    <span style="color:#999;font-style:italic">// 私有变量，只能由当前处理器操作
+</span><span style="color:#999;font-style:italic"></span>	private any
+    <span style="color:#999;font-style:italic">// 共享变量，当前处理器可以执行 pushHead/popHead 操作，其他处理器只能执行 popTail 操作
+</span><span style="color:#999;font-style:italic"></span>	shared  poolChain 
+}
+</code></pre></div><p>Go 1.13 版本开始，<code>shared</code> 字段的数据结构修改为 <code>单个生产者/多个消费者</code> 双端无锁环形队列，当前处理器 P 可以执行 <code>pushHead/popHead</code> 操作，
+其他处理器 P 只能执行 <code>popTail</code> 操作。</p>
+<p><strong>单个生产者</strong>：当前处理器 <code>P</code> 上面运行的 <code>goroutine</code> 执行 <code>Put</code> 方法时，将对象放入队列，并且只能放在队列头部，但是其他处理器 P 上运行的 <code>goroutine</code> 不能放入。
+由于每个处理器 P 在任意时刻只有一个 <code>goroutine</code> 运行，所以无需加锁。</p>
+<p><strong>多个消费者分两种角色</strong>：</p>
+<ol>
+<li>在当前处理器 P 上运行的 <code>goroutine</code>，执行 <code>Get</code> 方法时，从队列头部取对象，由于每个处理器 P 在任意时刻只有一个 <code>goroutine</code> 运行，所以无需加锁</li>
+<li>在其他处理器 P 上运行的 <code>goroutine</code>，执行 <code>Get</code> 方法时，如果该处理器 P 没有缓存对象，就到别的处理器 P 的队列上窃取。
+此时窃取者 <code>goroutine</code> 只能从队列尾部取对象，因为同时可能有多个窃取者 <code>goroutine</code> 窃取同一个处理器 P 的队列, 所以用 <code>CAS</code> 来实现无锁队列功能</li>
+</ol>
+<p>按照这种设计，<code>poolDequeue.pushHead</code> 和 <code>poolDequeue.popTail</code> 存在竞争 (可能同时有多个 <code>goroutine</code> 同时操作)，
+而 <code>poolDequeue.pushHead</code> 和 <code>poolDequeue.popHead</code> 不存在竞争 (只能有一个 <code>goroutine</code> 操作)。</p>
+<ul>
+<li>poolDequeue.pushHead: 将对象添加到队列头部</li>
+<li>poolDequeue.popHead : 从队列头部获取对象</li>
+<li>poolDequeue.popTail : 从队列尾部获取对象</li>
+</ul>
+<h3 id="poolchain-对象">poolChain 对象</h3>
+<p>poolChain 对象表示 poolDequeue 数据类型的双端环形队列链表，每个节点表示的队列长度是后驱节点队列长度的两倍，
+如果当前所有的节点队列满了，就创建一个新的队列 (长度是当前头节点队列长度的 2 倍)，然后挂载到头节点。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">// 队列节点示意图
+// --------------------------------------------------------------------------
+// | 节点 1, size: <span style="color:#3677a9">64</span> | 节点 2, size: <span style="color:#3677a9">32</span> | 节点 3, size: <span style="color:#3677a9">16</span> | 节点 4, size: <span style="color:#3677a9">8</span> |
+// --------------------------------------------------------------------------
+</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> poolChain <span style="color:#6ab825;font-weight:bold">struct</span> {
+	<span style="color:#999;font-style:italic">// head 表示头节点队列，只能由生产者操作，不存在竞争
+</span><span style="color:#999;font-style:italic"></span>	head *poolChainElt
+
+	<span style="color:#999;font-style:italic">// tail 表示尾节点队列，由多个消费者操作，存在竞争
+</span><span style="color:#999;font-style:italic"></span>	tail *poolChainElt
+}
+
+<span style="color:#6ab825;font-weight:bold">type</span> poolChainElt <span style="color:#6ab825;font-weight:bold">struct</span> {
+	poolDequeue
+	
+	<span style="color:#999;font-style:italic">// next 由生产者原子性写入，由消费者原子性读取
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 值只会从 nil 转换为非 nil
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// prev 由消费者原子性写入，由生产者原子性读取
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 值只会从非 nil 转换为 nil
+</span><span style="color:#999;font-style:italic"></span>	next, prev *poolChainElt
+}
+</code></pre></div><p><strong>为什么 poolChain 的数据结构是链表 + ring buffer (环形队列) 呢？</strong></p>
+<p>因为使用 <code>ring buffer</code> 数据结构的优点非常适用于 <code>sync.Pool</code> 对象池的使用场景。</p>
+<ol>
+<li>预先分配好内存并且分配的元素内存可复用，避免了数据迁移</li>
+<li>作为底层数据结构的数组是连续内存结构，非常利于 <code>CPU Cache</code>, 在访问 <code>poolDequeue</code> 队列中的某个元素时，其附近的元素可能被加载到同一个 <code>Cache Line</code> 中，访问速度更快</li>
+<li>更高效的出队和入队操作，因为环形队列是首尾相连的，避免了普通队列中队首和队尾频繁变动的问题</li>
+</ol>
+<h3 id="pooldequeue-对象">poolDequeue 对象</h3>
+<p>poolDequeue 对象是一个由 <code>单个生产者/多个消费者</code> 模式组成的固定大小的无锁队列。单个生产者可以从队列头部执行 <code>push</code> 和 <code>pop</code> 操作，
+多个消费者只能从队列尾部执行 <code>pop</code> 操作。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> poolDequeue <span style="color:#6ab825;font-weight:bold">struct</span> {
+	<span style="color:#999;font-style:italic">// 经典的字段合并使用方法
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 高 32 位 是 head, 指向下一个存放对象的索引 
+</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 低 32 位 是 tail, 指向队列中最早 (下一个读取) 的对象索引
+</span><span style="color:#999;font-style:italic"></span>	
+	<span style="color:#999;font-style:italic">// 索引区间 tail &lt;= i &lt; head, 表示消费者可以操作的索引区域
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 消费者可以在该区间不断获取对象，直至获取到的对象为 nil
+</span><span style="color:#999;font-style:italic"></span>	headTail <span style="color:#6ab825;font-weight:bold">uint64</span>
+
+	<span style="color:#999;font-style:italic">// vals 表示队列元素容器，大小必须为 2 的 N 次幂
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 容器会在初始化时指定容量，实现数据元素内存预初始化
+</span><span style="color:#999;font-style:italic"></span>	vals []eface
+}
+</code></pre></div><p><strong>为什么要将 <code>head</code> 和 <code>tail</code> 合并到一个变量里面？</strong></p>
+<p>因为这样可以进行原子操作，完成两个字段的 <code>lock free</code> (无锁编程) 优化。</p>
+<p>例如：当队列中仅剩一个对象时，如果多个处理器 P 同时访问队列，如果没有进行并发限制，两个处理器 P 都可能获取到对象，这显然是不符合预期的。
+那么在不引入互斥锁的前提下，<code>sync.Pool</code> 是如何实现临界区数据控制的呢？
+<code>sync.Pool</code> 利用了 <code>atomic</code> 包的提供的 <code>CAS</code> 操作，并发情况下两个处理器 P 都可能获取到对象，但是最终只会有一个处理器 P <code>CAS</code> 操作成功，
+另外一个处理器操作失败，在更新 <code>head</code> 和 <code>tail</code> 两个字段的时候，也是通过 <code>CAS + 位运算</code> 进行操作的。</p>
+<h3 id="小结">小结</h3>
+<p>通过对源代码中的数据结构进行分析，我们可以看到内部隐藏了非常多的设计技巧和对应的基础理论知识，接下来开始阅读构建于数据结构之上的具体算法。</p>
+<p>这里再放一张数据结构图，方便读者结合算法代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/syncpool.png" alt="sync.Pool 数据结构"></p>
+<h2 id="对象归还">对象归还</h2>
+<p>我们首先来看下对象归还流程，也就是如何把一个对象放入缓存池的某个队列中，从 <code>Pool.Put</code> 方法开始追踪代码。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">Put</span>(x any) {
+    ...
+	
+	l, _ := p.<span style="color:#447fcf">pin</span>()
+	<span style="color:#6ab825;font-weight:bold">if</span> l.private == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 优先设置私有变量
+</span><span style="color:#999;font-style:italic"></span>		l.private = x  
+	} <span style="color:#6ab825;font-weight:bold">else</span> {
+		<span style="color:#999;font-style:italic">// 其次设置共享变量
+</span><span style="color:#999;font-style:italic"></span>		l.shared.<span style="color:#447fcf">pushHead</span>(x)
+	}
+    
+	...
+}
+
+<span style="color:#6ab825;font-weight:bold">func</span> (c *poolChain) <span style="color:#447fcf">pushHead</span>(val any) {
+	d := c.head
+	<span style="color:#6ab825;font-weight:bold">if</span> d == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 初始化头节点
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 对象池元素数量从 8 个开始，必须为 2 的 N 次幂
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">const</span> initSize = <span style="color:#3677a9">8</span> 
+		d = <span style="color:#24909d">new</span>(poolChainElt)
+		d.vals = <span style="color:#24909d">make</span>([]eface, initSize)
+		c.head = d
+		<span style="color:#447fcf">storePoolChainElt</span>(&amp;c.tail, d)
+	}
+	
+	<span style="color:#6ab825;font-weight:bold">if</span> d.<span style="color:#447fcf">pushHead</span>(val) {
+		<span style="color:#999;font-style:italic">// 如果对象成功加入队列，直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span>
+	}
+
+	<span style="color:#999;font-style:italic">// 如果当前队列已满，分配一个新的队列 (长度是当前队列的 2 倍)
+</span><span style="color:#999;font-style:italic"></span>	newSize := <span style="color:#24909d">len</span>(d.vals) * <span style="color:#3677a9">2</span>
+	<span style="color:#6ab825;font-weight:bold">if</span> newSize &gt;= dequeueLimit {
+		<span style="color:#999;font-style:italic">// 队列长度最大为 1073741824
+</span><span style="color:#999;font-style:italic"></span>		newSize = dequeueLimit
+	}
+
+	<span style="color:#999;font-style:italic">// 初始化新的队列
+</span><span style="color:#999;font-style:italic"></span>	d2 := &amp;poolChainElt{prev: d}
+	d2.vals = <span style="color:#24909d">make</span>([]eface, newSize)
+	<span style="color:#999;font-style:italic">// 将头节点指向到新的队列
+</span><span style="color:#999;font-style:italic"></span>	c.head = d2
+	<span style="color:#999;font-style:italic">// 将新的队列添加到链表中
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">storePoolChainElt</span>(&amp;d.next, d2)
+    <span style="color:#999;font-style:italic">// 将对象添加到新的队列
+</span><span style="color:#999;font-style:italic"></span>	d2.<span style="color:#447fcf">pushHead</span>(val)
+}
+</code></pre></div><p>poolDequeue.pushHead 方法将一个对象加入到队列中，如果队列已满，返回 false，该方法必须由 <code>单个生产者</code> 操作。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (d *poolDequeue) <span style="color:#447fcf">pushHead</span>(val any) <span style="color:#6ab825;font-weight:bold">bool</span> {
+	ptrs := atomic.<span style="color:#447fcf">LoadUint64</span>(&amp;d.headTail)
+	head, tail := d.<span style="color:#447fcf">unpack</span>(ptrs)
+	<span style="color:#6ab825;font-weight:bold">if</span> (tail+<span style="color:#24909d">uint32</span>(<span style="color:#24909d">len</span>(d.vals)))&amp;(<span style="color:#3677a9">1</span>&lt;&lt;dequeueBits-<span style="color:#3677a9">1</span>) == head {
+        <span style="color:#999;font-style:italic">// 说明队列已满 (tail 索引 + 当前队列元素个数) == head 索引
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+	}
+	slot := &amp;d.vals[head&amp;<span style="color:#24909d">uint32</span>(<span style="color:#24909d">len</span>(d.vals)-<span style="color:#3677a9">1</span>)]
+
+	<span style="color:#999;font-style:italic">// 检测索引位置的对象是否和 popTail 方法操作冲突
+</span><span style="color:#999;font-style:italic"></span>	typ := atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;slot.typ)
+	<span style="color:#6ab825;font-weight:bold">if</span> typ != <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 有其他 goroutine 正在调用 popTail 方法操作当前位置的对象
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 所以队列实际上已满
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+	}
+	
+	<span style="color:#999;font-style:italic">// 执行到这里，typ == nil 
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明即使存在 popTail 方法操作当前位置的对象，操作也已经结束了，冲突解除
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> val == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		val = <span style="color:#447fcf">dequeueNil</span>(<span style="color:#6ab825;font-weight:bold">nil</span>)
+	}
+	<span style="color:#999;font-style:italic">// 使用归还的对象填充索引位置
+</span><span style="color:#999;font-style:italic"></span>	*(*any)(unsafe.<span style="color:#447fcf">Pointer</span>(slot)) = val
+
+	<span style="color:#999;font-style:italic">// head 索引 + 1
+</span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">AddUint64</span>(&amp;d.headTail, <span style="color:#3677a9">1</span>&lt;&lt;dequeueBits)
+	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+}
+</code></pre></div><h2 id="获取对象">获取对象</h2>
+<p>接下来探究从缓存池中获取对象的流程，从 <code>Pool.Get</code> 方法开始追踪代码。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">Get</span>() any {
+	l, pid := p.<span style="color:#447fcf">pin</span>()
+    <span style="color:#999;font-style:italic">// 首先尝试从当前处理器的私有变量获取对象
+</span><span style="color:#999;font-style:italic"></span>	x := l.private 
+	<span style="color:#999;font-style:italic">// 从私有变量获取后，及时将私有变量置为 nil
+</span><span style="color:#999;font-style:italic"></span>	l.private = <span style="color:#6ab825;font-weight:bold">nil</span>
+	
+	<span style="color:#6ab825;font-weight:bold">if</span> x == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 私有变量没有获取到对象，尝试从共享变量获取
+</span><span style="color:#999;font-style:italic"></span>		x, _ = l.shared.<span style="color:#447fcf">popHead</span>()
+		<span style="color:#6ab825;font-weight:bold">if</span> x == <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#999;font-style:italic">// 当前处理器 P 没有对象，尝试从其他处理器窃取
+</span><span style="color:#999;font-style:italic"></span>			x = p.<span style="color:#447fcf">getSlow</span>(pid)
+		}
+	}
+
+	<span style="color:#999;font-style:italic">// 如果从所有处理器的缓存池都没有获取到对象，并且 New 方法不为 nil
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那就调用 New 方法创建一个对象返回
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> x == <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; p.New != <span style="color:#6ab825;font-weight:bold">nil</span> {
+		x = p.<span style="color:#447fcf">New</span>()
+	}
+	<span style="color:#6ab825;font-weight:bold">return</span> x
+}
+
+<span style="color:#6ab825;font-weight:bold">func</span> (c *poolChain) <span style="color:#447fcf">popHead</span>() (any, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	d := c.head
+	<span style="color:#6ab825;font-weight:bold">for</span> d != <span style="color:#6ab825;font-weight:bold">nil</span> {
+        <span style="color:#999;font-style:italic">// 从队列头部开始获取对象
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> val, ok := d.<span style="color:#447fcf">popHead</span>(); ok {  
+			<span style="color:#6ab825;font-weight:bold">return</span> val, ok
+		}
+		<span style="color:#999;font-style:italic">// 将当前队列前驱节点作为接下来要遍历的队列
+</span><span style="color:#999;font-style:italic"></span>		d = <span style="color:#447fcf">loadPoolChainElt</span>(&amp;d.prev)
+	}
+	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+}
+</code></pre></div><p>poolDequeue.popHead 方法从队列头部删除一个对象并返回，如果队列为空，返回 false, 该方法必须由 <code>单个生产者</code> 操作。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (d *poolDequeue) <span style="color:#447fcf">popHead</span>() (any, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	<span style="color:#6ab825;font-weight:bold">var</span> slot *eface
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		ptrs := atomic.<span style="color:#447fcf">LoadUint64</span>(&amp;d.headTail)
+		<span style="color:#999;font-style:italic">// 高 32 bit 是 head
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 低 32 bit 是 tail
+</span><span style="color:#999;font-style:italic"></span>		head, tail := d.<span style="color:#447fcf">unpack</span>(ptrs)
+		<span style="color:#6ab825;font-weight:bold">if</span> tail == head {
+			<span style="color:#999;font-style:italic">// 头尾相等，说明队列为空
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+		}
+		
+		<span style="color:#999;font-style:italic">// head 索引指向下一个新对象的索引位置，所以使用前先减 1
+</span><span style="color:#999;font-style:italic"></span>		head--
+		ptrs2 := d.<span style="color:#447fcf">pack</span>(head, tail)
+		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapUint64</span>(&amp;d.headTail, ptrs, ptrs2) {
+			<span style="color:#999;font-style:italic">// CAS 操作成功，移除头部的对象，此时 head 指向 head - 1
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// vals 切片的长度是 2 的 N 次幂，因此 len(d.vals)-1 之后，低的 N 位全是 1
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 和 head 进行与运算之后，可以获取到对象的索引下标
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 例如: 切片长度 = 32, len(d.vals)-1 = 31
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//      head = 5, 索引下标 = 5 &amp; 31 = 5
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//      head = 25, 索引下标 = 25 &amp; 31 = 25
+</span><span style="color:#999;font-style:italic"></span>			slot = &amp;d.vals[head&amp;<span style="color:#24909d">uint32</span>(<span style="color:#24909d">len</span>(d.vals)-<span style="color:#3677a9">1</span>)]
+			<span style="color:#6ab825;font-weight:bold">break</span>
+		}
+	}
+	
+	val := *(*any)(unsafe.<span style="color:#447fcf">Pointer</span>(slot))
+	<span style="color:#6ab825;font-weight:bold">if</span> val == <span style="color:#447fcf">dequeueNil</span>(<span style="color:#6ab825;font-weight:bold">nil</span>) {
+        <span style="color:#999;font-style:italic">// 获取到的对象是 nil
+</span><span style="color:#999;font-style:italic"></span>		val = <span style="color:#6ab825;font-weight:bold">nil</span>
+	}
+	<span style="color:#999;font-style:italic">// 重置索引位置的元素
+</span><span style="color:#999;font-style:italic"></span>	*slot = eface{}
+	<span style="color:#999;font-style:italic">// 返回获取到的对象
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> val, <span style="color:#6ab825;font-weight:bold">true</span>
+}
+</code></pre></div><p>Pool.getSlow 方法用于当前处理器 P 没有对象时，尝试从其他处理器 P 窃取对象。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">getSlow</span>(pid <span style="color:#6ab825;font-weight:bold">int</span>) any {
+	<span style="color:#999;font-style:italic">// 原子加载 localSize 字段
+</span><span style="color:#999;font-style:italic"></span>	size := <span style="color:#447fcf">runtime_LoadAcquintptr</span>(&amp;p.localSize) 
+	locals := p.local                            
+	
+	<span style="color:#999;font-style:italic">// 尝试从其他处理器获取对象
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">int</span>(size); i++ {
+		<span style="color:#999;font-style:italic">// 注意这里定位处理器 P 的索引计算方式
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// pid+i+1 是为了忽略当前处理器 P
+</span><span style="color:#999;font-style:italic"></span>		l := <span style="color:#447fcf">indexLocal</span>(locals, (pid+i+<span style="color:#3677a9">1</span>)%<span style="color:#24909d">int</span>(size))
+        <span style="color:#999;font-style:italic">// 从队列尾部获取，减少并发冲突
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> x, _ := l.shared.<span style="color:#447fcf">popTail</span>(); x != <span style="color:#6ab825;font-weight:bold">nil</span> { 
+			<span style="color:#6ab825;font-weight:bold">return</span> x
+		}
+	}
+
+	<span style="color:#999;font-style:italic">// 如果从其他处理器没有获取到对象，尝试从 victim 缓存中获取 (也就是上一轮对象池中的对象)
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这样做可以尽可能地复用对象
+</span><span style="color:#999;font-style:italic"></span>	size = atomic.<span style="color:#447fcf">LoadUintptr</span>(&amp;p.victimSize)
+	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uintptr</span>(pid) &gt;= size {
+		<span style="color:#999;font-style:italic">// 当前处理器不存在于 victim 中，可能原因如下:
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 1. victim 已经被标记为空
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 2. 当前处理器比 victim 的长度要大，属于 &#34;后来创建的&#34;
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 此时直接返回即可，否则会发生处理器 pid 索引越界错误
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+	}
+
+	<span style="color:#999;font-style:italic">// 下面开始尝试从 victim 中获取对象
+</span><span style="color:#999;font-style:italic"></span>	
+    <span style="color:#999;font-style:italic">// 尝试从尾部处理器的私有变量获取对象
+</span><span style="color:#999;font-style:italic"></span>	locals = p.victim
+	l := <span style="color:#447fcf">indexLocal</span>(locals, pid)
+	<span style="color:#6ab825;font-weight:bold">if</span> x := l.private; x != <span style="color:#6ab825;font-weight:bold">nil</span> {
+		l.private = <span style="color:#6ab825;font-weight:bold">nil</span>
+		<span style="color:#6ab825;font-weight:bold">return</span> x
+	}
+	
+	<span style="color:#999;font-style:italic">// 尝试从其他处理器获取对象
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">int</span>(size); i++ {
+        <span style="color:#999;font-style:italic">// 注意这里定位处理器 P 的索引计算方式和刚才的不同
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里不需要忽略任何处理器
+</span><span style="color:#999;font-style:italic"></span>		l := <span style="color:#447fcf">indexLocal</span>(locals, (pid+i)%<span style="color:#24909d">int</span>(size))
+		<span style="color:#999;font-style:italic">// 从队列尾部获取，减少并发冲突
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> x, _ := l.shared.<span style="color:#447fcf">popTail</span>(); x != <span style="color:#6ab825;font-weight:bold">nil</span> { 
+			<span style="color:#6ab825;font-weight:bold">return</span> x
+		}
+	}
+	
+	<span style="color:#999;font-style:italic">// 将 victim 缓存标记为空，后续请求直接返回，避免多余的查询
+</span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">StoreUintptr</span>(&amp;p.victimSize, <span style="color:#3677a9">0</span>)
+
+	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+}
+
+<span style="color:#6ab825;font-weight:bold">func</span> (c *poolChain) <span style="color:#447fcf">popTail</span>() (any, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	d := <span style="color:#447fcf">loadPoolChainElt</span>(&amp;c.tail)
+	<span style="color:#6ab825;font-weight:bold">if</span> d == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		<span style="color:#999;font-style:italic">// 如果链表尾部节点为 nil, 直接返回
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+	}
+
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		<span style="color:#999;font-style:italic">// 在队列尾部节点出队之前，提前加载 d.next 指针很重要 (删除链表节点的边界条件)
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 因为 d 节点的尾元素出队之后，d 节点可能会变为 nil, 这样永远无法找到 d.next 节点了
+</span><span style="color:#999;font-style:italic"></span>		d2 := <span style="color:#447fcf">loadPoolChainElt</span>(&amp;d.next)
+
+		<span style="color:#6ab825;font-weight:bold">if</span> val, ok := d.<span style="color:#447fcf">popTail</span>(); ok {
+			<span style="color:#6ab825;font-weight:bold">return</span> val, ok
+		}
+
+		<span style="color:#6ab825;font-weight:bold">if</span> d2 == <span style="color:#6ab825;font-weight:bold">nil</span> {
+			<span style="color:#999;font-style:italic">// 如果 next 节点都变成 nil 了，说明队列已经空了
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+		}
+		
+		<span style="color:#999;font-style:italic">// 代码执行到这里，说明尾部节点 (d) 为 nil
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这时就可以将其删除了，防止下次调用 popTail 时发生错误 (误以为队列已空)
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>((*unsafe.Pointer)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;c.tail)), unsafe.<span style="color:#447fcf">Pointer</span>(d), unsafe.<span style="color:#447fcf">Pointer</span>(d2)) {
+			<span style="color:#999;font-style:italic">// 删除 d2 的前驱节点，也就是 d (因为此时前驱节点已经没有数据了)
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">storePoolChainElt</span>(&amp;d2.prev, <span style="color:#6ab825;font-weight:bold">nil</span>)
+		}
+		d = d2
+	}
+}
+</code></pre></div><p>poolDequeue.popTail 方法从队列尾部删除一个对象并返回，如果队列为空，返回 false, 该方法必须由 <code>多个生产者</code> 操作。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (d *poolDequeue) <span style="color:#447fcf">popTail</span>() (any, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+	<span style="color:#6ab825;font-weight:bold">var</span> slot *eface
+	<span style="color:#6ab825;font-weight:bold">for</span> {
+		ptrs := atomic.<span style="color:#447fcf">LoadUint64</span>(&amp;d.headTail)
+		head, tail := d.<span style="color:#447fcf">unpack</span>(ptrs)
+		<span style="color:#6ab825;font-weight:bold">if</span> tail == head {
+            <span style="color:#999;font-style:italic">// 头尾相等，说明队列为空
+</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+		}
+		
+		ptrs2 := d.<span style="color:#447fcf">pack</span>(head, tail+<span style="color:#3677a9">1</span>)
+		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapUint64</span>(&amp;d.headTail, ptrs, ptrs2) {
+			<span style="color:#999;font-style:italic">// CAS 操作成功，移除尾部的对象，此时 tail 指向 tail + 1
+</span><span style="color:#999;font-style:italic"></span>			slot = &amp;d.vals[tail&amp;<span style="color:#24909d">uint32</span>(<span style="color:#24909d">len</span>(d.vals)-<span style="color:#3677a9">1</span>)]
+			<span style="color:#6ab825;font-weight:bold">break</span>
+		}
+	}
+	
+	val := *(*any)(unsafe.<span style="color:#447fcf">Pointer</span>(slot))
+	<span style="color:#6ab825;font-weight:bold">if</span> val == <span style="color:#447fcf">dequeueNil</span>(<span style="color:#6ab825;font-weight:bold">nil</span>) {
+		val = <span style="color:#6ab825;font-weight:bold">nil</span>
+	}
+	
+	<span style="color:#999;font-style:italic">// 通过重置元素为 nil 的方式通知 pushHead 方法 (因为这两个方法存在并发操作同一位置元素的可能)
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 当前位置的元素已经操作完成 (pushHead 方法操作当前元素时会检测否和 popTail 方法冲突)
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 先重置 val, 再重置 typ
+</span><span style="color:#999;font-style:italic"></span>	slot.val = <span style="color:#6ab825;font-weight:bold">nil</span>
+	atomic.<span style="color:#447fcf">StorePointer</span>(&amp;slot.typ, <span style="color:#6ab825;font-weight:bold">nil</span>)
+
+	<span style="color:#6ab825;font-weight:bold">return</span> val, <span style="color:#6ab825;font-weight:bold">true</span>
+}
+</code></pre></div><h3 id="流程图">流程图</h3>
+<p>注意当前 P 和 其他 P 的区别:</p>
+<p><img src="https://dbwu.tech/images/syncpool_get.png" alt="注意当前 P 和 其他 P 的区别"></p>
+<h2 id="辅助方法">辅助方法</h2>
+<h3 id="pin">pin</h3>
+<p>pin 方法绑定当前 <code>goroutine</code> 到处理器 P 并禁止抢占，返回一个 <code>poolLocal</code> 对象指针和处理器 P 的 ID。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">pin</span>() (*poolLocal, <span style="color:#6ab825;font-weight:bold">int</span>) {
+	pid := <span style="color:#447fcf">runtime_procPin</span>()
+    <span style="color:#999;font-style:italic">// 原子加载 localSize 字段
+</span><span style="color:#999;font-style:italic"></span>	s := <span style="color:#447fcf">runtime_LoadAcquintptr</span>(&amp;p.localSize) 
+	l := p.local      
+	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uintptr</span>(pid) &lt; s {
+		<span style="color:#999;font-style:italic">// 如果 pid 小于 local 数组的长度
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明对应的 poolLocal 对象已经创建，直接返回即可
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">indexLocal</span>(l, pid), pid
+	}
+	
+	<span style="color:#999;font-style:italic">// 代码执行到这里，一般是因为两种原因：
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 1. 缓存池还未创建
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 2. 处理器 P 的数量被动态调整了
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> p.<span style="color:#447fcf">pinSlow</span>()
+}
+</code></pre></div><h3 id="pinslow">pinSlow</h3>
+<p>pinSlow 方法创建一个新的 <code>poolLocal</code> 对象并返回。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">pinSlow</span>() (*poolLocal, <span style="color:#6ab825;font-weight:bold">int</span>) {
+	<span style="color:#447fcf">runtime_procUnpin</span>()
+	allPoolsMu.<span style="color:#447fcf">Lock</span>()
+	<span style="color:#6ab825;font-weight:bold">defer</span> allPoolsMu.<span style="color:#447fcf">Unlock</span>()
+	pid := <span style="color:#447fcf">runtime_procPin</span>()
+	
+	<span style="color:#999;font-style:italic">// 加锁完成，就不需要原子性加载了
+</span><span style="color:#999;font-style:italic"></span>	s := p.localSize
+	l := p.local
+	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uintptr</span>(pid) &lt; s {
+		<span style="color:#999;font-style:italic">// 双重检测
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// local 数组已经发生变化 (加锁期间被其他线程修改)
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接返回即可
+</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">indexLocal</span>(l, pid), pid
+	}
+	<span style="color:#6ab825;font-weight:bold">if</span> p.local == <span style="color:#6ab825;font-weight:bold">nil</span> {
+		allPools = <span style="color:#24909d">append</span>(allPools, p)
+	}
+	
+	<span style="color:#999;font-style:italic">// 使用处理器 P 的数量作为数组长度
+</span><span style="color:#999;font-style:italic"></span>	size := runtime.<span style="color:#447fcf">GOMAXPROCS</span>(<span style="color:#3677a9">0</span>)
+	<span style="color:#999;font-style:italic">// 初始化新的 local 数组
+</span><span style="color:#999;font-style:italic"></span>	local := <span style="color:#24909d">make</span>([]poolLocal, size)
+    <span style="color:#999;font-style:italic">// 原子更新 local 字段
+</span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">StorePointer</span>(&amp;p.local, unsafe.<span style="color:#447fcf">Pointer</span>(&amp;local[<span style="color:#3677a9">0</span>]))
+    <span style="color:#999;font-style:italic">// 原子更新 localSize 字段
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">runtime_StoreReluintptr</span>(&amp;p.localSize, <span style="color:#24909d">uintptr</span>(size))     
+	<span style="color:#6ab825;font-weight:bold">return</span> &amp;local[pid], pid
+}
+</code></pre></div><h3 id="indexlocal">indexLocal</h3>
+<p>indexLocal 方法根据索引参数，返回 <code>local</code> 数组中对应的 <code>poolLocal</code> 对象。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">indexLocal</span>(l unsafe.Pointer, i <span style="color:#6ab825;font-weight:bold">int</span>) *poolLocal {
+	lp := unsafe.<span style="color:#447fcf">Pointer</span>(<span style="color:#24909d">uintptr</span>(l) + <span style="color:#24909d">uintptr</span>(i)*unsafe.<span style="color:#447fcf">Sizeof</span>(poolLocal{}))
+	<span style="color:#6ab825;font-weight:bold">return</span> (*poolLocal)(lp)
+}
+</code></pre></div><h2 id="缓存池-gc-过程">缓存池 GC 过程</h2>
+<p><code>sync.Pool</code> 包文件中有一个 init 函数，内部注册了 GC 执行方法。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">init</span>() {
+    <span style="color:#447fcf">runtime_registerPoolCleanup</span>(poolCleanup)
+}
+</code></pre></div><p>poolCleanup 方法在缓存池的清理过程中，并不会直接释放池对象，而是会将其放入 <code>victim</code> 中，等到下一轮清理时再释放。
+<strong>这样可以防止缓存池被直接释放后，变为冷启动时面对突然暴涨的对象请求造成的性能抖动，通过将缓存池放入 victim 中，可以起到避免 GC 毛刺、平滑过渡的作用</strong>。</p>
+<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poolCleanup</span>() {
+	<span style="color:#999;font-style:italic">// 函数会在 GC 过程中的 STW 阶段被调用
+</span><span style="color:#999;font-style:italic"></span>
+	<span style="color:#999;font-style:italic">// 清理 victim 缓存对象池
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, p := <span style="color:#6ab825;font-weight:bold">range</span> oldPools {
+		p.victim = <span style="color:#6ab825;font-weight:bold">nil</span>
+		p.victimSize = <span style="color:#3677a9">0</span>
+	}
+
+	<span style="color:#999;font-style:italic">// 将当前所有缓存池对象移动到 victim 缓存池对象
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, p := <span style="color:#6ab825;font-weight:bold">range</span> allPools {
+		p.victim = p.local
+		p.victimSize = p.localSize
+		p.local = <span style="color:#6ab825;font-weight:bold">nil</span>
+		p.localSize = <span style="color:#3677a9">0</span>
+	}
+
+	<span style="color:#999;font-style:italic">// 将全局缓存池移动到全局 victim 缓存池
+</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将全局 victim 重置为 nil
+</span><span style="color:#999;font-style:italic"></span>	oldPools, allPools = allPools, <span style="color:#6ab825;font-weight:bold">nil</span>
+}
+</code></pre></div><h2 id="小结-1">小结</h2>
+<p>通过学习 <code>sync.Pool</code> 的源代码，我们可以深入理解和学习到的高性能编程设计理念和技巧:</p>
+<ul>
+<li>noCopy 机制</li>
+<li>CPU CacheLine 伪共享、内存对齐</li>
+<li>poolDequeue.headTail 字段合并设计，压缩、解压、CAS 操作、索引定位等</li>
+<li>每个处理器 P 持有一个对象池，最大限度降低并发冲突</li>
+<li>私有变量/共享变量</li>
+<li>单生产者/多消费者模式实现 “读写分离”</li>
+<li>双端队列的出队顺序 (当前处理器 P 从队列头部操作，其他处理器 P 从队列尾部操作)，最大限度降低并发冲突</li>
+<li>无锁编程</li>
+<li>对象窃取机制</li>
+<li>垃圾回收时的新旧对象交替使用，类似分代垃圾回收的设计理念</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/golang_lockfree/">Go 高性能 - 无锁编程</a></li>
+<li><a href="https://golang.dbwu.tech/performance/sync_pool/">Go 高性能 - sync.Pool</a></li>
+<li><a href="https://en.wikipedia.org/wiki/False_sharing">false sharing</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Victim_cache">victim cache</a></li>
+<li><a href="https://www.luozhiyun.com/archives/416">多图详解Go的sync.Pool源码</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/99710992">golang的对象池sync.pool源码解读</a></li>
+<li><a href="https://www.cyhone.com/articles/think-in-sync-pool">深度分析 Golang sync.Pool 底层原理</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzA4ODg0NDkzOA==&amp;mid=2247487149&amp;idx=1&amp;sn=f38f2d72fd7112e19e97d5a2cd304430&amp;source=41#wechat_redirect">请问 1.13 之前的 sync.Pool有什么缺点？</a></li>
+<li><a href="https://colobu.com/2019/10/08/how-is-sync-Pool-improved-in-Go-1-13/">Go 1.13中 sync.Pool 是如何优化的?</a></li>
+<li><a href="https://www.cnblogs.com/cyfonly/p/5800758.html">伪共享（false sharing），并发编程无声的性能杀手</a></li>
+<li><a href="https://github.com/cch123/golang-notes/blob/master/memory_barrier.md">memory barrier</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_memory/"><i class="fa fa-chevron-circle-left"></i> Go 内存管理概述</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="sync.Pool Code Review"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

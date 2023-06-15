@@ -6,10 +6,19 @@
    <description>Recent content in 标签 on 蛮荆</description>
    <generator>Hugo -- gohugo.io</generator>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Tue, 13 Jun 2023 00:00:00 +0800</lastBuildDate>
+   <lastBuildDate>Thu, 15 Jun 2023 00:00:00 +0800</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>sync.Pool Code Review</title>
+       <link>https://dbwu.tech/posts/golang_sync_pool/</link>
+       <pubDate>Thu, 15 Jun 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_pool/</guid>
+       <description>sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。本文通过底层源代码来分析 sync.Pool 高性能背后的设计与实现&amp;hellip;</description>
+     </item>
    
      <item>
        <title>Go 内存管理概述</title>
@@ -180,6 +189,15 @@
        
        <guid>https://dbwu.tech/posts/chatgpt/</guid>
        <description>概述 ChatGPT 从 2 月份热度一直持续到现在，并且在接下来的一段时间内，热度还会持续下去。笔者从 3 月初开始慢慢接触，从最初的在 搜索引擎 和 ChatGPT 之间来回切换并验证， 到目前的简单搜索场景 80% 的时间都是直接用 ChatGPT 的，本文总结下这一个月的时间，笔者用到的最多的 4 个功能。</description>
+     </item>
+   
+     <item>
+       <title>Docker 官方提供的最佳实践</title>
+       <link>https://dbwu.tech/posts/docker_best_practices/</link>
+       <pubDate>Wed, 29 Mar 2023 00:00:00 +0800</pubDate>
+       
+       <guid>https://dbwu.tech/posts/docker_best_practices/</guid>
+       <description></description>
      </item>
    
      <item>
