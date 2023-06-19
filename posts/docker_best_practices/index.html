@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Docker 官方提供的最佳实践" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/docker_best_practices/" />
-<meta property="article:published_time" content="2023-03-29T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-03-29T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/docker_best_practices/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-29T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-29T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Docker 官方提供的最佳实践"/>
 <meta name="twitter:description" content=""/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -139,12 +139,12 @@
 <li>如果需要使用不包含多阶段构建的 Docker 版本，请尝试通过 <strong>最小化 Dockerfile 中单独的 RUN 命令的数量来减少镜像中的层数</strong>
 可以通过将多个命令合并到单个 RUN 行并使用 shell 的机制将它们组合在一起来实现。如下两种命令形式，第一种在镜像中创建两个层，而第二种只创建一个层</li>
 </ul>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 创建两个层</span>
-RUN apt-get -y update
-RUN apt-get install -y python    
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 创建一个层</span>
-RUN apt-get -y update &amp;&amp; apt-get install -y python
-</code></pre></div><ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 创建两个层</span>
+</span></span><span style="display:flex;"><span>RUN apt-get -y update
+</span></span><span style="display:flex;"><span>RUN apt-get install -y python    
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 创建一个层</span>
+</span></span><span style="display:flex;"><span>RUN apt-get -y update &amp;&amp; apt-get install -y python
+</span></span></code></pre></div><ul>
 <li>如果有多个具有共同点的镜像，请考虑 <strong>使用共享组件创建基础镜像，并以此为基础创建其他的镜像</strong>。 Docker 只需要加载一次公共镜像层，因为它们会被缓存</li>
 <li><strong>保持生产镜像精简但允许调试</strong>，请考虑使用生产镜像作为调试镜像的基础镜像，可以在生产镜像之上添加额外的测试或调试工具</li>
 <li><strong>构建镜像时，始终使用有意义的标签来标记它们</strong>，这些标签将版本信息、预期目标（例如生产或测试）、稳定性或在不同环境中部署应用程序时有用的其他信息进行编码</li>
@@ -165,21 +165,21 @@ RUN apt-get -y update &amp;&amp; apt-get install -y python
 <table>
 <thead>
 <tr>
-<th align="left">开发环境      </th>
+<th style="text-align:left">开发环境      </th>
 <th>生产环境</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td align="left">使用挂载点映射使容器可以访问源代码</td>
+<td style="text-align:left">使用挂载点映射使容器可以访问源代码</td>
 <td>使用卷存储数据</td>
 </tr>
 <tr>
-<td align="left">使用 Docker Desktop</td>
+<td style="text-align:left">使用 Docker Desktop</td>
 <td>使用 Docker 引擎，如果可能的话，使用用户映射来更好地隔离 Docker 进程与主机进程</td>
 </tr>
 <tr>
-<td align="left">不用担心时间时钟问题</td>
+<td style="text-align:left">不用担心时间时钟问题</td>
 <td>始终在 Docker 主机上和每个容器进程中运行 NTP 客户端，并将它们全部同步到同一 NTP 服务器。如果使用 swarm 服务，还要确保每个 Docker 节点将其时钟同步到与容器相同的时间源</td>
 </tr>
 </tbody>
@@ -189,12 +189,12 @@ RUN apt-get -y update &amp;&amp; apt-get install -y python
 <p><code>Docker</code> 通过从 <code>Dockerfile</code> 文件中读取指令来自动构建镜像，<code>Dockerfile</code> 遵循特定格式和指令集，可以在 <code>Dockerfile</code> 文档查询这些指令。</p>
 <p><code>Docker</code> 镜像由只读层组成，每个层代表一个 <code>Dockerfile</code> 指令，每一层都在上一层的基础上增加了变化的部分。</p>
 <p>示例 <code>Dockerfile</code> 文件:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
-FROM ubuntu:18.04
-COPY . /app
-RUN make /app
-CMD python /app/app.py
-</code></pre></div><p>下面的指令都会创建一个新的层：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+</span></span><span style="display:flex;"><span>FROM ubuntu:18.04
+</span></span><span style="display:flex;"><span>COPY . /app
+</span></span><span style="display:flex;"><span>RUN make /app
+</span></span><span style="display:flex;"><span>CMD python /app/app.py
+</span></span></code></pre></div><p>下面的指令都会创建一个新的层：</p>
 <ul>
 <li>FROM : 基于 <code>ubuntu:18.04</code> 镜像会创建一个新的层</li>
 <li>COPY : 从当前目录添加文件会创建一个新的层</li>
@@ -207,11 +207,11 @@ CMD python /app/app.py
 <h3 id="使用-dockerignore-文件">使用 .dockerignore 文件</h3>
 <p>如果要排除与构建无关的文件，而不是重构源存储库，请使用 <code>.dockerignore</code> 文件，此文件支持类似于 <code>.gitignore</code> 文件。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># comment</span>
-*/temp*
-*/*/temp*
-temp?
-</code></pre></div><h3 id="使用多阶段构建">使用多阶段构建</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># comment</span>
+</span></span><span style="display:flex;"><span>*/temp*
+</span></span><span style="display:flex;"><span>*/*/temp*
+</span></span><span style="display:flex;"><span>temp?
+</span></span></code></pre></div><h3 id="使用多阶段构建">使用多阶段构建</h3>
 <blockquote>
 <p>多阶段构建是删除构建依赖的首选方案。</p>
 </blockquote>
@@ -224,35 +224,35 @@ temp?
 <li>构建应用程序</li>
 </ol>
 <p>示例如下：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
-FROM golang:1.16-alpine AS build
-
-<span style="color:#999;font-style:italic"># 安装构建应用程序所需的工具</span>
-<span style="color:#999;font-style:italic"># 运行 `docker build --no-cache .` 更新依赖</span>
-RUN apk add --no-cache git
-RUN go get github.com/golang/dep/cmd/dep
-
-<span style="color:#999;font-style:italic"># 使用 Gopkg.toml 和 Gopkg.lock 列出项目依赖项</span>
-<span style="color:#999;font-style:italic"># 这些层仅在更新 Gopkg 文件时重新构建</span> 
-COPY Gopkg.lock Gopkg.toml /go/src/project/
-WORKDIR /go/src/project/
-
-<span style="color:#999;font-style:italic"># 安装依赖库</span>
-RUN dep ensure -vendor-only
-
-<span style="color:#999;font-style:italic"># 拷贝项目文件并构建</span>
-<span style="color:#999;font-style:italic"># 当项目目录中的文件更改时重建该层</span>
-COPY . /go/src/project/
-RUN go build -o /bin/project
-
-<span style="color:#999;font-style:italic"># 结果位于单层镜像中</span>
-<span style="color:#999;font-style:italic"># scratch 表示一个空白的镜像</span>
-<span style="color:#999;font-style:italic"># 如果以 scratch 为基础镜像，意味着不以任何镜像为基础，接下来所写的指令将作为镜像第一层开始存在</span>
-FROM scratch
-COPY --from=build /bin/project /bin/project
-ENTRYPOINT [<span style="color:#ed9d13">&#34;/bin/project&#34;</span>]
-CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
-</code></pre></div><h4 id="其他示例">其他示例</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+</span></span><span style="display:flex;"><span>FROM golang:1.16-alpine AS build
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 安装构建应用程序所需的工具</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 运行 `docker build --no-cache .` 更新依赖</span>
+</span></span><span style="display:flex;"><span>RUN apk add --no-cache git
+</span></span><span style="display:flex;"><span>RUN go get github.com/golang/dep/cmd/dep
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 使用 Gopkg.toml 和 Gopkg.lock 列出项目依赖项</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 这些层仅在更新 Gopkg 文件时重新构建 </span>
+</span></span><span style="display:flex;"><span>COPY Gopkg.lock Gopkg.toml /go/src/project/
+</span></span><span style="display:flex;"><span>WORKDIR /go/src/project/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 安装依赖库</span>
+</span></span><span style="display:flex;"><span>RUN dep ensure -vendor-only
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 拷贝项目文件并构建</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 当项目目录中的文件更改时重建该层</span>
+</span></span><span style="display:flex;"><span>COPY . /go/src/project/
+</span></span><span style="display:flex;"><span>RUN go build -o /bin/project
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 结果位于单层镜像中</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># scratch 表示一个空白的镜像</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果以 scratch 为基础镜像，意味着不以任何镜像为基础，接下来所写的指令将作为镜像第一层开始存在</span>
+</span></span><span style="display:flex;"><span>FROM scratch
+</span></span><span style="display:flex;"><span>COPY --from=build /bin/project /bin/project
+</span></span><span style="display:flex;"><span>ENTRYPOINT [<span style="color:#ed9d13">&#34;/bin/project&#34;</span>]
+</span></span><span style="display:flex;"><span>CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
+</span></span></code></pre></div><h4 id="其他示例">其他示例</h4>
 <p><img src="https://dbwu.tech/images/docker_best_practices_9.png" alt="Java 程序多阶段构建示例"></p>
 <h3 id="避免安装不必要的包">避免安装不必要的包</h3>
 <p>避免安装额外的或不必要的包，这样镜像将降低复杂性、减少依赖性、减小文件大小并缩短构建时间。</p>
@@ -273,14 +273,14 @@ CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
 <h3 id="对多行参数进行排序">对多行参数进行排序</h3>
 <p>尽可能通过按字典顺序对多行参数进行排序来简化修改，同时有助于避免包重复并使列表更容易更新。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>  bzr <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>  cvs <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>  git <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>  mercurial <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>  subversion <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>  &amp;&amp; rm -rf /var/lib/apt/lists/*
-</code></pre></div><h3 id="利用构建缓存">利用构建缓存</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>  bzr <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>  cvs <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>  git <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>  mercurial <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>  subversion <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>  &amp;&amp; rm -rf /var/lib/apt/lists/*
+</span></span></code></pre></div><h3 id="利用构建缓存">利用构建缓存</h3>
 <p>构建镜像时，<code>Docker</code> 会逐行执行 <code>Dockerfile</code> 中的指令，并按照指定的顺序执行每条指令。
 在检查每条指令时，<code>Docker</code> 会在其缓存中查找可以重用的镜像，而不是创建新的镜像。</p>
 <p><strong>一旦缓存失效，所有后续的 <code>Dockerfile</code> 命令都会生成新镜像并且不会使用缓存，最佳实践是把不经常更改的行放到最前面，更改改动的行放到最后面。</strong>。</p>
@@ -316,101 +316,101 @@ CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
 <p>注意：如果你的字符串中包含空格，必须将字符串放入引号中或者对空格使用转义。如果字符串内容本身就包含引号，必须对引号使用转义。</p>
 </blockquote>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># Set one or more individual labels</span>
-LABEL com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span>
-LABEL <span style="color:#40ffff">vendor1</span>=<span style="color:#ed9d13">&#34;ACME Incorporated&#34;</span>
-LABEL <span style="color:#40ffff">vendor2</span>=ZENITH<span style="color:#ed9d13">\ </span>Incorporated
-LABEL com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
-LABEL com.example.version.is-production=<span style="color:#ed9d13">&#34;&#34;</span>
-</code></pre></div><p>一个镜像可以包含多个标签，但建议将多个标签放入到一个 LABEL 指令中。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># Set multiple labels on one line</span>
-LABEL com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span> com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
-</code></pre></div><p>也可以写成这样:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># Set multiple labels at once, using line-continuation characters to break long lines</span>
-LABEL <span style="color:#40ffff">vendor</span>=ACME<span style="color:#ed9d13">\ </span>Incorporated <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>      com.example.is-beta= <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>      com.example.is-production=<span style="color:#ed9d13">&#34;&#34;</span> <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>      com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span> <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>      com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
-</code></pre></div><h4 id="悬挂镜像">悬挂镜像</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">&lt;none&gt;   &lt;none&gt;    00285df0df87   <span style="color:#3677a9">45</span> days ago   <span style="color:#3677a9">342</span> MB
-</code></pre></div><p>这个镜像原本是有镜像名和标签的，原来为 mongo:3.2，官方镜像发布了新版本后，重新 docker pull mongo:3.2 时，mongo:3.2 这个镜像名被转移到了新的镜像上面，
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Set one or more individual labels</span>
+</span></span><span style="display:flex;"><span>LABEL com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span>
+</span></span><span style="display:flex;"><span>LABEL <span style="color:#40ffff">vendor1</span>=<span style="color:#ed9d13">&#34;ACME Incorporated&#34;</span>
+</span></span><span style="display:flex;"><span>LABEL <span style="color:#40ffff">vendor2</span>=ZENITH<span style="color:#ed9d13">\ </span>Incorporated
+</span></span><span style="display:flex;"><span>LABEL com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
+</span></span><span style="display:flex;"><span>LABEL com.example.version.is-production=<span style="color:#ed9d13">&#34;&#34;</span>
+</span></span></code></pre></div><p>一个镜像可以包含多个标签，但建议将多个标签放入到一个 LABEL 指令中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Set multiple labels on one line</span>
+</span></span><span style="display:flex;"><span>LABEL com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span> com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
+</span></span></code></pre></div><p>也可以写成这样:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Set multiple labels at once, using line-continuation characters to break long lines</span>
+</span></span><span style="display:flex;"><span>LABEL <span style="color:#40ffff">vendor</span>=ACME<span style="color:#ed9d13">\ </span>Incorporated <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>      com.example.is-beta= <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>      com.example.is-production=<span style="color:#ed9d13">&#34;&#34;</span> <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>      com.example.version=<span style="color:#ed9d13">&#34;0.0.1-beta&#34;</span> <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>      com.example.release-date=<span style="color:#ed9d13">&#34;2015-02-12&#34;</span>
+</span></span></code></pre></div><h4 id="悬挂镜像">悬挂镜像</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>&lt;none&gt;   &lt;none&gt;    00285df0df87   <span style="color:#3677a9">45</span> days ago   <span style="color:#3677a9">342</span> MB
+</span></span></code></pre></div><p>这个镜像原本是有镜像名和标签的，原来为 mongo:3.2，官方镜像发布了新版本后，重新 docker pull mongo:3.2 时，mongo:3.2 这个镜像名被转移到了新的镜像上面，
 而旧的镜像名称和标签被取消，变成了 <code>&lt;none&gt;</code>, 除了 docker pull 之外，docker build 也会导致这种现象，由于新旧镜像同名，旧镜像名称被取消，
 从而出现仓库名、标签均为 <code>&lt;none&gt;</code> 的镜像，这类无标签镜像也被称为 <code>悬挂镜像(dangling image)</code>，可以用下面命令显示：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker image ls -f <span style="color:#40ffff">dangling</span>=<span style="color:#24909d">true</span>
-</code></pre></div><h4 id="无标签镜像">无标签镜像</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker image ls -a
-</code></pre></div><p>执行上述命令会看到很多无标签的镜像，与 <code>悬挂镜像</code> 不同，无标签的镜像很多都是 <code>中间层镜像</code>，是其它镜像所依赖的镜像。
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker image ls -f <span style="color:#40ffff">dangling</span>=<span style="color:#24909d">true</span>
+</span></span></code></pre></div><h4 id="无标签镜像">无标签镜像</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker image ls -a
+</span></span></code></pre></div><p>执行上述命令会看到很多无标签的镜像，与 <code>悬挂镜像</code> 不同，无标签的镜像很多都是 <code>中间层镜像</code>，是其它镜像所依赖的镜像。
 这些无标签镜像不应该删除，否则会导致上层镜像因为依赖丢失而出错。当然这些镜像也没必要删除，因为相同的依赖层只会存储一份，所以只要删除依赖中间层镜像的镜像之后，这些中间层镜像也会被同步删除。</p>
 <h4 id="多个标签">多个标签</h4>
 <p>镜像的唯一标识是 <code>ID + 摘要</code>，一个镜像可以有多个标签。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 列表 Nginx 镜像的所有标签</span>
-
-$ docker inspect --format=<span style="color:#ed9d13">&#39;{{range $k := .Config.Labels}}{{$k}} {{end}}&#39;</span> nginx
-</code></pre></div><h3 id="run">RUN</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 列表 Nginx 镜像的所有标签</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ docker inspect --format=<span style="color:#ed9d13">&#39;{{range $k := .Config.Labels}}{{$k}} {{end}}&#39;</span> nginx
+</span></span></code></pre></div><h3 id="run">RUN</h3>
 <p>为了保持 <code>Dockerfile</code> 文件的可读性和可维护性，建议将长的或复杂的 RUN 指令用反斜杠 \ 分割成多行。</p>
 <h4 id="apt-get">apt-get</h4>
 <p>RUN 最常见的场景可能是 apt-get 的应用程序。因为它会安装包，所以 RUN apt-get 命令有几个需要注意的违反直觉的行为。</p>
 <p>始终将 RUN <code>apt-get update</code> 与 <code>apt-get install</code> 组合在同一个 RUN 语句中。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    package-bar <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    package-baz <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    package-foo  <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    &amp;&amp; rm -rf /var/lib/apt/lists/*
-</code></pre></div><p>在 RUN 语句中单独使用 <code>apt-get update</code> 会导致缓存问题和后续的 <code>apt-get install</code> 失败。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    package-bar <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    package-baz <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    package-foo  <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    &amp;&amp; rm -rf /var/lib/apt/lists/*
+</span></span></code></pre></div><p>在 RUN 语句中单独使用 <code>apt-get update</code> 会导致缓存问题和后续的 <code>apt-get install</code> 失败。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
-FROM ubuntu:18.04
-RUN apt-get update
-RUN apt-get install -y curl
-</code></pre></div><p>构建镜像后，所有的层都在 <code>Docker</code> 的缓存中，假设后续修改了其中的 <code>apt-get install</code> 添加了一个包:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
-FROM ubuntu:18.04
-RUN apt-get update
-RUN apt-get install -y curl nginx
-</code></pre></div><p><code>Docker</code> 发现修改后的 RUN <code>apt-get update </code>指令和之前的完全一样。所以 <code>apt-get update</code> 不会执行，而是使用之前的缓存镜像。
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+</span></span><span style="display:flex;"><span>FROM ubuntu:18.04
+</span></span><span style="display:flex;"><span>RUN apt-get update
+</span></span><span style="display:flex;"><span>RUN apt-get install -y curl
+</span></span></code></pre></div><p>构建镜像后，所有的层都在 <code>Docker</code> 的缓存中，假设后续修改了其中的 <code>apt-get install</code> 添加了一个包:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+</span></span><span style="display:flex;"><span>FROM ubuntu:18.04
+</span></span><span style="display:flex;"><span>RUN apt-get update
+</span></span><span style="display:flex;"><span>RUN apt-get install -y curl nginx
+</span></span></code></pre></div><p><code>Docker</code> 发现修改后的 RUN <code>apt-get update </code>指令和之前的完全一样。所以 <code>apt-get update</code> 不会执行，而是使用之前的缓存镜像。
 因为 <code>apt-get update</code> 没有运行，后面的 <code>apt-get install</code> 可能安装的是过时的 curl 和 nginx 版本。</p>
 <p>使用 RUN <code>apt-get update &amp;&amp; apt-get install -y</code> 可以确保 <code>Dockerfiles</code> 每次安装的都是最新版本的包，而且这个过程不需要多余的工作。
 这项技术叫作 <code>cache busting</code>，可以显式指定一个包的版本号来达到 <code>cache-busting</code>，称为 <code>版本固定</code>。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    package-bar <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    package-baz <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    package-foo=1.3.*
-</code></pre></div><p><code>版本固定</code> 强制构建检索特定版本，而不管缓存中有什么，还可以减少由于所需包的意外更改而导致的故障。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    package-bar <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    package-baz <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    package-foo=1.3.*
+</span></span></code></pre></div><p><code>版本固定</code> 强制构建检索特定版本，而不管缓存中有什么，还可以减少由于所需包的意外更改而导致的故障。</p>
 <p>下面是一个格式正确的 RUN 指令，它演示了所有的 <code>apt-get</code> 最佳实践。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    aufs-tools <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    automake <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    build-essential <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    curl <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    dpkg-sig <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    libcap-dev <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    libsqlite3-dev <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    mercurial <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    reprepro <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    ruby1.9.1 <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    ruby1.9.1-dev <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    <span style="color:#40ffff">s3cmd</span>=1.1.* <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span> &amp;&amp; rm -rf /var/lib/apt/lists/*
-</code></pre></div><p>其中 <code>s3cmd</code> 指令指定了一个版本号 1.1.*。如果之前的镜像使用的是更旧的版本，指定新的版本会导致 <code>apt-get update</code> 缓存失效并确保安装的是新版本。
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN apt-get update &amp;&amp; apt-get install -y <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    aufs-tools <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    automake <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    build-essential <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    curl <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    dpkg-sig <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    libcap-dev <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    libsqlite3-dev <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    mercurial <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    reprepro <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    ruby1.9.1 <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    ruby1.9.1-dev <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    <span style="color:#40ffff">s3cmd</span>=1.1.* <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span> &amp;&amp; rm -rf /var/lib/apt/lists/*
+</span></span></code></pre></div><p>其中 <code>s3cmd</code> 指令指定了一个版本号 1.1.*。如果之前的镜像使用的是更旧的版本，指定新的版本会导致 <code>apt-get update</code> 缓存失效并确保安装的是新版本。
 另外，清理掉 apt 缓存 <code>var/lib/apt/lists</code> 可以减小镜像体积。因为 RUN 指令的开头为 <code>apt-get update</code>，包缓存总是会在 <code>apt-get install</code> 之前更新。</p>
 <p><strong>官方 Debian 和 Ubuntu 镜像会自动运行 apt-get clean，因此不需要显式调用</strong>。</p>
 <h4 id="使用管道">使用管道</h4>
 <p>某些 RUN 命令需要使用管道字符 (|) 将一个命令的输出通过管道传输到另一个命令。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN wget -O - https://some.site | wc -l &gt; /number
-</code></pre></div><p>Docker 使用 /bin/sh -c 解释器执行这些命令，它根据管道中最后一个操作的退出代码确定操作是否成功。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN wget -O - https://some.site | wc -l &gt; /number
+</span></span></code></pre></div><p>Docker 使用 /bin/sh -c 解释器执行这些命令，它根据管道中最后一个操作的退出代码确定操作是否成功。</p>
 <p>如果希望命令在管道发生错误时构建失败，在前面添加 <code>set -o pipefail &amp;&amp;</code>。</p>
 <p>示例如下：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN <span style="color:#24909d">set</span> -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number
-</code></pre></div><blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN <span style="color:#24909d">set</span> -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number
+</span></span></code></pre></div><blockquote>
 <p>注意: 并非所有 shell 都支持 -o pipefail 选项。
 在基于 Debian 的镜像上的 dash shell 等情况下，请考虑使用 RUN 的 exec 形式来明确选择支持 pipefail 选项的 shell。</p>
 </blockquote>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN [<span style="color:#ed9d13">&#34;/bin/bash&#34;</span>, <span style="color:#ed9d13">&#34;-c&#34;</span>, <span style="color:#ed9d13">&#34;set -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number&#34;</span>]
-</code></pre></div><h3 id="cmd">CMD</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN [<span style="color:#ed9d13">&#34;/bin/bash&#34;</span>, <span style="color:#ed9d13">&#34;-c&#34;</span>, <span style="color:#ed9d13">&#34;set -o pipefail &amp;&amp; wget -O - https://some.site | wc -l &gt; /number&#34;</span>]
+</span></span></code></pre></div><h3 id="cmd">CMD</h3>
 <p>CMD 指令用于执行目标镜像中包含的软件，可以包含参数。</p>
 <p>CMD 大多数情况下都应该以 <code>CMD [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;...]</code> 的形式使用。
 因此，如果创建镜像的目的是为了部署某个服务(比如 Apache)，你可能会执行类似于 <code>CMD [&quot;apache2&quot;, &quot;-DFOREGROUND&quot;]</code> 形式的命令。
@@ -425,100 +425,100 @@ CMD 应该很少以 <code>CMD [&quot;param&quot;, &quot;param&quot;]</code> 的�
 <p>ENV 指令也可以提供特定容器所需的环境变量，例如 Postgres 的 PGDATA。</p>
 <p>此外，ENV 还可以用于设置常用的版本号，以便更容易维护版本号：</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ENV <span style="color:#40ffff">PG_MAJOR</span>=9.3
-ENV <span style="color:#40ffff">PG_VERSION</span>=9.3.4
-RUN curl -SL https://example.com/postgres-<span style="color:#40ffff">$PG_VERSION</span>.tar.xz | tar -xJC /usr/src/postgres &amp;&amp; …
-ENV <span style="color:#40ffff">PATH</span>=/usr/local/postgres-<span style="color:#40ffff">$PG_MAJOR</span>/bin:<span style="color:#40ffff">$PATH</span>
-</code></pre></div><p>类似于在程序中使用环境变量的场景，使用 ENV 指令以自动更改容器中的环境变量，而无需任何代码变动。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>ENV <span style="color:#40ffff">PG_MAJOR</span>=9.3
+</span></span><span style="display:flex;"><span>ENV <span style="color:#40ffff">PG_VERSION</span>=9.3.4
+</span></span><span style="display:flex;"><span>RUN curl -SL https://example.com/postgres-<span style="color:#40ffff">$PG_VERSION</span>.tar.xz | tar -xJC /usr/src/postgres &amp;&amp; …
+</span></span><span style="display:flex;"><span>ENV <span style="color:#40ffff">PATH</span>=/usr/local/postgres-<span style="color:#40ffff">$PG_MAJOR</span>/bin:<span style="color:#40ffff">$PATH</span>
+</span></span></code></pre></div><p>类似于在程序中使用环境变量的场景，使用 ENV 指令以自动更改容器中的环境变量，而无需任何代码变动。</p>
 <p>每个 ENV 行都会创建一个新的镜像层，就像 RUN 命令一样。这意味着即使在新的层中删除环境变量，它仍然存在于这一层中并且可以被导出。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
-FROM alpine
-ENV <span style="color:#40ffff">ADMIN_USER</span>=<span style="color:#ed9d13">&#34;mark&#34;</span>
-RUN <span style="color:#24909d">echo</span> <span style="color:#40ffff">$ADMIN_USER</span> &gt; ./mark
-RUN <span style="color:#24909d">unset</span> ADMIN_USER
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run --rm <span style="color:#24909d">test</span> sh -c <span style="color:#ed9d13">&#39;echo $ADMIN_USER&#39;</span>
-
-mark
-</code></pre></div><p>从上面的代码输出中，我们可以看到，即使环境变量已经被删除，但是在打印时依然会输出。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+</span></span><span style="display:flex;"><span>FROM alpine
+</span></span><span style="display:flex;"><span>ENV <span style="color:#40ffff">ADMIN_USER</span>=<span style="color:#ed9d13">&#34;mark&#34;</span>
+</span></span><span style="display:flex;"><span>RUN <span style="color:#24909d">echo</span> <span style="color:#40ffff">$ADMIN_USER</span> &gt; ./mark
+</span></span><span style="display:flex;"><span>RUN <span style="color:#24909d">unset</span> ADMIN_USER
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run --rm <span style="color:#24909d">test</span> sh -c <span style="color:#ed9d13">&#39;echo $ADMIN_USER&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mark
+</span></span></code></pre></div><p>从上面的代码输出中，我们可以看到，即使环境变量已经被删除，但是在打印时依然会输出。</p>
 <p>为防止这种情况并真正取消设置环境变量，请使用带有 shell 命令的 RUN 命令，在单个层中设置、使用和取消设置变量。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
-FROM alpine
-RUN <span style="color:#24909d">export</span> <span style="color:#40ffff">ADMIN_USER</span>=<span style="color:#ed9d13">&#34;mark&#34;</span> <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    &amp;&amp; <span style="color:#24909d">echo</span> <span style="color:#40ffff">$ADMIN_USER</span> &gt; ./mark <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    &amp;&amp; <span style="color:#24909d">unset</span> ADMIN_USER
-CMD sh
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run --rm <span style="color:#24909d">test</span> sh -c <span style="color:#ed9d13">&#39;echo $ADMIN_USER&#39;</span>
-
-<span style="color:#999;font-style:italic"># 什么也没输出</span>
-</code></pre></div><h3 id="add-或-copy">ADD 或 COPY</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># syntax=docker/dockerfile:1</span>
+</span></span><span style="display:flex;"><span>FROM alpine
+</span></span><span style="display:flex;"><span>RUN <span style="color:#24909d">export</span> <span style="color:#40ffff">ADMIN_USER</span>=<span style="color:#ed9d13">&#34;mark&#34;</span> <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    &amp;&amp; <span style="color:#24909d">echo</span> <span style="color:#40ffff">$ADMIN_USER</span> &gt; ./mark <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    &amp;&amp; <span style="color:#24909d">unset</span> ADMIN_USER
+</span></span><span style="display:flex;"><span>CMD sh
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run --rm <span style="color:#24909d">test</span> sh -c <span style="color:#ed9d13">&#39;echo $ADMIN_USER&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 什么也没输出</span>
+</span></span></code></pre></div><h3 id="add-或-copy">ADD 或 COPY</h3>
 <p>尽管 ADD 和 COPY 在功能上相似，但一般来说，<strong>首选 COPY。那是因为它比 ADD 更透明</strong>。</p>
 <p>COPY 只支持简单将本地文件拷贝到容器中，而 ADD 有一些并不明显的功能（比如本地 tar 提取和远程 URL 支持）。
 因此，ADD 的最佳用例是将本地 tar 文件自动提取到镜像中，例如 ADD rootfs.tar.xz。</p>
 <p>如果你的 Dockerfile 有多个步骤需要使用上下文中不同的文件。单独 COPY 每个文件，而不是一次性的 COPY 所有文件，
 这将保证每个步骤的构建缓存只在特定的文件变化时失效。</p>
 <p>示例如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">COPY requirements.txt /tmp/
-
-RUN pip install --requirement /tmp/requirements.txt
-
-COPY . /tmp/
-</code></pre></div><p>如果将 COPY . /tmp/ 放置在 RUN 指令之前，只要 . 目录中任何一个文件变化，都会导致后续指令的缓存失效。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>COPY requirements.txt /tmp/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>RUN pip install --requirement /tmp/requirements.txt
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>COPY . /tmp/
+</span></span></code></pre></div><p>如果将 COPY . /tmp/ 放置在 RUN 指令之前，只要 . 目录中任何一个文件变化，都会导致后续指令的缓存失效。</p>
 <p>为了让镜像尽量小，最好不要使用 ADD 指令从远程 URL 获取包，而是使用 curl 和 wget。
 这样可以在文件提取完之后删掉不再需要的文件来避免在镜像中额外添加一层。</p>
 <p>示例如下 (尽量避免这种用法):</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ADD https://example.com/big.tar.xz /usr/src/things/
-RUN tar -xJf /usr/src/things/big.tar.xz -C /usr/src/things
-RUN make -C /usr/src/things all
-</code></pre></div><p>相反，应该这样做:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN mkdir -p /usr/src/things <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    &amp;&amp; curl -SL https://example.com/big.tar.xz <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    | tar -xJC /usr/src/things <span style="color:#ed9d13">\
-</span><span style="color:#ed9d13"></span>    &amp;&amp; make -C /usr/src/things all
-</code></pre></div><p>上面使用的管道操作，所以没有中间文件需要删除。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>ADD https://example.com/big.tar.xz /usr/src/things/
+</span></span><span style="display:flex;"><span>RUN tar -xJf /usr/src/things/big.tar.xz -C /usr/src/things
+</span></span><span style="display:flex;"><span>RUN make -C /usr/src/things all
+</span></span></code></pre></div><p>相反，应该这样做:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN mkdir -p /usr/src/things <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    &amp;&amp; curl -SL https://example.com/big.tar.xz <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    | tar -xJC /usr/src/things <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>    &amp;&amp; make -C /usr/src/things all
+</span></span></code></pre></div><p>上面使用的管道操作，所以没有中间文件需要删除。</p>
 <p>对于不需要 ADD 的 tar 自动提取功能的其他项目，如文件和目录，应该始终使用 COPY。</p>
 <h3 id="entrypoint">ENTRYPOINT</h3>
 <p>ENTRYPOINT 的最佳实践是设置镜像的主要命令，允许该镜像像该命令一样运行，然后使用 CMD 作为默认标志。</p>
 <p>以下是命令行工具 s3cmd 的镜像示例：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ENTRYPOINT [<span style="color:#ed9d13">&#34;s3cmd&#34;</span>]
-CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
-</code></pre></div><p>现在直接运行该镜像创建的容器会显示命令帮助：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run s3cmd
-</code></pre></div><p>或者提供正确的参数来执行某个命令：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run s3cmd ls s3://mybucket
-</code></pre></div><p>这样镜像名可以当成命令行的参考。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>ENTRYPOINT [<span style="color:#ed9d13">&#34;s3cmd&#34;</span>]
+</span></span><span style="display:flex;"><span>CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
+</span></span></code></pre></div><p>现在直接运行该镜像创建的容器会显示命令帮助：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run s3cmd
+</span></span></code></pre></div><p>或者提供正确的参数来执行某个命令：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run s3cmd ls s3://mybucket
+</span></span></code></pre></div><p>这样镜像名可以当成命令行的参考。</p>
 <p>ENTRYPOINT 指令还可以与帮助程序脚本使用，使脚本和上述命令类似的方式运行，即使启动该工具可能需要多个步骤。</p>
 <p>例如，Postgres 官方镜像使用以下脚本作为其 ENTRYPOINT：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#cd2828;font-weight:bold">#!/bin/bash
-</span><span style="color:#cd2828;font-weight:bold"></span><span style="color:#24909d">set</span> -e
-
-<span style="color:#6ab825;font-weight:bold">if</span> [ <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$1</span><span style="color:#ed9d13">&#34;</span> = <span style="color:#ed9d13">&#39;postgres&#39;</span> ]; <span style="color:#6ab825;font-weight:bold">then</span>
-    chown -R postgres <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$PGDATA</span><span style="color:#ed9d13">&#34;</span>
-
-    <span style="color:#6ab825;font-weight:bold">if</span> [ -z <span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">$(</span>ls -A <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$PGDATA</span><span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">)</span><span style="color:#ed9d13">&#34;</span> ]; <span style="color:#6ab825;font-weight:bold">then</span>
-        gosu postgres initdb
-    <span style="color:#6ab825;font-weight:bold">fi</span>
-
-    <span style="color:#24909d">exec</span> gosu postgres <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$@</span><span style="color:#ed9d13">&#34;</span>
-<span style="color:#6ab825;font-weight:bold">fi</span>
-
-<span style="color:#24909d">exec</span> <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$@</span><span style="color:#ed9d13">&#34;</span>
-</code></pre></div><p>该脚本使用了 Bash 的内置命令 exec，所以最后运行的进程就是容器的 PID 为 1 的进程。这样，进程就可以接收到任何发送给容器的 Unix 信号了。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#cd2828;font-weight:bold">#!/bin/bash
+</span></span></span><span style="display:flex;"><span><span style="color:#cd2828;font-weight:bold"></span><span style="color:#24909d">set</span> -e
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> [ <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$1</span><span style="color:#ed9d13">&#34;</span> = <span style="color:#ed9d13">&#39;postgres&#39;</span> ]; <span style="color:#6ab825;font-weight:bold">then</span>
+</span></span><span style="display:flex;"><span>    chown -R postgres <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$PGDATA</span><span style="color:#ed9d13">&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> [ -z <span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">$(</span>ls -A <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$PGDATA</span><span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">)</span><span style="color:#ed9d13">&#34;</span> ]; <span style="color:#6ab825;font-weight:bold">then</span>
+</span></span><span style="display:flex;"><span>        gosu postgres initdb
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">fi</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#24909d">exec</span> gosu postgres <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$@</span><span style="color:#ed9d13">&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">fi</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">exec</span> <span style="color:#ed9d13">&#34;</span><span style="color:#40ffff">$@</span><span style="color:#ed9d13">&#34;</span>
+</span></span></code></pre></div><p>该脚本使用了 Bash 的内置命令 exec，所以最后运行的进程就是容器的 PID 为 1 的进程。这样，进程就可以接收到任何发送给容器的 Unix 信号了。</p>
 <p>该脚本可以让用户用几种不同的方式和 Postgres 交互。</p>
 <p>可以很简单地启动 Postgres：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run postgres
-</code></pre></div><p>也可以执行 Postgres 并传递参数：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run postgres postgres --help
-</code></pre></div><p>还可以启动另外一个完全不同的工具，比如 Bash：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ docker run --rm -it postgres bash
-</code></pre></div><h3 id="volume">Volume</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run postgres
+</span></span></code></pre></div><p>也可以执行 Postgres 并传递参数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run postgres postgres --help
+</span></span></code></pre></div><p>还可以启动另外一个完全不同的工具，比如 Bash：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run --rm -it postgres bash
+</span></span></code></pre></div><h3 id="volume">Volume</h3>
 <p>VOLUME 指令应用于暴露任何数据库存储文件、配置文件或由 Docker 容器创建的文件和目录。
 强烈建议使用 VOLUME 来管理镜像中的可变部分和用户可以改变的部分。</p>
 <h3 id="user">USER</h3>
 <p>如果服务可以在没有权限的情况下运行，请使用 USER 更改为非 root 用户。首先使用类似于下面命令在 Dockerfile 中创建用户和组：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN groupadd -r postgres &amp;&amp; useradd --no-log-init -r -g postgres postgres
-</code></pre></div><blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN groupadd -r postgres &amp;&amp; useradd --no-log-init -r -g postgres postgres
+</span></span></code></pre></div><blockquote>
 <p>注意：在镜像中，用户和用户组每次被分配的 UID/GID 都是不确定的，下次重新构建镜像时被分配到的 UID/GID 可能会不一样。
 如果要依赖确定的 UID/GID，你应该显式的指定一个 UID/GID。</p>
 </blockquote>
@@ -532,25 +532,25 @@ CMD [<span style="color:#ed9d13">&#34;--help&#34;</span>]
 <h3 id="workdir">WORKDIR</h3>
 <p>为了可读性和稳定性，应该始终为 WORKDIR 使用绝对路径。此外，应该使用 WORKDIR 而不是像 RUN cd … &amp;&amp; do-something 这样可读性低、维护性低的指令。</p>
 <h4 id="常见错误">常见错误</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">RUN <span style="color:#24909d">cd</span> /app
-RUN <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;hello&#34;</span> &gt; world.txt
-</code></pre></div><p>如果将这个 Dockerfile 进行构建镜像运行后，会发现找不到 /app/world.txt 文件，或者其内容不是 hello。原因很简单，在 shell 中，
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>RUN <span style="color:#24909d">cd</span> /app
+</span></span><span style="display:flex;"><span>RUN <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;hello&#34;</span> &gt; world.txt
+</span></span></code></pre></div><p>如果将这个 Dockerfile 进行构建镜像运行后，会发现找不到 /app/world.txt 文件，或者其内容不是 hello。原因很简单，在 shell 中，
 连续两行是同一个进程执行环境，因此前一个命令修改的内存状态，会直接影响后一个命令，但在 Dockerfile 中，<strong>这两行 RUN 命令的执行环境根本不同，
 是两个完全不同的容器</strong>。这就是对 Dockerfile 构建分层存储的概念不了解所导致的错误。</p>
 <p>如果需要改变以后各层的工作目录的位置，那么应该使用 WORKDIR 指令。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">WORKDIR /app
-
-RUN <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;hello&#34;</span> &gt; world.txt
-如果你的 WORKDIR 指令使用的相对路径，那么所切换的路径与之前的 WORKDIR 有关：
-
-WORKDIR /a
-WORKDIR b
-WORKDIR c
-
-RUN <span style="color:#24909d">pwd</span>
-
-<span style="color:#999;font-style:italic">#  输出结果为 /a/b/c</span>
-</code></pre></div><h3 id="onbuild">ONBUILD</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>WORKDIR /app
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>RUN <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;hello&#34;</span> &gt; world.txt
+</span></span><span style="display:flex;"><span>如果你的 WORKDIR 指令使用的相对路径，那么所切换的路径与之前的 WORKDIR 有关：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>WORKDIR /a
+</span></span><span style="display:flex;"><span>WORKDIR b
+</span></span><span style="display:flex;"><span>WORKDIR c
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>RUN <span style="color:#24909d">pwd</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#  输出结果为 /a/b/c</span>
+</span></span></code></pre></div><h3 id="onbuild">ONBUILD</h3>
 <p>当前 Dockerfile 构建完成后执行 ONBUILD 命令。 ONBUILD 在从当前镜像派生的任何子镜像中执行。
 将 ONBUILD 命令视为父 Dockerfile 给子 Dockerfile 的指令。</p>
 <h1 id="reference">Reference</h1>

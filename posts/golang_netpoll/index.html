@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go netpoll Code Review" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_netpoll/" />
-<meta property="article:published_time" content="2023-06-12T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-06-12T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_netpoll/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-06-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-06-12T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go netpoll Code Review"/>
 <meta name="twitter:description" content=""/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -137,57 +137,57 @@
 <li>收到新的客户端连接后，启动一个新的 <code>goroutine</code> 进行处理</li>
 <li>收到客户端的数据后，不做任何处理，原样返回</li>
 </ul>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;log&#34;</span>
-	<span style="color:#ed9d13">&#34;net&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 初始化监听
-</span><span style="color:#999;font-style:italic"></span>	listener, err := net.<span style="color:#447fcf">ListenTCP</span>(<span style="color:#ed9d13">&#34;tcp&#34;</span>, &amp;net.TCPAddr{
-		IP:   []<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">&#34;127.0.0.1&#34;</span>),
-		Port: <span style="color:#3677a9">8888</span>,
-	})
-	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#24909d">panic</span>(err)
-	}
-
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		<span style="color:#999;font-style:italic">// 接收请求
-</span><span style="color:#999;font-style:italic"></span>		conn, err := listener.<span style="color:#447fcf">Accept</span>()
-		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-			<span style="color:#24909d">panic</span>(err)
-		}
-
-		<span style="color:#999;font-style:italic">// 启动 1 个 goroutine 处理请求
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">handle</span>(conn)
-	}
-}
-
-<span style="color:#999;font-style:italic">// 处理客户端连接请求
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">handle</span>(conn net.Conn) {
-	<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		_ = conn.<span style="color:#447fcf">Close</span>()
-	}()
-
-	buf := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>, <span style="color:#3677a9">1024</span>)
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		<span style="color:#999;font-style:italic">// 接收数据
-</span><span style="color:#999;font-style:italic"></span>		n, err := conn.<span style="color:#447fcf">Read</span>(buf[:])
-		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-			log.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;conn Read %v&#34;</span>, err)
-			<span style="color:#6ab825;font-weight:bold">break</span>
-		}
-		<span style="color:#999;font-style:italic">// 如果接收到了数据，原样返回
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> n &gt; <span style="color:#3677a9">0</span> {
-			<span style="color:#999;font-style:italic">// 发送数据
-</span><span style="color:#999;font-style:italic"></span>			_, err = conn.<span style="color:#447fcf">Write</span>(buf)
-		}
-	}
-}
-</code></pre></div><p>上述代码采用了类似 <strong>同步模型</strong> 代码的方式实现了功能，但是这种方式真的可以支撑高性能网络编程吗？答案就在隐藏在同步模型后面的底层系统调用和网络轮询器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;net&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化监听
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	listener, err := net.<span style="color:#447fcf">ListenTCP</span>(<span style="color:#ed9d13">&#34;tcp&#34;</span>, &amp;net.TCPAddr{
+</span></span><span style="display:flex;"><span>		IP:   []<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">&#34;127.0.0.1&#34;</span>),
+</span></span><span style="display:flex;"><span>		Port: <span style="color:#3677a9">8888</span>,
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">panic</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 接收请求
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		conn, err := listener.<span style="color:#447fcf">Accept</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#24909d">panic</span>(err)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 启动 1 个 goroutine 处理请求
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">handle</span>(conn)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 处理客户端连接请求
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">handle</span>(conn net.Conn) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		_ = conn.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	buf := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>, <span style="color:#3677a9">1024</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 接收数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		n, err := conn.<span style="color:#447fcf">Read</span>(buf[:])
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			log.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;conn Read %v&#34;</span>, err)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果接收到了数据，原样返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> n &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 发送数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			_, err = conn.<span style="color:#447fcf">Write</span>(buf)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上述代码采用了类似 <strong>同步模型</strong> 代码的方式实现了功能，但是这种方式真的可以支撑高性能网络编程吗？答案就在隐藏在同步模型后面的底层系统调用和网络轮询器。</p>
 <h2 id="前置知识复习">前置知识复习</h2>
 <p>在正式开始研究源代码之前，先来复习两个基础知识点。</p>
 <h3 id="1-多路复用接口">1. 多路复用接口</h3>
@@ -195,24 +195,24 @@
 <p>I/O 多路复用于处理同一个事件循环中的多个 I/O 事件，这里的「多路」指多个 IO 事件，「复用」指处理事件的程序 (线程) 是同一个。</p>
 </blockquote>
 <p>Go 网络标准库和一般的 <code>接口</code> 约束形式不同，并没有明确给出具体的 <strong>多路复用接口</strong>，但是不同平台上面都实现了如下几个方法:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 初始化网络轮询器 
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollinit</span>() {}
-
-<span style="color:#999;font-style:italic">// 检测网络文件描述符是否被网络轮询器使用
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollIsPollDescriptor</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {}
-
-<span style="color:#999;font-style:italic">// 创建监听事件并监听网络文件描述符
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollopen</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>, pd *pollDesc) <span style="color:#6ab825;font-weight:bold">int32</span> {}
-
-<span style="color:#999;font-style:italic">// 删除网络文件描述符
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollclose</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>) <span style="color:#6ab825;font-weight:bold">int32</span> {}
-
-<span style="color:#999;font-style:italic">// 检测网络轮询器并返回已经就绪的 goroutine 列表
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpoll</span>(delay <span style="color:#6ab825;font-weight:bold">int64</span>) gList {}
-
-<span style="color:#999;font-style:italic">// 唤醒网络轮询器
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollBreak</span>() {}
-</code></pre></div><p>例如 <code>Linux</code> 实现直接复用了底层 <code>epoll</code> 的相关方法, 方法定义在 <code>$GOROOT/src/runtime/netpoll_epoll.go</code> 文件中，
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 初始化网络轮询器 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollinit</span>() {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 检测网络文件描述符是否被网络轮询器使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollIsPollDescriptor</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 创建监听事件并监听网络文件描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollopen</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>, pd *pollDesc) <span style="color:#6ab825;font-weight:bold">int32</span> {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 删除网络文件描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollclose</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>) <span style="color:#6ab825;font-weight:bold">int32</span> {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 检测网络轮询器并返回已经就绪的 goroutine 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpoll</span>(delay <span style="color:#6ab825;font-weight:bold">int64</span>) gList {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 唤醒网络轮询器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollBreak</span>() {}
+</span></span></code></pre></div><p>例如 <code>Linux</code> 实现直接复用了底层 <code>epoll</code> 的相关方法, 方法定义在 <code>$GOROOT/src/runtime/netpoll_epoll.go</code> 文件中，
 <code>MacOS</code> 实现直接复用了底层 <code>kqueue</code>, 方法定义在 <code>$GOROOT/src/runtime/netpoll_kqueue.go</code> 文件中，其他平台以此类推。</p>
 <p>最后，编译器利用条件编译规则，根据不同的平台编译对应的代码，例如 <code>Linux</code> 直接编译 <code>$GOROOT/src/runtime/netpoll_epoll.go</code> 文件。</p>
 <h3 id="2-epoll-api">2. epoll API</h3>
@@ -232,64 +232,64 @@
 <h2 id="文件描述符数据结构">文件描述符数据结构</h2>
 <h3 id="文件描述符">文件描述符</h3>
 <p>FD 对象表示最基础的文件描述符抽象，net 和 os 包使用该类型来表示网络连接或操作系统文件。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> FD <span style="color:#6ab825;font-weight:bold">struct</span> {
-	<span style="color:#999;font-style:italic">// 对 Sysfd 加锁，串行化 Read 和 Write
-</span><span style="color:#999;font-style:italic"></span>	fdmu fdMutex
-
-	<span style="color:#999;font-style:italic">// 操作系统的文件描述符
-</span><span style="color:#999;font-style:italic"></span>	Sysfd <span style="color:#6ab825;font-weight:bold">int</span>
-
-	<span style="color:#999;font-style:italic">// 网络轮询 IO 描述符
-</span><span style="color:#999;font-style:italic"></span>	pd pollDesc
-
-	<span style="color:#999;font-style:italic">// 描述符关闭信号
-</span><span style="color:#999;font-style:italic"></span>	csema <span style="color:#6ab825;font-weight:bold">uint32</span>
-
-	<span style="color:#999;font-style:italic">// 是否阻塞模式
-</span><span style="color:#999;font-style:italic"></span>	isBlocking <span style="color:#6ab825;font-weight:bold">uint32</span>
-
-	<span style="color:#999;font-style:italic">// 区分当前描述符是一个 stream, 还是一个基于包的描述符 (区分 TCP/UDP)
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 不可变
-</span><span style="color:#999;font-style:italic"></span>	IsStream <span style="color:#6ab825;font-weight:bold">bool</span>
-
-	<span style="color:#999;font-style:italic">// 读取零字节是否表示 EOF
-</span><span style="color:#999;font-style:italic"></span>	ZeroReadIsEOF <span style="color:#6ab825;font-weight:bold">bool</span>
-
-	<span style="color:#999;font-style:italic">// 区分当前描述符是一个文件，还是一个 socket
-</span><span style="color:#999;font-style:italic"></span>	isFile <span style="color:#6ab825;font-weight:bold">bool</span>
-}
-</code></pre></div><p>文件描述符初始化方法如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Init</span>(net <span style="color:#6ab825;font-weight:bold">string</span>, pollable <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
-    ...
-	err := fd.pd.<span style="color:#447fcf">init</span>(fd)
-    ...
-	<span style="color:#6ab825;font-weight:bold">return</span> err
-}
-</code></pre></div><h3 id="网络文件描述符">网络文件描述符</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> FD <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对 Sysfd 加锁，串行化 Read 和 Write
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fdmu fdMutex
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 操作系统的文件描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Sysfd <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 网络轮询 IO 描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pd pollDesc
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 描述符关闭信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	csema <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否阻塞模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	isBlocking <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 区分当前描述符是一个 stream, 还是一个基于包的描述符 (区分 TCP/UDP)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 不可变
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	IsStream <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 读取零字节是否表示 EOF
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ZeroReadIsEOF <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 区分当前描述符是一个文件，还是一个 socket
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	isFile <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>文件描述符初始化方法如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Init</span>(net <span style="color:#6ab825;font-weight:bold">string</span>, pollable <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	err := fd.pd.<span style="color:#447fcf">init</span>(fd)
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="网络文件描述符">网络文件描述符</h3>
 <p>netFD 对象表示网络文件描述符。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> netFD <span style="color:#6ab825;font-weight:bold">struct</span> {
-	pfd poll.FD <span style="color:#999;font-style:italic">// 包装了一个 FD 结构体
-</span><span style="color:#999;font-style:italic"></span>
-	<span style="color:#999;font-style:italic">// 下列字段在 Close 之前不可变
-</span><span style="color:#999;font-style:italic"></span>	family      <span style="color:#6ab825;font-weight:bold">int</span>
-	sotype      <span style="color:#6ab825;font-weight:bold">int</span>
-	isConnected <span style="color:#6ab825;font-weight:bold">bool</span>
-	net         <span style="color:#6ab825;font-weight:bold">string</span>
-	laddr       Addr
-	raddr       Addr
-}
-</code></pre></div><p>newFD 方法实例化一个 netFD 对象，并返回该对象的指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newFD</span>(sysfd, family, sotype <span style="color:#6ab825;font-weight:bold">int</span>, net <span style="color:#6ab825;font-weight:bold">string</span>) (*netFD, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	ret := &amp;netFD{
-		...
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> ret, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><p>网络文件描述符方法如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">init</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> fd.pfd.<span style="color:#447fcf">Init</span>(fd.net, <span style="color:#6ab825;font-weight:bold">true</span>)
-}
-</code></pre></div><h3 id="网络轮询-io-文件描述符">网络轮询 IO 文件描述符</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> netFD <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	pfd poll.FD <span style="color:#999;font-style:italic">// 包装了一个 FD 结构体
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 下列字段在 Close 之前不可变
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	family      <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	sotype      <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	isConnected <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	net         <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	laddr       Addr
+</span></span><span style="display:flex;"><span>	raddr       Addr
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>newFD 方法实例化一个 netFD 对象，并返回该对象的指针。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newFD</span>(sysfd, family, sotype <span style="color:#6ab825;font-weight:bold">int</span>, net <span style="color:#6ab825;font-weight:bold">string</span>) (*netFD, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	ret := &amp;netFD{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ret, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>网络文件描述符方法如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">init</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> fd.pfd.<span style="color:#447fcf">Init</span>(fd.net, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="网络轮询-io-文件描述符">网络轮询 IO 文件描述符</h3>
 <p>pollDesc 对象表示网络轮询 IO 文件描述符，主要用于被 Go 的网络轮询器监听状态变化，是网络底层实现中的核心对象。</p>
 <p>这里有一个需要学习的知识点: rg 字段和 wg 字段的数据类型都是 <code>atomic.Uintptr</code>, 而且可以用来表示 4 种数据:</p>
 <ol>
@@ -298,683 +298,683 @@
 <li>goroutine</li>
 <li>nil</li>
 </ol>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// pollDesc 包含两种信号量，rg 和 wg, 可以表示多种状态
-</span><span style="color:#999;font-style:italic">// Tips: 通过将字段设置为 atomic.Uintptr 类型 (效果和 guintptr 类似)，可以支持多种类型表示
-</span><span style="color:#999;font-style:italic"></span>
-<span style="color:#999;font-style:italic">// 几种信号量状态:
-</span><span style="color:#999;font-style:italic">// pdReady - IO 准备就绪
-</span><span style="color:#999;font-style:italic">// pdWait - goroutine 准备休眠  
-</span><span style="color:#999;font-style:italic">// G pointer - goroutine 阻塞
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> (
-    pdReady <span style="color:#6ab825;font-weight:bold">uintptr</span> = <span style="color:#3677a9">1</span>
-    pdWait  <span style="color:#6ab825;font-weight:bold">uintptr</span> = <span style="color:#3677a9">2</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">type</span> pollDesc <span style="color:#6ab825;font-weight:bold">struct</span> {
-	link *pollDesc <span style="color:#999;font-style:italic">// 链表结构 (后面的元素) 指针
-</span><span style="color:#999;font-style:italic"></span>	fd   <span style="color:#6ab825;font-weight:bold">uintptr</span>   
-	
-	atomicInfo atomic.Uint32
-	
-	rg atomic.Uintptr <span style="color:#999;font-style:italic">// 表示信号量，可能为 pdReady、pdWait、等待文件描述符可读的 goroutine 或者 nil
-</span><span style="color:#999;font-style:italic"></span>	wg atomic.Uintptr <span style="color:#999;font-style:italic">// 表示信号量，可能为 pdReady、pdWait、等待文件描述符可写的 goroutine 或者 nil
-</span><span style="color:#999;font-style:italic"></span>
-	lock    mutex     <span style="color:#999;font-style:italic">// 保护下面的字段
-</span><span style="color:#999;font-style:italic"></span>	closing <span style="color:#6ab825;font-weight:bold">bool</span>
-	rseq    <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 表示文件描述符被重用或者计时器被重置
-</span><span style="color:#999;font-style:italic"></span>	rt      timer     <span style="color:#999;font-style:italic">// 可读截至时间计时器
-</span><span style="color:#999;font-style:italic"></span>	rd      <span style="color:#6ab825;font-weight:bold">int64</span>     <span style="color:#999;font-style:italic">// 等待文件描述符可读截至时间，-1 表示过期 (goroutine 被唤醒)
-</span><span style="color:#999;font-style:italic"></span>	wseq    <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 表示文件描述符被重用或者计时器被重置
-</span><span style="color:#999;font-style:italic"></span>	wt      timer     <span style="color:#999;font-style:italic">// 可写截至时间计时器
-</span><span style="color:#999;font-style:italic"></span>	wd      <span style="color:#6ab825;font-weight:bold">int64</span>     <span style="color:#999;font-style:italic">// 等待文件描述符可写截至时间，-1 表示过期 (goroutine 被唤醒)
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><h3 id="轮询文件描述符管理">轮询文件描述符管理</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// pollDesc 包含两种信号量，rg 和 wg, 可以表示多种状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Tips: 通过将字段设置为 atomic.Uintptr 类型 (效果和 guintptr 类似)，可以支持多种类型表示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 几种信号量状态:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// pdReady - IO 准备就绪
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// pdWait - goroutine 准备休眠  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// G pointer - goroutine 阻塞
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>    pdReady <span style="color:#6ab825;font-weight:bold">uintptr</span> = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>    pdWait  <span style="color:#6ab825;font-weight:bold">uintptr</span> = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> pollDesc <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	link *pollDesc <span style="color:#999;font-style:italic">// 链表结构 (后面的元素) 指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fd   <span style="color:#6ab825;font-weight:bold">uintptr</span>   
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	atomicInfo atomic.Uint32
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	rg atomic.Uintptr <span style="color:#999;font-style:italic">// 表示信号量，可能为 pdReady、pdWait、等待文件描述符可读的 goroutine 或者 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wg atomic.Uintptr <span style="color:#999;font-style:italic">// 表示信号量，可能为 pdReady、pdWait、等待文件描述符可写的 goroutine 或者 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	lock    mutex     <span style="color:#999;font-style:italic">// 保护下面的字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	closing <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	rseq    <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 表示文件描述符被重用或者计时器被重置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rt      timer     <span style="color:#999;font-style:italic">// 可读截至时间计时器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rd      <span style="color:#6ab825;font-weight:bold">int64</span>     <span style="color:#999;font-style:italic">// 等待文件描述符可读截至时间，-1 表示过期 (goroutine 被唤醒)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wseq    <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 表示文件描述符被重用或者计时器被重置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wt      timer     <span style="color:#999;font-style:italic">// 可写截至时间计时器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wd      <span style="color:#6ab825;font-weight:bold">int64</span>     <span style="color:#999;font-style:italic">// 等待文件描述符可写截至时间，-1 表示过期 (goroutine 被唤醒)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h3 id="轮询文件描述符管理">轮询文件描述符管理</h3>
 <p>pollCache 对象用来管理网络 IO 文件描述符，内置了一个互斥锁字段和一个 pollDesc 对象链表。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> pollCache <span style="color:#6ab825;font-weight:bold">struct</span> {
-	lock  mutex
-	<span style="color:#999;font-style:italic">// 指向一个 pollDesc 链表
-</span><span style="color:#999;font-style:italic"></span>	first *pollDesc
-}
-</code></pre></div><h3 id="数据结构图">数据结构图</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> pollCache <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	lock  mutex
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 指向一个 pollDesc 链表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	first *pollDesc
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="数据结构图">数据结构图</h3>
 <p><img src="https://dbwu.tech/images/pollDesc.png" alt="网络文件描述符"></p>
 <h2 id="listen-流程">Listen 流程</h2>
 <p><img src="https://dbwu.tech/images/ListenTCP.png" alt="TCP 监听流程图"></p>
 <h3 id="listener-接口">Listener 接口</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> Listener <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#999;font-style:italic">// 返回一个实现了 Conn 接口的连接实例
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Accept</span>() (Conn, <span style="color:#6ab825;font-weight:bold">error</span>)
-	
-	<span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span>
-	
-	<span style="color:#447fcf">Addr</span>() Addr
-}
-</code></pre></div><h3 id="tcp-监听对象">TCP 监听对象</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> TCPListener <span style="color:#6ab825;font-weight:bold">struct</span> {
-    <span style="color:#999;font-style:italic">// 包装了一个 netFD 对象
-</span><span style="color:#999;font-style:italic"></span>	fd *netFD   
-	lc ListenConfig
-}
-</code></pre></div><h3 id="tcp-监听">TCP 监听</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Listener <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回一个实现了 Conn 接口的连接实例
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Accept</span>() (Conn, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Addr</span>() Addr
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="tcp-监听对象">TCP 监听对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> TCPListener <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 包装了一个 netFD 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fd *netFD   
+</span></span><span style="display:flex;"><span>	lc ListenConfig
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="tcp-监听">TCP 监听</h3>
 <p>ListenTCP 方法返回一个 TCP 监听对象的指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ListenTCP</span>(network <span style="color:#6ab825;font-weight:bold">string</span>, laddr *TCPAddr) (*TCPListener, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	...
-	
-	sl := &amp;sysListener{network: network, address: laddr.<span style="color:#447fcf">String</span>()}
-	ln, err := sl.<span style="color:#447fcf">listenTCP</span>(context.<span style="color:#447fcf">Background</span>(), laddr)
-	
-	...
-
-	<span style="color:#6ab825;font-weight:bold">return</span> ln, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (sl *sysListener) <span style="color:#447fcf">listenTCP</span>(ctx context.Context, laddr *TCPAddr) (*TCPListener, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	fd, err := <span style="color:#447fcf">internetSocket</span>(ctx, sl.network, laddr, <span style="color:#6ab825;font-weight:bold">nil</span>, syscall.SOCK_STREAM, <span style="color:#3677a9">0</span>, <span style="color:#ed9d13">&#34;listen&#34;</span>, sl.ListenConfig.Control)
-    
-	...
-	
-	<span style="color:#6ab825;font-weight:bold">return</span> &amp;TCPListener{fd: fd, lc: sl.ListenConfig}, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">internetSocket</span>(ctx context.Context, net <span style="color:#6ab825;font-weight:bold">string</span>, laddr, raddr sockaddr, sotype, proto <span style="color:#6ab825;font-weight:bold">int</span>, mode <span style="color:#6ab825;font-weight:bold">string</span>, ctrlFn <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">string</span>, syscall.RawConn) <span style="color:#6ab825;font-weight:bold">error</span>) (fd *netFD, err <span style="color:#6ab825;font-weight:bold">error</span>) {
-	...
-	
-	family, ipv6only := <span style="color:#447fcf">favoriteAddrFamily</span>(net, laddr, raddr, mode)
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">socket</span>(ctx, net, family, sotype, proto, ipv6only, laddr, raddr, ctrlFn)
-}
-</code></pre></div><h3 id="获取系统配置">获取系统配置</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ListenTCP</span>(network <span style="color:#6ab825;font-weight:bold">string</span>, laddr *TCPAddr) (*TCPListener, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	sl := &amp;sysListener{network: network, address: laddr.<span style="color:#447fcf">String</span>()}
+</span></span><span style="display:flex;"><span>	ln, err := sl.<span style="color:#447fcf">listenTCP</span>(context.<span style="color:#447fcf">Background</span>(), laddr)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ln, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (sl *sysListener) <span style="color:#447fcf">listenTCP</span>(ctx context.Context, laddr *TCPAddr) (*TCPListener, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	fd, err := <span style="color:#447fcf">internetSocket</span>(ctx, sl.network, laddr, <span style="color:#6ab825;font-weight:bold">nil</span>, syscall.SOCK_STREAM, <span style="color:#3677a9">0</span>, <span style="color:#ed9d13">&#34;listen&#34;</span>, sl.ListenConfig.Control)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;TCPListener{fd: fd, lc: sl.ListenConfig}, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">internetSocket</span>(ctx context.Context, net <span style="color:#6ab825;font-weight:bold">string</span>, laddr, raddr sockaddr, sotype, proto <span style="color:#6ab825;font-weight:bold">int</span>, mode <span style="color:#6ab825;font-weight:bold">string</span>, ctrlFn <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">string</span>, syscall.RawConn) <span style="color:#6ab825;font-weight:bold">error</span>) (fd *netFD, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	family, ipv6only := <span style="color:#447fcf">favoriteAddrFamily</span>(net, laddr, raddr, mode)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">socket</span>(ctx, net, family, sotype, proto, ipv6only, laddr, raddr, ctrlFn)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="获取系统配置">获取系统配置</h3>
 <p>listenerBacklog 方法缓存了系统全连接队列配置参数值，内部通过内嵌 sync.Once 的方式，保证了仅调用一次 maxListenerBacklog 方法。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">listenerBacklog</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
-	listenerBacklogCache.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() { listenerBacklogCache.val = <span style="color:#447fcf">maxListenerBacklog</span>() })
-	<span style="color:#6ab825;font-weight:bold">return</span> listenerBacklogCache.val
-}
-</code></pre></div><p>maxListenerBacklog 方法用于获取系统全连接队列配置参数值。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// Linux 读取配置文件
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maxListenerBacklog</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
-	fd, err := <span style="color:#447fcf">open</span>(<span style="color:#ed9d13">&#34;/proc/sys/net/core/somaxconn&#34;</span>)
-	...
-	n, _, ok := <span style="color:#447fcf">dtoi</span>(f[<span style="color:#3677a9">0</span>])
-	<span style="color:#6ab825;font-weight:bold">return</span> n
-}
-</code></pre></div><h3 id="创建-socket">创建 socket</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">listenerBacklog</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	listenerBacklogCache.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() { listenerBacklogCache.val = <span style="color:#447fcf">maxListenerBacklog</span>() })
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> listenerBacklogCache.val
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>maxListenerBacklog 方法用于获取系统全连接队列配置参数值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Linux 读取配置文件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maxListenerBacklog</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	fd, err := <span style="color:#447fcf">open</span>(<span style="color:#ed9d13">&#34;/proc/sys/net/core/somaxconn&#34;</span>)
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	n, _, ok := <span style="color:#447fcf">dtoi</span>(f[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> n
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="创建-socket">创建 socket</h3>
 <p>socket 方法返回一个网络文件描述符，该描述符使用网络轮询器异步接收数据。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">socket</span>(ctx context.Context, net <span style="color:#6ab825;font-weight:bold">string</span>, family, sotype, proto <span style="color:#6ab825;font-weight:bold">int</span>, ipv6only <span style="color:#6ab825;font-weight:bold">bool</span>, laddr, raddr sockaddr, ctrlFn <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">string</span>, syscall.RawConn) <span style="color:#6ab825;font-weight:bold">error</span>) (fd *netFD, err <span style="color:#6ab825;font-weight:bold">error</span>) {
-    <span style="color:#999;font-style:italic">// 使用系统调用创建一个 socket 文件描述符
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 并将 socket 文件描述符包装为 netFD 对象 
-</span><span style="color:#999;font-style:italic"></span>	s, err := <span style="color:#447fcf">sysSocket</span>(family, sotype, proto)
-	<span style="color:#6ab825;font-weight:bold">if</span> fd, err = <span style="color:#447fcf">newFD</span>(s, family, sotype, net); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-        poll.<span style="color:#447fcf">CloseFunc</span>(s)
-        <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
-    }
-	
-	...
-
-	<span style="color:#6ab825;font-weight:bold">if</span> laddr != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; raddr == <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#6ab825;font-weight:bold">switch</span> sotype {
-		<span style="color:#999;font-style:italic">// 基于流: TCP
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> syscall.SOCK_STREAM, syscall.SOCK_SEQPACKET:
-			<span style="color:#999;font-style:italic">// 1. 获取系统配置
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 2. 绑定并监听端口
-</span><span style="color:#999;font-style:italic"></span>		    <span style="color:#6ab825;font-weight:bold">if</span> err := fd.<span style="color:#447fcf">listenStream</span>(laddr, <span style="color:#447fcf">listenerBacklog</span>(), ctrlFn); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-				
-            }
-            ...
-        <span style="color:#999;font-style:italic">// 基于数据报: UDP
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> syscall.SOCK_DGRAM:
-            ...
-		}
-	}
-
-	<span style="color:#6ab825;font-weight:bold">return</span> fd, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><h3 id="绑定并监听端口">绑定并监听端口</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">socket</span>(ctx context.Context, net <span style="color:#6ab825;font-weight:bold">string</span>, family, sotype, proto <span style="color:#6ab825;font-weight:bold">int</span>, ipv6only <span style="color:#6ab825;font-weight:bold">bool</span>, laddr, raddr sockaddr, ctrlFn <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">string</span>, syscall.RawConn) <span style="color:#6ab825;font-weight:bold">error</span>) (fd *netFD, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 使用系统调用创建一个 socket 文件描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 并将 socket 文件描述符包装为 netFD 对象 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s, err := <span style="color:#447fcf">sysSocket</span>(family, sotype, proto)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> fd, err = <span style="color:#447fcf">newFD</span>(s, family, sotype, net); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        poll.<span style="color:#447fcf">CloseFunc</span>(s)
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> laddr != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; raddr == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> sotype {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 基于流: TCP
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> syscall.SOCK_STREAM, syscall.SOCK_SEQPACKET:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 1. 获取系统配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 2. 绑定并监听端口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		    <span style="color:#6ab825;font-weight:bold">if</span> err := fd.<span style="color:#447fcf">listenStream</span>(laddr, <span style="color:#447fcf">listenerBacklog</span>(), ctrlFn); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 基于数据报: UDP
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> syscall.SOCK_DGRAM:
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> fd, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="绑定并监听端口">绑定并监听端口</h3>
 <p>listenStream 方法内部实现了 TCP 的绑定端口和监听端口，并完成了 <code>epoll</code> 的初始化工作。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">listenStream</span>(laddr sockaddr, backlog <span style="color:#6ab825;font-weight:bold">int</span>, ctrlFn <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">string</span>, syscall.RawConn) <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
-	...
-	
-	<span style="color:#6ab825;font-weight:bold">var</span> lsa syscall.Sockaddr
-	<span style="color:#6ab825;font-weight:bold">if</span> lsa, err = laddr.<span style="color:#447fcf">sockaddr</span>(fd.family); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#6ab825;font-weight:bold">return</span> err
-	}
-
-	...
-	
-	<span style="color:#999;font-style:italic">// 绑定端口由系统调用实现
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err = syscall.<span style="color:#447fcf">Bind</span>(fd.pfd.Sysfd, lsa); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#6ab825;font-weight:bold">return</span> os.<span style="color:#447fcf">NewSyscallError</span>(<span style="color:#ed9d13">&#34;bind&#34;</span>, err)
-	}
-	<span style="color:#999;font-style:italic">// 监听端口由系统调用实现
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err = <span style="color:#447fcf">listenFunc</span>(fd.pfd.Sysfd, backlog); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#6ab825;font-weight:bold">return</span> os.<span style="color:#447fcf">NewSyscallError</span>(<span style="color:#ed9d13">&#34;listen&#34;</span>, err)
-	}
-	<span style="color:#999;font-style:italic">// 初始化 epoll
-</span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">if</span> err = fd.<span style="color:#447fcf">init</span>(); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-        <span style="color:#6ab825;font-weight:bold">return</span> err
-    }
-	
-	...
-	
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><h3 id="epoll-初始化">epoll 初始化</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">listenStream</span>(laddr sockaddr, backlog <span style="color:#6ab825;font-weight:bold">int</span>, ctrlFn <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">string</span>, syscall.RawConn) <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> lsa syscall.Sockaddr
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> lsa, err = laddr.<span style="color:#447fcf">sockaddr</span>(fd.family); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 绑定端口由系统调用实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err = syscall.<span style="color:#447fcf">Bind</span>(fd.pfd.Sysfd, lsa); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> os.<span style="color:#447fcf">NewSyscallError</span>(<span style="color:#ed9d13">&#34;bind&#34;</span>, err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 监听端口由系统调用实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err = <span style="color:#447fcf">listenFunc</span>(fd.pfd.Sysfd, backlog); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> os.<span style="color:#447fcf">NewSyscallError</span>(<span style="color:#ed9d13">&#34;listen&#34;</span>, err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化 epoll
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">if</span> err = fd.<span style="color:#447fcf">init</span>(); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="epoll-初始化">epoll 初始化</h3>
 <p>serverInit 类型是 <code>sync.Once</code> 的类型别名，保证了 poll_runtime_pollServerInit 方法只会被调用一次 (也就是单个进程全局只有一个 epoll 实例，避免惊群效应)。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">init</span>(fd *FD) <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#999;font-style:italic">// runtime_pollServerInit 通过链接器指向了 poll_runtime_pollServerInit
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 初始化 epoll
-</span><span style="color:#999;font-style:italic"></span>	serverInit.<span style="color:#447fcf">Do</span>(runtime_pollServerInit)
-	
-	<span style="color:#999;font-style:italic">// runtime_pollOpen 通过链接器指向了 poll_runtime_pollOpen
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将文件描述符加入 epoll 监听
-</span><span style="color:#999;font-style:italic"></span>	ctx, errno := <span style="color:#447fcf">runtime_pollOpen</span>(<span style="color:#24909d">uintptr</span>(fd.Sysfd))
-	....
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollServerInit</span>() {
-	<span style="color:#447fcf">netpollGenericInit</span>()
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollGenericInit</span>() {
-	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">Load</span>(&amp;netpollInited) == <span style="color:#3677a9">0</span> {
-        ...
-		<span style="color:#6ab825;font-weight:bold">if</span> netpollInited == <span style="color:#3677a9">0</span> {
-			<span style="color:#447fcf">netpollinit</span>()
-		}
-		...
-	}
-}
-</code></pre></div><p>netpollinit 方法实现了 <code>多路复用接口</code>，主要用于网络轮询器 <code>epoll</code> 具体的初始化工作，和上面的 netpollGenericInit 方法一样，该方法也只会被调用一次。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">var</span> (
-    <span style="color:#999;font-style:italic">// epoll 全局对象 (也是一个文件描述符)
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 相当于调用 epoll_create 函数返回的对象
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 后续的 epoll_ctl, epoll_wait 函数都是基于这个对象操作的
-</span><span style="color:#999;font-style:italic"></span>    epfd <span style="color:#6ab825;font-weight:bold">int32</span> = -<span style="color:#3677a9">1</span>
-
-    <span style="color:#999;font-style:italic">// 数据读写管道
-</span><span style="color:#999;font-style:italic"></span>    netpollBreakRd, netpollBreakWr <span style="color:#6ab825;font-weight:bold">uintptr</span>
-
-    <span style="color:#999;font-style:italic">// 标识变量，避免重复调用 netpollBreak 方法
-</span><span style="color:#999;font-style:italic"></span>    netpollWakeSig <span style="color:#6ab825;font-weight:bold">uint32</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollinit</span>() {
-	<span style="color:#999;font-style:italic">// 创建 epoll 描述符，赋值到全局变量 epfd
-</span><span style="color:#999;font-style:italic"></span>	epfd = <span style="color:#447fcf">epollcreate1</span>(_EPOLL_CLOEXEC)
-	<span style="color:#6ab825;font-weight:bold">if</span> epfd &lt; <span style="color:#3677a9">0</span> {
-		epfd = <span style="color:#447fcf">epollcreate</span>(<span style="color:#3677a9">1024</span>)
-		...
-	}
-	
-	<span style="color:#999;font-style:italic">// 创建一个通信管道
-</span><span style="color:#999;font-style:italic"></span>	r, w, errno := <span style="color:#447fcf">nonblockingPipe</span>()
-	
-    ...
-
-	<span style="color:#999;font-style:italic">// 将用于读取数据的文件描述符转换为 epollevent 结构，进行监听
-</span><span style="color:#999;font-style:italic"></span>	ev := epollevent{
-		events: _EPOLLIN,
-	}
-	*(**<span style="color:#6ab825;font-weight:bold">uintptr</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ev.data)) = &amp;netpollBreakRd
-	
-	errno = <span style="color:#447fcf">epollctl</span>(epfd, _EPOLL_CTL_ADD, r, &amp;ev)
-
-	...
-	
-	netpollBreakRd = <span style="color:#24909d">uintptr</span>(r)
-	netpollBreakWr = <span style="color:#24909d">uintptr</span>(w)
-}
-</code></pre></div><p>netpollopen 方法实现了 <code>多路复用接口</code>，将新的文件描述符和监听事件加入到全局变量 <code>epfd</code> 表示的网络轮询文件描述符。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollOpen</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>) (*pollDesc, <span style="color:#6ab825;font-weight:bold">int</span>) {
-    ...
-    errno := <span style="color:#447fcf">netpollopen</span>(fd, pd)
-    ...
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollopen</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>, pd *pollDesc) <span style="color:#6ab825;font-weight:bold">int32</span> {
-	<span style="color:#6ab825;font-weight:bold">var</span> ev epollevent
-	ev.events = _EPOLLIN | _EPOLLOUT | _EPOLLRDHUP | _EPOLLET
-	*(**pollDesc)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ev.data)) = pd
-	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#447fcf">epollctl</span>(epfd, _EPOLL_CTL_ADD, <span style="color:#24909d">int32</span>(fd), &amp;ev)
-}
-</code></pre></div><h3 id="小结">小结</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">init</span>(fd *FD) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// runtime_pollServerInit 通过链接器指向了 poll_runtime_pollServerInit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 初始化 epoll
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	serverInit.<span style="color:#447fcf">Do</span>(runtime_pollServerInit)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// runtime_pollOpen 通过链接器指向了 poll_runtime_pollOpen
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将文件描述符加入 epoll 监听
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ctx, errno := <span style="color:#447fcf">runtime_pollOpen</span>(<span style="color:#24909d">uintptr</span>(fd.Sysfd))
+</span></span><span style="display:flex;"><span>	....
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollServerInit</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">netpollGenericInit</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollGenericInit</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">Load</span>(&amp;netpollInited) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> netpollInited == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">netpollinit</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>netpollinit 方法实现了 <code>多路复用接口</code>，主要用于网络轮询器 <code>epoll</code> 具体的初始化工作，和上面的 netpollGenericInit 方法一样，该方法也只会被调用一次。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// epoll 全局对象 (也是一个文件描述符)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 相当于调用 epoll_create 函数返回的对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 后续的 epoll_ctl, epoll_wait 函数都是基于这个对象操作的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    epfd <span style="color:#6ab825;font-weight:bold">int32</span> = -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 数据读写管道
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    netpollBreakRd, netpollBreakWr <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 标识变量，避免重复调用 netpollBreak 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    netpollWakeSig <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollinit</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 epoll 描述符，赋值到全局变量 epfd
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	epfd = <span style="color:#447fcf">epollcreate1</span>(_EPOLL_CLOEXEC)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> epfd &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		epfd = <span style="color:#447fcf">epollcreate</span>(<span style="color:#3677a9">1024</span>)
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建一个通信管道
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r, w, errno := <span style="color:#447fcf">nonblockingPipe</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将用于读取数据的文件描述符转换为 epollevent 结构，进行监听
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ev := epollevent{
+</span></span><span style="display:flex;"><span>		events: _EPOLLIN,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	*(**<span style="color:#6ab825;font-weight:bold">uintptr</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ev.data)) = &amp;netpollBreakRd
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	errno = <span style="color:#447fcf">epollctl</span>(epfd, _EPOLL_CTL_ADD, r, &amp;ev)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	netpollBreakRd = <span style="color:#24909d">uintptr</span>(r)
+</span></span><span style="display:flex;"><span>	netpollBreakWr = <span style="color:#24909d">uintptr</span>(w)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>netpollopen 方法实现了 <code>多路复用接口</code>，将新的文件描述符和监听事件加入到全局变量 <code>epfd</code> 表示的网络轮询文件描述符。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollOpen</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>) (*pollDesc, <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>    errno := <span style="color:#447fcf">netpollopen</span>(fd, pd)
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollopen</span>(fd <span style="color:#6ab825;font-weight:bold">uintptr</span>, pd *pollDesc) <span style="color:#6ab825;font-weight:bold">int32</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> ev epollevent
+</span></span><span style="display:flex;"><span>	ev.events = _EPOLLIN | _EPOLLOUT | _EPOLLRDHUP | _EPOLLET
+</span></span><span style="display:flex;"><span>	*(**pollDesc)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ev.data)) = pd
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#447fcf">epollctl</span>(epfd, _EPOLL_CTL_ADD, <span style="color:#24909d">int32</span>(fd), &amp;ev)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="小结">小结</h3>
 <p>ListenTCP 方法内部实现了创建 socket，绑定端口，监听端口三个操作，相对于传统的 C 系列语言编程，将初始化过程简化为一个方法 API,
 当方法执行完成后，<code>epoll</code> 也已经完成初始化工作，进入轮询状态等待连接到来以及 IO 事件。</p>
 <p><img src="https://dbwu.tech/images/ListenTCP.png" alt="ListenTCP"></p>
 <h2 id="接收-tcp-连接流程">接收 TCP 连接流程</h2>
 <h3 id="tcp-连接对象">TCP 连接对象</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> TCPConn <span style="color:#6ab825;font-weight:bold">struct</span> {
-	conn
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> conn <span style="color:#6ab825;font-weight:bold">struct</span> {
-    fd *netFD
-}
-</code></pre></div><h3 id="conn-接口">Conn 接口</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> TCPConn <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	conn
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> conn <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    fd *netFD
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="conn-接口">Conn 接口</h3>
 <p>Conn 表示通用的面向流的网络连接。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> Conn <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Read</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (n <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>)
-	
-	<span style="color:#447fcf">Write</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (n <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>)
-
-	<span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span>
-	
-	<span style="color:#447fcf">LocalAddr</span>() Addr
-
-	<span style="color:#447fcf">RemoteAddr</span>() Addr
-	
-	<span style="color:#447fcf">SetDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span>
-	
-	<span style="color:#447fcf">SetReadDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span>
-	
-	<span style="color:#447fcf">SetWriteDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span>
-}
-</code></pre></div><h3 id="接收-tcp-连接">接收 TCP 连接</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Conn <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Read</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (n <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Write</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (n <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">LocalAddr</span>() Addr
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">RemoteAddr</span>() Addr
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">SetDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">SetReadDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">SetWriteDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="接收-tcp-连接">接收 TCP 连接</h3>
 <p>TCPListener (TCP 监听对象) 的 Accept 方法返回一个 TCP 连接对象。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (l *TCPListener) <span style="color:#447fcf">Accept</span>() (Conn, <span style="color:#6ab825;font-weight:bold">error</span>) {
-    ...
-	c, err := l.<span style="color:#447fcf">accept</span>()
-	...
-	<span style="color:#6ab825;font-weight:bold">return</span> c, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (ln *TCPListener) <span style="color:#447fcf">accept</span>() (*TCPConn, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	fd, err := ln.fd.<span style="color:#447fcf">accept</span>()
-    ...	
-	tc := <span style="color:#447fcf">newTCPConn</span>(fd)
-	...
-	<span style="color:#6ab825;font-weight:bold">return</span> tc, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">accept</span>() (netfd *netFD, err <span style="color:#6ab825;font-weight:bold">error</span>) {
-	d, rsa, errcall, err := fd.pfd.<span style="color:#447fcf">Accept</span>()
-    ...
-	<span style="color:#6ab825;font-weight:bold">return</span> netfd, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><p>FD.Accept 方法内部不断轮询调用 accept 方法获取 TCP 连接并处理相应的错误。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Accept</span>() (<span style="color:#6ab825;font-weight:bold">int</span>, syscall.Sockaddr, <span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
-    ...
-	
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		<span style="color:#999;font-style:italic">// 轮询调用 accept 方法获取 TCP 连接
-</span><span style="color:#999;font-style:italic"></span>		s, rsa, errcall, err := <span style="color:#447fcf">accept</span>(fd.Sysfd)
-		<span style="color:#6ab825;font-weight:bold">if</span> err == <span style="color:#6ab825;font-weight:bold">nil</span> {
-			<span style="color:#6ab825;font-weight:bold">return</span> s, rsa, <span style="color:#ed9d13">&#34;&#34;</span>, err
-		}
-		<span style="color:#6ab825;font-weight:bold">switch</span> err {
-            ...
-		}
-		<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>, <span style="color:#6ab825;font-weight:bold">nil</span>, errcall, err
-	}
-}
-</code></pre></div><p>accept 方法内部封装了一层 <code>系统调用 accept</code>，返回一个非阻塞的文件描述符。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">accept</span>(s <span style="color:#6ab825;font-weight:bold">int</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, syscall.Sockaddr, <span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	<span style="color:#999;font-style:italic">// 先尝试 accept4 调用，如果报错了，改用 accept
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// nonblock: 设置为非阻塞模式 
-</span><span style="color:#999;font-style:italic"></span>	
-	<span style="color:#999;font-style:italic">// accept4 通过 1 次系统调用完成 accept 和设置 nonblock 两个操作
-</span><span style="color:#999;font-style:italic"></span>	ns, sa, err := <span style="color:#447fcf">Accept4Func</span>(s, syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC)
-	
-	<span style="color:#6ab825;font-weight:bold">switch</span> err {
-	<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#6ab825;font-weight:bold">nil</span>:
-		<span style="color:#6ab825;font-weight:bold">return</span> ns, sa, <span style="color:#ed9d13">&#34;&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
-		
-        ...
-	}
-
-    <span style="color:#999;font-style:italic">// accept 通过 2 次系统调用完成 accept 和设置 nonblock 两个操作 
-</span><span style="color:#999;font-style:italic"></span>	ns, sa, err = <span style="color:#447fcf">AcceptFunc</span>(s)
-	
-    ...
-	
-	<span style="color:#6ab825;font-weight:bold">if</span> err = syscall.<span style="color:#447fcf">SetNonblock</span>(ns, <span style="color:#6ab825;font-weight:bold">true</span>); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		...
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> ns, sa, <span style="color:#ed9d13">&#34;&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><p>newTCPConn 方法返回一个包装好的 TCP 连接对象。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newTCPConn</span>(fd *netFD) *TCPConn {
-	c := &amp;TCPConn{conn{fd}}
-	<span style="color:#447fcf">setNoDelay</span>(c.fd, <span style="color:#6ab825;font-weight:bold">true</span>)
-	<span style="color:#6ab825;font-weight:bold">return</span> c
-}
-</code></pre></div><h3 id="接收-tcp-连接流程图">接收 TCP 连接流程图</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (l *TCPListener) <span style="color:#447fcf">Accept</span>() (Conn, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	c, err := l.<span style="color:#447fcf">accept</span>()
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> c, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (ln *TCPListener) <span style="color:#447fcf">accept</span>() (*TCPConn, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	fd, err := ln.fd.<span style="color:#447fcf">accept</span>()
+</span></span><span style="display:flex;"><span>    ...	
+</span></span><span style="display:flex;"><span>	tc := <span style="color:#447fcf">newTCPConn</span>(fd)
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> tc, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">accept</span>() (netfd *netFD, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	d, rsa, errcall, err := fd.pfd.<span style="color:#447fcf">Accept</span>()
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> netfd, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>FD.Accept 方法内部不断轮询调用 accept 方法获取 TCP 连接并处理相应的错误。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Accept</span>() (<span style="color:#6ab825;font-weight:bold">int</span>, syscall.Sockaddr, <span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 轮询调用 accept 方法获取 TCP 连接
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		s, rsa, errcall, err := <span style="color:#447fcf">accept</span>(fd.Sysfd)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> s, rsa, <span style="color:#ed9d13">&#34;&#34;</span>, err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> err {
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>, <span style="color:#6ab825;font-weight:bold">nil</span>, errcall, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>accept 方法内部封装了一层 <code>系统调用 accept</code>，返回一个非阻塞的文件描述符。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">accept</span>(s <span style="color:#6ab825;font-weight:bold">int</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, syscall.Sockaddr, <span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 先尝试 accept4 调用，如果报错了，改用 accept
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// nonblock: 设置为非阻塞模式 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// accept4 通过 1 次系统调用完成 accept 和设置 nonblock 两个操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ns, sa, err := <span style="color:#447fcf">Accept4Func</span>(s, syscall.SOCK_NONBLOCK|syscall.SOCK_CLOEXEC)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> err {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> ns, sa, <span style="color:#ed9d13">&#34;&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// accept 通过 2 次系统调用完成 accept 和设置 nonblock 两个操作 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ns, sa, err = <span style="color:#447fcf">AcceptFunc</span>(s)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err = syscall.<span style="color:#447fcf">SetNonblock</span>(ns, <span style="color:#6ab825;font-weight:bold">true</span>); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ns, sa, <span style="color:#ed9d13">&#34;&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>newTCPConn 方法返回一个包装好的 TCP 连接对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newTCPConn</span>(fd *netFD) *TCPConn {
+</span></span><span style="display:flex;"><span>	c := &amp;TCPConn{conn{fd}}
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">setNoDelay</span>(c.fd, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> c
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="接收-tcp-连接流程图">接收 TCP 连接流程图</h3>
 <p><img src="https://dbwu.tech/images/TCPAccept.png" alt="TCPAccept"></p>
 <h2 id="数据接收和发送">数据接收和发送</h2>
 <h3 id="接收方法">接收方法</h3>
 <p>接收数据的对象是具体的 TCP 连接，所以从 conn.Read 方法开始。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">Read</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	...
-	n, err := c.fd.<span style="color:#447fcf">Read</span>(b)
-    ...
-	<span style="color:#6ab825;font-weight:bold">return</span> n, err
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">Read</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (n <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
-	n, err = fd.pfd.<span style="color:#447fcf">Read</span>(p)
-	<span style="color:#999;font-style:italic">// 文件描述符保活机制
-</span><span style="color:#999;font-style:italic"></span>	runtime.<span style="color:#447fcf">KeepAlive</span>(fd)
-	<span style="color:#6ab825;font-weight:bold">return</span> n, <span style="color:#447fcf">wrapSyscallError</span>(readSyscallName, err)
-}
-</code></pre></div><p>FD.Read 方法内部不断轮询 <code>系统调用 Read</code> 并处理相应的错误。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Read</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
-    ...
-	
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		n, err := <span style="color:#447fcf">ignoringEINTRIO</span>(syscall.Read, fd.Sysfd, p)
-		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-			n = <span style="color:#3677a9">0</span>
-			<span style="color:#6ab825;font-weight:bold">if</span> err == syscall.EAGAIN &amp;&amp; fd.pd.<span style="color:#447fcf">pollable</span>() {
-				<span style="color:#999;font-style:italic">// 如果没有可用数据，抛出 syscall.EAGAIN
-</span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 将当前连接所在的 goroutine 休眠
-</span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> err = fd.pd.<span style="color:#447fcf">waitRead</span>(fd.isFile); err == <span style="color:#6ab825;font-weight:bold">nil</span> {
-					<span style="color:#6ab825;font-weight:bold">continue</span>
-				}
-			}
-		}
-		err = fd.<span style="color:#447fcf">eofError</span>(n, err)
-		<span style="color:#6ab825;font-weight:bold">return</span> n, err
-	}
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">waitRead</span>(isFile <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> pd.<span style="color:#447fcf">wait</span>(<span style="color:#ed9d13">&#39;r&#39;</span>, isFile)
-}
-
-
-<span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">wait</span>(mode <span style="color:#6ab825;font-weight:bold">int</span>, isFile <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
-	...
-	
-	<span style="color:#999;font-style:italic">// runtime_pollWait 通过链接器指向了 poll_runtime_pollWait
-</span><span style="color:#999;font-style:italic"></span>	res := <span style="color:#447fcf">runtime_pollWait</span>(pd.runtimeCtx, mode)
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">convertErr</span>(res, isFile)
-}
-</code></pre></div><p>poll_runtime_pollWait 方法等待网络文件描述符准备好读或写 (读写取决于参数 mode)。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollWait</span>(pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
-    ...
-	
-	<span style="color:#6ab825;font-weight:bold">for</span> !<span style="color:#447fcf">netpollblock</span>(pd, <span style="color:#24909d">int32</span>(mode), <span style="color:#6ab825;font-weight:bold">false</span>) {
-		errcode = <span style="color:#447fcf">netpollcheckerr</span>(pd, <span style="color:#24909d">int32</span>(mode))
-		<span style="color:#6ab825;font-weight:bold">if</span> errcode != pollNoError {
-			<span style="color:#6ab825;font-weight:bold">return</span> errcode
-		}
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> pollNoError
-}
-</code></pre></div><p>netpollblock 方法用于检测网络文件描述符准备好读或写。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 如果 IO 已经准备好，返回 true
-</span><span style="color:#999;font-style:italic">// 如果 IO 已经超时或关闭，返回 false
-</span><span style="color:#999;font-style:italic">// 如果 waitio 参数为 true, 阻塞等待 IO 完成, 忽略错误
-</span><span style="color:#999;font-style:italic">// 禁止使用同一种模式并发调用 netpollblock
-</span><span style="color:#999;font-style:italic">// 因为 pollDesc 只能为每种模式保存 1 个等待的 goroutine
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollblock</span>(pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int32</span>, waitio <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
-	gpp := &amp;pd.rg
-	<span style="color:#6ab825;font-weight:bold">if</span> mode == <span style="color:#ed9d13">&#39;w&#39;</span> {
-		gpp = &amp;pd.wg
-	}
-	
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		<span style="color:#6ab825;font-weight:bold">if</span> gpp.<span style="color:#447fcf">CompareAndSwap</span>(pdReady, <span style="color:#3677a9">0</span>) {
-			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
-		}
-		<span style="color:#6ab825;font-weight:bold">if</span> gpp.<span style="color:#447fcf">CompareAndSwap</span>(<span style="color:#3677a9">0</span>, pdWait) {
-			<span style="color:#6ab825;font-weight:bold">break</span>
-		}
-		<span style="color:#6ab825;font-weight:bold">if</span> v := gpp.<span style="color:#447fcf">Load</span>(); v != pdReady &amp;&amp; v != <span style="color:#3677a9">0</span> {
-			<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;runtime: double wait&#34;</span>)
-		}
-	}
-	
-	<span style="color:#6ab825;font-weight:bold">if</span> waitio || <span style="color:#447fcf">netpollcheckerr</span>(pd, mode) == pollNoError {
-		<span style="color:#999;font-style:italic">// 休眠 goroutine, 等待 IO 完成
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">gopark</span>(netpollblockcommit, unsafe.<span style="color:#447fcf">Pointer</span>(gpp), waitReasonIOWait, traceEvGoBlockNet, <span style="color:#3677a9">5</span>)
-	}
-
-	...
-	
-	<span style="color:#6ab825;font-weight:bold">return</span> old == pdReady
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollblockcommit</span>(gp *g, gpp unsafe.Pointer) <span style="color:#6ab825;font-weight:bold">bool</span> {
-	r := atomic.<span style="color:#447fcf">Casuintptr</span>((*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(gpp), pdWait, <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(gp)))
-	<span style="color:#6ab825;font-weight:bold">if</span> r {
-		<span style="color:#999;font-style:italic">// 增加等待网络轮询器的 goroutine 数量
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 调度器使用这个值决定是否阻塞，如果没有其他工作的情况下，调度器会阻塞等待网络轮询器的 IO 事件
-</span><span style="color:#999;font-style:italic"></span>		atomic.<span style="color:#447fcf">Xadd</span>(&amp;netpollWaiters, <span style="color:#3677a9">1</span>)
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> r
-}
-</code></pre></div><h3 id="发送方法">发送方法</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">Read</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	n, err := c.fd.<span style="color:#447fcf">Read</span>(b)
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> n, err
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">Read</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (n <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	n, err = fd.pfd.<span style="color:#447fcf">Read</span>(p)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 文件描述符保活机制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	runtime.<span style="color:#447fcf">KeepAlive</span>(fd)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> n, <span style="color:#447fcf">wrapSyscallError</span>(readSyscallName, err)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>FD.Read 方法内部不断轮询 <code>系统调用 Read</code> 并处理相应的错误。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Read</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		n, err := <span style="color:#447fcf">ignoringEINTRIO</span>(syscall.Read, fd.Sysfd, p)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			n = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err == syscall.EAGAIN &amp;&amp; fd.pd.<span style="color:#447fcf">pollable</span>() {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果没有可用数据，抛出 syscall.EAGAIN
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 将当前连接所在的 goroutine 休眠
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> err = fd.pd.<span style="color:#447fcf">waitRead</span>(fd.isFile); err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		err = fd.<span style="color:#447fcf">eofError</span>(n, err)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> n, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">waitRead</span>(isFile <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> pd.<span style="color:#447fcf">wait</span>(<span style="color:#ed9d13">&#39;r&#39;</span>, isFile)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">wait</span>(mode <span style="color:#6ab825;font-weight:bold">int</span>, isFile <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// runtime_pollWait 通过链接器指向了 poll_runtime_pollWait
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	res := <span style="color:#447fcf">runtime_pollWait</span>(pd.runtimeCtx, mode)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">convertErr</span>(res, isFile)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>poll_runtime_pollWait 方法等待网络文件描述符准备好读或写 (读写取决于参数 mode)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollWait</span>(pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !<span style="color:#447fcf">netpollblock</span>(pd, <span style="color:#24909d">int32</span>(mode), <span style="color:#6ab825;font-weight:bold">false</span>) {
+</span></span><span style="display:flex;"><span>		errcode = <span style="color:#447fcf">netpollcheckerr</span>(pd, <span style="color:#24909d">int32</span>(mode))
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> errcode != pollNoError {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> errcode
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> pollNoError
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>netpollblock 方法用于检测网络文件描述符准备好读或写。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 IO 已经准备好，返回 true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 IO 已经超时或关闭，返回 false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 waitio 参数为 true, 阻塞等待 IO 完成, 忽略错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 禁止使用同一种模式并发调用 netpollblock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 因为 pollDesc 只能为每种模式保存 1 个等待的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollblock</span>(pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int32</span>, waitio <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	gpp := &amp;pd.rg
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> mode == <span style="color:#ed9d13">&#39;w&#39;</span> {
+</span></span><span style="display:flex;"><span>		gpp = &amp;pd.wg
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> gpp.<span style="color:#447fcf">CompareAndSwap</span>(pdReady, <span style="color:#3677a9">0</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> gpp.<span style="color:#447fcf">CompareAndSwap</span>(<span style="color:#3677a9">0</span>, pdWait) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> v := gpp.<span style="color:#447fcf">Load</span>(); v != pdReady &amp;&amp; v != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;runtime: double wait&#34;</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> waitio || <span style="color:#447fcf">netpollcheckerr</span>(pd, mode) == pollNoError {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 休眠 goroutine, 等待 IO 完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">gopark</span>(netpollblockcommit, unsafe.<span style="color:#447fcf">Pointer</span>(gpp), waitReasonIOWait, traceEvGoBlockNet, <span style="color:#3677a9">5</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> old == pdReady
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollblockcommit</span>(gp *g, gpp unsafe.Pointer) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	r := atomic.<span style="color:#447fcf">Casuintptr</span>((*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(gpp), pdWait, <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(gp)))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> r {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 增加等待网络轮询器的 goroutine 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 调度器使用这个值决定是否阻塞，如果没有其他工作的情况下，调度器会阻塞等待网络轮询器的 IO 事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		atomic.<span style="color:#447fcf">Xadd</span>(&amp;netpollWaiters, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> r
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="发送方法">发送方法</h3>
 <p>发送数据的对象是具体的 TCP 连接，所以从 conn.Write 方法开始。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">Write</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
-	...
-	n, err := c.fd.<span style="color:#447fcf">Write</span>(b)
-    ...
-	<span style="color:#6ab825;font-weight:bold">return</span> n, err
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">Write</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (nn <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
-	nn, err = fd.pfd.<span style="color:#447fcf">Write</span>(p)
-	<span style="color:#999;font-style:italic">// 文件描述符保活机制
-</span><span style="color:#999;font-style:italic"></span>	runtime.<span style="color:#447fcf">KeepAlive</span>(fd)
-	<span style="color:#6ab825;font-weight:bold">return</span> nn, <span style="color:#447fcf">wrapSyscallError</span>(writeSyscallName, err)
-}
-</code></pre></div><p>FD.Write 方法内部不断轮询 <code>系统调用 Write</code> 并处理相应的错误。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Write</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
-    ...
-	
-	<span style="color:#6ab825;font-weight:bold">var</span> nn <span style="color:#6ab825;font-weight:bold">int</span>
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		...
-		
-		n, err := <span style="color:#447fcf">ignoringEINTRIO</span>(syscall.Write, fd.Sysfd, p[nn:max])
-        
-		...
-		
-		<span style="color:#6ab825;font-weight:bold">if</span> err == syscall.EAGAIN &amp;&amp; fd.pd.<span style="color:#447fcf">pollable</span>() {
-			<span style="color:#6ab825;font-weight:bold">if</span> err = fd.pd.<span style="color:#447fcf">waitWrite</span>(fd.isFile); err == <span style="color:#6ab825;font-weight:bold">nil</span> {
-				<span style="color:#6ab825;font-weight:bold">continue</span>
-			}
-		}
-        
-		...
-	}
-}
-</code></pre></div><p>代码执行到这里，后面的流程就和 <code>Read 接收数据</code> 流程一样了，这里不再赘述。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">waitWrite</span>(isFile <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> pd.<span style="color:#447fcf">wait</span>(<span style="color:#ed9d13">&#39;w&#39;</span>, isFile)
-}
-</code></pre></div><h3 id="小结-1">小结</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">Write</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	n, err := c.fd.<span style="color:#447fcf">Write</span>(b)
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> n, err
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">Write</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (nn <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	nn, err = fd.pfd.<span style="color:#447fcf">Write</span>(p)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 文件描述符保活机制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	runtime.<span style="color:#447fcf">KeepAlive</span>(fd)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> nn, <span style="color:#447fcf">wrapSyscallError</span>(writeSyscallName, err)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>FD.Write 方法内部不断轮询 <code>系统调用 Write</code> 并处理相应的错误。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Write</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> nn <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		n, err := <span style="color:#447fcf">ignoringEINTRIO</span>(syscall.Write, fd.Sysfd, p[nn:max])
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err == syscall.EAGAIN &amp;&amp; fd.pd.<span style="color:#447fcf">pollable</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err = fd.pd.<span style="color:#447fcf">waitWrite</span>(fd.isFile); err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>代码执行到这里，后面的流程就和 <code>Read 接收数据</code> 流程一样了，这里不再赘述。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">waitWrite</span>(isFile <span style="color:#6ab825;font-weight:bold">bool</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> pd.<span style="color:#447fcf">wait</span>(<span style="color:#ed9d13">&#39;w&#39;</span>, isFile)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="小结-1">小结</h3>
 <p><img src="https://dbwu.tech/images/readwrite.png" alt="数据发送和接收流程图"></p>
 <h2 id="网络轮询器">网络轮询器</h2>
 <p>netpoll 方法用于检测网络轮询器并返回已经就绪的 goroutine 列表。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 轮询检测准备就绪的网络连接
-</span><span style="color:#999;font-style:italic">// 返回一个可运行 (可读/可写/可读写) 的 goroutine 列表
-</span><span style="color:#999;font-style:italic">// 参数规则:
-</span><span style="color:#999;font-style:italic">//  delay &lt; 0: 无限阻塞
-</span><span style="color:#999;font-style:italic">//  delay == 0: 非阻塞
-</span><span style="color:#999;font-style:italic">//  delay &gt; 0: 阻塞时间 (单位: 纳秒)
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpoll</span>(delay <span style="color:#6ab825;font-weight:bold">int64</span>) gList {
-	<span style="color:#6ab825;font-weight:bold">if</span> epfd == -<span style="color:#3677a9">1</span> {
-		<span style="color:#6ab825;font-weight:bold">return</span> gList{}
-	}
-    
-	...
-	
-	<span style="color:#999;font-style:italic">// 每次读取 128 个 IO 事件
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> events [<span style="color:#3677a9">128</span>]epollevent
-retry:
-	<span style="color:#999;font-style:italic">// 调用 epoll_wait 获取接收到的 IO 事件
-</span><span style="color:#999;font-style:italic"></span>	n := <span style="color:#447fcf">epollwait</span>(epfd, &amp;events[<span style="color:#3677a9">0</span>], <span style="color:#24909d">int32</span>(<span style="color:#24909d">len</span>(events)), waitms)
-	<span style="color:#6ab825;font-weight:bold">if</span> n &lt; <span style="color:#3677a9">0</span> {
-        ...
-		
-		<span style="color:#6ab825;font-weight:bold">if</span> waitms &gt; <span style="color:#3677a9">0</span> {
-			<span style="color:#6ab825;font-weight:bold">return</span> gList{}
-		}
-		<span style="color:#6ab825;font-weight:bold">goto</span> retry
-	}
-	
-	<span style="color:#6ab825;font-weight:bold">var</span> toRun gList
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">int32</span>(<span style="color:#3677a9">0</span>); i &lt; n; i++ {
-		ev := &amp;events[i]
-		
-		...
-
-		<span style="color:#6ab825;font-weight:bold">var</span> mode <span style="color:#6ab825;font-weight:bold">int32</span>
-		<span style="color:#6ab825;font-weight:bold">if</span> ev.events&amp;(_EPOLLIN|_EPOLLRDHUP|_EPOLLHUP|_EPOLLERR) != <span style="color:#3677a9">0</span> {
-			mode += <span style="color:#ed9d13">&#39;r&#39;</span>
-		}
-		<span style="color:#6ab825;font-weight:bold">if</span> ev.events&amp;(_EPOLLOUT|_EPOLLHUP|_EPOLLERR) != <span style="color:#3677a9">0</span> {
-			mode += <span style="color:#ed9d13">&#39;w&#39;</span>
-		}
-		<span style="color:#6ab825;font-weight:bold">if</span> mode != <span style="color:#3677a9">0</span> {
-			pd := *(**pollDesc)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ev.data))
-			pd.<span style="color:#447fcf">setEventErr</span>(ev.events == _EPOLLERR)
-			<span style="color:#447fcf">netpollready</span>(&amp;toRun, pd, mode)
-		}
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> toRun
-}
-</code></pre></div><p>netpollready 方法表示网络文件描述符关联的 IO 事件已经就绪，并将参数 pd 网络文件描述符内部的 goroutine 添加到参数队列中。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 参数 toRun 是一个 goroutine 列表
-</span><span style="color:#999;font-style:italic">// 参数 mode 规则
-</span><span style="color:#999;font-style:italic">//  &#39;r&#39;: IO 读
-</span><span style="color:#999;font-style:italic">//  &#39;w&#39;: IO 写
-</span><span style="color:#999;font-style:italic">//  &#39;r&#39;+&#39;w&#39;: IO 读写
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollready</span>(toRun *gList, pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int32</span>) {
-	<span style="color:#6ab825;font-weight:bold">var</span> rg, wg *g
-	<span style="color:#6ab825;font-weight:bold">if</span> mode == <span style="color:#ed9d13">&#39;r&#39;</span> || mode == <span style="color:#ed9d13">&#39;r&#39;</span>+<span style="color:#ed9d13">&#39;w&#39;</span> {
-		rg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;r&#39;</span>, <span style="color:#6ab825;font-weight:bold">true</span>)
-	}
-	<span style="color:#6ab825;font-weight:bold">if</span> mode == <span style="color:#ed9d13">&#39;w&#39;</span> || mode == <span style="color:#ed9d13">&#39;r&#39;</span>+<span style="color:#ed9d13">&#39;w&#39;</span> {
-		wg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;w&#39;</span>, <span style="color:#6ab825;font-weight:bold">true</span>)
-	}
-	<span style="color:#6ab825;font-weight:bold">if</span> rg != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		toRun.<span style="color:#447fcf">push</span>(rg)
-	}
-	<span style="color:#6ab825;font-weight:bold">if</span> wg != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		toRun.<span style="color:#447fcf">push</span>(wg)
-	}
-}
-</code></pre></div><p>netpollunblock 方法将网络文件描述符中的读信号或者写信号转换为 pdReady 状态，然后返回存储在内部的 goroutine。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollunblock</span>(pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int32</span>, ioready <span style="color:#6ab825;font-weight:bold">bool</span>) *g {
-	... 
-	
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		...
-		<span style="color:#6ab825;font-weight:bold">var</span> new <span style="color:#6ab825;font-weight:bold">uintptr</span>
-		<span style="color:#6ab825;font-weight:bold">if</span> ioready {
-			new = pdReady
-		}
-		<span style="color:#6ab825;font-weight:bold">if</span> gpp.<span style="color:#447fcf">CompareAndSwap</span>(old, new) {
-			<span style="color:#6ab825;font-weight:bold">if</span> old == pdWait {
-				old = <span style="color:#3677a9">0</span>
-			}
-			<span style="color:#6ab825;font-weight:bold">return</span> (*g)(unsafe.<span style="color:#447fcf">Pointer</span>(old))
-		}
-	}
-}
-</code></pre></div><h3 id="小结-2">小结</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 轮询检测准备就绪的网络连接
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回一个可运行 (可读/可写/可读写) 的 goroutine 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 参数规则:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  delay &lt; 0: 无限阻塞
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  delay == 0: 非阻塞
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  delay &gt; 0: 阻塞时间 (单位: 纳秒)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpoll</span>(delay <span style="color:#6ab825;font-weight:bold">int64</span>) gList {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> epfd == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> gList{}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 每次读取 128 个 IO 事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> events [<span style="color:#3677a9">128</span>]epollevent
+</span></span><span style="display:flex;"><span>retry:
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 epoll_wait 获取接收到的 IO 事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n := <span style="color:#447fcf">epollwait</span>(epfd, &amp;events[<span style="color:#3677a9">0</span>], <span style="color:#24909d">int32</span>(<span style="color:#24909d">len</span>(events)), waitms)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> waitms &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> gList{}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">goto</span> retry
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> toRun gList
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">int32</span>(<span style="color:#3677a9">0</span>); i &lt; n; i++ {
+</span></span><span style="display:flex;"><span>		ev := &amp;events[i]
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> mode <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ev.events&amp;(_EPOLLIN|_EPOLLRDHUP|_EPOLLHUP|_EPOLLERR) != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			mode += <span style="color:#ed9d13">&#39;r&#39;</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ev.events&amp;(_EPOLLOUT|_EPOLLHUP|_EPOLLERR) != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			mode += <span style="color:#ed9d13">&#39;w&#39;</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> mode != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			pd := *(**pollDesc)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ev.data))
+</span></span><span style="display:flex;"><span>			pd.<span style="color:#447fcf">setEventErr</span>(ev.events == _EPOLLERR)
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">netpollready</span>(&amp;toRun, pd, mode)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> toRun
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>netpollready 方法表示网络文件描述符关联的 IO 事件已经就绪，并将参数 pd 网络文件描述符内部的 goroutine 添加到参数队列中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 参数 toRun 是一个 goroutine 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 参数 mode 规则
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  &#39;r&#39;: IO 读
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  &#39;w&#39;: IO 写
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  &#39;r&#39;+&#39;w&#39;: IO 读写
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollready</span>(toRun *gList, pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int32</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> rg, wg *g
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> mode == <span style="color:#ed9d13">&#39;r&#39;</span> || mode == <span style="color:#ed9d13">&#39;r&#39;</span>+<span style="color:#ed9d13">&#39;w&#39;</span> {
+</span></span><span style="display:flex;"><span>		rg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;r&#39;</span>, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> mode == <span style="color:#ed9d13">&#39;w&#39;</span> || mode == <span style="color:#ed9d13">&#39;r&#39;</span>+<span style="color:#ed9d13">&#39;w&#39;</span> {
+</span></span><span style="display:flex;"><span>		wg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;w&#39;</span>, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> rg != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		toRun.<span style="color:#447fcf">push</span>(rg)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> wg != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		toRun.<span style="color:#447fcf">push</span>(wg)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>netpollunblock 方法将网络文件描述符中的读信号或者写信号转换为 pdReady 状态，然后返回存储在内部的 goroutine。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollunblock</span>(pd *pollDesc, mode <span style="color:#6ab825;font-weight:bold">int32</span>, ioready <span style="color:#6ab825;font-weight:bold">bool</span>) *g {
+</span></span><span style="display:flex;"><span>	... 
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> new <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ioready {
+</span></span><span style="display:flex;"><span>			new = pdReady
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> gpp.<span style="color:#447fcf">CompareAndSwap</span>(old, new) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> old == pdWait {
+</span></span><span style="display:flex;"><span>				old = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> (*g)(unsafe.<span style="color:#447fcf">Pointer</span>(old))
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="小结-2">小结</h3>
 <p><img src="https://dbwu.tech/images/netpoll.png" alt="网络轮询器调用关系图"></p>
 <p><strong>netpoll</strong> 方法会返回一个可运行的 <code>goroutine</code> 列表，然后调用方会将返回的 <code>goroutine</code> 逐个加入处理器的本地队列或者全局队列。
 从图中可以看到调用方主要有 4 个，其中调度线程 <code>schedule</code> 和监控线程 <code>sysmon</code> 在 GMP 调度器一文中已经讲过了，这里不再赘述，剩下的 GC 和 STW 后面有机会再讲。</p>
 <h2 id="超时控制">超时控制</h2>
 <h3 id="接收数据超时">接收数据超时</h3>
 <p>conn.SetReadDeadline 方法设置连接的接收数据超时时间。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">SetReadDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span> {
-    ...
-	<span style="color:#6ab825;font-weight:bold">if</span> err := c.fd.<span style="color:#447fcf">SetReadDeadline</span>(t); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#6ab825;font-weight:bold">return</span> &amp;OpError{Op: <span style="color:#ed9d13">&#34;set&#34;</span>, Net: c.fd.net, Source: <span style="color:#6ab825;font-weight:bold">nil</span>, Addr: c.fd.laddr, Err: err}
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">SetWriteDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> fd.pfd.<span style="color:#447fcf">SetWriteDeadline</span>(t)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">SetWriteDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">setDeadlineImpl</span>(fd, t, <span style="color:#ed9d13">&#39;w&#39;</span>)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setDeadlineImpl</span>(fd *FD, t time.Time, mode <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
-	...
-	
-	<span style="color:#447fcf">runtime_pollSetDeadline</span>(fd.pd.runtimeCtx, d, mode)
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
-}
-</code></pre></div><p>poll_runtime_pollSetDeadline 方法会设置参数 pd 网络文件描述符内部的定时器 (goroutine 持有)，并在定时器到期后进行相关的操作。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollSetDeadline</span>(pd *pollDesc, d <span style="color:#6ab825;font-weight:bold">int64</span>, mode <span style="color:#6ab825;font-weight:bold">int</span>) {
-	<span style="color:#999;font-style:italic">// 主要是对 pd 进行定时器的相关设置，这里直接跳过这部分内容
-</span><span style="color:#999;font-style:italic"></span>	...
-	
-	<span style="color:#999;font-style:italic">// 如果截止时间已经过期，取消等待 IO 而导致的阻塞
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> rg, wg *g
-	<span style="color:#6ab825;font-weight:bold">if</span> pd.rd &lt; <span style="color:#3677a9">0</span> {
-		rg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;r&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
-	}
-	<span style="color:#6ab825;font-weight:bold">if</span> pd.wd &lt; <span style="color:#3677a9">0</span> {
-		wg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;w&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
-	}
-	
-	<span style="color:#999;font-style:italic">// 如果有取消读事件的 goroutine, 则进行唤醒
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> rg != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#447fcf">netpollgoready</span>(rg, <span style="color:#3677a9">3</span>)
-	}
-    <span style="color:#999;font-style:italic">// 如果有取消写事件的 goroutine, 则进行唤醒
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> wg != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#447fcf">netpollgoready</span>(wg, <span style="color:#3677a9">3</span>)
-	}
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollgoready</span>(gp *g, traceskip <span style="color:#6ab825;font-weight:bold">int</span>) {
-    atomic.<span style="color:#447fcf">Xadd</span>(&amp;netpollWaiters, -<span style="color:#3677a9">1</span>)
-    <span style="color:#447fcf">goready</span>(gp, traceskip+<span style="color:#3677a9">1</span>)
-}
-</code></pre></div><h3 id="发送数据超时">发送数据超时</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">SetReadDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err := c.fd.<span style="color:#447fcf">SetReadDeadline</span>(t); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> &amp;OpError{Op: <span style="color:#ed9d13">&#34;set&#34;</span>, Net: c.fd.net, Source: <span style="color:#6ab825;font-weight:bold">nil</span>, Addr: c.fd.laddr, Err: err}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">SetWriteDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> fd.pfd.<span style="color:#447fcf">SetWriteDeadline</span>(t)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">SetWriteDeadline</span>(t time.Time) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">setDeadlineImpl</span>(fd, t, <span style="color:#ed9d13">&#39;w&#39;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setDeadlineImpl</span>(fd *FD, t time.Time, mode <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">runtime_pollSetDeadline</span>(fd.pd.runtimeCtx, d, mode)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>poll_runtime_pollSetDeadline 方法会设置参数 pd 网络文件描述符内部的定时器 (goroutine 持有)，并在定时器到期后进行相关的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollSetDeadline</span>(pd *pollDesc, d <span style="color:#6ab825;font-weight:bold">int64</span>, mode <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 主要是对 pd 进行定时器的相关设置，这里直接跳过这部分内容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果截止时间已经过期，取消等待 IO 而导致的阻塞
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> rg, wg *g
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> pd.rd &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		rg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;r&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> pd.wd &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		wg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;w&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果有取消读事件的 goroutine, 则进行唤醒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> rg != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">netpollgoready</span>(rg, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 如果有取消写事件的 goroutine, 则进行唤醒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> wg != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">netpollgoready</span>(wg, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">netpollgoready</span>(gp *g, traceskip <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>    atomic.<span style="color:#447fcf">Xadd</span>(&amp;netpollWaiters, -<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#447fcf">goready</span>(gp, traceskip+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="发送数据超时">发送数据超时</h3>
 <p>发送数据超时和接收数据流程基本一致，只是调用的方法不同，这里就不再展开了。</p>
 <h2 id="关闭连接">关闭连接</h2>
 <p>conn.Close 方法用于关闭网络连接。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
-    ...
-	err := c.fd.<span style="color:#447fcf">Close</span>()
-    ...
-	<span style="color:#6ab825;font-weight:bold">return</span> err
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
-	runtime.<span style="color:#447fcf">SetFinalizer</span>(fd, <span style="color:#6ab825;font-weight:bold">nil</span>)
-	<span style="color:#6ab825;font-weight:bold">return</span> fd.pfd.<span style="color:#447fcf">Close</span>()
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
-	...
-	fd.pd.<span style="color:#447fcf">evict</span>()
-    ...
-	<span style="color:#6ab825;font-weight:bold">return</span> err
-}
-</code></pre></div><p>evict 方法会关闭网络文件描述符，并取消所有阻塞在等待该文件描述符的 IO 事件。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">evict</span>() {
-	...
-	<span style="color:#447fcf">runtime_pollUnblock</span>(pd.runtimeCtx)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollUnblock</span>(pd *pollDesc) {
-    ...
-
-	pd.closing = <span style="color:#6ab825;font-weight:bold">true</span>
-	<span style="color:#6ab825;font-weight:bold">var</span> rg, wg *g
-	rg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;r&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
-	wg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;w&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
-	
-	...
-	
-	<span style="color:#6ab825;font-weight:bold">if</span> rg != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#447fcf">netpollgoready</span>(rg, <span style="color:#3677a9">3</span>)
-	}
-	<span style="color:#6ab825;font-weight:bold">if</span> wg != <span style="color:#6ab825;font-weight:bold">nil</span> {
-		<span style="color:#447fcf">netpollgoready</span>(wg, <span style="color:#3677a9">3</span>)
-	}
-}
-</code></pre></div><h3 id="流程图">流程图</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *conn) <span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	err := c.fd.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *netFD) <span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	runtime.<span style="color:#447fcf">SetFinalizer</span>(fd, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> fd.pfd.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (fd *FD) <span style="color:#447fcf">Close</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	fd.pd.<span style="color:#447fcf">evict</span>()
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>evict 方法会关闭网络文件描述符，并取消所有阻塞在等待该文件描述符的 IO 事件。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (pd *pollDesc) <span style="color:#447fcf">evict</span>() {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">runtime_pollUnblock</span>(pd.runtimeCtx)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">poll_runtime_pollUnblock</span>(pd *pollDesc) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	pd.closing = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> rg, wg *g
+</span></span><span style="display:flex;"><span>	rg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;r&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	wg = <span style="color:#447fcf">netpollunblock</span>(pd, <span style="color:#ed9d13">&#39;w&#39;</span>, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> rg != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">netpollgoready</span>(rg, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> wg != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">netpollgoready</span>(wg, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="流程图">流程图</h3>
 <p><img src="https://dbwu.tech/images/TCPClose.png" alt="关闭连接流程图"></p>
 <h2 id="小结-3">小结</h2>
 <p>本文用一个基础的服务器网络程序为示例，分析了网络标准库中的端口监听、接收连接、发送/接收数据, 关闭连接 4 个主要流程的 Linux 版本实现代码。

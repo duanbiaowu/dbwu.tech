@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 数据竞态" />
 <meta property="og:description" content="数据竞态是并发系统编程中最常见和最难调试的错误类型之一。当两个 goroutine 同时访问同一个变量并且至少有一个是写入操作时，就会发生数据竞态。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_data_race/" />
-<meta property="article:published_time" content="2023-02-02T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-02-02T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_data_race/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-02T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 数据竞态"/>
 <meta name="twitter:description" content="数据竞态是并发系统编程中最常见和最难调试的错误类型之一。当两个 goroutine 同时访问同一个变量并且至少有一个是写入操作时，就会发生数据竞态。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -129,251 +129,251 @@
 就会发生 <code>数据竞态</code>。详细的信息，请参阅 <a href="https://go.dev/ref/mem/">Go 内存模型</a>。</p>
 <h2 id="使用方法">使用方法</h2>
 <p>为了帮助诊断 <code>数据竞态</code> 导致的错误，Go 内置了一个 <code>数据竞态检测器</code>，只需要在具体的命令中加上 <code>-race</code> 参数即可。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go <span style="color:#24909d">test</span> -race mypkg    // 测试单个包
-$ go run -race mysrc.go  // 运行单个文件
-$ go build -race mycmd   // 构建命令
-$ go install -race mypkg // 安装包
-</code></pre></div><h2 id="报告格式">报告格式</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -race mypkg    // 测试单个包
+</span></span><span style="display:flex;"><span>$ go run -race mysrc.go  // 运行单个文件
+</span></span><span style="display:flex;"><span>$ go build -race mycmd   // 构建命令
+</span></span><span style="display:flex;"><span>$ go install -race mypkg // 安装包
+</span></span></code></pre></div><h2 id="报告格式">报告格式</h2>
 <p>当 <code>数据竞态检测器</code> 在程序中发现 <code>数据竞态</code> 时，会输出一份报告。该报告包含访问冲突的调用堆栈，以及相关 <code>goroutine</code> 的创建堆栈。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic">## 示例输出</span>
-WARNING: DATA RACE
-Read by goroutine 185:
-  net.(*pollServer).AddFD()
-      src/net/fd_unix.go:89 +0x398
-  net.(*pollServer).WaitWrite()
-      src/net/fd_unix.go:247 +0x45
-  net.(*netFD).Write()
-      src/net/fd_unix.go:540 +0x4d4
-  net.(*conn).Write()
-      src/net/net.go:129 +0x101
-  net.func·060()
-      src/net/timeout_test.go:603 +0xaf
-...
-...
-</code></pre></div><h2 id="可选项">可选项</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 示例输出</span>
+</span></span><span style="display:flex;"><span>WARNING: DATA RACE
+</span></span><span style="display:flex;"><span>Read by goroutine 185:
+</span></span><span style="display:flex;"><span>  net.(*pollServer).AddFD()
+</span></span><span style="display:flex;"><span>      src/net/fd_unix.go:89 +0x398
+</span></span><span style="display:flex;"><span>  net.(*pollServer).WaitWrite()
+</span></span><span style="display:flex;"><span>      src/net/fd_unix.go:247 +0x45
+</span></span><span style="display:flex;"><span>  net.(*netFD).Write()
+</span></span><span style="display:flex;"><span>      src/net/fd_unix.go:540 +0x4d4
+</span></span><span style="display:flex;"><span>  net.(*conn).Write()
+</span></span><span style="display:flex;"><span>      src/net/net.go:129 +0x101
+</span></span><span style="display:flex;"><span>  net.func·060()
+</span></span><span style="display:flex;"><span>      src/net/timeout_test.go:603 +0xaf
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h2 id="可选项">可选项</h2>
 <p>Go 的环境变量 <code>GORACE</code> 对应 <code>数据竞态检测器</code> 的参数设置，格式如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#40ffff">GORACE</span>=<span style="color:#ed9d13">&#34;option1=val1 option2=val2&#34;</span>
-</code></pre></div><p>其中，<code>options</code> 参数的可选项为:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#40ffff">GORACE</span>=<span style="color:#ed9d13">&#34;option1=val1 option2=val2&#34;</span>
+</span></span></code></pre></div><p>其中，<code>options</code> 参数的可选项为:</p>
 <ul>
 <li>log_path (default stderr): <code>数据竞态检测器</code> 将报告写入名为 <code>log_path.pid</code> 的文件中。<code>stdout</code> 和 <code>stderr</code> 则写入标准输出和标准错误</li>
 <li>exitcode (default 66): <code>数据竞态检测器</code> 检测到竞态后退出时的错误码</li>
-<li>strip_path_prefix (default &ldquo;&quot;): 从报告中删除指定的前缀符</li>
+<li>strip_path_prefix (default &ldquo;&rdquo;): 从报告中删除指定的前缀符</li>
 <li>history_size (default 1):  每个 <code>goroutine</code> 的历史内存访问容量是 32K * 2 <strong>history_size 个元素。增加这个值可以避免报告中出现 &ldquo;无法恢复堆栈&rdquo; 错误，代价是增加内存使用量</strong></li>
 <li>halt_on_error (default 0): 控制程序是否在第一次 <code>数据竞态</code> 报告后退出</li>
 <li>atexit_sleep_ms (default 1000): 程序退出前在主 <code>goroutine</code> 休眠的毫秒数</li>
 </ul>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic">## 示例</span>
-<span style="color:#40ffff">GORACE</span>=<span style="color:#ed9d13">&#34;log_path=/tmp/race/report strip_path_prefix=/my/go/sources/&#34;</span> go <span style="color:#24909d">test</span> -race
-</code></pre></div><h2 id="排除测试">排除测试</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 示例</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">GORACE</span>=<span style="color:#ed9d13">&#34;log_path=/tmp/race/report strip_path_prefix=/my/go/sources/&#34;</span> go <span style="color:#24909d">test</span> -race
+</span></span></code></pre></div><h2 id="排除测试">排除测试</h2>
 <p>当在命令中加入 <code>-race</code> 参数时，Go 定义了额外的构建标签 <code>race</code>，这样就可以使用标签在运行 <code>数据竞态检测器</code> 时排除一些代码和测试。
 从本质上来说，其实也就是 <code>条件编译</code>。</p>
 <h3 id="示例">示例</h3>
 <p>有了 <code>条件编译</code> 之后，运行 <code>go test -race</code> 命令时，这个文件里面的单元测试就会被排除，不会运行。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// +build !race
-</span><span style="color:#999;font-style:italic"></span>
-<span style="color:#6ab825;font-weight:bold">package</span> foo
-
-<span style="color:#999;font-style:italic">// The test contains a data race. See issue 123.
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestFoo</span>(t *testing.T) {
-	<span style="color:#999;font-style:italic">// ...
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// The test fails under the race detector due to timeouts.
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestBar</span>(t *testing.T) {
-	<span style="color:#999;font-style:italic">// ...
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// The test takes too long under the race detector.
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestBaz</span>(t *testing.T) {
-	<span style="color:#999;font-style:italic">// ...
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><h2 id="典型的数据竞争">典型的数据竞争</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// +build !race
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> foo
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// The test contains a data race. See issue 123.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestFoo</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// The test fails under the race detector due to timeouts.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestBar</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// The test takes too long under the race detector.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestBaz</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h2 id="典型的数据竞争">典型的数据竞争</h2>
 <p>下面是一些典型的数据竞争的小例子，所有的例子都可以使用 <code>数据竞态检测器</code> 检测到。</p>
 <h3 id="循环里面的数据竞争">循环里面的数据竞争</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;sync&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
-	wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">5</span>)
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
-		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-			fmt.<span style="color:#447fcf">Println</span>(i) <span style="color:#999;font-style:italic">// Not the &#39;i&#39; you are looking for.
-</span><span style="color:#999;font-style:italic"></span>			wg.<span style="color:#447fcf">Done</span>()
-		}()
-	}
-	wg.<span style="color:#447fcf">Wait</span>()
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run -race main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-<span style="color:#3677a9">5</span>
-<span style="color:#3677a9">5</span>
-<span style="color:#40ffff">5</span>
-==================
-WARNING: DATA RACE
-Read at 0x00c0000180f8 by goroutine 10:
-  main.main.func1()
-...
-...
-...
-==================
-<span style="color:#3677a9">5</span>
-<span style="color:#3677a9">5</span>
-Found <span style="color:#3677a9">1</span> data race(s)
-<span style="color:#24909d">exit</span> status <span style="color:#3677a9">66</span>
-</code></pre></div><p><strong>错误原因在于:</strong> 函数字面量中的 <code>变量 i</code> 与循环使用的变量相同，因此 <code>goroutine</code> 中的 <code>读取与循环变量自增竞争</code>，可以通过复制变量来修复该程序。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;sync&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
-	wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">5</span>)
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
-		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(j <span style="color:#6ab825;font-weight:bold">int</span>) {
-			fmt.<span style="color:#447fcf">Println</span>(j) <span style="color:#999;font-style:italic">// Good. Read local copy of the loop counter.
-</span><span style="color:#999;font-style:italic"></span>			wg.<span style="color:#447fcf">Done</span>()
-		}(i)
-	}
-	wg.<span style="color:#447fcf">Wait</span>()
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run -race main.go
-<span style="color:#999;font-style:italic">## 输出如下，你的输出可能和这里的不一样</span>
-<span style="color:#3677a9">4</span>
-<span style="color:#3677a9">1</span>
-<span style="color:#3677a9">0</span>
-<span style="color:#3677a9">2</span>
-<span style="color:#3677a9">3</span>
-</code></pre></div><h3 id="不受保护的全局变量">不受保护的全局变量</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">5</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Println</span>(i) <span style="color:#999;font-style:italic">// Not the &#39;i&#39; you are looking for.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>		}()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run -race main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">5</span>
+</span></span><span style="display:flex;"><span>==================
+</span></span><span style="display:flex;"><span>WARNING: DATA RACE
+</span></span><span style="display:flex;"><span>Read at 0x00c0000180f8 by goroutine 10:
+</span></span><span style="display:flex;"><span>  main.main.func1()
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>==================
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span>Found <span style="color:#3677a9">1</span> data race(s)
+</span></span><span style="display:flex;"><span><span style="color:#24909d">exit</span> status <span style="color:#3677a9">66</span>
+</span></span></code></pre></div><p><strong>错误原因在于:</strong> 函数字面量中的 <code>变量 i</code> 与循环使用的变量相同，因此 <code>goroutine</code> 中的 <code>读取与循环变量自增竞争</code>，可以通过复制变量来修复该程序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">5</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(j <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Println</span>(j) <span style="color:#999;font-style:italic">// Good. Read local copy of the loop counter.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>		}(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run -race main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下，你的输出可能和这里的不一样</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">4</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span>
+</span></span></code></pre></div><h3 id="不受保护的全局变量">不受保护的全局变量</h3>
 <p>如果从多个 <code>goroutine</code> 调用以下代码，则会导致 <code>service map</code> 的竞态。并发读写一个 map 是不安全的，解决方案可以使用 <code>互斥锁</code>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;sync&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">var</span> service <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">RegisterService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, addr <span style="color:#6ab825;font-weight:bold">int</span>) {
-	<span style="color:#999;font-style:italic">// 并发写 map
-</span><span style="color:#999;font-style:italic"></span>	service[name] = addr
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">LookupService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> service[name]
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	service = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>)
-
-	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
-		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
-
-		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) {
-			<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
-			<span style="color:#447fcf">RegisterService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>, n)
-			<span style="color:#447fcf">LookupService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>)
-		}(i)
-	}
-
-	wg.<span style="color:#447fcf">Done</span>()
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run -race main.go
-<span style="color:#999;font-style:italic">## 输出如下</span>
-==================
-WARNING: DATA RACE
-Write at 0x00c00007e000 by goroutine 6:
-  runtime.mapassign_faststr()
-...
-...
-...
-Found <span style="color:#3677a9">2</span> data race(s)
-<span style="color:#24909d">exit</span> status <span style="color:#3677a9">66</span>
-</code></pre></div><p><strong>解决方案:</strong> 通过增加 <code>互斥锁</code> 来消除 <code>数据竞态</code>，修正后的代码如下：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;sync&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">var</span> (
-	service   <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>
-	serviceMu sync.Mutex
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">RegisterService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, addr <span style="color:#6ab825;font-weight:bold">int</span>) {
-	<span style="color:#999;font-style:italic">// 并发写 map 之前，加锁
-</span><span style="color:#999;font-style:italic"></span>	serviceMu.<span style="color:#447fcf">Lock</span>()
-	<span style="color:#6ab825;font-weight:bold">defer</span> serviceMu.<span style="color:#447fcf">Unlock</span>()
-	service[name] = addr
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">LookupService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
-	serviceMu.<span style="color:#447fcf">Lock</span>()
-	<span style="color:#6ab825;font-weight:bold">defer</span> serviceMu.<span style="color:#447fcf">Unlock</span>()
-	<span style="color:#6ab825;font-weight:bold">return</span> service[name]
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	service = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>)
-
-	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
-		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
-
-		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) {
-			<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
-			<span style="color:#447fcf">RegisterService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>, n)
-			<span style="color:#447fcf">LookupService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>)
-		}(i)
-	}
-
-	wg.<span style="color:#447fcf">Done</span>()
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run -race main.go
-<span style="color:#999;font-style:italic">## 没有任何输出</span>
-</code></pre></div><p>从输出中可以看到，<code>数据竞态</code> 错误已经消除。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> service <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">RegisterService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, addr <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 并发写 map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	service[name] = addr
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">LookupService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> service[name]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	service = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">RegisterService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>, n)
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">LookupService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>)
+</span></span><span style="display:flex;"><span>		}(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run -race main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下</span>
+</span></span><span style="display:flex;"><span>==================
+</span></span><span style="display:flex;"><span>WARNING: DATA RACE
+</span></span><span style="display:flex;"><span>Write at 0x00c00007e000 by goroutine 6:
+</span></span><span style="display:flex;"><span>  runtime.mapassign_faststr()
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Found <span style="color:#3677a9">2</span> data race(s)
+</span></span><span style="display:flex;"><span><span style="color:#24909d">exit</span> status <span style="color:#3677a9">66</span>
+</span></span></code></pre></div><p><strong>解决方案:</strong> 通过增加 <code>互斥锁</code> 来消除 <code>数据竞态</code>，修正后的代码如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	service   <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	serviceMu sync.Mutex
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">RegisterService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, addr <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 并发写 map 之前，加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	serviceMu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> serviceMu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	service[name] = addr
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">LookupService</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	serviceMu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> serviceMu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> service[name]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	service = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">RegisterService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>, n)
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">LookupService</span>(<span style="color:#ed9d13">&#34;zero&#34;</span>)
+</span></span><span style="display:flex;"><span>		}(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run -race main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 没有任何输出</span>
+</span></span></code></pre></div><p>从输出中可以看到，<code>数据竞态</code> 错误已经消除。</p>
 <h3 id="通道的发送和关闭操作未同步">通道的发送和关闭操作未同步</h3>
 <p>同一个通道上面，发送和关闭操作如果不同步，也可能产生 <code>数据竞态</code>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	c := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() { c &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{} }()
-	<span style="color:#24909d">close</span>(c)
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run -race main.go
-<span style="color:#999;font-style:italic">## 输出如下</span>
-==================
-WARNING: DATA RACE
-Read at 0x00c000110070 by goroutine 6:
-  runtime.chansend()
-...
-...
-...
-Found <span style="color:#3677a9">1</span> data race(s)
-<span style="color:#24909d">exit</span> status <span style="color:#3677a9">66</span>
-</code></pre></div><p><strong>错误原因在于: 根据 Go 内存模型，通道上面的发送操作发生在该通道相应的接收完成之前</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	c := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() { c &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{} }()
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(c)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run -race main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下</span>
+</span></span><span style="display:flex;"><span>==================
+</span></span><span style="display:flex;"><span>WARNING: DATA RACE
+</span></span><span style="display:flex;"><span>Read at 0x00c000110070 by goroutine 6:
+</span></span><span style="display:flex;"><span>  runtime.chansend()
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Found <span style="color:#3677a9">1</span> data race(s)
+</span></span><span style="display:flex;"><span><span style="color:#24909d">exit</span> status <span style="color:#3677a9">66</span>
+</span></span></code></pre></div><p><strong>错误原因在于: 根据 Go 内存模型，通道上面的发送操作发生在该通道相应的接收完成之前</strong>。</p>
 <p>要同步发送和关闭操作，请使用 <strong>接收操作，可以保证发送操作在关闭之前完成</strong>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	c := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() { c &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{} }()
-	&lt;-c
-	<span style="color:#24909d">close</span>(c)
-}
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run -race main.go
-<span style="color:#999;font-style:italic">## 没有任何输出</span>
-</code></pre></div><p>从输出中可以看到，<code>数据竞态</code> 错误已经消除。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	c := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() { c &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{} }()
+</span></span><span style="display:flex;"><span>	&lt;-c
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(c)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run -race main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 没有任何输出</span>
+</span></span></code></pre></div><p>从输出中可以看到，<code>数据竞态</code> 错误已经消除。</p>
 <h2 id="必要条件">必要条件</h2>
 <p><code>数据竞态检测器</code> 需要启用 cgo 并且支持 linux/amd64, linux/ppc64le, linux/arm64, freebsd/amd64, netbsd/amd64,
 darwin/amd64, darwin/arm64, and windows/amd64。</p>

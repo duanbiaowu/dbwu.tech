@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="goroutine 泄漏与检测" />
 <meta property="og:description" content="Go 语言内置 GC，因此一般不会内存泄漏，但是 goroutine 可能会发生泄漏，泄漏的 goroutine 引用的内存同样无法被 GC 正常回收。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_goroutine_leak/" />
-<meta property="article:published_time" content="2023-06-11T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-06-11T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_goroutine_leak/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-06-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-06-11T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="goroutine 泄漏与检测"/>
 <meta name="twitter:description" content="Go 语言内置 GC，因此一般不会内存泄漏，但是 goroutine 可能会发生泄漏，泄漏的 goroutine 引用的内存同样无法被 GC 正常回收。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -144,46 +144,46 @@
 </ol>
 </blockquote>
 <h4 id="接收通道为-nil">接收通道为 nil</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">var</span> ch <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
-</span><span style="color:#999;font-style:italic"></span>		}()
-
-		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch {
-			fmt.<span style="color:#447fcf">Println</span>(v)
-		}
-
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-	
-	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// $ go run main.go
-</span><span style="color:#999;font-style:italic">// 没有任何输出，goroutine 泄漏
-</span></code></pre></div><h4 id="发送通道为-nil">发送通道为 nil</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">var</span> ch <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
-</span><span style="color:#999;font-style:italic"></span>		}()
-
-		ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
-
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-
-	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// $ go run main.go
-</span><span style="color:#999;font-style:italic">// 没有任何输出，goroutine 泄漏
-</span></code></pre></div><h3 id="遍历未关闭通道">遍历未关闭通道</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> ch <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch {
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Println</span>(v)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 没有任何输出，goroutine 泄漏
+</span></span></span></code></pre></div><h4 id="发送通道为-nil">发送通道为 nil</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> ch <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 没有任何输出，goroutine 泄漏
+</span></span></span></code></pre></div><h3 id="遍历未关闭通道">遍历未关闭通道</h3>
 <p>遍历 <code>无缓冲 (阻塞) 并且未关闭</code> 的通道时，如果通道一直未关闭， 将会永久阻塞，造成 <code>goroutine 泄漏</code>。</p>
 <p>遍历 <code>缓冲 (非阻塞) 并且未关闭</code> 的通道时，将通道内的所有缓存数据接收完毕后，如果通道一直未关闭，将会永久阻塞，造成 <code>goroutine 泄漏</code>。</p>
 <blockquote>
@@ -195,197 +195,197 @@
 </blockquote>
 <h4 id="遍历无缓冲并且未关闭的通道">遍历无缓冲并且未关闭的通道</h4>
 <p><strong>错误的做法</strong></p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
-</span><span style="color:#999;font-style:italic"></span>		}()
-
-		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch {
-			fmt.<span style="color:#447fcf">Println</span>(v)
-			<span style="color:#6ab825;font-weight:bold">break</span>
-		}
-
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-
-	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// $ go run main.go
-</span><span style="color:#999;font-style:italic">// 没有任何输出，goroutine 泄漏
-</span></code></pre></div><p><strong>正确的做法</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch {
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Println</span>(v)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 没有任何输出，goroutine 泄漏
+</span></span></span></code></pre></div><p><strong>正确的做法</strong></p>
 <p>参照最佳实践，对代码进行以下调整: 在 <code>goroutine</code> 外部关闭通道，防止 <code>goroutine</code> 内部遍历陷入无限阻塞。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 正常执行
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 正常输出
-</span><span style="color:#999;font-style:italic"></span>		}()
-
-		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch { <span style="color:#999;font-style:italic">// 外部关闭通道后，for 循环结束
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(v) <span style="color:#999;font-style:italic">// 不会输出
-</span><span style="color:#999;font-style:italic"></span>		}
-
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 可以执行到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-
-	<span style="color:#24909d">close</span>(ch) <span style="color:#999;font-style:italic">// 关闭通道，内存遍历循环立即结束
-</span><span style="color:#999;font-style:italic"></span>
-	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// $ go run main.go
-</span><span style="color:#999;font-style:italic">// 输出如下
-</span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
-</span><span style="color:#999;font-style:italic">  range broken
-</span><span style="color:#999;font-style:italic">  goroutine ending
-</span><span style="color:#999;font-style:italic">*/</span>
-</code></pre></div><h4 id="遍历缓冲并且未关闭的通道">遍历缓冲并且未关闭的通道</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 正常执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 正常输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch { <span style="color:#999;font-style:italic">// 外部关闭通道后，for 循环结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(v) <span style="color:#999;font-style:italic">// 不会输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 可以执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(ch) <span style="color:#999;font-style:italic">// 关闭通道，内存遍历循环立即结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  range broken
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  goroutine ending
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">*/</span>
+</span></span></code></pre></div><h4 id="遍历缓冲并且未关闭的通道">遍历缓冲并且未关闭的通道</h4>
 <p><strong>错误的做法</strong></p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#3677a9">3</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
-</span><span style="color:#999;font-style:italic"></span>		}()
-
-		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch {
-			fmt.<span style="color:#447fcf">Println</span>(v)
-		}
-
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-
-	ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
-	ch &lt;- <span style="color:#6ab825;font-weight:bold">false</span>
-	ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
-
-	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// $ go run main.go
-</span><span style="color:#999;font-style:italic">// 输出如下
-</span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
-</span><span style="color:#999;font-style:italic">  true
-</span><span style="color:#999;font-style:italic">  false
-</span><span style="color:#999;font-style:italic">  true
-</span><span style="color:#999;font-style:italic">  // 接收完缓冲区的 3 个值后, 后面不再有任何输出，goroutine 泄漏
-</span><span style="color:#999;font-style:italic">*/</span>
-</code></pre></div><p><strong>正确的做法</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 不会执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 不会输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch {
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Println</span>(v)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 执行不到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	ch &lt;- <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  // 接收完缓冲区的 3 个值后, 后面不再有任何输出，goroutine 泄漏
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">*/</span>
+</span></span></code></pre></div><p><strong>正确的做法</strong></p>
 <p>参照最佳实践，对代码进行以下调整: 在 <code>goroutine</code> 外部关闭通道，防止 <code>goroutine</code> 内部遍历陷入无限阻塞。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 正常执行
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 正常输出
-</span><span style="color:#999;font-style:italic"></span>		}()
-
-		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch { <span style="color:#999;font-style:italic">// 外部关闭通道后，for 循环结束
-</span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(v) <span style="color:#999;font-style:italic">// 不会输出
-</span><span style="color:#999;font-style:italic"></span>		}
-
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 可以执行到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-
-	<span style="color:#24909d">close</span>(ch) <span style="color:#999;font-style:italic">// 关闭通道，内存遍历循环立即结束
-</span><span style="color:#999;font-style:italic"></span>
-	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
-</span><span style="color:#999;font-style:italic"></span>}
-
-<span style="color:#999;font-style:italic">// $ go run main.go
-</span><span style="color:#999;font-style:italic">// 输出如下
-</span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
-</span><span style="color:#999;font-style:italic">  true
-</span><span style="color:#999;font-style:italic">  false
-</span><span style="color:#999;font-style:italic">  true
-</span><span style="color:#999;font-style:italic">  range broken
-</span><span style="color:#999;font-style:italic">  goroutine ending
-</span><span style="color:#999;font-style:italic">*/</span>
-</code></pre></div><h3 id="发送接收-不同步">发送/接收 不同步</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { <span style="color:#999;font-style:italic">// defer 正常执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;goroutine ending&#34;</span>) <span style="color:#999;font-style:italic">// 正常输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> v := <span style="color:#6ab825;font-weight:bold">range</span> ch { <span style="color:#999;font-style:italic">// 外部关闭通道后，for 循环结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Println</span>(v) <span style="color:#999;font-style:italic">// 不会输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;range broken&#34;</span>) <span style="color:#999;font-style:italic">// 可以执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(ch) <span style="color:#999;font-style:italic">// 关闭通道，内存遍历循环立即结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 假设主程序 1 秒后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  range broken
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">  goroutine ending
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">*/</span>
+</span></span></code></pre></div><h3 id="发送接收-不同步">发送/接收 不同步</h3>
 <h4 id="只有发送者没有接收者">只有发送者，没有接收者</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
-	}()
-}
-</code></pre></div><h4 id="只有接收者没有发送者">只有接收者，没有发送者</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		&lt;-ch
-	}()
-}
-</code></pre></div><h3 id="资源无法释放">资源无法释放</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="只有接收者没有发送者">只有接收者，没有发送者</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		&lt;-ch
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="资源无法释放">资源无法释放</h3>
 <p>如果 <code>goroutine</code> 内的引用的资源长时间无法被释放，也会导致 <code>goroutine 泄漏</code>，典型的场景如 <code>加锁/解锁 未同步、网络访问超时、写入大文件、数据库读写产生死锁</code> 等。</p>
 <h4 id="互斥锁">互斥锁</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">var</span> mu sync.Mutex
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		mu.<span style="color:#447fcf">Lock</span>()
-	}()
-	
-	time.<span style="color:#447fcf">Sleep</span>(time.Second)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		mu.<span style="color:#447fcf">Lock</span>()
-	}()
-}
-</code></pre></div><p>上述代码中，第一个 <code>goroutine</code> 加锁后并没有对应的解锁操作，导致第二个 <code>goroutine</code> 阻塞在加锁操作，发生泄漏。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> mu sync.Mutex
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上述代码中，第一个 <code>goroutine</code> 加锁后并没有对应的解锁操作，导致第二个 <code>goroutine</code> 阻塞在加锁操作，发生泄漏。</p>
 <p><strong>通用的的工程实践是: 加锁操作完成后使用 <code>defer</code> 注册对应的解锁操作</strong>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">var</span> mu sync.Mutex
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		mu.<span style="color:#447fcf">Lock</span>()
-		<span style="color:#6ab825;font-weight:bold">defer</span> mu.<span style="color:#447fcf">Unlock</span>()
-	}()
-
-	time.<span style="color:#447fcf">Sleep</span>(time.Second)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		mu.<span style="color:#447fcf">Lock</span>()
-		<span style="color:#6ab825;font-weight:bold">defer</span> mu.<span style="color:#447fcf">Unlock</span>()
-	}()
-}
-</code></pre></div><h4 id="标准库-httpclient">标准库 http.Client</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> mu sync.Mutex
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="标准库-httpclient">标准库 http.Client</h4>
 <p>标准库中的 <code>http.Client</code> 对象默认没有超时时间限制，如果我们直接调用的情况下，很可能发生死锁:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">http.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;https://go.dev&#34;</span>)
-</code></pre></div><p>正确的调用方法是: 创建对象时就设置超时时间:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">client := http.Client{
-    Timeout: <span style="color:#3677a9">3</span> * time.Second,
-}
-client.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;https://go.dev&#34;</span>)
-</code></pre></div><h3 id="main-函数">main 函数</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-    <span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-        time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond) <span style="color:#999;font-style:italic">// 模拟耗时操作
-</span><span style="color:#999;font-style:italic"></span>    }()
-}
-</code></pre></div><p><code>main</code> 函数结束时不会考虑当前是否还有 <code>goroutine</code> 正在执行，上面的代码中， <code>main</code> 函数退出后，<code>goroutine</code> 发生泄漏。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>http.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;https://go.dev&#34;</span>)
+</span></span></code></pre></div><p>正确的调用方法是: 创建对象时就设置超时时间:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>client := http.Client{
+</span></span><span style="display:flex;"><span>    Timeout: <span style="color:#3677a9">3</span> * time.Second,
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>client.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;https://go.dev&#34;</span>)
+</span></span></code></pre></div><h3 id="main-函数">main 函数</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>        time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond) <span style="color:#999;font-style:italic">// 模拟耗时操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    }()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>main</code> 函数结束时不会考虑当前是否还有 <code>goroutine</code> 正在执行，上面的代码中， <code>main</code> 函数退出后，<code>goroutine</code> 发生泄漏。</p>
 <p><strong>通用的的工程实践是: 使用同步原语保证 <code>main</code> 程序结束前所有 <code>goroutine</code> 正常退出</strong>。</p>
 <h3 id="osexit-方法">os.Exit 方法</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">1</span> * time.Second) <span style="color:#999;font-style:italic">// 模拟耗时操作
-</span><span style="color:#999;font-style:italic"></span>	}()
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		os.<span style="color:#447fcf">Exit</span>(<span style="color:#3677a9">1</span>)
-	}()
-
-	time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond)
-}
-</code></pre></div><p><code>os.Exit</code> 方法会直接结束程序，不会考虑当前是否还有 <code>goroutine</code> 正在执行，所以调用前要考虑后台运行的 <code>goroutine</code> 情况。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">1</span> * time.Second) <span style="color:#999;font-style:italic">// 模拟耗时操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		os.<span style="color:#447fcf">Exit</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>os.Exit</code> 方法会直接结束程序，不会考虑当前是否还有 <code>goroutine</code> 正在执行，所以调用前要考虑后台运行的 <code>goroutine</code> 情况。</p>
 <h2 id="最佳实践">最佳实践</h2>
 <p>通过上面的这些例子，我们可以看到 <code>goroutine 泄漏</code> 的大部分场景是因为对 <code>channel</code> 的错误使用而导致的。</p>
 <p>针对上面的问题，我们来总结一下 <code>goroutine</code> 的应用最佳实践。</p>
@@ -417,140 +417,140 @@ client.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;h
 <h2 id="goleak-组件">goleak 组件</h2>
 <p>笔者选择由 <code>Uber</code> 开源的 <a href="https://github.com/uber-go/goleak">goleak</a> 作为研究 <code>goroutine 泄漏检测</code> 代码实现，版本为 <code>v1.2.1</code>。</p>
 <h3 id="示例代码">示例代码</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;testing&#34;</span>
-
-	<span style="color:#ed9d13">&#34;go.uber.org/goleak&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestGoroutineLeak</span>(t *testing.T) {
-	<span style="color:#6ab825;font-weight:bold">defer</span> goleak.<span style="color:#447fcf">VerifyNone</span>(t)
-
-	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>)
-
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
-		_ = &lt;-ch                                      <span style="color:#999;font-style:italic">// goroutine 阻塞造成的泄漏
-</span><span style="color:#999;font-style:italic"></span>		t.<span style="color:#447fcf">Error</span>(<span style="color:#ed9d13">&#34;It&#39;s not going to be executed here&#34;</span>) <span style="color:#999;font-style:italic">// 代码不会执行到这里
-</span><span style="color:#999;font-style:italic"></span>	}()
-}
-</code></pre></div><p>测试失败，输出泄漏的 <code>goroutine</code> 信息:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go <span style="color:#24909d">test</span> -v -count=<span style="color:#3677a9">1</span> -run=<span style="color:#ed9d13">&#39;TestGoroutineLeak&#39;</span> .
-
-<span style="color:#999;font-style:italic"># 输出如下</span>
-=== RUN   TestGoroutineLeak
-    main_test.go:18: found unexpected goroutines:
-        [Goroutine <span style="color:#3677a9">21</span> in state chan receive, with test.TestGoroutineLeak.func1 on top of the stack:
-        goroutine <span style="color:#3677a9">21</span> [chan receive]:
-        ...
-        ...
---- FAIL: TestGoroutineLeak (0.47s)
-FAIL
-</code></pre></div><h2 id="goleak-源代码">goleak 源代码</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;testing&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/goleak&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestGoroutineLeak</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> goleak.<span style="color:#447fcf">VerifyNone</span>(t)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		_ = &lt;-ch                                      <span style="color:#999;font-style:italic">// goroutine 阻塞造成的泄漏
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		t.<span style="color:#447fcf">Error</span>(<span style="color:#ed9d13">&#34;It&#39;s not going to be executed here&#34;</span>) <span style="color:#999;font-style:italic">// 代码不会执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>测试失败，输出泄漏的 <code>goroutine</code> 信息:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -v -count=<span style="color:#3677a9">1</span> -run=<span style="color:#ed9d13">&#39;TestGoroutineLeak&#39;</span> .
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>=== RUN   TestGoroutineLeak
+</span></span><span style="display:flex;"><span>    main_test.go:18: found unexpected goroutines:
+</span></span><span style="display:flex;"><span>        [Goroutine <span style="color:#3677a9">21</span> in state chan receive, with test.TestGoroutineLeak.func1 on top of the stack:
+</span></span><span style="display:flex;"><span>        goroutine <span style="color:#3677a9">21</span> [chan receive]:
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>--- FAIL: TestGoroutineLeak (0.47s)
+</span></span><span style="display:flex;"><span>FAIL
+</span></span></code></pre></div><h2 id="goleak-源代码">goleak 源代码</h2>
 <h3 id="配置对象">配置对象</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 默认检测次数为 20 次
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> _defaultRetries = <span style="color:#3677a9">20</span>
-
-<span style="color:#6ab825;font-weight:bold">type</span> opts <span style="color:#6ab825;font-weight:bold">struct</span> {
-	filters    []<span style="color:#6ab825;font-weight:bold">func</span>(stack.Stack) <span style="color:#6ab825;font-weight:bold">bool</span> <span style="color:#999;font-style:italic">// 过滤函数 (用来自定义过滤 goroutine)
-</span><span style="color:#999;font-style:italic"></span>	maxRetries <span style="color:#6ab825;font-weight:bold">int</span>                      <span style="color:#999;font-style:italic">// 最大检测次数
-</span><span style="color:#999;font-style:italic"></span>	maxSleep   time.Duration            <span style="color:#999;font-style:italic">// 最长休眠时间 (默认 100 ms)
-</span><span style="color:#999;font-style:italic"></span>	cleanup    <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">int</span>)                <span style="color:#999;font-style:italic">// 清理函数 (检测结束时调用)
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><h3 id="创建检测配置对象">创建检测配置对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 默认检测次数为 20 次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> _defaultRetries = <span style="color:#3677a9">20</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> opts <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	filters    []<span style="color:#6ab825;font-weight:bold">func</span>(stack.Stack) <span style="color:#6ab825;font-weight:bold">bool</span> <span style="color:#999;font-style:italic">// 过滤函数 (用来自定义过滤 goroutine)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxRetries <span style="color:#6ab825;font-weight:bold">int</span>                      <span style="color:#999;font-style:italic">// 最大检测次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxSleep   time.Duration            <span style="color:#999;font-style:italic">// 最长休眠时间 (默认 100 ms)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cleanup    <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">int</span>)                <span style="color:#999;font-style:italic">// 清理函数 (检测结束时调用)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h3 id="创建检测配置对象">创建检测配置对象</h3>
 <p><code>buildOpts</code> 函数通过经典的 <code>FUNCTIONAL OPTIONS</code> 模式创建一个 <code>检测对象</code>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">buildOpts</span>(options ...Option) *opts {
-	opts := &amp;opts{
-		maxRetries: _defaultRetries,        <span style="color:#999;font-style:italic">// 默认最大检测次数 20 次
-</span><span style="color:#999;font-style:italic"></span>		maxSleep:   <span style="color:#3677a9">100</span> * time.Millisecond, <span style="color:#999;font-style:italic">// 默认最长休眠时间 100 ms
-</span><span style="color:#999;font-style:italic"></span>	}
-	
-	<span style="color:#999;font-style:italic">// 过滤掉 4 种调用栈信息
-</span><span style="color:#999;font-style:italic"></span>	opts.filters = <span style="color:#24909d">append</span>(opts.filters,
-		isTestStack,
-		isSyscallStack,
-		isStdLibStack,
-		isTraceStack,
-	)
-	<span style="color:#6ab825;font-weight:bold">for</span> _, option := <span style="color:#6ab825;font-weight:bold">range</span> options {
-		option.<span style="color:#447fcf">apply</span>(opts)
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> opts
-}
-</code></pre></div><p><img src="https://dbwu.tech/images/goleak_opts.png" alt="配置对象"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">buildOpts</span>(options ...Option) *opts {
+</span></span><span style="display:flex;"><span>	opts := &amp;opts{
+</span></span><span style="display:flex;"><span>		maxRetries: _defaultRetries,        <span style="color:#999;font-style:italic">// 默认最大检测次数 20 次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		maxSleep:   <span style="color:#3677a9">100</span> * time.Millisecond, <span style="color:#999;font-style:italic">// 默认最长休眠时间 100 ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 过滤掉 4 种调用栈信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	opts.filters = <span style="color:#24909d">append</span>(opts.filters,
+</span></span><span style="display:flex;"><span>		isTestStack,
+</span></span><span style="display:flex;"><span>		isSyscallStack,
+</span></span><span style="display:flex;"><span>		isStdLibStack,
+</span></span><span style="display:flex;"><span>		isTraceStack,
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, option := <span style="color:#6ab825;font-weight:bold">range</span> options {
+</span></span><span style="display:flex;"><span>		option.<span style="color:#447fcf">apply</span>(opts)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> opts
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/goleak_opts.png" alt="配置对象"></p>
 <h3 id="检测单个测试用例">检测单个测试用例</h3>
 <p><code>VerifyNone</code> 函数检测单个测试用例是否发生 <code>goroutine</code> 泄漏，常规用法是在测试用例函数中注册 <code>defer</code> 并调用检测函数，如 <code>defer VerifyNone(t)</code>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">VerifyNone</span>(t TestingT, options ...Option) {
-    <span style="color:#999;font-style:italic">// 创建检测配置对象
-</span><span style="color:#999;font-style:italic"></span>	opts := <span style="color:#447fcf">buildOpts</span>(options...)             
-	<span style="color:#6ab825;font-weight:bold">var</span> cleanup <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">int</span>)
-    <span style="color:#999;font-style:italic">// 重置清理函数
-</span><span style="color:#999;font-style:italic"></span>	cleanup, opts.cleanup = opts.cleanup, <span style="color:#6ab825;font-weight:bold">nil</span> 
-
-	...
-
-	<span style="color:#6ab825;font-weight:bold">if</span> err := <span style="color:#447fcf">Find</span>(opts); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
-        <span style="color:#999;font-style:italic">// 如果检测到 goroutine 泄漏, 直接报错
-</span><span style="color:#999;font-style:italic"></span>		t.<span style="color:#447fcf">Error</span>(err)    
-	}
-
-	<span style="color:#6ab825;font-weight:bold">if</span> cleanup != <span style="color:#6ab825;font-weight:bold">nil</span> {
-        <span style="color:#999;font-style:italic">// 如果没有检测到 goroutine 泄漏, 执行清理函数
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">cleanup</span>(<span style="color:#3677a9">0</span>)  
-	}
-}
-</code></pre></div><h3 id="检测-goroutine-泄漏">检测 goroutine 泄漏</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">VerifyNone</span>(t TestingT, options ...Option) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 创建检测配置对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	opts := <span style="color:#447fcf">buildOpts</span>(options...)             
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> cleanup <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 重置清理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cleanup, opts.cleanup = opts.cleanup, <span style="color:#6ab825;font-weight:bold">nil</span> 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err := <span style="color:#447fcf">Find</span>(opts); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果检测到 goroutine 泄漏, 直接报错
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		t.<span style="color:#447fcf">Error</span>(err)    
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> cleanup != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果没有检测到 goroutine 泄漏, 执行清理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">cleanup</span>(<span style="color:#3677a9">0</span>)  
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="检测-goroutine-泄漏">检测 goroutine 泄漏</h3>
 <p><code>Find</code> 函数根据配置信息，查找泄漏的 <code>goroutine</code> 并返回对应的错误信息。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Find</span>(options ...Option) <span style="color:#6ab825;font-weight:bold">error</span> {
-	<span style="color:#999;font-style:italic">// 当前执行检测的 goroutine ID
-</span><span style="color:#999;font-style:italic"></span>	cur := stack.<span style="color:#447fcf">Current</span>().<span style="color:#447fcf">ID</span>()
-
-    <span style="color:#999;font-style:italic">// 创建检测配置对象
-</span><span style="color:#999;font-style:italic"></span>	opts := <span style="color:#447fcf">buildOpts</span>(options...)   
-
-	...
-	
-	<span style="color:#6ab825;font-weight:bold">var</span> stacks []stack.Stack
-	retry := <span style="color:#6ab825;font-weight:bold">true</span>
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; retry; i++ {
-		<span style="color:#999;font-style:italic">// 获取所有 goroutine
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 然后过滤掉当前执行检测的 goroutine 和符合过滤条件的 goroutine
-</span><span style="color:#999;font-style:italic"></span>		stacks = <span style="color:#447fcf">filterStacks</span>(stack.<span style="color:#447fcf">All</span>(), cur, opts)
-
-		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(stacks) == <span style="color:#3677a9">0</span> {
-			<span style="color:#999;font-style:italic">// 如果没有 goroutine 了
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明所有的 goroutine 均已正常退出，直接返回即可
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
-		}
-		
-		<span style="color:#999;font-style:italic">// 如果还有运行中的 goroutine，则休眠一会，继续检测
-</span><span style="color:#999;font-style:italic"></span>		retry = opts.<span style="color:#447fcf">retry</span>(i)
-	}
-
-	<span style="color:#999;font-style:italic">// 代码执行到这里
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明还有 goroutine 未退出，返回对应的 goroutine 信息
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> fmt.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;found unexpected goroutines:\n%s&#34;</span>, stacks)
-}
-</code></pre></div><h3 id="goroutine-过滤">goroutine 过滤</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Find</span>(options ...Option) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前执行检测的 goroutine ID
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cur := stack.<span style="color:#447fcf">Current</span>().<span style="color:#447fcf">ID</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 创建检测配置对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	opts := <span style="color:#447fcf">buildOpts</span>(options...)   
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> stacks []stack.Stack
+</span></span><span style="display:flex;"><span>	retry := <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; retry; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取所有 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 然后过滤掉当前执行检测的 goroutine 和符合过滤条件的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		stacks = <span style="color:#447fcf">filterStacks</span>(stack.<span style="color:#447fcf">All</span>(), cur, opts)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(stacks) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果没有 goroutine 了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明所有的 goroutine 均已正常退出，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果还有运行中的 goroutine，则休眠一会，继续检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		retry = opts.<span style="color:#447fcf">retry</span>(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 代码执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明还有 goroutine 未退出，返回对应的 goroutine 信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> fmt.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;found unexpected goroutines:\n%s&#34;</span>, stacks)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="goroutine-过滤">goroutine 过滤</h3>
 <p><code>filterStacks</code> 函数过滤掉符合条件的 <code>goroutine</code> 。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">filterStacks</span>(stacks []stack.Stack, skipID <span style="color:#6ab825;font-weight:bold">int</span>, opts *opts) []stack.Stack {
-	<span style="color:#999;font-style:italic">// 高性能 Tips: 切片数据复用
-</span><span style="color:#999;font-style:italic"></span>	filtered := stacks[:<span style="color:#3677a9">0</span>]
-	<span style="color:#6ab825;font-weight:bold">for</span> _, stack := <span style="color:#6ab825;font-weight:bold">range</span> stacks {
-		<span style="color:#999;font-style:italic">// 过滤掉当前执行检测的 goroutine
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> stack.<span style="color:#447fcf">ID</span>() == skipID {
-			<span style="color:#6ab825;font-weight:bold">continue</span>
-		}
-		<span style="color:#999;font-style:italic">// 过滤掉符合配置中过滤函数的 goroutine
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> opts.<span style="color:#447fcf">filter</span>(stack) {
-			<span style="color:#6ab825;font-weight:bold">continue</span>
-		}
-		filtered = <span style="color:#24909d">append</span>(filtered, stack)
-	}
-	<span style="color:#6ab825;font-weight:bold">return</span> filtered
-}
-</code></pre></div><h2 id="小结">小结</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">filterStacks</span>(stacks []stack.Stack, skipID <span style="color:#6ab825;font-weight:bold">int</span>, opts *opts) []stack.Stack {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 高性能 Tips: 切片数据复用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	filtered := stacks[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, stack := <span style="color:#6ab825;font-weight:bold">range</span> stacks {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 过滤掉当前执行检测的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> stack.<span style="color:#447fcf">ID</span>() == skipID {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 过滤掉符合配置中过滤函数的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> opts.<span style="color:#447fcf">filter</span>(stack) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		filtered = <span style="color:#24909d">append</span>(filtered, stack)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> filtered
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
 <p>通过对源代码的分析，我们可以得出 <code>goleak</code> 组件的实现原理: <strong>定时获取所有 <code>goroutine</code> 并且进行过滤，达到最大检测次数后，最终过滤剩下的 <code>goroutine</code> 就被判定为泄漏</strong>。</p>
 <h2 id="reference">Reference</h2>
 <ul>

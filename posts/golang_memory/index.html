@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 内存管理概述" />
 <meta property="og:description" content="Go 语言的底层内存分配实现方案参考了 TCMalloc, 通过多级缓存机制、 内存对象大小分类来完成不同的分配策略以提升性能。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_memory/" />
-<meta property="article:published_time" content="2023-06-13T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-06-13T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_memory/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-06-13T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-06-13T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 内存管理概述"/>
 <meta name="twitter:description" content="Go 语言的底层内存分配实现方案参考了 TCMalloc, 通过多级缓存机制、 内存对象大小分类来完成不同的分配策略以提升性能。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -169,47 +169,47 @@
 <p><img src="https://dbwu.tech/images/memory_manage_1.png" alt="多级缓存概览图"></p>
 <h2 id="数据结构">数据结构</h2>
 <h3 id="常量">常量</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">const</span> (
-	<span style="color:#999;font-style:italic">// 基础内存页大小 8KB
-</span><span style="color:#999;font-style:italic"></span>    pageSize = <span style="color:#3677a9">8192</span> 
-
-    <span style="color:#999;font-style:italic">// 不同的平台对应不同的值
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 64 位: 64MB
-</span><span style="color:#999;font-style:italic"></span>    heapArenaBytes = <span style="color:#3677a9">1</span> &lt;&lt; logHeapArenaBytes  
-
-    <span style="color:#999;font-style:italic">// 64 位: goarch.PtrSize * 8 / 2 = 32
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 64 位: heapArenaBytes / 32 = 64 * 1024 * 1024 / 32 = 2097152
-</span><span style="color:#999;font-style:italic"></span>	heapArenaBitmapBytes = heapArenaBytes / (goarch.PtrSize * <span style="color:#3677a9">8</span> / <span style="color:#3677a9">2</span>)
-	
-	<span style="color:#999;font-style:italic">// 64 位: 8192
-</span><span style="color:#999;font-style:italic"></span>	pagesPerArena = heapArenaBytes / pageSize
-
-	<span style="color:#999;font-style:italic">// 硬编码跨度类型数量
-</span><span style="color:#999;font-style:italic"></span>    numSpanClasses = <span style="color:#3677a9">136</span>
-
-	<span style="color:#999;font-style:italic">//   OS               | FixedStack | NumStackOrders
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   -----------------+------------+---------------
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   linux/darwin/bsd | 2KB        | 4
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   windows/32       | 4KB        | 3
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   windows/64       | 8KB        | 2
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   plan9            | 4KB        | 3
-</span><span style="color:#999;font-style:italic"></span>	_NumStackOrders = <span style="color:#3677a9">4</span> - goarch.PtrSize/<span style="color:#3677a9">4</span>*goos.IsWindows - <span style="color:#3677a9">1</span>*goos.IsPlan9
-)
-</code></pre></div><h3 id="内存大小跨度类">内存大小跨度类</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 基础内存页大小 8KB
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    pageSize = <span style="color:#3677a9">8192</span> 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 不同的平台对应不同的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 64 位: 64MB
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    heapArenaBytes = <span style="color:#3677a9">1</span> &lt;&lt; logHeapArenaBytes  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 64 位: goarch.PtrSize * 8 / 2 = 32
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 64 位: heapArenaBytes / 32 = 64 * 1024 * 1024 / 32 = 2097152
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	heapArenaBitmapBytes = heapArenaBytes / (goarch.PtrSize * <span style="color:#3677a9">8</span> / <span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 64 位: 8192
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pagesPerArena = heapArenaBytes / pageSize
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 硬编码跨度类型数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    numSpanClasses = <span style="color:#3677a9">136</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">//   OS               | FixedStack | NumStackOrders
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   -----------------+------------+---------------
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   linux/darwin/bsd | 2KB        | 4
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   windows/32       | 4KB        | 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   windows/64       | 8KB        | 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   plan9            | 4KB        | 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	_NumStackOrders = <span style="color:#3677a9">4</span> - goarch.PtrSize/<span style="color:#3677a9">4</span>*goos.IsWindows - <span style="color:#3677a9">1</span>*goos.IsPlan9
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><h3 id="内存大小跨度类">内存大小跨度类</h3>
 <p>定义在文件 <code>sizeclasses.go</code> 中，一共有 <code>67</code> 个跨度类。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// class  bytes/obj  bytes/span  objects  tail waste  max waste  min align
-</span><span style="color:#999;font-style:italic">//     1          8        8192     1024           0     87.50%          8
-</span><span style="color:#999;font-style:italic">//     2         16        8192      512           0     43.75%         16
-</span><span style="color:#999;font-style:italic">//     3         24        8192      341           8     29.24%          8
-</span><span style="color:#999;font-style:italic">//     4         32        8192      256           0     21.88%         32
-</span><span style="color:#999;font-style:italic">//     5         48        8192      170          32     31.52%         16
-</span><span style="color:#999;font-style:italic">//     6         64        8192      128           0     23.44%         64
-</span><span style="color:#999;font-style:italic">//     7         80        8192      102          32     19.07%         16
-</span><span style="color:#999;font-style:italic"></span>
-...
-
-<span style="color:#999;font-style:italic">//    67      32768       32768        1           0     12.50%       8192
-</span></code></pre></div><h3 id="span-内存浪费计算公式">span 内存浪费计算公式</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// class  bytes/obj  bytes/span  objects  tail waste  max waste  min align
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     1          8        8192     1024           0     87.50%          8
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     2         16        8192      512           0     43.75%         16
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     3         24        8192      341           8     29.24%          8
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     4         32        8192      256           0     21.88%         32
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     5         48        8192      170          32     31.52%         16
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     6         64        8192      128           0     23.44%         64
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     7         80        8192      102          32     19.07%         16
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//    67      32768       32768        1           0     12.50%       8192
+</span></span></span></code></pre></div><h3 id="span-内存浪费计算公式">span 内存浪费计算公式</h3>
 <blockquote>
 <p>maxWaste := float64((c.size-prevSize-1)*objects+tailWaste) / float64(spanSize)</p>
 </blockquote>
@@ -222,281 +222,281 @@
 最后除以页面大小等于 <code>1562 / 8192 = 19.07%</code>。</p>
 <h3 id="mspan-对象">mspan 对象</h3>
 <p><code>mspan</code> 对象表示 <strong>内存管理的基本单元</strong>，每个 <code>mspan</code> 表示大小为 <code>8 KB</code>, 数量为 <code>npages</code> 的一组连续内存页。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> mspan <span style="color:#6ab825;font-weight:bold">struct</span> {
-	next *mspan         <span style="color:#999;font-style:italic">// 下一个元素, 双向链表结构
-</span><span style="color:#999;font-style:italic"></span>	prev *mspan         <span style="color:#999;font-style:italic">// 上一个元素, 双向链表结构
-</span><span style="color:#999;font-style:italic"></span>	list *mSpanList     <span style="color:#999;font-style:italic">// Debug 时使用
-</span><span style="color:#999;font-style:italic"></span>
-	startAddr <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 起始地址
-</span><span style="color:#999;font-style:italic"></span>	npages    <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 页面数量
-</span><span style="color:#999;font-style:italic"></span>	
-	<span style="color:#999;font-style:italic">// 开始扫描时的空闲对象索引
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 每次分配从 freeindex 开始扫描 allocBits, 直到遇到表示空闲对象的 0, 然后调整 freeindex 的值
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 freeindex == nelem, 当前 span 已经没有空闲对象了
-</span><span style="color:#999;font-style:italic"></span>	freeindex <span style="color:#6ab825;font-weight:bold">uintptr</span>
-	
-	nelems <span style="color:#6ab825;font-weight:bold">uintptr</span>      <span style="color:#999;font-style:italic">// span 内存储的对象数量
-</span><span style="color:#999;font-style:italic"></span>	
-	allocCache <span style="color:#6ab825;font-weight:bold">uint64</span>   <span style="color:#999;font-style:italic">// allocBits 的补码，可以用于快速查找未使用的内存
-</span><span style="color:#999;font-style:italic"></span>	
-	allocBits  *gcBits  <span style="color:#999;font-style:italic">// 是一个 bitmap, 用于标识当前 span 中已分配的对象
-</span><span style="color:#999;font-style:italic"></span>	gcmarkBits *gcBits  <span style="color:#999;font-style:italic">// 是一个 bitmap, 用于标识当前 span 中已标记的对象
-</span><span style="color:#999;font-style:italic"></span>
-	spanclass spanClass     <span style="color:#999;font-style:italic">// 跨度大小
-</span><span style="color:#999;font-style:italic"></span>	state     mSpanStateBox <span style="color:#999;font-style:italic">// 存储内存管理单元的状态
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><p>下面是一个跨度为 1, 单个对象大小为 8B, 对象数量为 1024，总空间大小为 8KB 的 mspan 对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mspan <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	next *mspan         <span style="color:#999;font-style:italic">// 下一个元素, 双向链表结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	prev *mspan         <span style="color:#999;font-style:italic">// 上一个元素, 双向链表结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	list *mSpanList     <span style="color:#999;font-style:italic">// Debug 时使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	startAddr <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 起始地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	npages    <span style="color:#6ab825;font-weight:bold">uintptr</span>   <span style="color:#999;font-style:italic">// 页面数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 开始扫描时的空闲对象索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 每次分配从 freeindex 开始扫描 allocBits, 直到遇到表示空闲对象的 0, 然后调整 freeindex 的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 freeindex == nelem, 当前 span 已经没有空闲对象了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	freeindex <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	nelems <span style="color:#6ab825;font-weight:bold">uintptr</span>      <span style="color:#999;font-style:italic">// span 内存储的对象数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	allocCache <span style="color:#6ab825;font-weight:bold">uint64</span>   <span style="color:#999;font-style:italic">// allocBits 的补码，可以用于快速查找未使用的内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	allocBits  *gcBits  <span style="color:#999;font-style:italic">// 是一个 bitmap, 用于标识当前 span 中已分配的对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gcmarkBits *gcBits  <span style="color:#999;font-style:italic">// 是一个 bitmap, 用于标识当前 span 中已标记的对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	spanclass spanClass     <span style="color:#999;font-style:italic">// 跨度大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	state     mSpanStateBox <span style="color:#999;font-style:italic">// 存储内存管理单元的状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>下面是一个跨度为 1, 单个对象大小为 8B, 对象数量为 1024，总空间大小为 8KB 的 mspan 对象。</p>
 <p><img src="https://dbwu.tech/images/mspan_8KB.png" alt="跨度为 1, 大小为 8KB mspan 对象"></p>
 <h3 id="mspanlist-对象">mSpanList 对象</h3>
 <p><code>mSpanList</code> 对象表示 <code>mspan</code> 对象的双向链表结构。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> mSpanList <span style="color:#6ab825;font-weight:bold">struct</span> {
-	first *mspan <span style="color:#999;font-style:italic">// 链表头节点
-</span><span style="color:#999;font-style:italic"></span>	last  *mspan <span style="color:#999;font-style:italic">// 链表尾节点
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><h3 id="heaparena-对象">heapArena 对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mSpanList <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	first *mspan <span style="color:#999;font-style:italic">// 链表头节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	last  *mspan <span style="color:#999;font-style:italic">// 链表尾节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h3 id="heaparena-对象">heapArena 对象</h3>
 <p><code>heapArena</code> 对象表示内存管理的元数据，存储在 Go 堆内存之外，通过 <code>mheap_.arenas</code> 字段访问。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> heapArena <span style="color:#6ab825;font-weight:bold">struct</span> {
-	<span style="color:#999;font-style:italic">// bitmap 存储了区域中哪些地址保存了对象
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 主要用于垃圾回收，两种标记方式: 
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    1. 标记地址中是否有对象 
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    2. 标记对象是否被 GC 标记
-</span><span style="color:#999;font-style:italic"></span>	bitmap [heapArenaBitmapBytes]<span style="color:#6ab825;font-weight:bold">byte</span>
-
-	<span style="color:#999;font-style:italic">// spans 存储了指向内存管理单元的指针
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 多个数组元素可能指向同一个 mspan 对象指针
-</span><span style="color:#999;font-style:italic"></span>	spans [pagesPerArena]*mspan
-
-	<span style="color:#999;font-style:italic">// pageInUse 是一个 bitmap, 用于标识哪些 span 状态为 mSpanInUse
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 该 bitmap 根据页面编号进行索引，但只使用每个 span 中与第一页对应的位
-</span><span style="color:#999;font-style:italic"></span>	pageInUse [pagesPerArena / <span style="color:#3677a9">8</span>]<span style="color:#6ab825;font-weight:bold">uint8</span>
-
-	<span style="color:#999;font-style:italic">// pageMarks 是一个 bitmap, 用于标识哪些 span 有标记对象
-</span><span style="color:#999;font-style:italic"></span>	pageMarks [pagesPerArena / <span style="color:#3677a9">8</span>]<span style="color:#6ab825;font-weight:bold">uint8</span>
-
-	<span style="color:#999;font-style:italic">// pageSpecials 是一个 bitmap, 用于标识哪些 span 有特殊标记
-</span><span style="color:#999;font-style:italic"></span>	pageSpecials [pagesPerArena / <span style="color:#3677a9">8</span>]<span style="color:#6ab825;font-weight:bold">uint8</span>
-	
-	checkmarks *checkmarksMap
-	
-	<span style="color:#999;font-style:italic">// 指向该对象管理的内存起始地址
-</span><span style="color:#999;font-style:italic"></span>	zeroedBase <span style="color:#6ab825;font-weight:bold">uintptr</span>
-}
-</code></pre></div><ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> heapArena <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// bitmap 存储了区域中哪些地址保存了对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 主要用于垃圾回收，两种标记方式: 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    1. 标记地址中是否有对象 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    2. 标记对象是否被 GC 标记
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bitmap [heapArenaBitmapBytes]<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// spans 存储了指向内存管理单元的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 多个数组元素可能指向同一个 mspan 对象指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	spans [pagesPerArena]*mspan
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// pageInUse 是一个 bitmap, 用于标识哪些 span 状态为 mSpanInUse
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 该 bitmap 根据页面编号进行索引，但只使用每个 span 中与第一页对应的位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pageInUse [pagesPerArena / <span style="color:#3677a9">8</span>]<span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// pageMarks 是一个 bitmap, 用于标识哪些 span 有标记对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pageMarks [pagesPerArena / <span style="color:#3677a9">8</span>]<span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// pageSpecials 是一个 bitmap, 用于标识哪些 span 有特殊标记
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pageSpecials [pagesPerArena / <span style="color:#3677a9">8</span>]<span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	checkmarks *checkmarksMap
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 指向该对象管理的内存起始地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	zeroedBase <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ul>
 <li><code>bitmap</code> 字段数据类型为数组，一共 <code>2097152</code> 个元素，每个元素可以表示 <code>32 bit</code> 内存，一共可以表示 <code>64MB</code> 内存</li>
 <li><code>spans</code> 字段数据类型为数组，一共 <code>8192</code> 个元素，每个元素表示 <code>8KB</code> 内存，一共可以表示 <code>64MB</code> 内存</li>
 </ul>
 <p><img src="https://dbwu.tech/images/heapArena.png" alt="heapArena 数据结构"></p>
 <h3 id="mcache-对象">mcache 对象</h3>
 <p><code>mcache</code> 对象表示 <code>线程缓存</code>，每个处理器 <code>P</code> 都会分配一个 <code>mcache</code> 对象，用于处理 <code>微对象</code> 和 <code>小对象</code> 的分配，因为是每个处理器独有的，不存在并发访问，所以访问时不需要加锁。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> mcache <span style="color:#6ab825;font-weight:bold">struct</span> {
-    <span style="color:#999;font-style:italic">// tiny 指向当前对象表示的内存块的起始地址，如果当前未分配内存块，则为 nil
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// tiny 指向堆内存，由于 mcache 是在非 GC 内存中，所以标记终止时调用 releaseAll 方法进行清除
-</span><span style="color:#999;font-style:italic"></span>	
-	<span style="color:#999;font-style:italic">// tinyoffset 表示下一个空闲内存块的偏移量
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// tinyAllocs 表示持有当前对象的处理器 P 分配的微对象数量
-</span><span style="color:#999;font-style:italic"></span>	tiny       <span style="color:#6ab825;font-weight:bold">uintptr</span>
-	tinyoffset <span style="color:#6ab825;font-weight:bold">uintptr</span>
-	tinyAllocs <span style="color:#6ab825;font-weight:bold">uintptr</span>
-
-	alloc [numSpanClasses]*mspan <span style="color:#999;font-style:italic">// mspan 指针数组，元素数量: 136
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><p><img src="https://dbwu.tech/images/mcache.png" alt="mcache 数据结构"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mcache <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// tiny 指向当前对象表示的内存块的起始地址，如果当前未分配内存块，则为 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// tiny 指向堆内存，由于 mcache 是在非 GC 内存中，所以标记终止时调用 releaseAll 方法进行清除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// tinyoffset 表示下一个空闲内存块的偏移量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// tinyAllocs 表示持有当前对象的处理器 P 分配的微对象数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tiny       <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>	tinyoffset <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>	tinyAllocs <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	alloc [numSpanClasses]*mspan <span style="color:#999;font-style:italic">// mspan 指针数组，元素数量: 136
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/mcache.png" alt="mcache 数据结构"></p>
 <h3 id="spanclass-数据类型">spanClass 数据类型</h3>
 <p><code>spanClass</code> 类型表示 <code>mspan</code> 对象的跨度类的大小以及是否包含指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> spanClass <span style="color:#6ab825;font-weight:bold">uint8</span>
-
-<span style="color:#999;font-style:italic">// spanClass 最后 1 位表示是否包含指针
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (sc spanClass) <span style="color:#447fcf">noscan</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
-    <span style="color:#6ab825;font-weight:bold">return</span> sc&amp;<span style="color:#3677a9">1</span> != <span style="color:#3677a9">0</span>
-}
-</code></pre></div><h3 id="mcentral-对象">mcentral 对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> spanClass <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// spanClass 最后 1 位表示是否包含指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (sc spanClass) <span style="color:#447fcf">noscan</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> sc&amp;<span style="color:#3677a9">1</span> != <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mcentral-对象">mcentral 对象</h3>
 <p><code>mcentral</code> 对象表示指定跨度大小的 <code>中心缓存</code>，每个 <code>mcentral</code> 会管理某个跨度大小 (根据 <code>spanclass</code> 字段决定) 的内存。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> mcentral <span style="color:#6ab825;font-weight:bold">struct</span> {
-	spanclass spanClass
-	partial [<span style="color:#3677a9">2</span>]spanSet  <span style="color:#999;font-style:italic">// 空闲对象的 span 列表
-</span><span style="color:#999;font-style:italic"></span>	full    [<span style="color:#3677a9">2</span>]spanSet  <span style="color:#999;font-style:italic">// 非空闲对象的 span 列表
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><h3 id="spanset-对象">spanSet 对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mcentral <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	spanclass spanClass
+</span></span><span style="display:flex;"><span>	partial [<span style="color:#3677a9">2</span>]spanSet  <span style="color:#999;font-style:italic">// 空闲对象的 span 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	full    [<span style="color:#3677a9">2</span>]spanSet  <span style="color:#999;font-style:italic">// 非空闲对象的 span 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h3 id="spanset-对象">spanSet 对象</h3>
 <p><code>spanSet</code> 对象表示一个 <code>mspan</code> 对象的指针集合。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> spanSet <span style="color:#6ab825;font-weight:bold">struct</span> {
-	spineLock mutex          <span style="color:#999;font-style:italic">// 访问中心缓存时需要用到互斥锁
-</span><span style="color:#999;font-style:italic"></span>	spine     unsafe.Pointer <span style="color:#999;font-style:italic">// *[N]*spanSetBlock, accessed atomically
-</span><span style="color:#999;font-style:italic"></span>	spineLen  <span style="color:#6ab825;font-weight:bold">uintptr</span>        <span style="color:#999;font-style:italic">// Spine array length, accessed atomically
-</span><span style="color:#999;font-style:italic"></span>	spineCap  <span style="color:#6ab825;font-weight:bold">uintptr</span>        <span style="color:#999;font-style:italic">// Spine array cap, accessed under lock
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><h3 id="mheap-对象">mheap 对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> spanSet <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	spineLock mutex          <span style="color:#999;font-style:italic">// 访问中心缓存时需要用到互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	spine     unsafe.Pointer <span style="color:#999;font-style:italic">// *[N]*spanSetBlock, accessed atomically
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	spineLen  <span style="color:#6ab825;font-weight:bold">uintptr</span>        <span style="color:#999;font-style:italic">// Spine array length, accessed atomically
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	spineCap  <span style="color:#6ab825;font-weight:bold">uintptr</span>        <span style="color:#999;font-style:italic">// Spine array cap, accessed under lock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h3 id="mheap-对象">mheap 对象</h3>
 <p><code>mheap</code> 对象表示 <strong>全局内存分配概况，堆上初始化的所有对象都由该对象统一管理</strong>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">type</span> mheap <span style="color:#6ab825;font-weight:bold">struct</span> {
-    <span style="color:#999;font-style:italic">// 锁
-</span><span style="color:#999;font-style:italic"></span>	lock mutex  
-
-	<span style="color:#999;font-style:italic">// allspans 切片保存已经创建的 mspan 对象指针, 每个 mspan 只会出现一次
-</span><span style="color:#999;font-style:italic"></span>	allspans []*mspan
-
-	<span style="color:#999;font-style:italic">// 指向 heapArena 对象的二维数组 (表示整个虚拟内存的 heapArena 元数据)
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 64位: 1 &lt;&lt; arenaL1Bits = 1
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//       1 &lt;&lt; arenaL2Bits = 4194304
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//      4194304 个 heapArena 对象, 每个 heapArena 对象可以表示 64 MB 内存，一共可以表示 256 TB 内存 (虚拟内存)
-</span><span style="color:#999;font-style:italic"></span>	arenas [<span style="color:#3677a9">1</span> &lt;&lt; arenaL1Bits]*[<span style="color:#3677a9">1</span> &lt;&lt; arenaL2Bits]*heapArena
-
-	<span style="color:#999;font-style:italic">// 全局中心缓存空闲列表
-</span><span style="color:#999;font-style:italic"></span>	central [numSpanClasses]<span style="color:#6ab825;font-weight:bold">struct</span> {
-		mcentral mcentral
-		pad      [cpu.CacheLinePadSize - unsafe.<span style="color:#447fcf">Sizeof</span>(mcentral{})%cpu.CacheLinePadSize]<span style="color:#6ab825;font-weight:bold">byte</span>
-	}
-
-	spanalloc             fixalloc <span style="color:#999;font-style:italic">// span* 分配器
-</span><span style="color:#999;font-style:italic"></span>	cachealloc            fixalloc <span style="color:#999;font-style:italic">// amcache* 分配器
-</span><span style="color:#999;font-style:italic"></span>	specialfinalizeralloc fixalloc <span style="color:#999;font-style:italic">// specialfinalizer* 分配器
-</span><span style="color:#999;font-style:italic"></span>	specialprofilealloc   fixalloc <span style="color:#999;font-style:italic">// specialprofile* 分配器
-</span><span style="color:#999;font-style:italic"></span>	specialReachableAlloc fixalloc <span style="color:#999;font-style:italic">// specialReachable 分配器
-</span><span style="color:#999;font-style:italic"></span>	arenaHintAlloc        fixalloc <span style="color:#999;font-style:italic">// arenaHints 分配器
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><p><img src="https://dbwu.tech/images/mheap.png" alt="mheap 数据结构"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mheap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lock mutex  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// allspans 切片保存已经创建的 mspan 对象指针, 每个 mspan 只会出现一次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allspans []*mspan
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 指向 heapArena 对象的二维数组 (表示整个虚拟内存的 heapArena 元数据)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 64位: 1 &lt;&lt; arenaL1Bits = 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//       1 &lt;&lt; arenaL2Bits = 4194304
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//      4194304 个 heapArena 对象, 每个 heapArena 对象可以表示 64 MB 内存，一共可以表示 256 TB 内存 (虚拟内存)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	arenas [<span style="color:#3677a9">1</span> &lt;&lt; arenaL1Bits]*[<span style="color:#3677a9">1</span> &lt;&lt; arenaL2Bits]*heapArena
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 全局中心缓存空闲列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	central [numSpanClasses]<span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		mcentral mcentral
+</span></span><span style="display:flex;"><span>		pad      [cpu.CacheLinePadSize - unsafe.<span style="color:#447fcf">Sizeof</span>(mcentral{})%cpu.CacheLinePadSize]<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	spanalloc             fixalloc <span style="color:#999;font-style:italic">// span* 分配器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cachealloc            fixalloc <span style="color:#999;font-style:italic">// amcache* 分配器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	specialfinalizeralloc fixalloc <span style="color:#999;font-style:italic">// specialfinalizer* 分配器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	specialprofilealloc   fixalloc <span style="color:#999;font-style:italic">// specialprofile* 分配器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	specialReachableAlloc fixalloc <span style="color:#999;font-style:italic">// specialReachable 分配器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	arenaHintAlloc        fixalloc <span style="color:#999;font-style:italic">// arenaHints 分配器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/mheap.png" alt="mheap 数据结构"></p>
 <h2 id="操作系统接口">操作系统接口</h2>
 <p>操作系统提供的内存管理接口定义在文件: <code>$GOROOT/src/runtime/mem.go</code>，接口方法列表如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 从操作系统中获取一大块可用的内存空间
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysAlloc</span>(n <span style="color:#6ab825;font-weight:bold">uintptr</span>, sysStat *sysMemStat) unsafe.Pointer {}
-
-<span style="color:#999;font-style:italic">// 通知操作系统虚拟内存对应的物理内存已经不再需要，可以重用物理内存
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysUnused</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) {}
-
-<span style="color:#999;font-style:italic">// 通知操作系统应用程序需要使用该内存区域，保证内存区域可以安全访问
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysUsed</span>(v unsafe.Pointer, n, prepared <span style="color:#6ab825;font-weight:bold">uintptr</span>) {
-
-<span style="color:#999;font-style:italic">// 向操作系统给出一个提示，该内存区域使用 huge page 性能会更高
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysHugePage</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) {}
-
-<span style="color:#999;font-style:italic">// 如果在分配过程中检测到内存不足错误 (OOM)，无条件返回内存
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysFree</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>, sysStat *sysMemStat) {}
-
-<span style="color:#999;font-style:italic">// 将内存区域转换成保留状态，主要用于运行时的调试
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysFault</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) {}
-
-<span style="color:#999;font-style:italic">// 保留操作系统中的一片内存区域，访问这片内存会触发异常
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysReserve</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) unsafe.Pointer {}
-
-<span style="color:#999;font-style:italic">// 保证内存区域可以快速转换至就绪状态
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysMap</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>, sysStat *sysMemStat) {}
-</code></pre></div><p>内存管理接口具体的实现方是与平台相关的，实现在 <code>$GOROOT/src/runtime/mem_*</code> 文件中，以笔者使用的 <code>Linux</code> 为例，具体实现在 <code>$GOROOT/src/runtime/mem_linux.go</code> 文件中，其他平台以此类推。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 从操作系统中获取一大块可用的内存空间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysAlloc</span>(n <span style="color:#6ab825;font-weight:bold">uintptr</span>, sysStat *sysMemStat) unsafe.Pointer {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 通知操作系统虚拟内存对应的物理内存已经不再需要，可以重用物理内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysUnused</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 通知操作系统应用程序需要使用该内存区域，保证内存区域可以安全访问
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysUsed</span>(v unsafe.Pointer, n, prepared <span style="color:#6ab825;font-weight:bold">uintptr</span>) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 向操作系统给出一个提示，该内存区域使用 huge page 性能会更高
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysHugePage</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果在分配过程中检测到内存不足错误 (OOM)，无条件返回内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysFree</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>, sysStat *sysMemStat) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 将内存区域转换成保留状态，主要用于运行时的调试
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysFault</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 保留操作系统中的一片内存区域，访问这片内存会触发异常
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysReserve</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>) unsafe.Pointer {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 保证内存区域可以快速转换至就绪状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sysMap</span>(v unsafe.Pointer, n <span style="color:#6ab825;font-weight:bold">uintptr</span>, sysStat *sysMemStat) {}
+</span></span></code></pre></div><p>内存管理接口具体的实现方是与平台相关的，实现在 <code>$GOROOT/src/runtime/mem_*</code> 文件中，以笔者使用的 <code>Linux</code> 为例，具体实现在 <code>$GOROOT/src/runtime/mem_linux.go</code> 文件中，其他平台以此类推。</p>
 <h2 id="内存分配">内存分配</h2>
 <h3 id="newobject-方法">newobject 方法</h3>
 <p>所有分配到堆上的对象都会使用 <code>newobject</code> 方法分配内存。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newobject</span>(typ *_type) unsafe.Pointer {
-	<span style="color:#999;font-style:italic">// 调用 mallocgc 方法
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">mallocgc</span>(typ.size, typ, <span style="color:#6ab825;font-weight:bold">true</span>)
-}
-</code></pre></div><h3 id="mallocgc-方法">mallocgc 方法</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newobject</span>(typ *_type) unsafe.Pointer {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 mallocgc 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">mallocgc</span>(typ.size, typ, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mallocgc-方法">mallocgc 方法</h3>
 <p><code>mallocgc</code> 方法会分配指定大小的内存空间对象，内部会依次尝试从 <code>线程缓存</code> <code>中心缓存</code> <code>页堆</code> 上分配。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mallocgc</span>(size <span style="color:#6ab825;font-weight:bold">uintptr</span>, typ *_type, needzero <span style="color:#6ab825;font-weight:bold">bool</span>) unsafe.Pointer {
-    ...
-	
-	<span style="color:#999;font-style:italic">// 判断申请的内存是否有指针
-</span><span style="color:#999;font-style:italic"></span>	noscan := typ == <span style="color:#6ab825;font-weight:bold">nil</span> || typ.ptrdata == <span style="color:#3677a9">0</span>
-
-    <span style="color:#999;font-style:italic">// maxTinySize : 16 B
-</span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// maxSmallSize: 32 KB
-</span><span style="color:#999;font-style:italic"></span>	
-	<span style="color:#6ab825;font-weight:bold">if</span> size &lt;= maxSmallSize {
-		<span style="color:#6ab825;font-weight:bold">if</span> noscan &amp;&amp; size &lt; maxTinySize {
-			<span style="color:#999;font-style:italic">// 微对象分配
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 依次尝试从线程缓存、中心缓存、堆上分配
-</span><span style="color:#999;font-style:italic"></span>			
-			<span style="color:#999;font-style:italic">// 微对象分配器将几个小的分配请求合并到一个内存块中
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 当所有子对象都不可访问时，释放产生的内存，子对象必须不包含指针，这确保了内存浪费是有限的
-</span><span style="color:#999;font-style:italic"></span>			
-			<span style="color:#999;font-style:italic">// 微对象分配器分配的内存不能被显式释放
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 微对象分配器的主要目标是小的字符串和逃逸变量
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 在一个 json 基准测试中，性能提升了大约 12%, 堆大小减少了大约 20%
-</span><span style="color:#999;font-style:italic"></span>			
-			...
-			
-			<span style="color:#999;font-style:italic">// 存在空闲的内存
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> off+size &lt;= maxTinySize &amp;&amp; c.tiny != <span style="color:#3677a9">0</span> {
-				<span style="color:#999;font-style:italic">// 将对象分配到现有的小块中，然后返回
-</span><span style="color:#999;font-style:italic"></span>                ...
-			}
-			
-			<span style="color:#999;font-style:italic">// 没有空闲的内存
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 分配一个新的块
-</span><span style="color:#999;font-style:italic"></span>            ...
-			
-			<span style="color:#999;font-style:italic">// 根据剩余的空间，决定是否需要将已有的小块替换为一个新的块
-</span><span style="color:#999;font-style:italic"></span>            ...
-		} <span style="color:#6ab825;font-weight:bold">else</span> {
-			<span style="color:#999;font-style:italic">// 小对象分配
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 确定分配对象的大小以及跨度大小
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 依次尝试从线程缓存、中心缓存上分配
-</span><span style="color:#999;font-style:italic"></span>			...
-		}
-	} <span style="color:#6ab825;font-weight:bold">else</span> {
-		<span style="color:#999;font-style:italic">// 大对象分配，直接在堆上分配
-</span><span style="color:#999;font-style:italic"></span>        ...
-	}
-
-	<span style="color:#999;font-style:italic">// GC 期间分配的黑色对象
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所有对象都是 nil, 无需扫描
-</span><span style="color:#999;font-style:italic"></span>	...
-
-	<span style="color:#999;font-style:italic">// 统计内存碎片
-</span><span style="color:#999;font-style:italic"></span>    ...
-}
-</code></pre></div><p><code>nextFreeFast</code> 方法利用 <code>mspan.allocCache</code> 字段，快速查找参数 <code>mspan</code> 中一个空闲的对象，没有找到时返回 0。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">nextFreeFast</span>(s *mspan) gclinkptr {
-	...
-}
-</code></pre></div><h2 id="线程缓存">线程缓存</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mallocgc</span>(size <span style="color:#6ab825;font-weight:bold">uintptr</span>, typ *_type, needzero <span style="color:#6ab825;font-weight:bold">bool</span>) unsafe.Pointer {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断申请的内存是否有指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	noscan := typ == <span style="color:#6ab825;font-weight:bold">nil</span> || typ.ptrdata == <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// maxTinySize : 16 B
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// maxSmallSize: 32 KB
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> size &lt;= maxSmallSize {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> noscan &amp;&amp; size &lt; maxTinySize {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 微对象分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 依次尝试从线程缓存、中心缓存、堆上分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 微对象分配器将几个小的分配请求合并到一个内存块中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 当所有子对象都不可访问时，释放产生的内存，子对象必须不包含指针，这确保了内存浪费是有限的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 微对象分配器分配的内存不能被显式释放
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 微对象分配器的主要目标是小的字符串和逃逸变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 在一个 json 基准测试中，性能提升了大约 12%, 堆大小减少了大约 20%
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 存在空闲的内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> off+size &lt;= maxTinySize &amp;&amp; c.tiny != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 将对象分配到现有的小块中，然后返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                ...
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 没有空闲的内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 分配一个新的块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            ...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 根据剩余的空间，决定是否需要将已有的小块替换为一个新的块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            ...
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 小对象分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 确定分配对象的大小以及跨度大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 依次尝试从线程缓存、中心缓存上分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 大对象分配，直接在堆上分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// GC 期间分配的黑色对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所有对象都是 nil, 无需扫描
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 统计内存碎片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>nextFreeFast</code> 方法利用 <code>mspan.allocCache</code> 字段，快速查找参数 <code>mspan</code> 中一个空闲的对象，没有找到时返回 0。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">nextFreeFast</span>(s *mspan) gclinkptr {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="线程缓存">线程缓存</h2>
 <h3 id="创建线程缓存">创建线程缓存</h3>
 <p>初始化一个处理器 <code>P</code> 时，调用 <code>allocmcache</code> 方法初始化 <code>线程缓存</code>，并返回一个初始化后的 <code>mcache</code> 对象指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 空 mspan 类型
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> emptymspan mspan
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">allocmcache</span>() *mcache {
-	<span style="color:#6ab825;font-weight:bold">var</span> c *mcache
-	
-	...
-	
-	<span style="color:#999;font-style:italic">// 初始化后的 mspan 都是空的 emptymspan 类型
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> c.alloc {
-		c.alloc[i] = &amp;emptymspan
-	}
-	c.nextSample = <span style="color:#447fcf">nextSample</span>()
-	<span style="color:#6ab825;font-weight:bold">return</span> c
-}
-</code></pre></div><p><code>nextFree</code> 方法尝试从 <code>线程缓存</code> 查找一个空闲的对象，如果没有找到，调用 <code>refill</code> 方法将一个可用的 <code>mspan</code> 填充进 <code>线程缓存</code>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *mcache) <span style="color:#447fcf">nextFree</span>(spc spanClass) (v gclinkptr, s *mspan, shouldhelpgc <span style="color:#6ab825;font-weight:bold">bool</span>) {
-	...
-}
-</code></pre></div><p><code>allocLarge</code> 方法计算指定参数大小的 <code>大对象</code> 需要的内存页数，然后分配一个拥有指定页数的 <code>mspan</code> 对象指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *mcache) <span style="color:#447fcf">allocLarge</span>(size <span style="color:#6ab825;font-weight:bold">uintptr</span>, noscan <span style="color:#6ab825;font-weight:bold">bool</span>) *mspan {
-    ...
-}
-</code></pre></div><h3 id="获取指定跨度大小的内存">获取指定跨度大小的内存</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 空 mspan 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> emptymspan mspan
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">allocmcache</span>() *mcache {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> c *mcache
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化后的 mspan 都是空的 emptymspan 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> c.alloc {
+</span></span><span style="display:flex;"><span>		c.alloc[i] = &amp;emptymspan
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	c.nextSample = <span style="color:#447fcf">nextSample</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> c
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>nextFree</code> 方法尝试从 <code>线程缓存</code> 查找一个空闲的对象，如果没有找到，调用 <code>refill</code> 方法将一个可用的 <code>mspan</code> 填充进 <code>线程缓存</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *mcache) <span style="color:#447fcf">nextFree</span>(spc spanClass) (v gclinkptr, s *mspan, shouldhelpgc <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>allocLarge</code> 方法计算指定参数大小的 <code>大对象</code> 需要的内存页数，然后分配一个拥有指定页数的 <code>mspan</code> 对象指针。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *mcache) <span style="color:#447fcf">allocLarge</span>(size <span style="color:#6ab825;font-weight:bold">uintptr</span>, noscan <span style="color:#6ab825;font-weight:bold">bool</span>) *mspan {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="获取指定跨度大小的内存">获取指定跨度大小的内存</h3>
 <p><code>refill</code> 方法从 <code>中心缓存</code> 里面为 <code>线程缓存</code> 分配一个指定跨度大小的 <code>mspan</code> 对象进行填充，这个 <code>mspan</code> 至少有一个空闲对象。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *mcache) <span style="color:#447fcf">refill</span>(spc spanClass) {
-	<span style="color:#999;font-style:italic">// 将当前 span 放入中心缓存
-</span><span style="color:#999;font-style:italic"></span>	s := c.alloc[spc]
-
-	<span style="color:#6ab825;font-weight:bold">if</span> s != &amp;emptymspan {
-        mheap_.central[spc].mcentral.<span style="color:#447fcf">uncacheSpan</span>(s)
-		...
-    }
-	...
-	
-	<span style="color:#999;font-style:italic">// 从中心缓存获取一个新的 span
-</span><span style="color:#999;font-style:italic"></span>	s = mheap_.central[spc].mcentral.<span style="color:#447fcf">cacheSpan</span>()
-
-	...
-
-	c.alloc[spc] = s
-}
-</code></pre></div><h2 id="中心缓存">中心缓存</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *mcache) <span style="color:#447fcf">refill</span>(spc spanClass) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将当前 span 放入中心缓存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s := c.alloc[spc]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> s != &amp;emptymspan {
+</span></span><span style="display:flex;"><span>        mheap_.central[spc].mcentral.<span style="color:#447fcf">uncacheSpan</span>(s)
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从中心缓存获取一个新的 span
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s = mheap_.central[spc].mcentral.<span style="color:#447fcf">cacheSpan</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	c.alloc[spc] = s
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="中心缓存">中心缓存</h2>
 <h3 id="获取新的-mspan-对象">获取新的 mspan 对象</h3>
 <p>当 <code>线程缓存</code> 没有足够的内存时，会调用 <code>mcentral.cacheSpan</code> 方法获取一个 <code>mspan</code> 对象指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *mcentral) <span style="color:#447fcf">cacheSpan</span>() *mspan {
-	...
-}
-</code></pre></div><p>该方法会依次尝试从下列空间获取 <code>mspan</code> 对象指针:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *mcentral) <span style="color:#447fcf">cacheSpan</span>() *mspan {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>该方法会依次尝试从下列空间获取 <code>mspan</code> 对象指针:</p>
 <ol>
 <li>从清理过的空闲对象中查找</li>
 <li>从未清理过的空闲对象中查找</li>
@@ -504,68 +504,68 @@
 </ol>
 <p>如果上述 3 个方法都没有获取到 <code>mspan</code>, 说明 <code>线程缓存</code> 中暂时没有可用的缓存，接着会调用 <code>mcentral.grow</code> 方法向 <code>中心缓存</code> 申请一个 <code>mspan</code>。</p>
 <p><code>grow</code> 方法根据 <code>中心缓存</code> 的跨度大小，计算需要的页数和内存大小，然后从堆上分配一个空的 <code>mspan</code> 对象并返回对象的指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (c *mcentral) <span style="color:#447fcf">grow</span>() *mspan {
-    ...
-}
-</code></pre></div><p><img src="https://dbwu.tech/images/memory_manage_flow.png" alt="内存分配流程"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *mcentral) <span style="color:#447fcf">grow</span>() *mspan {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/memory_manage_flow.png" alt="内存分配流程"></p>
 <h2 id="全局页堆">全局页堆</h2>
 <p><code>init</code> 方法负责全局页堆的初始化。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">init</span>() {
-	...
-}
-</code></pre></div><p><code>alloc</code> 方法从 <code>GC</code> 完成后的的堆中分配 <code>mspan</code> 对象, 参数 <code>spanclass</code> 指定 <code>span</code> 对象的跨度大小以及是否需要扫描。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">alloc</span>(npages <span style="color:#6ab825;font-weight:bold">uintptr</span>, spanclass spanClass) *mspan {
-	<span style="color:#6ab825;font-weight:bold">var</span> s *mspan
-	<span style="color:#447fcf">systemstack</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
-		<span style="color:#999;font-style:italic">// 为了防止堆过度增长，在分配 N 个页面之前，需要至少清理和回收 N 个页面
-</span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">isSweepDone</span>() {
-			h.<span style="color:#447fcf">reclaim</span>(npages)
-		}
-		s = h.<span style="color:#447fcf">allocSpan</span>(npages, spanAllocHeap, spanclass)
-	})
-	<span style="color:#6ab825;font-weight:bold">return</span> s
-}
-</code></pre></div><p><code>allocSpan</code> 方法分配一个数量为 <code>npages</code> 的一组连续内存所对应的 <code>mspan</code> 对象指针。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">allocSpan</span>(npages <span style="color:#6ab825;font-weight:bold">uintptr</span>, typ spanAllocType, spanclass spanClass) (s *mspan) {
-	...
-}
-</code></pre></div><p><code>grow</code> 方法尝试申请数量至少为 <code>npage</code> 个内存空间对象，放入堆中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">init</span>() {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>alloc</code> 方法从 <code>GC</code> 完成后的的堆中分配 <code>mspan</code> 对象, 参数 <code>spanclass</code> 指定 <code>span</code> 对象的跨度大小以及是否需要扫描。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">alloc</span>(npages <span style="color:#6ab825;font-weight:bold">uintptr</span>, spanclass spanClass) *mspan {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> s *mspan
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">systemstack</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 为了防止堆过度增长，在分配 N 个页面之前，需要至少清理和回收 N 个页面
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">isSweepDone</span>() {
+</span></span><span style="display:flex;"><span>			h.<span style="color:#447fcf">reclaim</span>(npages)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		s = h.<span style="color:#447fcf">allocSpan</span>(npages, spanAllocHeap, spanclass)
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> s
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>allocSpan</code> 方法分配一个数量为 <code>npages</code> 的一组连续内存所对应的 <code>mspan</code> 对象指针。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">allocSpan</span>(npages <span style="color:#6ab825;font-weight:bold">uintptr</span>, typ spanAllocType, spanclass spanClass) (s *mspan) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>grow</code> 方法尝试申请数量至少为 <code>npage</code> 个内存空间对象，放入堆中。</p>
 <blockquote>
 <p>源代码中，卡在代码行中间的注释很犀利 :-)</p>
 </blockquote>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">grow</span>(npage <span style="color:#6ab825;font-weight:bold">uintptr</span>) (<span style="color:#6ab825;font-weight:bold">uintptr</span>, <span style="color:#6ab825;font-weight:bold">bool</span>) {
-	<span style="color:#999;font-style:italic">// 计算需要的内存大小和内存起始地址
-</span><span style="color:#999;font-style:italic"></span>    
-	...
-	
-	<span style="color:#999;font-style:italic">// arena 没有足够的内存了，调用 sysAlloc 方法申请 
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这个卡在中间的注释很犀利
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> nBase &gt; h.curArena.end || <span style="color:#999;font-style:italic">/* overflow */</span> end &lt; h.curArena.base {
-		av, asize := h.<span style="color:#447fcf">sysAlloc</span>(ask)
-        
-		...
-
-		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uintptr</span>(av) == h.curArena.end {
-			<span style="color:#999;font-style:italic">// 新申请的的内存和当前内存区域是连续的，直接拼接
-</span><span style="color:#999;font-style:italic"></span>			...
-		} <span style="color:#6ab825;font-weight:bold">else</span> {
-			<span style="color:#999;font-style:italic">// 新申请的的内存和当前内存区域不连续
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 将当前内存剩余空间切换到新内存空间
-</span><span style="color:#999;font-style:italic"></span>			...
-		}
-	}
-	
-    ...
-
-	<span style="color:#999;font-style:italic">// 将要使用的内存空间状态从 Reserved 切换为 Prepared
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">sysMap</span>(unsafe.<span style="color:#447fcf">Pointer</span>(v), nBase-v, &amp;gcController.heapReleased)
-
-	<span style="color:#999;font-style:italic">// 更新状态
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 更新页面分配器对象数据，这部分空间可以再次分配
-</span><span style="color:#999;font-style:italic"></span>    
-	...
-}
-</code></pre></div><h2 id="小结">小结</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *mheap) <span style="color:#447fcf">grow</span>(npage <span style="color:#6ab825;font-weight:bold">uintptr</span>) (<span style="color:#6ab825;font-weight:bold">uintptr</span>, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算需要的内存大小和内存起始地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// arena 没有足够的内存了，调用 sysAlloc 方法申请 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这个卡在中间的注释很犀利
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> nBase &gt; h.curArena.end || <span style="color:#999;font-style:italic">/* overflow */</span> end &lt; h.curArena.base {
+</span></span><span style="display:flex;"><span>		av, asize := h.<span style="color:#447fcf">sysAlloc</span>(ask)
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uintptr</span>(av) == h.curArena.end {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 新申请的的内存和当前内存区域是连续的，直接拼接
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			...
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 新申请的的内存和当前内存区域不连续
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 将当前内存剩余空间切换到新内存空间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将要使用的内存空间状态从 Reserved 切换为 Prepared
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">sysMap</span>(unsafe.<span style="color:#447fcf">Pointer</span>(v), nBase-v, &amp;gcController.heapReleased)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 更新页面分配器对象数据，这部分空间可以再次分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
 <p>本文主要介绍了内存分配的设计思路和核心数据结构，同时简单描述了对象的内存分配逻辑流程，感兴趣的读者可以在此基础上深入探索具体方法的内部实现细节。</p>
 <h2 id="reference">Reference</h2>
 <ul>

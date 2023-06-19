@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 无锁编程" />
 <meta property="og:description" content="锁是一种常见的同步机制，用来解决多个线程同时访问共享资源导致的数据竞争问题。在高并发场景下，锁的使用可能会成为性能瓶颈，因为线程需要频繁地加锁和释放锁，这会增加上下文切换开销并降低程序的吞吐量。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_lockfree/" />
-<meta property="article:published_time" content="2023-04-22T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-04-22T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_lockfree/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-22T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 无锁编程"/>
 <meta name="twitter:description" content="锁是一种常见的同步机制，用来解决多个线程同时访问共享资源导致的数据竞争问题。在高并发场景下，锁的使用可能会成为性能瓶颈，因为线程需要频繁地加锁和释放锁，这会增加上下文切换开销并降低程序的吞吐量。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -152,152 +152,152 @@
 <p>如果这块内存的值在这期间内没被修改过，则旧值会与内存中的数据相同，这时 <code>CAS</code> 操作将会成功执行，使内存中的数据变为新值。
 如果内存中的值在这期间内被修改过，则旧值会与内存中的数据不同，这时 <code>CAS</code> 操作将会失败，新值将不会被写入内存。</p>
 <p>Go 的标准库中的 <code>atomic</code> 包提供了 <code>atomic.CompareAndSwap*</code> 系列方法来提供 <code>CAS</code> 操作 API。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CompareAndSwapInt32</span>(addr *<span style="color:#6ab825;font-weight:bold">int32</span>, old, new <span style="color:#6ab825;font-weight:bold">int32</span>) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CompareAndSwapInt64</span>(addr *<span style="color:#6ab825;font-weight:bold">int64</span>, old, new <span style="color:#6ab825;font-weight:bold">int64</span>) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>)
-
-...
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CompareAndSwapPointer</span>(addr *unsafe.Pointer, old, new unsafe.Pointer) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>)
-</code></pre></div><p><code>有锁编程</code> 和 <code>无锁编程</code> 的性能差距有多少呢？我们通过基准测试来比较一下。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CompareAndSwapInt32</span>(addr *<span style="color:#6ab825;font-weight:bold">int32</span>, old, new <span style="color:#6ab825;font-weight:bold">int32</span>) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CompareAndSwapInt64</span>(addr *<span style="color:#6ab825;font-weight:bold">int64</span>, old, new <span style="color:#6ab825;font-weight:bold">int64</span>) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CompareAndSwapPointer</span>(addr *unsafe.Pointer, old, new unsafe.Pointer) (swapped <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span></code></pre></div><p><code>有锁编程</code> 和 <code>无锁编程</code> 的性能差距有多少呢？我们通过基准测试来比较一下。</p>
 <h2 id="示例-栈操作">示例: 栈操作</h2>
 <p>我们通过一个简单的程序来做演示，程序实现了数据结构 <code>栈</code> 的两个操作 <code>Push</code>, <code>Pop</code>。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// Stack 接口
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> StackInterface <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Push</span>(<span style="color:#6ab825;font-weight:bold">interface</span>{})
-	<span style="color:#447fcf">Pop</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{}
-}
-</code></pre></div><p><img src="https://dbwu.tech/images/stackinterface.png" alt="Stack 接口"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Stack 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> StackInterface <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Push</span>(<span style="color:#6ab825;font-weight:bold">interface</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Pop</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/stackinterface.png" alt="Stack 接口"></p>
 <h3 id="有锁编程">有锁编程</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 互斥锁实现的栈 (有锁编程)
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> MutexStack <span style="color:#6ab825;font-weight:bold">struct</span> {
-	<span style="color:#999;font-style:italic">// 栈元素容器用切片表示
-</span><span style="color:#999;font-style:italic"></span>	v []<span style="color:#6ab825;font-weight:bold">interface</span>{}
-	<span style="color:#999;font-style:italic">// 互斥锁
-</span><span style="color:#999;font-style:italic"></span>	mu sync.Mutex
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewMutexStack</span>() *MutexStack {
-	<span style="color:#6ab825;font-weight:bold">return</span> &amp;MutexStack{v: <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#3677a9">0</span>)}
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (s *MutexStack) <span style="color:#447fcf">Push</span>(v <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
-	<span style="color:#999;font-style:italic">// 可能同时有多个 goroutine 操作
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 栈元素操作为临界区，需要加锁
-</span><span style="color:#999;font-style:italic"></span>	s.mu.<span style="color:#447fcf">Lock</span>()
-	s.v = <span style="color:#24909d">append</span>(s.v, v)
-	s.mu.<span style="color:#447fcf">Unlock</span>()
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (s *MutexStack) <span style="color:#447fcf">Pop</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
-	<span style="color:#999;font-style:italic">// 可能同时有多个 goroutine 操作
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 栈元素操作为临界区，需要加锁
-</span><span style="color:#999;font-style:italic"></span>	s.mu.<span style="color:#447fcf">Lock</span>()
-	<span style="color:#6ab825;font-weight:bold">var</span> v <span style="color:#6ab825;font-weight:bold">interface</span>{}
-	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(s.v) &gt; <span style="color:#3677a9">0</span> {
-		v = s.v[<span style="color:#24909d">len</span>(s.v)-<span style="color:#3677a9">1</span>]
-		s.v = s.v[:<span style="color:#24909d">len</span>(s.v)-<span style="color:#3677a9">1</span>]
-	}
-	s.mu.<span style="color:#447fcf">Unlock</span>()
-	<span style="color:#6ab825;font-weight:bold">return</span> v
-}
-</code></pre></div><p><img src="https://dbwu.tech/images/mutexstack.png" alt="有锁栈"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 互斥锁实现的栈 (有锁编程)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> MutexStack <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 栈元素容器用切片表示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	v []<span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mu sync.Mutex
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewMutexStack</span>() *MutexStack {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;MutexStack{v: <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#3677a9">0</span>)}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s *MutexStack) <span style="color:#447fcf">Push</span>(v <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 可能同时有多个 goroutine 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 栈元素操作为临界区，需要加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	s.v = <span style="color:#24909d">append</span>(s.v, v)
+</span></span><span style="display:flex;"><span>	s.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s *MutexStack) <span style="color:#447fcf">Pop</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 可能同时有多个 goroutine 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 栈元素操作为临界区，需要加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> v <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(s.v) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		v = s.v[<span style="color:#24909d">len</span>(s.v)-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>		s.v = s.v[:<span style="color:#24909d">len</span>(s.v)-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	s.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> v
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/mutexstack.png" alt="有锁栈"></p>
 <h3 id="无锁编程">无锁编程</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 栈元素节点
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> directItem <span style="color:#6ab825;font-weight:bold">struct</span> {
-	next unsafe.Pointer
-	v    <span style="color:#6ab825;font-weight:bold">interface</span>{}
-}
-
-<span style="color:#999;font-style:italic">// CAS 操作实现的栈 (无锁编程)
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> LockFreeStack <span style="color:#6ab825;font-weight:bold">struct</span> {
-	<span style="color:#999;font-style:italic">// 栈元素容器用链表表示
-</span><span style="color:#999;font-style:italic"></span>	top unsafe.Pointer
-	<span style="color:#999;font-style:italic">// 栈长度
-</span><span style="color:#999;font-style:italic"></span>	len <span style="color:#6ab825;font-weight:bold">uint64</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewLockFreeStack</span>() *LockFreeStack {
-	<span style="color:#6ab825;font-weight:bold">return</span> &amp;LockFreeStack{}
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (s *LockFreeStack) <span style="color:#447fcf">Push</span>(v <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
-	item := directItem{v: v}
-	<span style="color:#6ab825;font-weight:bold">var</span> top unsafe.Pointer
-
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		top = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;s.top)
-		item.next = top
-		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;s.top, top, unsafe.<span style="color:#447fcf">Pointer</span>(&amp;item)) {
-			<span style="color:#999;font-style:italic">// 只有 1 个 goroutine 可以执行到这里
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 栈元素数量 + 1
-</span><span style="color:#999;font-style:italic"></span>			atomic.<span style="color:#447fcf">AddUint64</span>(&amp;s.len, <span style="color:#3677a9">1</span>)
-			<span style="color:#6ab825;font-weight:bold">return</span>
-		}
-	}
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (s *LockFreeStack) <span style="color:#447fcf">Pop</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
-	<span style="color:#6ab825;font-weight:bold">var</span> top, next unsafe.Pointer
-	<span style="color:#6ab825;font-weight:bold">var</span> item *directItem
-
-	<span style="color:#6ab825;font-weight:bold">for</span> {
-		top = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;s.top)
-		<span style="color:#6ab825;font-weight:bold">if</span> top == <span style="color:#6ab825;font-weight:bold">nil</span> {
-			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
-		}
-		item = (*directItem)(top)
-		next = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;item.next)
-		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;s.top, top, next) {
-			<span style="color:#999;font-style:italic">// 只有 1 个 goroutine 可以执行到这里
-</span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 栈元素数量 - 1
-</span><span style="color:#999;font-style:italic"></span>			atomic.<span style="color:#447fcf">AddUint64</span>(&amp;s.len, ^<span style="color:#24909d">uint64</span>(<span style="color:#3677a9">0</span>))
-			<span style="color:#6ab825;font-weight:bold">return</span> item.v
-		}
-	}
-}
-</code></pre></div><p><img src="https://dbwu.tech/images/lockstack.png" alt="无锁栈"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 栈元素节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> directItem <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	next unsafe.Pointer
+</span></span><span style="display:flex;"><span>	v    <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// CAS 操作实现的栈 (无锁编程)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> LockFreeStack <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 栈元素容器用链表表示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	top unsafe.Pointer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 栈长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	len <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewLockFreeStack</span>() *LockFreeStack {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;LockFreeStack{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s *LockFreeStack) <span style="color:#447fcf">Push</span>(v <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>	item := directItem{v: v}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> top unsafe.Pointer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		top = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;s.top)
+</span></span><span style="display:flex;"><span>		item.next = top
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;s.top, top, unsafe.<span style="color:#447fcf">Pointer</span>(&amp;item)) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 只有 1 个 goroutine 可以执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 栈元素数量 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			atomic.<span style="color:#447fcf">AddUint64</span>(&amp;s.len, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s *LockFreeStack) <span style="color:#447fcf">Pop</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> top, next unsafe.Pointer
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> item *directItem
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		top = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;s.top)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> top == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		item = (*directItem)(top)
+</span></span><span style="display:flex;"><span>		next = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;item.next)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;s.top, top, next) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 只有 1 个 goroutine 可以执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 栈元素数量 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			atomic.<span style="color:#447fcf">AddUint64</span>(&amp;s.len, ^<span style="color:#24909d">uint64</span>(<span style="color:#3677a9">0</span>))
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> item.v
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/lockstack.png" alt="无锁栈"></p>
 <h3 id="测试代码">测试代码</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Benchmark_Stack</span>(b *testing.B) {
-	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
-
-	<span style="color:#999;font-style:italic">// 初始化测试的随机参数
-</span><span style="color:#999;font-style:italic"></span>	length := <span style="color:#3677a9">1</span> &lt;&lt; <span style="color:#3677a9">12</span>
-	inputs := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, length)
-	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; length; i++ {
-		inputs[i] = rand.<span style="color:#447fcf">Int</span>()
-	}
-
-	ls, ms := <span style="color:#447fcf">NewLockFreeStack</span>(), <span style="color:#447fcf">NewMutexStack</span>()
-
-	b.<span style="color:#447fcf">ResetTimer</span>()
-
-	<span style="color:#6ab825;font-weight:bold">for</span> _, s := <span style="color:#6ab825;font-weight:bold">range</span> [...]StackInterface{ls, ms} {
-		b.<span style="color:#447fcf">Run</span>(fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">&#34;%T&#34;</span>, s), <span style="color:#6ab825;font-weight:bold">func</span>(b *testing.B) {
-			<span style="color:#6ab825;font-weight:bold">var</span> c <span style="color:#6ab825;font-weight:bold">int64</span>
-
-			b.<span style="color:#447fcf">RunParallel</span>(<span style="color:#6ab825;font-weight:bold">func</span>(pb *testing.PB) {
-				<span style="color:#6ab825;font-weight:bold">for</span> pb.<span style="color:#447fcf">Next</span>() {
-					i := <span style="color:#24909d">int</span>(atomic.<span style="color:#447fcf">AddInt64</span>(&amp;c, <span style="color:#3677a9">1</span>)-<span style="color:#3677a9">1</span>) % length
-					v := inputs[i]
-					<span style="color:#6ab825;font-weight:bold">if</span> v &gt;= <span style="color:#3677a9">0</span> {
-						s.<span style="color:#447fcf">Push</span>(v)
-					} <span style="color:#6ab825;font-weight:bold">else</span> {
-						s.<span style="color:#447fcf">Pop</span>()
-					}
-				}
-			})
-		})
-	}
-}
-</code></pre></div><h3 id="测试结果比较">测试结果比较</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Benchmark_Stack</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化测试的随机参数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	length := <span style="color:#3677a9">1</span> &lt;&lt; <span style="color:#3677a9">12</span>
+</span></span><span style="display:flex;"><span>	inputs := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, length)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; length; i++ {
+</span></span><span style="display:flex;"><span>		inputs[i] = rand.<span style="color:#447fcf">Int</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	ls, ms := <span style="color:#447fcf">NewLockFreeStack</span>(), <span style="color:#447fcf">NewMutexStack</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	b.<span style="color:#447fcf">ResetTimer</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, s := <span style="color:#6ab825;font-weight:bold">range</span> [...]StackInterface{ls, ms} {
+</span></span><span style="display:flex;"><span>		b.<span style="color:#447fcf">Run</span>(fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">&#34;%T&#34;</span>, s), <span style="color:#6ab825;font-weight:bold">func</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">var</span> c <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			b.<span style="color:#447fcf">RunParallel</span>(<span style="color:#6ab825;font-weight:bold">func</span>(pb *testing.PB) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">for</span> pb.<span style="color:#447fcf">Next</span>() {
+</span></span><span style="display:flex;"><span>					i := <span style="color:#24909d">int</span>(atomic.<span style="color:#447fcf">AddInt64</span>(&amp;c, <span style="color:#3677a9">1</span>)-<span style="color:#3677a9">1</span>) % length
+</span></span><span style="display:flex;"><span>					v := inputs[i]
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> v &gt;= <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>						s.<span style="color:#447fcf">Push</span>(v)
+</span></span><span style="display:flex;"><span>					} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>						s.<span style="color:#447fcf">Pop</span>()
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			})
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="测试结果比较">测试结果比较</h3>
 <p>运行测试代码:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go <span style="color:#24909d">test</span> -run=<span style="color:#ed9d13">&#39;^$&#39;</span> -bench=. -count=<span style="color:#3677a9">1</span> -benchtime=2s
-
-<span style="color:#999;font-style:italic">## 输出结果如下</span>
-Benchmark_Stack/*performance.LockFreeStack-8            <span style="color:#3677a9">16553013</span>               134.0 ns/op
-Benchmark_Stack/*performance.MutexStack-8               <span style="color:#3677a9">20625786</span>               172.5 ns/op
-</code></pre></div><p>通过输出结果可以看到，使用 <code>CAS</code> 实现的无锁方案的性能要优于使用 <code>Mutex</code> 实现的有锁方案。这里仅仅是一个简陋的测试实现，感兴趣的读者可以在此基础上改进，
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -run=<span style="color:#ed9d13">&#39;^$&#39;</span> -bench=. -count=<span style="color:#3677a9">1</span> -benchtime=2s
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出结果如下</span>
+</span></span><span style="display:flex;"><span>Benchmark_Stack/*performance.LockFreeStack-8            <span style="color:#3677a9">16553013</span>               134.0 ns/op
+</span></span><span style="display:flex;"><span>Benchmark_Stack/*performance.MutexStack-8               <span style="color:#3677a9">20625786</span>               172.5 ns/op
+</span></span></code></pre></div><p>通过输出结果可以看到，使用 <code>CAS</code> 实现的无锁方案的性能要优于使用 <code>Mutex</code> 实现的有锁方案。这里仅仅是一个简陋的测试实现，感兴趣的读者可以在此基础上改进，
 例如提高 <code>goroutine</code> 的数量，<code>栈</code> 的入栈、出栈比例等，然后观察无所方案带来的性能优势。</p>
 <h2 id="小结">小结</h2>
 <p><code>atomic</code> 包提供的 <code>CAS</code> 操作是一个相对底层的调用，在标准库中的很多实现中，都可以看到其身影。</p>

@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 汇编" />
 <meta property="og:description" content="为什么要学习汇编语言？更加接近硬件底层，性能极致优化，可以降维打击所有高级编程语言。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_asm/" />
-<meta property="article:published_time" content="2023-04-17T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-04-17T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_asm/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-17T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-17T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 汇编"/>
 <meta name="twitter:description" content="为什么要学习汇编语言？更加接近硬件底层，性能极致优化，可以降维打击所有高级编程语言。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -134,79 +134,78 @@
 如果 Go 汇编代码中定义的变量和函数要被其它 Go 语言代码引用，还需要通过 Go 语言代码将汇编中定义的符号声明出来，用于变量的定义和函数的定义。
 Go 汇编文件类似于 C 语言中的 .c 文件，而用于导出汇编中定义符号的 Go 源文件类似于 C 语言的.h 文件。</p>
 <h2 id="查看-go-程序汇编代码">查看 Go 程序汇编代码</h2>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// main.go
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span>)
-}
-</code></pre></div><p>例如，我们想查看 <code>Linux/amd64</code> 架构体系下的汇编代码，可以使用下面的指令:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ <span style="color:#40ffff">GOOS</span>=linux <span style="color:#40ffff">GOARCH</span>=amd64 go tool compile -S main.go        
-
-<span style="color:#999;font-style:italic"># 或者</span>
-$ <span style="color:#40ffff">GOOS</span>=linux <span style="color:#40ffff">GOARCH</span>=amd64 go build -gcflags -S main.go
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 输出结果如下</span>
-main.main STEXT <span style="color:#40ffff">size</span>=<span style="color:#3677a9">66</span> <span style="color:#40ffff">args</span>=0x0 <span style="color:#40ffff">locals</span>=0x10 <span style="color:#40ffff">funcid</span>=0x0 <span style="color:#40ffff">align</span>=0x0
-        0x0000 <span style="color:#3677a9">00000</span> (main.go:50)       TEXT    main.main(SB), ABIInternal, <span style="color:#40ffff">$16</span>-0
-        0x0000 <span style="color:#3677a9">00000</span> (main.go:50)       CMPQ    SP, 16(R14)
-        0x0004 <span style="color:#3677a9">00004</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">2</span>
-        0x0004 <span style="color:#3677a9">00004</span> (main.go:50)       JLS     <span style="color:#3677a9">57</span>
-        0x0006 <span style="color:#3677a9">00006</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">1</span>
-        0x0006 <span style="color:#3677a9">00006</span> (main.go:50)       SUBQ    <span style="color:#40ffff">$16</span>, SP
-        0x000a <span style="color:#3677a9">00010</span> (main.go:50)       MOVQ    BP, 8(SP)
-        0x000f <span style="color:#3677a9">00015</span> (main.go:50)       LEAQ    8(SP), BP
-        0x0014 <span style="color:#3677a9">00020</span> (main.go:50)       FUNCDATA        <span style="color:#40ffff">$0</span>, gclocals·g2BeySu+wFnoycgXfElmcg==(SB)
-        0x0014 <span style="color:#3677a9">00020</span> (main.go:50)       FUNCDATA        <span style="color:#40ffff">$1</span>, gclocals·g2BeySu+wFnoycgXfElmcg==(SB)
-        0x0014 <span style="color:#3677a9">00020</span> (main.go:51)       PCDATA  <span style="color:#40ffff">$1</span>, <span style="color:#40ffff">$0</span>
-        0x0014 <span style="color:#3677a9">00020</span> (main.go:51)       CALL    runtime.printlock(SB)
-        0x0019 <span style="color:#3677a9">00025</span> (main.go:51)       MOVL    <span style="color:#40ffff">$3</span>, AX
-        0x001e <span style="color:#3677a9">00030</span> (main.go:51)       NOP
-        0x0020 <span style="color:#3677a9">00032</span> (main.go:51)       CALL    runtime.printint(SB)
-        0x0025 <span style="color:#3677a9">00037</span> (main.go:51)       CALL    runtime.printnl(SB)
-        0x002a <span style="color:#3677a9">00042</span> (main.go:51)       CALL    runtime.printunlock(SB)
-        0x002f <span style="color:#3677a9">00047</span> (main.go:52)       MOVQ    8(SP), BP
-        0x0034 <span style="color:#3677a9">00052</span> (main.go:52)       ADDQ    <span style="color:#40ffff">$16</span>, SP
-        0x0038 <span style="color:#3677a9">00056</span> (main.go:52)       RET
-        0x0039 <span style="color:#3677a9">00057</span> (main.go:52)       NOP
-        0x0039 <span style="color:#3677a9">00057</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$1</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">1</span>
-        0x0039 <span style="color:#3677a9">00057</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">2</span>
-        0x0039 <span style="color:#3677a9">00057</span> (main.go:50)       CALL    runtime.morestack_noctxt(SB)
-        0x003e <span style="color:#3677a9">00062</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">1</span>
-        0x003e <span style="color:#3677a9">00062</span> (main.go:50)       NOP
-        0x0040 <span style="color:#3677a9">00064</span> (main.go:50)       JMP     <span style="color:#3677a9">0</span>
-...
-
-</code></pre></div><p>输出结果中的 <code>FUNCDATA</code> 和 <code>PCDATA</code> 指令由编译器引入，包含 GC 用到的信息。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>例如，我们想查看 <code>Linux/amd64</code> 架构体系下的汇编代码，可以使用下面的指令:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ <span style="color:#40ffff">GOOS</span>=linux <span style="color:#40ffff">GOARCH</span>=amd64 go tool compile -S main.go        
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 或者</span>
+</span></span><span style="display:flex;"><span>$ <span style="color:#40ffff">GOOS</span>=linux <span style="color:#40ffff">GOARCH</span>=amd64 go build -gcflags -S main.go
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出结果如下</span>
+</span></span><span style="display:flex;"><span>main.main STEXT <span style="color:#40ffff">size</span>=<span style="color:#3677a9">66</span> <span style="color:#40ffff">args</span>=0x0 <span style="color:#40ffff">locals</span>=0x10 <span style="color:#40ffff">funcid</span>=0x0 <span style="color:#40ffff">align</span>=0x0
+</span></span><span style="display:flex;"><span>        0x0000 <span style="color:#3677a9">00000</span> (main.go:50)       TEXT    main.main(SB), ABIInternal, <span style="color:#40ffff">$16</span>-0
+</span></span><span style="display:flex;"><span>        0x0000 <span style="color:#3677a9">00000</span> (main.go:50)       CMPQ    SP, 16(R14)
+</span></span><span style="display:flex;"><span>        0x0004 <span style="color:#3677a9">00004</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>        0x0004 <span style="color:#3677a9">00004</span> (main.go:50)       JLS     <span style="color:#3677a9">57</span>
+</span></span><span style="display:flex;"><span>        0x0006 <span style="color:#3677a9">00006</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>        0x0006 <span style="color:#3677a9">00006</span> (main.go:50)       SUBQ    <span style="color:#40ffff">$16</span>, SP
+</span></span><span style="display:flex;"><span>        0x000a <span style="color:#3677a9">00010</span> (main.go:50)       MOVQ    BP, 8(SP)
+</span></span><span style="display:flex;"><span>        0x000f <span style="color:#3677a9">00015</span> (main.go:50)       LEAQ    8(SP), BP
+</span></span><span style="display:flex;"><span>        0x0014 <span style="color:#3677a9">00020</span> (main.go:50)       FUNCDATA        <span style="color:#40ffff">$0</span>, gclocals·g2BeySu+wFnoycgXfElmcg==(SB)
+</span></span><span style="display:flex;"><span>        0x0014 <span style="color:#3677a9">00020</span> (main.go:50)       FUNCDATA        <span style="color:#40ffff">$1</span>, gclocals·g2BeySu+wFnoycgXfElmcg==(SB)
+</span></span><span style="display:flex;"><span>        0x0014 <span style="color:#3677a9">00020</span> (main.go:51)       PCDATA  <span style="color:#40ffff">$1</span>, <span style="color:#40ffff">$0</span>
+</span></span><span style="display:flex;"><span>        0x0014 <span style="color:#3677a9">00020</span> (main.go:51)       CALL    runtime.printlock(SB)
+</span></span><span style="display:flex;"><span>        0x0019 <span style="color:#3677a9">00025</span> (main.go:51)       MOVL    <span style="color:#40ffff">$3</span>, AX
+</span></span><span style="display:flex;"><span>        0x001e <span style="color:#3677a9">00030</span> (main.go:51)       NOP
+</span></span><span style="display:flex;"><span>        0x0020 <span style="color:#3677a9">00032</span> (main.go:51)       CALL    runtime.printint(SB)
+</span></span><span style="display:flex;"><span>        0x0025 <span style="color:#3677a9">00037</span> (main.go:51)       CALL    runtime.printnl(SB)
+</span></span><span style="display:flex;"><span>        0x002a <span style="color:#3677a9">00042</span> (main.go:51)       CALL    runtime.printunlock(SB)
+</span></span><span style="display:flex;"><span>        0x002f <span style="color:#3677a9">00047</span> (main.go:52)       MOVQ    8(SP), BP
+</span></span><span style="display:flex;"><span>        0x0034 <span style="color:#3677a9">00052</span> (main.go:52)       ADDQ    <span style="color:#40ffff">$16</span>, SP
+</span></span><span style="display:flex;"><span>        0x0038 <span style="color:#3677a9">00056</span> (main.go:52)       RET
+</span></span><span style="display:flex;"><span>        0x0039 <span style="color:#3677a9">00057</span> (main.go:52)       NOP
+</span></span><span style="display:flex;"><span>        0x0039 <span style="color:#3677a9">00057</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$1</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>        0x0039 <span style="color:#3677a9">00057</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>        0x0039 <span style="color:#3677a9">00057</span> (main.go:50)       CALL    runtime.morestack_noctxt(SB)
+</span></span><span style="display:flex;"><span>        0x003e <span style="color:#3677a9">00062</span> (main.go:50)       PCDATA  <span style="color:#40ffff">$0</span>, <span style="color:#40ffff">$-</span><span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>        0x003e <span style="color:#3677a9">00062</span> (main.go:50)       NOP
+</span></span><span style="display:flex;"><span>        0x0040 <span style="color:#3677a9">00064</span> (main.go:50)       JMP     <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>输出结果中的 <code>FUNCDATA</code> 和 <code>PCDATA</code> 指令由编译器引入，包含 GC 用到的信息。</p>
 <p>查看链接后放入二进制文件的内容，使用 <code>go tool objdump</code></p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 编译 main.go 文件</span>
-$ go build -o main main.go
-
-<span style="color:#999;font-style:italic"># 匹配编译后文件中的 &#34;main.main&#34; 符号</span>
-$ go tool objdump -s main.main main
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 输出如下</span>
-
-  main.go:50            0x457c00                493b6610                CMPQ 0x10(R14), SP
-  main.go:50            0x457c04                <span style="color:#3677a9">7633</span>                    JBE 0x457c39
-  main.go:50            0x457c06                4883ec10                SUBQ <span style="color:#40ffff">$0</span>x10, SP
-  main.go:50            0x457c0a                48896c2408              MOVQ BP, 0x8(SP)
-  main.go:50            0x457c0f                488d6c2408              LEAQ 0x8(SP), BP
-  main.go:51            0x457c14                e84776fdff              CALL runtime.printlock(SB)
-  main.go:51            0x457c19                b803000000              MOVL <span style="color:#40ffff">$0</span>x3, AX
-  main.go:51            0x457c1e                <span style="color:#3677a9">6690</span>                    NOPW
-  main.go:51            0x457c20                e83b7dfdff              CALL runtime.printint(SB)
-  main.go:51            0x457c25                e89678fdff              CALL runtime.printnl(SB)
-  main.go:51            0x457c2a                e8b176fdff              CALL runtime.printunlock(SB)
-  main.go:52            0x457c2f                488b6c2408              MOVQ 0x8(SP), BP
-  main.go:52            0x457c34                4883c410                ADDQ <span style="color:#40ffff">$0</span>x10, SP
-  main.go:52            0x457c38                c3                      RET
-  main.go:50            0x457c39                e802cdffff              CALL runtime.morestack_noctxt.abi0(SB)
-  main.go:50            0x457c3e                <span style="color:#3677a9">6690</span>                    NOPW
-  main.go:50            0x457c40                ebbe                    JMP main.main(SB)
-</code></pre></div><h2 id="寄存器">寄存器</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 编译 main.go 文件</span>
+</span></span><span style="display:flex;"><span>$ go build -o main main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 匹配编译后文件中的 &#34;main.main&#34; 符号</span>
+</span></span><span style="display:flex;"><span>$ go tool objdump -s main.main main
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c00                493b6610                CMPQ 0x10(R14), SP
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c04                <span style="color:#3677a9">7633</span>                    JBE 0x457c39
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c06                4883ec10                SUBQ <span style="color:#40ffff">$0</span>x10, SP
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c0a                48896c2408              MOVQ BP, 0x8(SP)
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c0f                488d6c2408              LEAQ 0x8(SP), BP
+</span></span><span style="display:flex;"><span>  main.go:51            0x457c14                e84776fdff              CALL runtime.printlock(SB)
+</span></span><span style="display:flex;"><span>  main.go:51            0x457c19                b803000000              MOVL <span style="color:#40ffff">$0</span>x3, AX
+</span></span><span style="display:flex;"><span>  main.go:51            0x457c1e                <span style="color:#3677a9">6690</span>                    NOPW
+</span></span><span style="display:flex;"><span>  main.go:51            0x457c20                e83b7dfdff              CALL runtime.printint(SB)
+</span></span><span style="display:flex;"><span>  main.go:51            0x457c25                e89678fdff              CALL runtime.printnl(SB)
+</span></span><span style="display:flex;"><span>  main.go:51            0x457c2a                e8b176fdff              CALL runtime.printunlock(SB)
+</span></span><span style="display:flex;"><span>  main.go:52            0x457c2f                488b6c2408              MOVQ 0x8(SP), BP
+</span></span><span style="display:flex;"><span>  main.go:52            0x457c34                4883c410                ADDQ <span style="color:#40ffff">$0</span>x10, SP
+</span></span><span style="display:flex;"><span>  main.go:52            0x457c38                c3                      RET
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c39                e802cdffff              CALL runtime.morestack_noctxt.abi0(SB)
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c3e                <span style="color:#3677a9">6690</span>                    NOPW
+</span></span><span style="display:flex;"><span>  main.go:50            0x457c40                ebbe                    JMP main.main(SB)
+</span></span></code></pre></div><h2 id="寄存器">寄存器</h2>
 <h3 id="通用寄存器">通用寄存器</h3>
 <p><code>Go 汇编语言</code> 中使用寄存器不需要带通用寄存器的前缀，例如 rax，只要写 AX 即可。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">MOVQ <span style="color:#40ffff">$101</span>, <span style="color:#40ffff">AX</span> = mov rax, <span style="color:#3677a9">101</span>
-</code></pre></div><h3 id="伪寄存器">伪寄存器</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>MOVQ <span style="color:#40ffff">$101</span>, <span style="color:#40ffff">AX</span> = mov rax, <span style="color:#3677a9">101</span>
+</span></span></code></pre></div><h3 id="伪寄存器">伪寄存器</h3>
 <p><code>Go 汇编语言</code> 有 4 个预声明的符号引用 <code>伪寄存器</code>，是由工具链维护的 <code>虚拟寄存器</code> (不是真正的寄存器)，例如帧指针，伪寄存器在所有硬件体系结构下的语义和作用都是相同的。</p>
 <ul>
 <li><strong>FP</strong>: 栈基，栈帧（函数的栈叫栈帧）的开始位置 (一般用来访问函数的参数和返回值)</li>
@@ -221,288 +220,287 @@ $ go tool objdump -s main.main main
 <h2 id="基础指令">基础指令</h2>
 <h3 id="变量声明">变量声明</h3>
 <p>使用 <code>DATA + GLOBL</code> 定义一个变量，GLOBL 必须在 DATA 指令之后，语法如下。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">DATA  symbol+offset(SB)/width, value
-<span style="color:#999;font-style:italic"># GLOBL 指令将变量声明为 global</span>
-<span style="color:#999;font-style:italic">#       RODATA 表示变量位于只读区</span>
-<span style="color:#999;font-style:italic">#       $64 表示数据大小为 64 字节</span>
-GLOBL divtab(SB), RODATA, <span style="color:#40ffff">$64</span>
-
-<span style="color:#999;font-style:italic"># ·count 以 · 开头表示变量属于当前包</span>
-GLOBL ·count(SB),<span style="color:#40ffff">$4</span>   
-</code></pre></div><h4 id="示例">示例</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 逐个字节初始化变量</span>
-DATA ·count+0(SB)/1,<span style="color:#40ffff">$1</span>
-DATA ·count+1(SB)/1,<span style="color:#40ffff">$2</span>
-DATA ·count+2(SB)/1,<span style="color:#40ffff">$3</span>
-DATA ·count+3(SB)/1,<span style="color:#40ffff">$4</span>
-
-<span style="color:#999;font-style:italic"># 一次性初始化变量</span>
-DATA ·count+0(SB)/4,<span style="color:#40ffff">$0</span>x04030201
-
-<span style="color:#999;font-style:italic"># 定义一个字符串</span>
-GLOBL ·helloworld(SB),<span style="color:#40ffff">$16</span>
-<span style="color:#999;font-style:italic"># 字符串内容为 Hello World</span>
-GLOBL text&lt;&gt;(SB),NOPTR,<span style="color:#40ffff">$16</span>
-DATA text&lt;&gt;+0(SB)/8,<span style="color:#ed9d13">$&#34;Hello Wo&#34;</span>
-DATA text&lt;&gt;+8(SB)/8,<span style="color:#ed9d13">$&#34;rld!&#34;</span>
-<span style="color:#999;font-style:italic"># 初始化 Go 中的字符串对应的 StringHeader 结构体</span>
-DATA ·helloworld+0(SB)/8,<span style="color:#40ffff">$text</span>&lt;&gt;(SB) <span style="color:#999;font-style:italic"># StringHeader.Data</span>
-DATA ·helloworld+8(SB)/8,<span style="color:#40ffff">$12</span>         <span style="color:#999;font-style:italic"># StringHeader.Len</span>
-
-<span style="color:#999;font-style:italic"># 声明数据不含指针</span>
-GLOBL ·NameData(SB),NOPTR,<span style="color:#40ffff">$8</span> 
-DATA  ·NameData+0(SB)/8,<span style="color:#ed9d13">$&#34;gopher&#34;</span>
-</code></pre></div><h3 id="赋值操作">赋值操作</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>DATA  symbol+offset(SB)/width, value
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># GLOBL 指令将变量声明为 global</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#       RODATA 表示变量位于只读区</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#       $64 表示数据大小为 64 字节</span>
+</span></span><span style="display:flex;"><span>GLOBL divtab(SB), RODATA, <span style="color:#40ffff">$64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># ·count 以 · 开头表示变量属于当前包</span>
+</span></span><span style="display:flex;"><span>GLOBL ·count(SB),<span style="color:#40ffff">$4</span>   
+</span></span></code></pre></div><h4 id="示例">示例</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 逐个字节初始化变量</span>
+</span></span><span style="display:flex;"><span>DATA ·count+0(SB)/1,<span style="color:#40ffff">$1</span>
+</span></span><span style="display:flex;"><span>DATA ·count+1(SB)/1,<span style="color:#40ffff">$2</span>
+</span></span><span style="display:flex;"><span>DATA ·count+2(SB)/1,<span style="color:#40ffff">$3</span>
+</span></span><span style="display:flex;"><span>DATA ·count+3(SB)/1,<span style="color:#40ffff">$4</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 一次性初始化变量</span>
+</span></span><span style="display:flex;"><span>DATA ·count+0(SB)/4,<span style="color:#40ffff">$0</span>x04030201
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 定义一个字符串</span>
+</span></span><span style="display:flex;"><span>GLOBL ·helloworld(SB),<span style="color:#40ffff">$16</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 字符串内容为 Hello World</span>
+</span></span><span style="display:flex;"><span>GLOBL text&lt;&gt;(SB),NOPTR,<span style="color:#40ffff">$16</span>
+</span></span><span style="display:flex;"><span>DATA text&lt;&gt;+0(SB)/8,<span style="color:#ed9d13">$&#34;Hello Wo&#34;</span>
+</span></span><span style="display:flex;"><span>DATA text&lt;&gt;+8(SB)/8,<span style="color:#ed9d13">$&#34;rld!&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 初始化 Go 中的字符串对应的 StringHeader 结构体</span>
+</span></span><span style="display:flex;"><span>DATA ·helloworld+0(SB)/8,<span style="color:#40ffff">$text</span>&lt;&gt;(SB) <span style="color:#999;font-style:italic"># StringHeader.Data</span>
+</span></span><span style="display:flex;"><span>DATA ·helloworld+8(SB)/8,<span style="color:#40ffff">$12</span>         <span style="color:#999;font-style:italic"># StringHeader.Len</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 声明数据不含指针</span>
+</span></span><span style="display:flex;"><span>GLOBL ·NameData(SB),NOPTR,<span style="color:#40ffff">$8</span> 
+</span></span><span style="display:flex;"><span>DATA  ·NameData+0(SB)/8,<span style="color:#ed9d13">$&#34;gopher&#34;</span>
+</span></span></code></pre></div><h3 id="赋值操作">赋值操作</h3>
 <p>字节数由 <code>MOV</code> 指令的后缀决定。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">MOVB <span style="color:#40ffff">$1</span>, DI      <span style="color:#999;font-style:italic"># 1 byte   B =&gt; Byte</span>
-MOVW <span style="color:#40ffff">$0</span>x10, BX   <span style="color:#999;font-style:italic"># 2 bytes  W =&gt; Word</span>
-MOVD <span style="color:#40ffff">$1</span>, DX      <span style="color:#999;font-style:italic"># 4 bytes  L =&gt; Long</span>
-MOVQ <span style="color:#40ffff">$-</span>10, AX    <span style="color:#999;font-style:italic"># 8 bytes  Q =&gt; Quadword</span>
-</code></pre></div><h3 id="数值计算">数值计算</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>MOVB <span style="color:#40ffff">$1</span>, DI      <span style="color:#999;font-style:italic"># 1 byte   B =&gt; Byte</span>
+</span></span><span style="display:flex;"><span>MOVW <span style="color:#40ffff">$0</span>x10, BX   <span style="color:#999;font-style:italic"># 2 bytes  W =&gt; Word</span>
+</span></span><span style="display:flex;"><span>MOVD <span style="color:#40ffff">$1</span>, DX      <span style="color:#999;font-style:italic"># 4 bytes  L =&gt; Long</span>
+</span></span><span style="display:flex;"><span>MOVQ <span style="color:#40ffff">$-</span>10, AX    <span style="color:#999;font-style:italic"># 8 bytes  Q =&gt; Quadword</span>
+</span></span></code></pre></div><h3 id="数值计算">数值计算</h3>
 <p>类似赋值操作指令，可以通过修改指令后缀来对应不同长度的操作数。例如 ADDQ/ADDW/ADDL/ADDB。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">ADDQ  AX, BX   <span style="color:#999;font-style:italic"># BX += AX</span>
-SUBQ  AX, BX   <span style="color:#999;font-style:italic"># BX -= AX</span>
-IMULQ AX, BX   <span style="color:#999;font-style:italic"># BX *= AX</span>
-
-MOVL	g(CX), AX     <span style="color:#999;font-style:italic"># 将 g 赋值到寄存器 AX</span>
-MOVL	g_m(AX), BX   <span style="color:#999;font-style:italic"># 将 g.m 赋值到寄存器 BX</span>
-</code></pre></div><h3 id="条件跳转无条件跳转">条件跳转/无条件跳转</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 无条件跳转</span>
-JMP addr   <span style="color:#999;font-style:italic"># 跳转到指定地址</span>
-JMP label  <span style="color:#999;font-style:italic"># 跳转到指定标签</span>
-JMP 2(PC)  <span style="color:#999;font-style:italic"># 以当前指令为基础，向前/后跳转指定行数</span>
-JMP -2(PC) <span style="color:#999;font-style:italic"># 同上</span>
-
-<span style="color:#999;font-style:italic"># 有条件跳转</span>
-CMPQ CX, <span style="color:#40ffff">$0</span>  <span style="color:#999;font-style:italic"># 如果寄存器 CX 的值等于 0，跳转到 L 标签</span>
-JZ   L       
-</code></pre></div><h3 id="栈调整">栈调整</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">SUBQ <span style="color:#40ffff">$0</span>x18, SP <span style="color:#999;font-style:italic"># 对 SP 做减法，为函数分配函数栈帧</span>
-SUBQ <span style="color:#40ffff">$40</span>, SP   <span style="color:#999;font-style:italic"># 分配 40 字节栈空间</span>
-ADDQ <span style="color:#40ffff">$0</span>x18, SP <span style="color:#999;font-style:italic"># 对 SP 做加法，清除函数栈帧</span>
-</code></pre></div><h2 id="函数声明">函数声明</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>ADDQ  AX, BX   <span style="color:#999;font-style:italic"># BX += AX</span>
+</span></span><span style="display:flex;"><span>SUBQ  AX, BX   <span style="color:#999;font-style:italic"># BX -= AX</span>
+</span></span><span style="display:flex;"><span>IMULQ AX, BX   <span style="color:#999;font-style:italic"># BX *= AX</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>MOVL	g(CX), AX     <span style="color:#999;font-style:italic"># 将 g 赋值到寄存器 AX</span>
+</span></span><span style="display:flex;"><span>MOVL	g_m(AX), BX   <span style="color:#999;font-style:italic"># 将 g.m 赋值到寄存器 BX</span>
+</span></span></code></pre></div><h3 id="条件跳转无条件跳转">条件跳转/无条件跳转</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 无条件跳转</span>
+</span></span><span style="display:flex;"><span>JMP addr   <span style="color:#999;font-style:italic"># 跳转到指定地址</span>
+</span></span><span style="display:flex;"><span>JMP label  <span style="color:#999;font-style:italic"># 跳转到指定标签</span>
+</span></span><span style="display:flex;"><span>JMP 2(PC)  <span style="color:#999;font-style:italic"># 以当前指令为基础，向前/后跳转指定行数</span>
+</span></span><span style="display:flex;"><span>JMP -2(PC) <span style="color:#999;font-style:italic"># 同上</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 有条件跳转</span>
+</span></span><span style="display:flex;"><span>CMPQ CX, <span style="color:#40ffff">$0</span>  <span style="color:#999;font-style:italic"># 如果寄存器 CX 的值等于 0，跳转到 L 标签</span>
+</span></span><span style="display:flex;"><span>JZ   L       
+</span></span></code></pre></div><h3 id="栈调整">栈调整</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>SUBQ <span style="color:#40ffff">$0</span>x18, SP <span style="color:#999;font-style:italic"># 对 SP 做减法，为函数分配函数栈帧</span>
+</span></span><span style="display:flex;"><span>SUBQ <span style="color:#40ffff">$40</span>, SP   <span style="color:#999;font-style:italic"># 分配 40 字节栈空间</span>
+</span></span><span style="display:flex;"><span>ADDQ <span style="color:#40ffff">$0</span>x18, SP <span style="color:#999;font-style:italic"># 对 SP 做加法，清除函数栈帧</span>
+</span></span></code></pre></div><h2 id="函数声明">函数声明</h2>
 <p><img src="https://dbwu.tech/images/add_asm.png" alt="汇编函数语法"></p>
 <h3 id="示例-1">示例</h3>
 <h4 id="add-函数">add 函数</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">add</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
-</code></pre></div><p>对应的汇编代码如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># pkgname 名称直接省略即可</span>
-TEXT pkgname·add(SB), NOSPLIT, <span style="color:#40ffff">$0</span>-8
-    MOVQ a+0(FP), AX
-    MOVQ a+8(FP), BX
-    ADDQ AX, BX
-    MOVQ BX, ret+16(FP)
-    RET
-
-</code></pre></div><h4 id="say-函数">Say 函数</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Say</span>()
-</code></pre></div><p>对应的汇编代码如下:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">TEXT ·Say(SB), NOSPLIT, <span style="color:#40ffff">$16</span>-0
-    MOVQ ·helloWorld+0(SB), AX
-    MOVQ AX, 0(SP)
-    MOVQ ·helloWorld+8(SB), BX
-    MOVQ BX, 8(SP)
-    CALL ·output(SB)    <span style="color:#999;font-style:italic"># 在调用 output 之前，已经把参数通过真寄存器 SP 传递到了函数栈顶</span>
-    RET
-</code></pre></div><h2 id="函数调用">函数调用</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">add</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span></code></pre></div><p>对应的汇编代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># pkgname 名称直接省略即可</span>
+</span></span><span style="display:flex;"><span>TEXT pkgname·add(SB), NOSPLIT, <span style="color:#40ffff">$0</span>-8
+</span></span><span style="display:flex;"><span>    MOVQ a+0(FP), AX
+</span></span><span style="display:flex;"><span>    MOVQ a+8(FP), BX
+</span></span><span style="display:flex;"><span>    ADDQ AX, BX
+</span></span><span style="display:flex;"><span>    MOVQ BX, ret+16(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span></code></pre></div><h4 id="say-函数">Say 函数</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Say</span>()
+</span></span></code></pre></div><p>对应的汇编代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>TEXT ·Say(SB), NOSPLIT, <span style="color:#40ffff">$16</span>-0
+</span></span><span style="display:flex;"><span>    MOVQ ·helloWorld+0(SB), AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, 0(SP)
+</span></span><span style="display:flex;"><span>    MOVQ ·helloWorld+8(SB), BX
+</span></span><span style="display:flex;"><span>    MOVQ BX, 8(SP)
+</span></span><span style="display:flex;"><span>    CALL ·output(SB)    <span style="color:#999;font-style:italic"># 在调用 output 之前，已经把参数通过真寄存器 SP 传递到了函数栈顶</span>
+</span></span><span style="display:flex;"><span>    RET
+</span></span></code></pre></div><h2 id="函数调用">函数调用</h2>
 <p><strong>调用函数时，被调用函数的参数和返回值内存空间都必须由调用者提供</strong>。</p>
 <h2 id="s-汇编文件和-go-文件重定向">.s 汇编文件和 .go 文件重定向</h2>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// Go 文件变量
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> version <span style="color:#6ab825;font-weight:bold">float32</span> = <span style="color:#3677a9">1.0</span>
-<span style="color:#999;font-style:italic">// Go 文件函数
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getVersion</span>() <span style="color:#6ab825;font-weight:bold">float32</span>
-</code></pre></div><div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 汇编文件函数</span>
-<span style="color:#999;font-style:italic"># ·version(SB)，表示该符号需要链接器来帮我们进行重定向(relocation)</span>
-<span style="color:#999;font-style:italic">#               这里表示使用 Go 程序中的 version 变量</span>
-TEXT ·getVersion(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
-    MOVQ ·version(SB), AX  
-    MOVQ AX, ret+0(FP)
-    RET
-</code></pre></div><h2 id="不支持的指令">不支持的指令</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Go 文件变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> version <span style="color:#6ab825;font-weight:bold">float32</span> = <span style="color:#3677a9">1.0</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Go 文件函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getVersion</span>() <span style="color:#6ab825;font-weight:bold">float32</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 汇编文件函数</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># ·version(SB)，表示该符号需要链接器来帮我们进行重定向(relocation)</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#               这里表示使用 Go 程序中的 version 变量</span>
+</span></span><span style="display:flex;"><span>TEXT ·getVersion(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
+</span></span><span style="display:flex;"><span>    MOVQ ·version(SB), AX  
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+0(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span></code></pre></div><h2 id="不支持的指令">不支持的指令</h2>
 <p>如果要使用硬件体系结构缺失的汇编指令，有两种方法:</p>
 <ul>
 <li>更新汇编程序以支持该指令</li>
 <li>使用 <code>BYTE</code> 和 <code>WORD</code> 指令将数据显式放到 <code>TEXT</code> 中的指令流中</li>
 </ul>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#999;font-style:italic">// 示例: 386 如何定义 atomic.LoadUint64 函数
-</span><span style="color:#999;font-style:italic"></span>TEXT runtime<span style="color:#a61717;background-color:#e3d2d2">·</span><span style="color:#447fcf">atomicload64</span>(SB), NOSPLIT, <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0</span>-<span style="color:#3677a9">12</span>
-	MOVL	ptr+<span style="color:#3677a9">0</span>(FP), AX
-	TESTL	<span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">7</span>, AX
-	JZ	<span style="color:#3677a9">2</span>(PC)
-	MOVL	<span style="color:#3677a9">0</span>, AX <span style="color:#999;font-style:italic">// crash with nil ptr deref
-</span><span style="color:#999;font-style:italic"></span>	LEAL	ret_lo+<span style="color:#3677a9">4</span>(FP), BX
-	<span style="color:#999;font-style:italic">// MOVQ (%EAX), %MM0
-</span><span style="color:#999;font-style:italic"></span>	BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x0f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x6f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x00</span>
-	<span style="color:#999;font-style:italic">// MOVQ %MM0, 0(%EBX)
-</span><span style="color:#999;font-style:italic"></span>	BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x0f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x7f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x03</span>
-	<span style="color:#999;font-style:italic">// EMMS
-</span><span style="color:#999;font-style:italic"></span>	BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x0F</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x77</span>
-	RET
-</code></pre></div><h2 id="综合示例">综合示例</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 示例: 386 如何定义 atomic.LoadUint64 函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>TEXT runtime<span style="color:#a61717;background-color:#e3d2d2">·</span><span style="color:#447fcf">atomicload64</span>(SB), NOSPLIT, <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0</span>-<span style="color:#3677a9">12</span>
+</span></span><span style="display:flex;"><span>	MOVL	ptr+<span style="color:#3677a9">0</span>(FP), AX
+</span></span><span style="display:flex;"><span>	TESTL	<span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">7</span>, AX
+</span></span><span style="display:flex;"><span>	JZ	<span style="color:#3677a9">2</span>(PC)
+</span></span><span style="display:flex;"><span>	MOVL	<span style="color:#3677a9">0</span>, AX <span style="color:#999;font-style:italic">// crash with nil ptr deref
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	LEAL	ret_lo+<span style="color:#3677a9">4</span>(FP), BX
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// MOVQ (%EAX), %MM0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x0f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x6f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x00</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// MOVQ %MM0, 0(%EBX)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x0f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x7f</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x03</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// EMMS
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x0F</span>; BYTE <span style="color:#a61717;background-color:#e3d2d2">$</span><span style="color:#3677a9">0x77</span>
+</span></span><span style="display:flex;"><span>	RET
+</span></span></code></pre></div><h2 id="综合示例">综合示例</h2>
 <h3 id="maingo">main.go</h3>
 <p>文件中的函数都是声明未实现，全部使用汇编语言实现。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;unsafe&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">type</span> Text <span style="color:#6ab825;font-weight:bold">struct</span> {
-	Language <span style="color:#6ab825;font-weight:bold">string</span>
-	_        <span style="color:#6ab825;font-weight:bold">uint8</span>
-	Length   <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">var</span> version <span style="color:#6ab825;font-weight:bold">float32</span> = <span style="color:#3677a9">1.0</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">add</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">addX</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sub</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mul</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
-
-<span style="color:#999;font-style:italic">// 获取 Text 的 Length 字段的值
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">length</span>(text *Text) <span style="color:#6ab825;font-weight:bold">int</span>
-
-<span style="color:#999;font-style:italic">// 获取 Text 结构体的大小
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sizeOfTextStruct</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getAge</span>() <span style="color:#6ab825;font-weight:bold">int32</span>
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getPI</span>() <span style="color:#6ab825;font-weight:bold">float64</span>
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getBirthYear</span>() <span style="color:#6ab825;font-weight:bold">int32</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getVersion</span>() <span style="color:#6ab825;font-weight:bold">float32</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">add</span>(<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>))
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">addX</span>(<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>))
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">sub</span>(<span style="color:#3677a9">10</span>, <span style="color:#3677a9">5</span>))
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">mul</span>(<span style="color:#3677a9">10</span>, <span style="color:#3677a9">5</span>))
-
-	text := &amp;Text{
-		Language: <span style="color:#ed9d13">&#34;Go&#34;</span>,
-		Length:   <span style="color:#3677a9">1024</span>,
-	}
-	fmt.<span style="color:#447fcf">Println</span>(text)
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">length</span>(text))
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">sizeOfTextStruct</span>())
-	<span style="color:#24909d">println</span>(unsafe.<span style="color:#447fcf">Sizeof</span>(*text))
-
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getAge</span>())
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getPI</span>())
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getBirthYear</span>())
-
-	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getVersion</span>())
-}
-</code></pre></div><h3 id="mains">main.s</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;unsafe&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Text <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Language <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	_        <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>	Length   <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> version <span style="color:#6ab825;font-weight:bold">float32</span> = <span style="color:#3677a9">1.0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">add</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">addX</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sub</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mul</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取 Text 的 Length 字段的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">length</span>(text *Text) <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取 Text 结构体的大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sizeOfTextStruct</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getAge</span>() <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getPI</span>() <span style="color:#6ab825;font-weight:bold">float64</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getBirthYear</span>() <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getVersion</span>() <span style="color:#6ab825;font-weight:bold">float32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">add</span>(<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>))
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">addX</span>(<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>))
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">sub</span>(<span style="color:#3677a9">10</span>, <span style="color:#3677a9">5</span>))
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">mul</span>(<span style="color:#3677a9">10</span>, <span style="color:#3677a9">5</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	text := &amp;Text{
+</span></span><span style="display:flex;"><span>		Language: <span style="color:#ed9d13">&#34;Go&#34;</span>,
+</span></span><span style="display:flex;"><span>		Length:   <span style="color:#3677a9">1024</span>,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(text)
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">length</span>(text))
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">sizeOfTextStruct</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(unsafe.<span style="color:#447fcf">Sizeof</span>(*text))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getAge</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getPI</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getBirthYear</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">getVersion</span>())
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mains">main.s</h3>
 <p>汇编程序文件中使用了 Go 文件中声明的部分变量，并且实现了Go 文件中声明的所有函数。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic">#include &#34;textflag.h&#34;</span>
-<span style="color:#999;font-style:italic">#include &#34;go_asm.h&#34; // 该文件编译时自动生成</span>
-
-<span style="color:#999;font-style:italic"># 实现了 add 函数</span>
-TEXT ·add(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-24
-    MOVQ a+0(FP), AX <span style="color:#999;font-style:italic"># 读取第一个参数</span>
-    MOVQ b+8(FP), BX <span style="color:#999;font-style:italic"># 读取第二个参数</span>
-    ADDQ BX, AX
-    MOVQ AX, ret+16(FP) <span style="color:#999;font-style:italic"># 保存结果</span>
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 addX 函数</span>
-TEXT ·addX(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-24
-    MOVQ a+0(FP), AX
-    MOVQ b+8(FP), BX
-    ADDQ BX, AX
-    MOVQ <span style="color:#40ffff">$x</span>(SB), BX <span style="color:#999;font-style:italic"># 读取全局变量 x 的地址</span>
-    MOVQ 0(BX), BX  <span style="color:#999;font-style:italic"># 读取全局变量 x 的值</span>
-    ADDQ BX, AX
-    MOVQ AX, ret+16(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 sub 函数</span>
-TEXT ·sub(SB), NOSPLIT, <span style="color:#40ffff">$0</span>-24
-    MOVQ a+0(FP), AX
-    MOVQ b+8(FP), BX
-    SUBQ BX, AX    // AX -= BX
-    MOVQ AX, ret+16(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 mul 函数</span>
-TEXT ·mul(SB), NOSPLIT, <span style="color:#40ffff">$0</span>-24
-    MOVQ  a+0(FP), AX
-    MOVQ  b+8(FP), BX
-    IMULQ BX, AX    <span style="color:#999;font-style:italic"># AX *= BX</span>
-    MOVQ  AX, ret+16(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 length 函数</span>
-TEXT ·length(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-16
-    MOVQ text+0(FP), AX
-    MOVQ Text_Length(AX), AX <span style="color:#999;font-style:italic"># 通过字段在结构体中的偏移量读取字段值</span>
-    MOVQ AX, ret+8(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 sizeOfTextStruct 函数</span>
-TEXT ·sizeOfTextStruct(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-8
-    MOVQ <span style="color:#40ffff">$Text__size</span>, AX // 保存结构体的大小到 AX 寄存器
-    MOVQ AX, ret+0(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 getAge 函数</span>
-TEXT ·getAge(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
-    MOVQ age(SB), AX
-    MOVQ AX, ret+0(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 getPI 函数</span>
-TEXT ·getPI(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-8
-    MOVQ pi(SB), AX
-    MOVQ AX, ret+0(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 getBirthYear 函数</span>
-TEXT ·getBirthYear(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
-    MOVQ birthYear(SB), AX
-    MOVQ AX, ret+0(FP)
-    RET
-
-<span style="color:#999;font-style:italic"># 实现了 getVersion 函数</span>
-TEXT ·getVersion(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
-    MOVQ ·version(SB), AX
-    MOVQ AX, ret+0(FP)
-    RET
-
-DATA  x+0(SB)/8, <span style="color:#40ffff">$10</span>    <span style="color:#999;font-style:italic"># 初始化全局变量 x, 赋值为 10</span>
-GLOBL x(SB), RODATA, <span style="color:#40ffff">$8</span> <span style="color:#999;font-style:italic"># 声明全局变量 x, GLOBL 必须跟在 DATA 指令之后</span>
-
-DATA age+0x00(SB)/4, <span style="color:#40ffff">$18</span>
-GLOBL age(SB), RODATA, <span style="color:#40ffff">$4</span>
-
-DATA pi+0(SB)/8, <span style="color:#40ffff">$3</span>.1415926
-GLOBL pi(SB), RODATA, <span style="color:#40ffff">$8</span>
-
-DATA birthYear+0(SB)/4, <span style="color:#40ffff">$1992</span>
-GLOBL birthYear(SB), RODATA, <span style="color:#40ffff">$4</span>
-
-<span style="color:#999;font-style:italic"># 最后一行的空行是必须的，否则报错 unexpected EOF; 或者在最后一行代码末尾加分号 ;</span>
-</code></pre></div><h3 id="运行输出">运行输出</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell"><span style="color:#999;font-style:italic"># 注意这里要以当前包为运行路径，因为要包含 main.s 汇编文件</span>
-$ go run ./
-
-<span style="color:#999;font-style:italic"># 输出结果如下</span>
-
-<span style="color:#3677a9">3</span>
-<span style="color:#3677a9">13</span>
-<span style="color:#3677a9">5</span>
-<span style="color:#3677a9">50</span>
-&amp;{Go <span style="color:#3677a9">0</span> 1024}
-<span style="color:#3677a9">1024</span>
-<span style="color:#3677a9">32</span>
-<span style="color:#3677a9">32</span>
-<span style="color:#3677a9">18</span>
-+3.141593e+000
-<span style="color:#3677a9">1992</span>
-+1.000000e+000
-</code></pre></div><h2 id="小结">小结</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">#include &#34;textflag.h&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#include &#34;go_asm.h&#34; // 该文件编译时自动生成</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 add 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·add(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-24
+</span></span><span style="display:flex;"><span>    MOVQ a+0(FP), AX <span style="color:#999;font-style:italic"># 读取第一个参数</span>
+</span></span><span style="display:flex;"><span>    MOVQ b+8(FP), BX <span style="color:#999;font-style:italic"># 读取第二个参数</span>
+</span></span><span style="display:flex;"><span>    ADDQ BX, AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+16(FP) <span style="color:#999;font-style:italic"># 保存结果</span>
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 addX 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·addX(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-24
+</span></span><span style="display:flex;"><span>    MOVQ a+0(FP), AX
+</span></span><span style="display:flex;"><span>    MOVQ b+8(FP), BX
+</span></span><span style="display:flex;"><span>    ADDQ BX, AX
+</span></span><span style="display:flex;"><span>    MOVQ <span style="color:#40ffff">$x</span>(SB), BX <span style="color:#999;font-style:italic"># 读取全局变量 x 的地址</span>
+</span></span><span style="display:flex;"><span>    MOVQ 0(BX), BX  <span style="color:#999;font-style:italic"># 读取全局变量 x 的值</span>
+</span></span><span style="display:flex;"><span>    ADDQ BX, AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+16(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 sub 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·sub(SB), NOSPLIT, <span style="color:#40ffff">$0</span>-24
+</span></span><span style="display:flex;"><span>    MOVQ a+0(FP), AX
+</span></span><span style="display:flex;"><span>    MOVQ b+8(FP), BX
+</span></span><span style="display:flex;"><span>    SUBQ BX, AX    // AX -= BX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+16(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 mul 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·mul(SB), NOSPLIT, <span style="color:#40ffff">$0</span>-24
+</span></span><span style="display:flex;"><span>    MOVQ  a+0(FP), AX
+</span></span><span style="display:flex;"><span>    MOVQ  b+8(FP), BX
+</span></span><span style="display:flex;"><span>    IMULQ BX, AX    <span style="color:#999;font-style:italic"># AX *= BX</span>
+</span></span><span style="display:flex;"><span>    MOVQ  AX, ret+16(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 length 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·length(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-16
+</span></span><span style="display:flex;"><span>    MOVQ text+0(FP), AX
+</span></span><span style="display:flex;"><span>    MOVQ Text_Length(AX), AX <span style="color:#999;font-style:italic"># 通过字段在结构体中的偏移量读取字段值</span>
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+8(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 sizeOfTextStruct 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·sizeOfTextStruct(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-8
+</span></span><span style="display:flex;"><span>    MOVQ <span style="color:#40ffff">$Text__size</span>, AX // 保存结构体的大小到 AX 寄存器
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+0(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 getAge 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·getAge(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
+</span></span><span style="display:flex;"><span>    MOVQ age(SB), AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+0(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 getPI 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·getPI(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-8
+</span></span><span style="display:flex;"><span>    MOVQ pi(SB), AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+0(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 getBirthYear 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·getBirthYear(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
+</span></span><span style="display:flex;"><span>    MOVQ birthYear(SB), AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+0(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 实现了 getVersion 函数</span>
+</span></span><span style="display:flex;"><span>TEXT ·getVersion(SB),NOSPLIT,<span style="color:#40ffff">$0</span>-4
+</span></span><span style="display:flex;"><span>    MOVQ ·version(SB), AX
+</span></span><span style="display:flex;"><span>    MOVQ AX, ret+0(FP)
+</span></span><span style="display:flex;"><span>    RET
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>DATA  x+0(SB)/8, <span style="color:#40ffff">$10</span>    <span style="color:#999;font-style:italic"># 初始化全局变量 x, 赋值为 10</span>
+</span></span><span style="display:flex;"><span>GLOBL x(SB), RODATA, <span style="color:#40ffff">$8</span> <span style="color:#999;font-style:italic"># 声明全局变量 x, GLOBL 必须跟在 DATA 指令之后</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>DATA age+0x00(SB)/4, <span style="color:#40ffff">$18</span>
+</span></span><span style="display:flex;"><span>GLOBL age(SB), RODATA, <span style="color:#40ffff">$4</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>DATA pi+0(SB)/8, <span style="color:#40ffff">$3</span>.1415926
+</span></span><span style="display:flex;"><span>GLOBL pi(SB), RODATA, <span style="color:#40ffff">$8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>DATA birthYear+0(SB)/4, <span style="color:#40ffff">$1992</span>
+</span></span><span style="display:flex;"><span>GLOBL birthYear(SB), RODATA, <span style="color:#40ffff">$4</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 最后一行的空行是必须的，否则报错 unexpected EOF; 或者在最后一行代码末尾加分号 ;</span>
+</span></span></code></pre></div><h3 id="运行输出">运行输出</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 注意这里要以当前包为运行路径，因为要包含 main.s 汇编文件</span>
+</span></span><span style="display:flex;"><span>$ go run ./
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出结果如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">13</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">50</span>
+</span></span><span style="display:flex;"><span>&amp;{Go <span style="color:#3677a9">0</span> 1024}
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">32</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">32</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">18</span>
+</span></span><span style="display:flex;"><span>+3.141593e+000
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1992</span>
+</span></span><span style="display:flex;"><span>+1.000000e+000
+</span></span></code></pre></div><h2 id="小结">小结</h2>
 <p>本文介绍了 <code>Go 汇编语言</code> 的基础，包括变量/常量、分支/循环、函数，读者可以根据 <strong>综合示例</strong> 的代码来编写一些简单的小程序。
 如果读者希望深入学习或者通过汇编来优化已有的 <code>Go</code> 语言程序，可以参考下面的链接列表。</p>
 <h2 id="reference">Reference</h2>

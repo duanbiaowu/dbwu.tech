@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 内存模型" />
 <meta property="og:description" content="为什么要学习 Go 内存模型？ 因为这是理解和掌握 Go 并发编程的基础，也是学习 Go 标准库底层源码实现的前提。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/memory_model/" />
-<meta property="article:published_time" content="2023-02-24T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-02-24T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/memory_model/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-24T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-24T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 内存模型"/>
 <meta name="twitter:description" content="为什么要学习 Go 内存模型？ 因为这是理解和掌握 Go 并发编程的基础，也是学习 Go 标准库底层源码实现的前提。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -158,52 +158,52 @@
 <h3 id="goroutine-构造">goroutine 构造</h3>
 <p><code>内存模型</code> 保证启动新 <code>goroutine</code> 的 <code>go</code> 语句会在 <code>goroutine</code> 内部语句执行之前完成。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
-	<span style="color:#24909d">print</span>(a)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">hello</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
-}
-</code></pre></div><p>调用 hello 将在将来某一时刻打印 &ldquo;hello, world&rdquo;（也可能在 hello 返回之后打印）。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">hello</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>调用 hello 将在将来某一时刻打印 &ldquo;hello, world&rdquo;（也可能在 hello 返回之后打印）。</p>
 <h3 id="goroutine-销毁">goroutine 销毁</h3>
 <p><code>内存模型</code> 不保证 <code>goroutine</code> 的退出发生在程序中的任何事件之前。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">hello</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() { a = <span style="color:#ed9d13">&#34;hello&#34;</span> }()
-	<span style="color:#24909d">print</span>(a)
-}
-</code></pre></div><p>对 a 的赋值之后没有任何同步事件，因此不能保证任何其他 <code>goroutine</code> 都看到更新后的 a 的值。事实上，激进的编译器可能会删除整个 <code>go func() ...</code> 语句。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">hello</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() { a = <span style="color:#ed9d13">&#34;hello&#34;</span> }()
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>对 a 的赋值之后没有任何同步事件，因此不能保证任何其他 <code>goroutine</code> 都看到更新后的 a 的值。事实上，激进的编译器可能会删除整个 <code>go func() ...</code> 语句。</p>
 <p>如果一个 <code>goroutine</code> 的结果必须被另一个 <code>goroutine</code> 看到，必须使用同步机制（例如锁或通道通信）来建立相对顺序。</p>
 <h3 id="channel-通信">channel 通信</h3>
 <p><code>channel</code> 通信是 <code>goroutine</code> 之间同步的主要方式，特定 <code>channel</code> 上的发送和接收是一一对应的，通常在不同的 <code>goroutine</code> 上进行。</p>
 <p><code>channel</code> 的发送操作发生在对应的接收操作完成之前 (happens before)。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> c = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#3677a9">10</span>)
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	c &lt;- <span style="color:#3677a9">0</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
-	&lt;-c
-	<span style="color:#24909d">print</span>(a)
-}
-</code></pre></div><p>程序确保打印 &ldquo;hello world&rdquo; :</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> c = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#3677a9">10</span>)
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	c &lt;- <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>	&lt;-c
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>程序确保打印 &ldquo;hello world&rdquo; :</p>
 <ul>
 <li>对 a 的写操作发生在 c 的发送操作之前 (happens before)</li>
 <li>c 的发送操作发生在 c 的接收操作完成之前 (happens before)</li>
@@ -213,22 +213,22 @@
 <p>在前面的示例中，将 c &lt;- 0 替换为 close(c), 程序的行为不会发生变化。</p>
 <p><strong>unbuffered channel 的接收操作发生在发送操作完成之前 (happens before)</strong>。</p>
 <p>如下代码所示（和上面的程序差不多，但交换了发送和接收语句并使用了一个 <code>unbuffered channel</code>）：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> c = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>)
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	&lt;-c
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
-	c &lt;- <span style="color:#3677a9">0</span>
-	<span style="color:#24909d">print</span>(a)
-}
-</code></pre></div><p>这段代码同样能保证最终输出 &ldquo;hello, world&rdquo;:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> c = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	&lt;-c
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>	c &lt;- <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这段代码同样能保证最终输出 &ldquo;hello, world&rdquo;:</p>
 <ul>
 <li>对 a 的写入发生在 c 的之前 (happens before)</li>
 <li>c 的接收操作发生在 c 的发送操作完成之前</li>
@@ -240,41 +240,41 @@
 用 <code>channel</code> 里面的元素数量来代表当前正在使用的资源数量，<code>channel</code> 的容量表示同时可以使用的最大资源数量。当申请信号量时，就往 <code>channel</code> 中发送一个元素，
 释放信号量时就从 <code>channel</code> 中接收一个元素，这是限制并发的常用操作。</p>
 <p>下面的程序为 <code>work</code> 列表中的每个元素启动一个 <code>goroutine</code>，并使用名字 limit 的 <code>channel</code> 来协调协程，保证同一时刻最多有三个方法在执行 。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> limit = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#3677a9">3</span>)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">for</span> _, w := <span style="color:#6ab825;font-weight:bold">range</span> work {
-		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(w <span style="color:#6ab825;font-weight:bold">func</span>()) {
-			limit &lt;- <span style="color:#3677a9">1</span>
-			<span style="color:#447fcf">w</span>()
-			&lt;-limit
-		}(w)
-	}
-	<span style="color:#6ab825;font-weight:bold">select</span>{}
-}
-</code></pre></div><h3 id="锁">锁</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> limit = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, w := <span style="color:#6ab825;font-weight:bold">range</span> work {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(w <span style="color:#6ab825;font-weight:bold">func</span>()) {
+</span></span><span style="display:flex;"><span>			limit &lt;- <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">w</span>()
+</span></span><span style="display:flex;"><span>			&lt;-limit
+</span></span><span style="display:flex;"><span>		}(w)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">select</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="锁">锁</h3>
 <p><code>sync</code> 包实现了两种锁数据类型，<code>sync.Mutex</code> 和 <code>sync.RWMutex</code>。</p>
 <p><strong>对于任何 <code>sync.Mutex</code> 或 <code>sync.RWMutex</code> 变量 l，在 n &lt; m 的条件下，对 <code>l.Unlock()</code> 的第 n 次调用发生在 <code>l.Lock()</code> 的第 m 次调用的返回之前 (happens before)</strong>。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> l sync.Mutex
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	l.<span style="color:#447fcf">Unlock</span>()
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	l.<span style="color:#447fcf">Lock</span>()
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
-	l.<span style="color:#447fcf">Lock</span>()
-	<span style="color:#24909d">print</span>(a)
-}
-</code></pre></div><p>上面的代码保证会输出 &ldquo;hello, world&rdquo;:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> l sync.Mutex
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	l.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	l.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>	l.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上面的代码保证会输出 &ldquo;hello, world&rdquo;:</p>
 <ul>
 <li><code>l.Unlock()</code> 的第一次调用 (在 f() 内) 发生在第二次调用 <code>l.lock()</code> 返回之前 (在 main) (happens before)</li>
 <li>第二次调用 <code>l.lock()</code> 发生在 print(a) 之前 (happens before)</li>
@@ -286,25 +286,25 @@
 但只有一个会运行 f()，而其他调用将阻塞直到 f() 返回。</p>
 <p><code>once.Do(f)</code> 中 f() 将会在所有的 <code>once.Do(f)</code> 返回之前返回 (happens before)。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-<span style="color:#6ab825;font-weight:bold">var</span> once sync.Once
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">doprint</span>() {
-	once.<span style="color:#447fcf">Do</span>(setup)
-	<span style="color:#24909d">print</span>(a)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">twoprint</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
-}
-</code></pre></div><p><code>twoprint</code> 只会调用一次 <code>setup</code>。 <code>setup</code> 将在调用 print 之前完成，结果是 &ldquo;hello, world&rdquo; 被打印两次。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> once sync.Once
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">doprint</span>() {
+</span></span><span style="display:flex;"><span>	once.<span style="color:#447fcf">Do</span>(setup)
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">twoprint</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>twoprint</code> 只会调用一次 <code>setup</code>。 <code>setup</code> 将在调用 print 之前完成，结果是 &ldquo;hello, world&rdquo; 被打印两次。</p>
 <h3 id="atomic-values">Atomic Values</h3>
 <p><code>sync/atomic</code> 包中的 API 统称为 &ldquo;原子操作&rdquo;，可用于同步不同 <code>goroutine</code> 的执行。如果原子操作 A 的效果被原子操作 B 读取到，
 那么 A 在 B 之前同步，程序中执行的所有原子操作的行为就像顺序执行一样。</p>
@@ -315,89 +315,89 @@
 <h2 id="错误的同步">错误的同步</h2>
 <p>存在竞态的程序是不正确的，并且可以表现出非顺序一致的执行。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> a, b <span style="color:#6ab825;font-weight:bold">int</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
-	a = <span style="color:#3677a9">1</span>
-	b = <span style="color:#3677a9">2</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">g</span>() {
-	<span style="color:#24909d">print</span>(b)
-	<span style="color:#24909d">print</span>(a)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
-	<span style="color:#447fcf">g</span>()
-}
-</code></pre></div><p>g() 可能会发生先输出 2 再输出 0 的情况。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a, b <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">f</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	b = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">g</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(b)
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">g</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>g() 可能会发生先输出 2 再输出 0 的情况。</p>
 <p>双重检查锁定是一种避免同步开销的尝试，如下代码所示，<code>twoprint</code> 程序可能被错误地写成：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-<span style="color:#6ab825;font-weight:bold">var</span> done <span style="color:#6ab825;font-weight:bold">bool</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	done = <span style="color:#6ab825;font-weight:bold">true</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">doprint</span>() {
-	<span style="color:#6ab825;font-weight:bold">if</span> !done {
-		once.<span style="color:#447fcf">Do</span>(setup)
-	}
-	<span style="color:#24909d">print</span>(a)
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">twoprint</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
-}
-</code></pre></div><p>在 <code>doprint</code> 内，即使读取到了 done 变量被更新为 true，也并不能保证 a 变量被更新为 &ldquo;hello, world&rdquo; 了。因此上面的程序可能会打印出一个空字符串。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> done <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	done = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">doprint</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !done {
+</span></span><span style="display:flex;"><span>		once.<span style="color:#447fcf">Do</span>(setup)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">twoprint</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">doprint</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>在 <code>doprint</code> 内，即使读取到了 done 变量被更新为 true，也并不能保证 a 变量被更新为 &ldquo;hello, world&rdquo; 了。因此上面的程序可能会打印出一个空字符串。</p>
 <p>下面是一段忙等待的代码，它的原本目的是：无限循环，直至变量 a 被赋值。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
-<span style="color:#6ab825;font-weight:bold">var</span> done <span style="color:#6ab825;font-weight:bold">bool</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
-	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	done = <span style="color:#6ab825;font-weight:bold">true</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">setup</span>()
-	<span style="color:#6ab825;font-weight:bold">for</span> !done {
-	}
-	<span style="color:#24909d">print</span>(a)
-}
-</code></pre></div><p>和上面一样，读取到 done 的写操作并不能表示能读取到对 a 的写操作，所以这段代码也可能会打印出一个空白的字符串。更糟的是，
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> a <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> done <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
+</span></span><span style="display:flex;"><span>	a = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	done = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">setup</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !done {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(a)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>和上面一样，读取到 done 的写操作并不能表示能读取到对 a 的写操作，所以这段代码也可能会打印出一个空白的字符串。更糟的是，
 由于不能保证 done 的写操作一定会被 main 读取到，main 可能会进入无限循环。</p>
 <p>如下代码所示:</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">type</span> T <span style="color:#6ab825;font-weight:bold">struct</span> {
-	msg <span style="color:#6ab825;font-weight:bold">string</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">var</span> g *T
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
-	t := <span style="color:#24909d">new</span>(T)
-	t.msg = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
-	g = t
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">setup</span>()
-	<span style="color:#6ab825;font-weight:bold">for</span> g == <span style="color:#6ab825;font-weight:bold">nil</span> {
-	}
-	<span style="color:#24909d">print</span>(g.msg)
-}
-</code></pre></div><p>即使 main 读取到 g != nil 并退出循环，也不能保证它会读取到 g.msg 的初始化值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> T <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	msg <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> g *T
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">setup</span>() {
+</span></span><span style="display:flex;"><span>	t := <span style="color:#24909d">new</span>(T)
+</span></span><span style="display:flex;"><span>	t.msg = <span style="color:#ed9d13">&#34;hello, world&#34;</span>
+</span></span><span style="display:flex;"><span>	g = t
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">setup</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> g == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">print</span>(g.msg)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>即使 main 读取到 g != nil 并退出循环，也不能保证它会读取到 g.msg 的初始化值。</p>
 <blockquote>
 <p>在刚才所有这些示例代码中，问题的解决方案都是相同的：使用显式同步。</p>
 </blockquote>
@@ -406,59 +406,59 @@
 尤其是编译器不得引入原始程序中不存在的写入操作，不得允许单个操作读取多个值，并且不得允许单次操作写入多个值。</p>
 <p>以下所有示例均假定 &ldquo;*p&rdquo; 和 &ldquo;*q&rdquo; 指的是多个 <code>goroutine</code> 都可读取的指针变量。</p>
 <p>不将数据竞态引入无竞态程序，意味着不将写入操作从它们出现的条件语句中移出。如下代码所示，编译器不得反转此程序中的条件：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">*p = <span style="color:#3677a9">1</span>
-<span style="color:#6ab825;font-weight:bold">if</span> cond {
-	*p = <span style="color:#3677a9">2</span>
-}
-</code></pre></div><p>也就是说，编译器不得将程序重写为以下代码：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">*p = <span style="color:#3677a9">2</span>
-<span style="color:#6ab825;font-weight:bold">if</span> !cond {
-    *p = <span style="color:#3677a9">1</span>
-}
-</code></pre></div><p>如果 <code>cond</code> 为 false，另一个 <code>goroutine</code> 正在读取 *p，那么在原来的程序中，另一个 <code>goroutine</code> 只能读取到 <code>*p</code> 等于 1。
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>*p = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> cond {
+</span></span><span style="display:flex;"><span>	*p = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>也就是说，编译器不得将程序重写为以下代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>*p = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> !cond {
+</span></span><span style="display:flex;"><span>    *p = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>如果 <code>cond</code> 为 false，另一个 <code>goroutine</code> 正在读取 *p，那么在原来的程序中，另一个 <code>goroutine</code> 只能读取到 <code>*p</code> 等于 1。
 在改写后的程序中，另一个 <code>goroutine</code> 可以读取到 2，这在以前是不可能的。</p>
 <p>不引入数据竞态也意味着假设循环不会终止，如下代码所示，编译器通常不得在该程序的循环之前移动对 <code>*p</code> 或 <code>*q</code> 的读取顺序：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">n := <span style="color:#3677a9">0</span>
-<span style="color:#6ab825;font-weight:bold">for</span> e := list; e != <span style="color:#6ab825;font-weight:bold">nil</span>; e = e.next {
-	n++
-}
-i := *p
-*q = <span style="color:#3677a9">1</span>
-</code></pre></div><p>如果 list 指向环形链表，那么原始程序将永远不会读取 <code>*p</code> 或 <code>*q</code>，但重写后的代码可以读取到。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>n := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">for</span> e := list; e != <span style="color:#6ab825;font-weight:bold">nil</span>; e = e.next {
+</span></span><span style="display:flex;"><span>	n++
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>i := *p
+</span></span><span style="display:flex;"><span>*q = <span style="color:#3677a9">1</span>
+</span></span></code></pre></div><p>如果 list 指向环形链表，那么原始程序将永远不会读取 <code>*p</code> 或 <code>*q</code>，但重写后的代码可以读取到。</p>
 <p>不引入数据竞态也意味着，假设被调用的函数可能不返回或没有同步操作，如下代码所示，编译器不得在该程序中的函数调用之前移动对 <code>*p</code> 或 <code>*q</code> 的读取。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#447fcf">f</span>()
-i := *p
-*q = <span style="color:#3677a9">1</span>
-</code></pre></div><p>如果调用永远不会返回，那么原始程序将永远读取不到 <code>*p</code> 或 <code>*q</code>，但重写后的代码可以读取到。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>i := *p
+</span></span><span style="display:flex;"><span>*q = <span style="color:#3677a9">1</span>
+</span></span></code></pre></div><p>如果调用永远不会返回，那么原始程序将永远读取不到 <code>*p</code> 或 <code>*q</code>，但重写后的代码可以读取到。</p>
 <p>不允许单次读取多个值，意味着不从共享内存中重新加载局部变量。如下代码所示，编译器不得丢弃变量 i 并再次从 <code>*p</code> 重新加载。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">i := *p
-<span style="color:#6ab825;font-weight:bold">if</span> i &lt; <span style="color:#3677a9">0</span> || i &gt;= <span style="color:#24909d">len</span>(funcs) {
-	<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;invalid function index&#34;</span>)
-}
-... complex code ...
-<span style="color:#999;font-style:italic">// compiler must NOT reload i = *p here
-</span><span style="color:#999;font-style:italic"></span>funcs[i]()
-</code></pre></div><p>如果复杂代码需要很多寄存器，单线程程序的编译器可以丢弃变量 i 而不保存副本，然后在 <code>funcs[i]()</code> 调用之前重新加载 <code>i = *p</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>i := *p
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> i &lt; <span style="color:#3677a9">0</span> || i &gt;= <span style="color:#24909d">len</span>(funcs) {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;invalid function index&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>... complex code ...
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// compiler must NOT reload i = *p here
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>funcs[i]()
+</span></span></code></pre></div><p>如果复杂代码需要很多寄存器，单线程程序的编译器可以丢弃变量 i 而不保存副本，然后在 <code>funcs[i]()</code> 调用之前重新加载 <code>i = *p</code>。</p>
 <p>不允许单次写入多个值，意味着在写入之前不使用局部变量的内存作为临时变量，如下代码所示，编译器不得在此程序中使用 <code>*p</code> 作为临时变量：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">*p = i + *p/<span style="color:#3677a9">2</span>
-</code></pre></div><p>也就是说，它不能将程序改写成这个：</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">*p /= <span style="color:#3677a9">2</span>
-*p += i
-</code></pre></div><p>如果 i 和 <code>*p</code> 开始等于 2，则原始代码确实 <code>*p</code> = 3，因此一个执行较快线程只能从 <code>*p</code> 中读取 2 或 3。
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>*p = i + *p/<span style="color:#3677a9">2</span>
+</span></span></code></pre></div><p>也就是说，它不能将程序改写成这个：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>*p /= <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>*p += i
+</span></span></code></pre></div><p>如果 i 和 <code>*p</code> 开始等于 2，则原始代码确实 <code>*p</code> = 3，因此一个执行较快线程只能从 <code>*p</code> 中读取 2 或 3。
 重写的代码执行 <code>*p</code> = 1，然后 <code>*p</code> = 3，从而允许竞态线程也读取 1。</p>
 <p>请注意，所有这些优化在 C/C++ 编译器中都是允许的：与 C/C++ 编译器共享后端的 Go 编译器必须注意禁用对 Go 无效的优化。
 如果编译器可以证明数据竞态不会影响目标平台上的正确执行，则不需要禁止引入数据竞态。如下代码所示，在大多数 CPU 上重写都是有效的。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">n := <span style="color:#3677a9">0</span>
-<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; m; i++ {
-	n += *shared
-}
-</code></pre></div><p>重写为</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">n := <span style="color:#3677a9">0</span>
-local := *shared
-<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; m; i++ {
-	n += local
-}
-</code></pre></div><p>前提是可以证明 <code>*shared</code> 不会出现读取出错，因为潜在的读取不会影响任何现有的并发读取或写入。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>n := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; m; i++ {
+</span></span><span style="display:flex;"><span>	n += *shared
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>重写为</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>n := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>local := *shared
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; m; i++ {
+</span></span><span style="display:flex;"><span>	n += local
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>前提是可以证明 <code>*shared</code> 不会出现读取出错，因为潜在的读取不会影响任何现有的并发读取或写入。</p>
 <h2 id="结论">结论</h2>
 <p><strong>当谈到有竞态的程序时，程序员和编译器都应该记住这个建议：不要自作聪明</strong>。</p>
 <h2 id="笔者寄语">笔者寄语</h2>

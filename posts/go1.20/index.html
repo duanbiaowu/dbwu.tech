@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 1.20 发布了" />
 <meta property="og:description" content="总体来说，Go 1.20 版本基本没有新的功能和特性，在旧的版本基础上，按图索骥即可。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/go1.20/" />
-<meta property="article:published_time" content="2023-02-11T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-02-11T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/go1.20/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-11T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 1.20 发布了"/>
 <meta name="twitter:description" content="总体来说，Go 1.20 版本基本没有新的功能和特性，在旧的版本基础上，按图索骥即可。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -135,90 +135,90 @@
 <li><code>unsafe</code> 包中添加了 <code>Slice</code>, <code>SliceData</code>, <code>String</code>, <code>StringData</code> 函数</li>
 </ul>
 <h3 id="切片转数组示例">切片转数组示例</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	sli := []<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>, <span style="color:#3677a9">3</span>, <span style="color:#3677a9">4</span>, <span style="color:#3677a9">5</span>}
-	arr := [<span style="color:#3677a9">5</span>]<span style="color:#24909d">int</span>(sli)
-	fmt.<span style="color:#447fcf">Println</span>(arr)
-}
-
-<span style="color:#999;font-style:italic">// 输出如下
-</span><span style="color:#999;font-style:italic">// [1 2 3 4 5]
-</span></code></pre></div><h3 id="unsafe-包中新增函数原型">unsafe 包中新增函数原型</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> unsafe
-
-<span style="color:#999;font-style:italic">// Slice 根据指针参数和长度参数构造一个切片并返回
-</span><span style="color:#999;font-style:italic">//       修改切片元素值会影响底层的数组元素值
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Slice</span>(ptr *ArbitraryType, len IntegerType) []ArbitraryType
-
-<span style="color:#999;font-style:italic">// SliceData 返回参数切片的指针
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">SliceData</span>(slice []ArbitraryType) *ArbitraryType
-
-<span style="color:#999;font-style:italic">// String 根据指针参数和长度参数构造一个字符串并返回
-</span><span style="color:#999;font-style:italic">//        修改参数指向的值会同时修改字符串的值
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">String</span>(ptr *<span style="color:#6ab825;font-weight:bold">byte</span>, len IntegerType) <span style="color:#6ab825;font-weight:bold">string</span>
-
-<span style="color:#999;font-style:italic">// StringData 返回参数字符串底层的字节数组指针
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">StringData</span>(str <span style="color:#6ab825;font-weight:bold">string</span>) *<span style="color:#6ab825;font-weight:bold">byte</span>
-</code></pre></div><p>下面是两个小例子，分别使用到了 <code>Slice</code> 函数和 <code>String</code> 函数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	sli := []<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>, <span style="color:#3677a9">3</span>, <span style="color:#3677a9">4</span>, <span style="color:#3677a9">5</span>}
+</span></span><span style="display:flex;"><span>	arr := [<span style="color:#3677a9">5</span>]<span style="color:#24909d">int</span>(sli)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(arr)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// [1 2 3 4 5]
+</span></span></span></code></pre></div><h3 id="unsafe-包中新增函数原型">unsafe 包中新增函数原型</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> unsafe
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Slice 根据指针参数和长度参数构造一个切片并返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//       修改切片元素值会影响底层的数组元素值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Slice</span>(ptr *ArbitraryType, len IntegerType) []ArbitraryType
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// SliceData 返回参数切片的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">SliceData</span>(slice []ArbitraryType) *ArbitraryType
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// String 根据指针参数和长度参数构造一个字符串并返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//        修改参数指向的值会同时修改字符串的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">String</span>(ptr *<span style="color:#6ab825;font-weight:bold">byte</span>, len IntegerType) <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// StringData 返回参数字符串底层的字节数组指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">StringData</span>(str <span style="color:#6ab825;font-weight:bold">string</span>) *<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span></code></pre></div><p>下面是两个小例子，分别使用到了 <code>Slice</code> 函数和 <code>String</code> 函数。</p>
 <h3 id="根据数组生成切片">根据数组生成切片</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;unsafe&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	arr := [<span style="color:#3677a9">5</span>]<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>, <span style="color:#3677a9">3</span>, <span style="color:#3677a9">4</span>, <span style="color:#3677a9">5</span>}
-	<span style="color:#999;font-style:italic">// 注意: 这里是传递首个元素的指针，而非数组的指针
-</span><span style="color:#999;font-style:italic"></span>	sli := unsafe.<span style="color:#447fcf">Slice</span>(&amp;arr[<span style="color:#3677a9">0</span>], <span style="color:#3677a9">3</span>)
-	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;slice = %+v, len = %d\n&#34;</span>, sli, <span style="color:#24909d">len</span>(sli))
-
-	<span style="color:#999;font-style:italic">// 修改切片元素的值会影响底层的数组
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> sli {
-		sli[i] *= <span style="color:#3677a9">100</span>
-	}
-	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;slice = %+v, len = %d\n&#34;</span>, sli, <span style="color:#24909d">len</span>(sli))
-	<span style="color:#999;font-style:italic">// 此时数组的元素值已经变化
-</span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;array = %+v, len = %d\n&#34;</span>, arr, <span style="color:#24909d">len</span>(arr))
-}
-
-
-<span style="color:#999;font-style:italic">// 运行输出如下
-</span><span style="color:#999;font-style:italic">// slice = [1 2 3], len = 3
-</span><span style="color:#999;font-style:italic">// slice = [100 200 300], len = 3
-</span><span style="color:#999;font-style:italic">// array = [100 200 300 4 5], len = 5
-</span></code></pre></div><h3 id="根据切片生成字符串">根据切片生成字符串</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;unsafe&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	bs := []<span style="color:#6ab825;font-weight:bold">byte</span>{<span style="color:#ed9d13">&#39;h&#39;</span>, <span style="color:#ed9d13">&#39;e&#39;</span>, <span style="color:#ed9d13">&#39;l&#39;</span>, <span style="color:#ed9d13">&#39;l&#39;</span>, <span style="color:#ed9d13">&#39;o&#39;</span>}
-	<span style="color:#999;font-style:italic">// 注意: 这里是传递首个元素的指针，而非切片的指针
-</span><span style="color:#999;font-style:italic"></span>	str := unsafe.<span style="color:#447fcf">String</span>(&amp;bs[<span style="color:#3677a9">0</span>], <span style="color:#3677a9">2</span>)
-	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;str = %s, len = %d\n&#34;</span>, str, <span style="color:#24909d">len</span>(str))
-
-	<span style="color:#999;font-style:italic">// 修改参数指向的值会同时修改字符串的值
-</span><span style="color:#999;font-style:italic"></span>	bs[<span style="color:#3677a9">1</span>] = <span style="color:#ed9d13">&#39;i&#39;</span>
-	
-	<span style="color:#999;font-style:italic">// 此时字符串的值已经变化
-</span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;str = %s, len = %d\n&#34;</span>, str, <span style="color:#24909d">len</span>(str))
-	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bs = %s, len = %d\n&#34;</span>, bs, <span style="color:#24909d">len</span>(str))
-}
-
-<span style="color:#999;font-style:italic">// 运行输出如下
-</span><span style="color:#999;font-style:italic">// str = he, len = 2 
-</span><span style="color:#999;font-style:italic">// str = hi, len = 2 
-</span><span style="color:#999;font-style:italic">// bs = hillo, len = 2
-</span></code></pre></div><h2 id="工具改进">工具改进</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;unsafe&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	arr := [<span style="color:#3677a9">5</span>]<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">1</span>, <span style="color:#3677a9">2</span>, <span style="color:#3677a9">3</span>, <span style="color:#3677a9">4</span>, <span style="color:#3677a9">5</span>}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注意: 这里是传递首个元素的指针，而非数组的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sli := unsafe.<span style="color:#447fcf">Slice</span>(&amp;arr[<span style="color:#3677a9">0</span>], <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;slice = %+v, len = %d\n&#34;</span>, sli, <span style="color:#24909d">len</span>(sli))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 修改切片元素的值会影响底层的数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> sli {
+</span></span><span style="display:flex;"><span>		sli[i] *= <span style="color:#3677a9">100</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;slice = %+v, len = %d\n&#34;</span>, sli, <span style="color:#24909d">len</span>(sli))
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 此时数组的元素值已经变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;array = %+v, len = %d\n&#34;</span>, arr, <span style="color:#24909d">len</span>(arr))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 运行输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// slice = [1 2 3], len = 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// slice = [100 200 300], len = 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// array = [100 200 300 4 5], len = 5
+</span></span></span></code></pre></div><h3 id="根据切片生成字符串">根据切片生成字符串</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;unsafe&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	bs := []<span style="color:#6ab825;font-weight:bold">byte</span>{<span style="color:#ed9d13">&#39;h&#39;</span>, <span style="color:#ed9d13">&#39;e&#39;</span>, <span style="color:#ed9d13">&#39;l&#39;</span>, <span style="color:#ed9d13">&#39;l&#39;</span>, <span style="color:#ed9d13">&#39;o&#39;</span>}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注意: 这里是传递首个元素的指针，而非切片的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	str := unsafe.<span style="color:#447fcf">String</span>(&amp;bs[<span style="color:#3677a9">0</span>], <span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;str = %s, len = %d\n&#34;</span>, str, <span style="color:#24909d">len</span>(str))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 修改参数指向的值会同时修改字符串的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bs[<span style="color:#3677a9">1</span>] = <span style="color:#ed9d13">&#39;i&#39;</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 此时字符串的值已经变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;str = %s, len = %d\n&#34;</span>, str, <span style="color:#24909d">len</span>(str))
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bs = %s, len = %d\n&#34;</span>, bs, <span style="color:#24909d">len</span>(str))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 运行输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// str = he, len = 2 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// str = hi, len = 2 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// bs = hillo, len = 2
+</span></span></span></code></pre></div><h2 id="工具改进">工具改进</h2>
 <ul>
 <li><code>cover</code> 工具可以收集整个程序的覆盖率，不仅仅是单元测试</li>
 <li><code>go build</code>、<code>go install</code> 和其他与构建相关的命令可以接收一个 <code>-pgo</code> 标志，启用配置文件引导优化，以及一个 <code>-cover </code>标志，用于整个程序覆盖率分析</li>
@@ -237,30 +237,30 @@
 <li><code>os/exec.Cmd</code> 结构体中的新字段 Cancel 和 WaitDelay, 指定 Cmd 在其关联的 Context 被取消或其进程退出时的回调</li>
 </ul>
 <h3 id="errorsjoin-示例">errors.Join 示例</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;errors&#34;</span>
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	err1 := errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;error1&#34;</span>)
-	err2 := errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;error2&#34;</span>)
-	err3 := errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;error3&#34;</span>)
-
-	err := errors.<span style="color:#447fcf">Join</span>(err1, err2, err3)
-	fmt.<span style="color:#447fcf">Println</span>(err)
-}
-</code></pre></div><h3 id="时间转换格式常量">时间转换格式常量</h3>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> time
-
-<span style="color:#6ab825;font-weight:bold">const</span> (
-	DateTime   = <span style="color:#ed9d13">&#34;2006-01-02 15:04:05&#34;</span>
-	DateOnly   = <span style="color:#ed9d13">&#34;2006-01-02&#34;</span>
-	TimeOnly   = <span style="color:#ed9d13">&#34;15:04:05&#34;</span>
-)
-</code></pre></div><h2 id="性能提升">性能提升</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;errors&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	err1 := errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;error1&#34;</span>)
+</span></span><span style="display:flex;"><span>	err2 := errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;error2&#34;</span>)
+</span></span><span style="display:flex;"><span>	err3 := errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;error3&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	err := errors.<span style="color:#447fcf">Join</span>(err1, err2, err3)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(err)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="时间转换格式常量">时间转换格式常量</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> time
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	DateTime   = <span style="color:#ed9d13">&#34;2006-01-02 15:04:05&#34;</span>
+</span></span><span style="display:flex;"><span>	DateOnly   = <span style="color:#ed9d13">&#34;2006-01-02&#34;</span>
+</span></span><span style="display:flex;"><span>	TimeOnly   = <span style="color:#ed9d13">&#34;15:04:05&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><h2 id="性能提升">性能提升</h2>
 <ul>
 <li>编译器和 GC 的优化减少了内存开销，并将 CPU 性能整体提高了 <code>2%</code></li>
 <li>针对编译时间进行了优化，提升了 <code>10%</code>。使得构建速度与 Go 1.17 保持一致 (恢复到了泛型之前的速度)</li>

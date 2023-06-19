@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 如何实现 implements 功能" />
 <meta property="og:description" content="Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/golang_implements/" />
-<meta property="article:published_time" content="2023-01-31T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-01-31T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_implements/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-01-31T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-01-31T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Go 如何实现 implements 功能"/>
 <meta name="twitter:description" content="Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -131,202 +131,202 @@
 通常将这种方式称为 <code>接口完整性检查</code>。</p>
 <h3 id="接口完整性检查">接口完整性检查</h3>
 <h4 id="类型未实现接口">类型未实现接口</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
-	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 强制类型 Martian 必须实现接口 Person 的所有方法
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> _ Person = (*Martian)(<span style="color:#6ab825;font-weight:bold">nil</span>)
-
-	<span style="color:#999;font-style:italic">// 1. 声明一个 _ 变量 (不使用)
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 2. 把一个 nil 转换为 (*Martian)，然后再转换为 Person
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 3. 如果 Martian 没有实现 Person 的全部方法，则转换失败，编译器报错
-</span><span style="color:#999;font-style:italic"></span>}
-</code></pre></div><p>运行代码</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-cannot use (*Martian)(nil) (value of <span style="color:#24909d">type</span> *Martian) as <span style="color:#24909d">type</span> Person in variable declaration:
-        *Martian does not implement Person (missing Age method)
-</code></pre></div><p>从输出的结果中可以看到，<code>Martian</code> 并没有实现 <code>Person</code> 接口，所以报错了。下面我们为 <code>Martian</code> 实现 <code>Person</code> 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 强制类型 Martian 必须实现接口 Person 的所有方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> _ Person = (*Martian)(<span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 1. 声明一个 _ 变量 (不使用)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 2. 把一个 nil 转换为 (*Martian)，然后再转换为 Person
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 3. 如果 Martian 没有实现 Person 的全部方法，则转换失败，编译器报错
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span>cannot use (*Martian)(nil) (value of <span style="color:#24909d">type</span> *Martian) as <span style="color:#24909d">type</span> Person in variable declaration:
+</span></span><span style="display:flex;"><span>        *Martian does not implement Person (missing Age method)
+</span></span></code></pre></div><p>从输出的结果中可以看到，<code>Martian</code> 并没有实现 <code>Person</code> 接口，所以报错了。下面我们为 <code>Martian</code> 实现 <code>Person</code> 接口。</p>
 <h4 id="类型实现了接口">类型实现了接口</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
-
-<span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
-	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
-}
-
-<span style="color:#999;font-style:italic">// 实现 Name 方法
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;martian&#34;</span>
-}
-
-<span style="color:#999;font-style:italic">// 实现 Age 方法
-</span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 此时 Martian 已实现了 Person 的全部方法
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> _ Person = (*Martian)(<span style="color:#6ab825;font-weight:bold">nil</span>)
-
-	m := &amp;Martian{}
-	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s, age = %d\n&#34;</span>, m.<span style="color:#447fcf">Name</span>(), m.<span style="color:#447fcf">Age</span>())
-}
-</code></pre></div><p>运行代码</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-<span style="color:#40ffff">name</span> = martian, <span style="color:#40ffff">age</span> = -1
-</code></pre></div><p>从输出的结果中可以看到，运行成功，<code>Martian</code>  已经实现了 <code>Person</code> 接口的全部方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 实现 Name 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;martian&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 实现 Age 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 此时 Martian 已实现了 Person 的全部方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> _ Person = (*Martian)(<span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	m := &amp;Martian{}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s, age = %d\n&#34;</span>, m.<span style="color:#447fcf">Name</span>(), m.<span style="color:#447fcf">Age</span>())
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">name</span> = martian, <span style="color:#40ffff">age</span> = -1
+</span></span></code></pre></div><p>从输出的结果中可以看到，运行成功，<code>Martian</code>  已经实现了 <code>Person</code> 接口的全部方法。</p>
 <h2 id="运行期间">运行期间</h2>
 <p>运行期间的检测方式主要有 <code>类型断言</code> 和 <code>反射</code>。</p>
 <h3 id="类型断言">类型断言</h3>
 <h4 id="类型未实现接口-1">类型未实现接口</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
-
-<span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
-	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 变量必须声明为 interface 类型
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> m <span style="color:#6ab825;font-weight:bold">interface</span>{}
-	m = &amp;Martian{}
-	<span style="color:#6ab825;font-weight:bold">if</span> v, ok := m.(Person); ok {
-		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s, age = %d\n&#34;</span>, v.<span style="color:#447fcf">Name</span>(), v.<span style="color:#447fcf">Age</span>())
-	} <span style="color:#6ab825;font-weight:bold">else</span> {
-		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;Martian does not implements Person&#34;</span>)
-	}
-}
-</code></pre></div><p>运行代码</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-Martian does not implements Person
-</code></pre></div><p>下面我们为 <code>Martian</code> 实现 <code>Person</code> 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 变量必须声明为 interface 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> m <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	m = &amp;Martian{}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v, ok := m.(Person); ok {
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s, age = %d\n&#34;</span>, v.<span style="color:#447fcf">Name</span>(), v.<span style="color:#447fcf">Age</span>())
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;Martian does not implements Person&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span>Martian does not implements Person
+</span></span></code></pre></div><p>下面我们为 <code>Martian</code> 实现 <code>Person</code> 接口。</p>
 <h4 id="类型实现了接口-1">类型实现了接口</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
-
-<span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
-	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;martian&#34;</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 变量必须声明为 interface 类型
-</span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> m <span style="color:#6ab825;font-weight:bold">interface</span>{}
-	m = &amp;Martian{}
-	<span style="color:#6ab825;font-weight:bold">if</span> v, ok := m.(Person); ok {
-		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s, age = %d\n&#34;</span>, v.<span style="color:#447fcf">Name</span>(), v.<span style="color:#447fcf">Age</span>())
-	}
-}
-</code></pre></div><p>运行代码</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-<span style="color:#40ffff">name</span> = martian, <span style="color:#40ffff">age</span> = -1
-</code></pre></div><p>从输出的结果中可以看到，运行成功，<code>Martian</code>  已经实现了 <code>Person</code> 接口的全部方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;martian&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 变量必须声明为 interface 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> m <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	m = &amp;Martian{}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v, ok := m.(Person); ok {
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s, age = %d\n&#34;</span>, v.<span style="color:#447fcf">Name</span>(), v.<span style="color:#447fcf">Age</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">name</span> = martian, <span style="color:#40ffff">age</span> = -1
+</span></span></code></pre></div><p>从输出的结果中可以看到，运行成功，<code>Martian</code>  已经实现了 <code>Person</code> 接口的全部方法。</p>
 <h3 id="反射">反射</h3>
 <p>通过 <code>reflect</code> 包提供的 API 来判断类型是否实现了某个接口。</p>
 <h4 id="类型未实现接口-2">类型未实现接口</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;reflect&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
-	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 获取 Person 类型
-</span><span style="color:#999;font-style:italic"></span>	p := reflect.<span style="color:#447fcf">TypeOf</span>((*Person)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>()
-
-	<span style="color:#999;font-style:italic">// 获取 Martian 结构体指针类型
-</span><span style="color:#999;font-style:italic"></span>	m := reflect.<span style="color:#447fcf">TypeOf</span>(&amp;Martian{})
-
-	<span style="color:#999;font-style:italic">// 判断 Martian 结构体类型是否实现了 Person 接口
-</span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(m.<span style="color:#447fcf">Implements</span>(p))
-}
-</code></pre></div><p>运行代码</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-<span style="color:#24909d">false</span>
-</code></pre></div><p>下面我们为 <code>Martian</code> 实现 <code>Person</code> 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;reflect&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Person 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p := reflect.<span style="color:#447fcf">TypeOf</span>((*Person)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Martian 结构体指针类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m := reflect.<span style="color:#447fcf">TypeOf</span>(&amp;Martian{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 Martian 结构体类型是否实现了 Person 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(m.<span style="color:#447fcf">Implements</span>(p))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">false</span>
+</span></span></code></pre></div><p>下面我们为 <code>Martian</code> 实现 <code>Person</code> 接口。</p>
 <h4 id="类型实现了接口-2">类型实现了接口</h4>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#6ab825;font-weight:bold">package</span> main
-
-<span style="color:#6ab825;font-weight:bold">import</span> (
-	<span style="color:#ed9d13">&#34;fmt&#34;</span>
-	<span style="color:#ed9d13">&#34;reflect&#34;</span>
-)
-
-<span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
-	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
-	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;martian&#34;</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
-	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
-}
-
-<span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
-	<span style="color:#999;font-style:italic">// 获取 Person 类型
-</span><span style="color:#999;font-style:italic"></span>	p := reflect.<span style="color:#447fcf">TypeOf</span>((*Person)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>()
-
-	<span style="color:#999;font-style:italic">// 获取 Martian 结构体指针类型
-</span><span style="color:#999;font-style:italic"></span>	m := reflect.<span style="color:#447fcf">TypeOf</span>(&amp;Martian{})
-
-	<span style="color:#999;font-style:italic">// 判断 Martian 结构体类型是否实现了 Person 接口
-</span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(m.<span style="color:#447fcf">Implements</span>(p))
-}
-</code></pre></div><p>运行代码</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">$ go run main.go
-<span style="color:#999;font-style:italic">## 输出如下</span> 
-<span style="color:#24909d">true</span>
-</code></pre></div><h2 id="小结">小结</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;reflect&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Person <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Martian <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;martian&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Martian) <span style="color:#447fcf">Age</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Person 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p := reflect.<span style="color:#447fcf">TypeOf</span>((*Person)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Martian 结构体指针类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m := reflect.<span style="color:#447fcf">TypeOf</span>(&amp;Martian{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 Martian 结构体类型是否实现了 Person 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(m.<span style="color:#447fcf">Implements</span>(p))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 输出如下 </span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">true</span>
+</span></span></code></pre></div><h2 id="小结">小结</h2>
 <p>Go 的接口实现检测机制分为 <code>编译期间</code> 和 <code>运行期间</code>，其中编译期间的检测方式是 <code>接口完整性检查</code>，
 而运行期间的检测方式有两种: <code>类型断言</code> 和 <code>反射</code>，一般情况尽量使用类型断言，这样可以避免反射带来的性能损耗。
 文中提到的几种检测方式语法都比较新 (nan) 奇 (kan) ，读者可以参考代码的注释部分帮助理解。</p>

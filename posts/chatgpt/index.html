@@ -11,15 +11,15 @@
 <link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="ChatGPT 初体验" />
 <meta property="og:description" content="概述 ChatGPT 从 2 月份热度一直持续到现在，并且在接下来的一段时间内，热度还会持续下去。笔者从 3 月初开始慢慢接触，从最初的在 搜索引擎 和 ChatGPT 之间来回切换并验证， 到目前的简单搜索场景 80% 的时间都是直接用 ChatGPT 的，本文总结下这一个月的时间，笔者用到的最多的 4 个功能。" />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://dbwu.tech/posts/chatgpt/" />
-<meta property="article:published_time" content="2023-04-03T00:00:00+08:00" />
-<meta property="article:modified_time" content="2023-04-03T00:00:00+08:00" />
+<meta property="og:url" content="https://dbwu.tech/posts/chatgpt/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-03T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-03T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="ChatGPT 初体验"/>
 <meta name="twitter:description" content="概述 ChatGPT 从 2 月份热度一直持续到现在，并且在接下来的一段时间内，热度还会持续下去。笔者从 3 月初开始慢慢接触，从最初的在 搜索引擎 和 ChatGPT 之间来回切换并验证， 到目前的简单搜索场景 80% 的时间都是直接用 ChatGPT 的，本文总结下这一个月的时间，笔者用到的最多的 4 个功能。"/>
 
-<meta name="generator" content="Hugo 0.68.3" />
+<meta name="generator" content="Hugo 0.113.0">
     
     <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
@@ -69,7 +69,7 @@
     <ul>
         
         <li>
-            <a class="" href="https://dbwu.tech/posts/">
+            <a class="active" href="https://dbwu.tech/posts/">
                 <i class="fa-li fa  fa-lg"></i><span>归档</span>
             </a>
         </li>
@@ -153,12 +153,12 @@
 <p><code>ChatGPT</code> 给出了很 &ldquo;专业&rdquo; 的 <code>表驱动测试法</code>。</p>
 <h2 id="自动化文档">自动化文档</h2>
 <p>这个功能可以帮助开发者省去很多编写 <code>文档注解</code> 的工作量。</p>
-<div class="highlight"><pre style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go">r.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/ping&#34;</span>, <span style="color:#6ab825;font-weight:bold">func</span>(c *gin.Context) {
-    c.<span style="color:#447fcf">JSON</span>(http.StatusOK, gin.H{
-      <span style="color:#ed9d13">&#34;message&#34;</span>: <span style="color:#ed9d13">&#34;pong&#34;</span>,
-    })
-})
-</code></pre></div><p>上面是一段接口示例代码，要求 <code>ChatGPT</code> 自动为其生成注解，下面是 <code>ChatGPT</code> 返回的结果:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>r.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/ping&#34;</span>, <span style="color:#6ab825;font-weight:bold">func</span>(c *gin.Context) {
+</span></span><span style="display:flex;"><span>    c.<span style="color:#447fcf">JSON</span>(http.StatusOK, gin.H{
+</span></span><span style="display:flex;"><span>      <span style="color:#ed9d13">&#34;message&#34;</span>: <span style="color:#ed9d13">&#34;pong&#34;</span>,
+</span></span><span style="display:flex;"><span>    })
+</span></span><span style="display:flex;"><span>})
+</span></span></code></pre></div><p>上面是一段接口示例代码，要求 <code>ChatGPT</code> 自动为其生成注解，下面是 <code>ChatGPT</code> 返回的结果:</p>
 <p><img src="https://dbwu.tech/images/chatgpt_res_4.png" alt="生成文档注解"></p>
 <p><code>ChatGPT</code> 不仅生成了注解，而且给出了一套 &ldquo;傻瓜式&rdquo; 操作指令，而且针对每个步骤以及生成的注解参数给出了详细的说明。</p>
 <h2 id="github-找项目">Github 找项目</h2>

@@ -1,0 +1,652 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>死锁、活锁、饥饿、自旋锁 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="死锁、活锁、饥饿、自旋锁" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/os_lock/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-06-19T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-06-19T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="死锁、活锁、饥饿、自旋锁"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>死锁、活锁、饥饿、自旋锁</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F">操作系统</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E9%94%81">锁</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="死锁">死锁</h2>
+<blockquote>
+<p>指两个或多个进程因互相持有对方所需的资源而处于等待状态，从而导致程序停止运行的现象。简单来说，在一个系统中，如果进程之间形成了一个循环依赖关系，那么就会发生死锁。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/deadlock.png" alt="图片来源: https://www.scientecheasy.com/2020/08/deadlock-in-java.html/"></p>
+<blockquote>
+<p>💡 本文所有代码实现语言为 Go, 其他语言的读者可以使用读伪代码的思路来阅读代码，主要目的在于理清逻辑主干，不必过度陷入细节。</p>
+</blockquote>
+<h3 id="四个必要条件">四个必要条件</h3>
+<ol>
+<li><strong>互斥</strong>：   同一时刻只能有一个进程占用资源，如果其他进程想要访问该资源必须等待</li>
+<li><strong>占有等待</strong>：进程已经持有了至少一个资源，并且正在等待其他资源。这意味着当一个进程被阻塞时，它仍然在持有至少一个资源</li>
+<li><strong>不可抢占</strong>：资源不能被强制性地释放，只能由占用它的进程主动释放</li>
+<li><strong>循环等待</strong>：存在一个等待循环队列，其中每个进程都在等待下一个进程所持有的资源</li>
+</ol>
+<h3 id="示例代码">示例代码</h3>
+<p>死锁应该是日常开发中遇到的最多的 “锁异常” 场景，例如在一个 <code>goroutine</code> 内部对同一个 <code>channel</code> 同时进行读写:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	ch &lt;- <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	&lt;-ch
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(ch)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>更多可能产生死锁的场景，可以参考 <a href="https://dbwu.tech/posts/golang_goroutine_leak/">之前的这篇文章</a>。</p>
+<h2 id="死锁处理方法">死锁处理方法</h2>
+<p>主要分为被动策略和主动策略。</p>
+<h3 id="被动策略">被动策略</h3>
+<h4 id="鸵鸟策略">鸵鸟策略</h4>
+<blockquote>
+<p>像鸵鸟一样，把头埋在沙子里，假装什么都没发生。</p>
+</blockquote>
+<p>因为要解决死锁问题付出的代价很高，鸵鸟策略这种不采取任务措施的方案反而会获得更高的性能。
+当发生死锁时不会对用户造成多大影响，或发生死锁的概率很低，可以采用鸵鸟策略。
+大多数操作系统，包括 Unix，Linux 和 Windows，处理死锁问题的办法仅仅是忽略它。</p>
+<h3 id="主动策略">主动策略</h3>
+<h4 id="预防死锁">预防死锁</h4>
+<p>针对死锁发生的四个必要条件，我们可以逆向操作，只要保证四个必要条件不同时发生，即可预防死锁的发生。</p>
+<p><strong>1. 破坏互斥条件</strong></p>
+<p>同一时刻允许多个线程占用某些资源，但是有互斥限制的场景中，资源往往就是需要独占的，例如打印机、全局计数器等。问题与解决方案形成了悖论，所以该方案并无实用性。</p>
+<p><strong>2. 破坏占有等待</strong></p>
+<p>实行资源预先分配策略，线程在运行前一次性地向系统申请它所需要的全部资源。如果某个线程所需的全部资源无法得到满足，则不分配任何资源，此线程不会运行。
+当系统能够满足线程的全部资源请求时，一次性地将所申请的资源全部分配到线程，此时线程拥有它运行所需的全部资源，所以不会发生占有资源同时又申请等待资源的现象，避免了死锁的发生。</p>
+<p><strong>3. 破坏不可抢占</strong></p>
+<p>允许线程抢占资源，当一个线程申请新的资源但不能立即被满足时，它必须释放占有的全部资源，之后再重新申请。
+它所释放的资源可以分配给其它线程，这就相当于该线程占有的资源被隐性抢占了，该方法实现较为困难并且会降低系统性能。</p>
+<p><strong>4. 破坏循环等待</strong></p>
+<p>实行资源有序分配，把所有资源先进行分类、编号、分配，使线程在申请资源时不会形成环形等待。
+所有线程对资源的请求必须严格按资源序号顺序分配，这样多个线程之间就不会产生资源循环等待 (因为每个线程都可以获取执行所需的全部资源)，从而预防了发生死锁。</p>
+<h4 id="避免死锁">避免死锁</h4>
+<p>在程序执行时，通过将各项操作转换为安全的序列化操作等方法来判断是否存在死锁，并在判断可能会发生死锁时采取预防措施，避免死锁的发生。</p>
+<h5 id="安全状态">安全状态</h5>
+<p><img src="https://dbwu.tech/images/deadlock_safe_state.jpeg" alt="安全状态"></p>
+<p>如图所示，每个表格第二列表示线程已拥有的资源数，第三列表示线程需要的所有资源数，“空闲数” 表示当前可以使用的资源数。</p>
+<p>具体的资源分配过程如下:</p>
+<ol>
+<li>初始状态下有 3 个可分配资源;</li>
+<li>给 B 分配 2 个资源，这样 B 就拥有执行所需的全部资源，此时剩余资源为 3 - 2 = 1;</li>
+<li>B 执行完成后释放其全部资源，此时剩余资源为 1 + 4 = 5;</li>
+<li>给 C 分配 5 个资源，这样 C 就拥有执行所需的全部资源，此时剩余资源为 5 - 5 = 0;</li>
+<li>C 执行完成后释放其全部资源，此时剩余资源为 0 + 7 = 7;</li>
+<li>给 A 分配 7 个资源，让 A 执行，程序结束;</li>
+</ol>
+<p>上述执行过程中的第 4 步，如果不是给 C 分配资源，而是给 A 分配资源，那么就无法保证安全状态从而进入死锁，感兴趣的读者可以改变表格数据来验证结果。</p>
+<h5 id="银行家算法">银行家算法</h5>
+<p>一个小城镇的银行家，向一群客户分别承诺了一定的贷款额度，算法要做的事情是:</p>
+<p><strong>判断贷款请求通过后，是否会进入不安全状态，如果不会进入不安全状态，就同意贷款请求，否则拒绝贷款请求</strong>。</p>
+<p><img src="https://dbwu.tech/images/deadlock_bank.png" alt="银行家算法"></p>
+<p>具体的资源分配过程如下:</p>
+<ol>
+<li>初始状态下有 10 个可分配资源;</li>
+<li>给 A, B, C, D 分配资源后，此时剩余资源为 10 - 8 = 2;</li>
+<li>此时不会进入不安全状态的唯一选择是将剩余的 2 个资源分配给 C ;</li>
+<li>如果分配到其他进程/线程，就会进入不安全状态，产生死锁;</li>
+<li>银行家算法必须能够正确检测到继续分配是否会产生死锁，并且提前拒绝分配 (如图 b 到图 c 的过程);</li>
+</ol>
+<p>在现实世界中，很少有操作系统使用银行家算法来避免死锁，因为很少有进程在运行前就知道其运行所需资源的最大值，而且进程数量也不是固定的，处于不断变化之中，
+除此之外，资源也可能变为不可用状态 (例如打印机离线、磁盘损坏等)。</p>
+<h4 id="检测死锁">检测死锁</h4>
+<p>在程序执行时，通过周期性地扫描资源分配情况来检测死锁的发生，并采取相应的措施消除死锁。</p>
+<blockquote>
+<p>不试图阻止死锁，而应当检测到死锁发生时，采取措施进行恢复。</p>
+</blockquote>
+<p><strong>1. 每种类型一个资源的死锁检测</strong></p>
+<p><img src="https://dbwu.tech/images/deadlock_check.png" alt="死锁检测"></p>
+<p>如图所示的资源分配中，方框表示资源，圆圈表示进程，<strong>资源指向进程表示该资源已经分配给该进程，进程指向资源表示进程请求获取该资源</strong>。</p>
+<p>图 b 是从图 a 剥离出来的环路图，满足了死锁条件中的循环，因此会发生死锁。</p>
+<p><strong>检测算法概述</strong>：通过检测是否存在有向环路来实现，从一个节点出发进行 DFS (深度优先搜索)，对访问过的节点进行标记，如果访问了已经标记的节点，就表示有向图存在环，也就是检测到了死锁。</p>
+<p><strong>2. 每种类型多个资源的死锁检测</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">##     A        B        C        D  </span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">##   磁带机    绘图仪    扫描仪     光驱</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">E</span> = (  <span style="color:#3677a9">4</span>        <span style="color:#3677a9">2</span>        <span style="color:#3677a9">3</span>        <span style="color:#3677a9">1</span>  )
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">A</span> = (  <span style="color:#3677a9">2</span>        <span style="color:#3677a9">1</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span>  )
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>     _                              _
+</span></span><span style="display:flex;"><span>    |  <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">1</span>        <span style="color:#3677a9">0</span>  |
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">C</span> = |  <span style="color:#3677a9">2</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">1</span>  |
+</span></span><span style="display:flex;"><span>    |  <span style="color:#3677a9">0</span>        <span style="color:#3677a9">1</span>        <span style="color:#3677a9">2</span>        <span style="color:#3677a9">0</span>  |
+</span></span><span style="display:flex;"><span>     -                              - 
+</span></span><span style="display:flex;"><span>     
+</span></span><span style="display:flex;"><span>     _                              _
+</span></span><span style="display:flex;"><span>    |  <span style="color:#3677a9">2</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">1</span>  |
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">R</span> = |  <span style="color:#3677a9">1</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">1</span>        <span style="color:#3677a9">0</span>  |
+</span></span><span style="display:flex;"><span>    |  <span style="color:#3677a9">2</span>        <span style="color:#3677a9">1</span>        <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span>  |
+</span></span><span style="display:flex;"><span>     -                              - 
+</span></span></code></pre></div><p>上面的代码示例中，有 3 个进程和 4 种资源:</p>
+<ul>
+<li>E 向量：资源总量</li>
+<li>A 向量：资源剩余量</li>
+<li>C 矩阵：每个进程所拥有的资源数量，每一行都代表 1 个进程拥有资源的数量</li>
+<li>R 矩阵：每个进程请求的资源数量</li>
+</ul>
+<p>通过对进程和资源的统计，可以获取到当前系统的状态:</p>
+<ul>
+<li>进程 P1 和 P2 所请求的资源都无法得到满足 (扫描仪和光驱已经没有剩余资源了);</li>
+<li>进程 P3 申请的资源可以完全满足;</li>
+<li>让进程 P3 先执行，完成之后释放其全部资源;</li>
+<li>此时资源 A = (2 2 2 0), 进程 P2 可以执行，完成之后释放其全部资源;</li>
+<li>此时资源 A = (4 2 2 1), 进程 P1 可以执行;</li>
+<li>所有进程全部得到执行并完成，没有产生死锁;</li>
+</ul>
+<p><strong>检测算法概述</strong>：</p>
+<p>每个进程初始时都不被标记，执行过程中有可能被标记，当算法结束时，任何没有被标记的进程说明内部产生了死锁。</p>
+<ol>
+<li>寻找一个还未标记的进程 Pi，它所请求的资源小于等于 A;</li>
+<li>如果找到相应的进程，那么将矩阵 C 的第 i 行向量加到 A 中，标记该进程，并返回到第一步继续执行;</li>
+<li>如果没有找到相应的进程，算法执行结束;</li>
+</ol>
+<h4 id="解除死锁">解除死锁</h4>
+<p>在死锁发生时，可以采用 <strong>kill 进程、抢占资源和回滚</strong> 等方法来解除死锁。</p>
+<h2 id="活锁">活锁</h2>
+<blockquote>
+<p>指线程无法取得需要的资源而一直重试的现象。与死锁不同，活锁中的线程不会被阻塞，它们会一直尝试获取资源，但是却一直失败，最终导致程序无法正常执行。</p>
+</blockquote>
+<p>举个生活中的小例子，两个人相向过马路，如果两人同时向一边谦让，那么两个人都过不去，紧接着两人同时又移到另一边，此时两个人依然过不去。
+如果不受其他因素干扰，两个人一直在同步移动，那么最终的结果就是两个人都没有前进，产生了活锁 (这个词很形象，两个人都被对象活活地锁住了)。</p>
+<h3 id="处理方法">处理方法</h3>
+<p><strong>1. 引入随机性</strong></p>
+<p>在代码中引入一定的随机性可以避免发生活锁，例如在重试的过程中，引入随机的休眠时间来中断死循环，让线程有机会释放资源并且重新获取资源。</p>
+<p><strong>2. 引入系统时间戳</strong></p>
+<p>通过比较系统时间戳来决定线程是否需要继续等待，因为多个线程获取到的时间戳 (系统时钟)不可能完全一致，可以在时间戳的基础上进行优先级排序，最后通过排序后的线程顺序进行调度。</p>
+<h3 id="示例代码-1">示例代码</h3>
+<p>刚才的小例子转换成代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync/atomic&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 使用一个互斥信号量来同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cond = sync.<span style="color:#447fcf">NewCond</span>(&amp;sync.Mutex{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 分别表示左右两个方向的计数器 (默认值为 0)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是说，两个人碰面时，为了给对方让路，会向左或向右移动
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	leftCnt, rightCnt <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 信号量加锁操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 两个人在移动方向时必须加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">takeStep</span>() {
+</span></span><span style="display:flex;"><span>	cond.L.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	cond.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>	cond.L.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 方向移动
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">move</span>(name, dir <span style="color:#6ab825;font-weight:bold">string</span>, cnt *<span style="color:#6ab825;font-weight:bold">int32</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%s 走到了 %v\n&#34;</span>, name, dir)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前方向计数器 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">AddInt32</span>(cnt, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">takeStep</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果当前计数器只被一个人修改过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明这个人移动了方向，但是对方未移动，此时可以让对方先走，程序直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">LoadInt32</span>(cnt) == <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 因为活锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 所以代码永远执行不到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%s 给对方让路成功 \n&#34;</span>, name)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">takeStep</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前方向计数器 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">AddInt32</span>(cnt, -<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">giveWay</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%s 尝试给对方让路 ... \n&#34;</span>, name)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 模拟三次双方互相让路
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">3</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">move</span>(name, <span style="color:#ed9d13">&#34;左边&#34;</span>, &amp;leftCnt) || <span style="color:#447fcf">move</span>(name, <span style="color:#ed9d13">&#34;右边&#34;</span>, &amp;rightCnt) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%v 无奈地说: 咱们可以停止互相给对方让路了，你先过！\n&#34;</span>, name)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 1 毫秒之后发出通知，释放锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> <span style="color:#6ab825;font-weight:bold">range</span> time.<span style="color:#447fcf">Tick</span>(<span style="color:#3677a9">1</span> * time.Millisecond) {
+</span></span><span style="display:flex;"><span>			cond.<span style="color:#447fcf">Broadcast</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 模拟两个人
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 小明和小红
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">giveWay</span>(<span style="color:#ed9d13">&#34;小明&#34;</span>)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">giveWay</span>(<span style="color:#ed9d13">&#34;小红&#34;</span>)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行上面的代码，可以看到输出结果和描述的活锁产生过程是一致的 (笔者加了一些分割线辅助阅读):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># go run main.go</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 你的输出和这里可能不完全一样，但是逻辑是一致的</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 双方第一次让路</span>
+</span></span><span style="display:flex;"><span>小红 尝试给对方让路 ... 
+</span></span><span style="display:flex;"><span>小红 走到了 左边
+</span></span><span style="display:flex;"><span>小明 尝试给对方让路 ... 
+</span></span><span style="display:flex;"><span>小明 走到了 左边
+</span></span><span style="display:flex;"><span>--------------------------------
+</span></span><span style="display:flex;"><span>小红 走到了 右边
+</span></span><span style="display:flex;"><span>小明 走到了 右边
+</span></span><span style="display:flex;"><span>--------------------------------
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 双方第二次让路</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>小红 走到了 左边
+</span></span><span style="display:flex;"><span>小明 走到了 左边
+</span></span><span style="display:flex;"><span>小红 走到了 右边
+</span></span><span style="display:flex;"><span>小明 走到了 右边
+</span></span><span style="display:flex;"><span>--------------------------------
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 双方第三次让路</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>小红 走到了 左边
+</span></span><span style="display:flex;"><span>小明 走到了 左边
+</span></span><span style="display:flex;"><span>小红 走到了 右边
+</span></span><span style="display:flex;"><span>小明 走到了 右边
+</span></span><span style="display:flex;"><span>--------------------------------
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 双方完成了第三次让路</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>小红 无奈地说: 咱们可以停止互相给对方让路了，你先过！
+</span></span><span style="display:flex;"><span>小明 无奈地说: 咱们可以停止互相给对方让路了，你先过！
+</span></span></code></pre></div><h2 id="自旋锁">自旋锁</h2>
+<blockquote>
+<p>是一种互斥锁的实现方式，当线程尝试获得一个锁时，如果发现这个锁已经被其他线程占用，它会不断地重复尝试获取锁，而不是放弃CPU的控制权。这个过程被称为自旋，它能够有效地减少线程切换的开销，提高锁的性能。
+自旋锁同时避免了进程上下文的调度开销，因此对于短时间内的线程阻塞场景是有效的。</p>
+</blockquote>
+<h3 id="示例代码-2">示例代码</h3>
+<p>最简单的实现就是直接在循环中不断尝试获取锁，代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	mu :=  sync.Mutex{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !mu.<span style="color:#447fcf">TryLock</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取到锁之后
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 执行某些操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>		mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>当然，这个简单的代码性能实在堪忧，我们可以将其优化一下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync/atomic&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> spinLock <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (sl *spinLock) <span style="color:#447fcf">lock</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !atomic.<span style="color:#447fcf">CompareAndSwapUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取到自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 释放自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (sl *spinLock) <span style="color:#447fcf">unlock</span>() {
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> sl spinLock
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">10</span>; i++ {
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(index <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			sl.<span style="color:#447fcf">lock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;index %d got spin lock\n&#34;</span>, index)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			sl.<span style="color:#447fcf">unlock</span>()
+</span></span><span style="display:flex;"><span>		}(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>除此之外，还可以了解一下标准库中的做法，在比如我们之前在 <a href="https://dbwu.tech/posts/golang_sync_mutex/">sync.Mutex 设计与实现一文中</a> 摘录的标准库中的自旋锁实现代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $GOROOT/src/runtime/proc.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sync_runtime_canSpin</span>(i <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> i &gt;= active_spin || ncpu &lt;= <span style="color:#3677a9">1</span> || gomaxprocs &lt;= <span style="color:#24909d">int32</span>(sched.npidle+sched.nmspinning)+<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> p := <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>(); !<span style="color:#447fcf">runqempty</span>(p) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="饿死-starvation">饿死 (Starvation)</h2>
+<p>饿死（Starvation）也称为饥饿，是指某个进程因无法获取所需资源而无法执行，一直处于等待状态的情况。</p>
+<blockquote>
+<p>饿死与死锁的差别在于: 死锁是由于多个进程/线程互相竞争资源造成的，饿死则是某个进程/线程无法获取资源造成的。</p>
+</blockquote>
+<h3 id="处理方法-1">处理方法</h3>
+<p><strong>1. 公平调度</strong></p>
+<p>使用公平性调度算法可以确保每个进程/线程都有机会获得所需资源，尤其是对于 CPU 调度来说，可采用先到先服务或者时间片轮转的方式，
+避免某个进程/线程一直占用资源，而其他进程/线程无法得到执行的情况。</p>
+<p><strong>2. 优先级反转</strong></p>
+<p>当一个低优先级的进程/线程占用了高优先级进程/线程所需资源时，高优先级进程/线程就会被迫等待，从而可能导致其饿死，可以使用 “优先级继承” 或 “优先级反转” 方法来避免这种情况发生。</p>
+<ul>
+<li><strong>优先级继承</strong> 指的是将低优先级进程/线程的优先级提升到高优先级进程/线程相同的级别，确保它们能够正常获得资源；</li>
+<li><strong>优先级反转</strong> 指的是将中间层低优先级的进程/线程优先级设置为高于最低优先级进程/线程的优先级，避免它们被最低优先级的进程/线程所阻塞；</li>
+</ul>
+<blockquote>
+<p>优先级反转的作用在于避免优先级继承可能引发的问题。</p>
+</blockquote>
+<p>下面举个小例子来说明这种情况:</p>
+<ul>
+<li>当前有三个进程 T1、T2、T3，T1 为高优先级进程，T2 为中间层进程，T3 为低优先级进程;</li>
+<li>T1 和 T3 都需要访问同一个资源;</li>
+<li>一开始 T1 获得了该资源，但在此期间 T3 进入运行队列，T2 也被调度执行;</li>
+<li>由于 T1 一直占用了该资源，因此 T2 无法获取所需的资源而进入等待状态;</li>
+</ul>
+<p>优先级翻转的解决方法是:</p>
+<ul>
+<li>在 T2 执行之前，将 T2 的优先级提升到 T3 的当前优先级 (因为此时 T3 已经进入运行队列);</li>
+<li>即使 T1 占用了 T2 所需要的资源，T2 也可以获得执行;</li>
+<li>在 T2 结束时，它的优先级被恢复到原始状态，以继续等待自身所依赖的资源;</li>
+</ul>
+<p><strong>3. 限制等待时间</strong></p>
+<p>当一个进程/线程等待的时间达到一定阈值之后，系统可以强制释放该进程/线程所占用的资源，以确保其他进程/线程也有机会获得这些资源。</p>
+<h3 id="示例代码-3">示例代码</h3>
+<p>我们可以使用两个 <code>goroutine</code> 来模拟 <code>饿死</code> 现象:</p>
+<ul>
+<li>第一个 goroutine 占用了很多的资源，所以代码可以执行更多的次数;</li>
+<li>第二个 goroutine 占用了很少的资源，所以代码只能执行很少的次数，甚至不执行;</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 单个 goroutine 执行总时长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	runtime = <span style="color:#3677a9">1</span> * time.Second
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 占用资源过多的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		count := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">//begin, end := time.Now(), time.Now().Add(time.Millisecond)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> begin := time.<span style="color:#447fcf">Now</span>(); time.<span style="color:#447fcf">Since</span>(begin) &lt;= runtime; {
+</span></span><span style="display:flex;"><span>			count++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 休眠时间 1 毫秒, 模拟占用资源多
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">1</span> * time.Millisecond)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;占用资源过多的 goroutine 执行了 %d 次\n&#34;</span>, count)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 占用资源很少的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		count := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> begin := time.<span style="color:#447fcf">Now</span>(); time.<span style="color:#447fcf">Since</span>(begin) &lt;= runtime; {
+</span></span><span style="display:flex;"><span>			count++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 休眠时间 10 微秒, 模拟占用资源少
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">1</span> * time.Nanosecond)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;占用资源很少的 goroutine 执行了 %d 次\n&#34;</span>, count)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行上面的代码，我们可以看到占用资源很少的 <code>goroutine</code> 获得资源 (执行的次数) 要远远低于占用资源过多的 <code>goroutine</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># go run main.go</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>占用资源很少的 goroutine 执行了 <span style="color:#3677a9">3951200</span> 次
+</span></span><span style="display:flex;"><span>占用资源过多的 goroutine 执行了 <span style="color:#3677a9">997</span> 次
+</span></span></code></pre></div><h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://book.douban.com/subject/27096665/">现代操作系统</a></li>
+<li><a href="https://book.douban.com/subject/26994591/">Concurrency in Go</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Deadlock">Deadlock</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Spinlock">Spinlock</a></li>
+<li><a href="https://www.zhihu.com/question/66733477">如何理解互斥锁、条件锁、读写锁以及自旋锁？</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_pool/"><i class="fa fa-chevron-circle-left"></i> sync.Pool Code Review</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="死锁、活锁、饥饿、自旋锁"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
