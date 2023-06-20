@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Mon, 19 Jun 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Tue, 20 Jun 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>布隆过滤器</title>
+       <link>https://dbwu.tech/posts/bloom_filter/</link>
+       <pubDate>Tue, 20 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/bloom_filter/</guid>
+       <description>布隆过滤器（英语：Bloom Filter）是 1970 年由布隆提出的，是一个很长的二进制向量和一系列随机映射函数。布隆过滤器可以用于检索一个元素是否在一个集合中。它的优点是空间效率和查询时间都远远超过一般的算法，缺点是有一定的误识别率和删除困难。</description>
+     </item>
    
      <item>
        <title>死锁、活锁、饥饿、自旋锁</title>
