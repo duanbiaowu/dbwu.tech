@@ -1,0 +1,624 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Go 线程安全 map 方案选型 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Go 语言标准库中的 map 数据类型并不是线程安全的，多个 goroutine 可以并发读取同一个 map, 但是不能并发写入同一个 map, 否则会引发 panic, 为了解决这个问题 &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 线程安全 map 方案选型" />
+<meta property="og:description" content="Go 语言标准库中的 map 数据类型并不是线程安全的，多个 goroutine 可以并发读取同一个 map, 但是不能并发写入同一个 map, 否则会引发 panic, 为了解决这个问题 &hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_thread_safe_map/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-06-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-06-25T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go 线程安全 map 方案选型"/>
+<meta name="twitter:description" content="Go 语言标准库中的 map 数据类型并不是线程安全的，多个 goroutine 可以并发读取同一个 map, 但是不能并发写入同一个 map, 否则会引发 panic, 为了解决这个问题 &hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Go 线程安全 map 方案选型</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>Go 语言标准库中的 map 数据类型并不是线程安全的，多个 <code>goroutine</code> 可以并发读取同一个 map, 但是不能并发写入同一个 map, 否则会引发 panic。</p>
+<p>为了解决这个问题，实际开发中通常会使用下面的三种方案中的一个或多个:</p>
+<ol>
+<li>通过 map 数据类型 + 锁 (互斥锁, 读写锁)</li>
+<li>标准库内置的 <code>sync.Map</code> 对象 (支持并发读写)</li>
+<li>分段锁</li>
+</ol>
+<p>作为补充，本文会顺带对比一下自旋锁和标准库中的互斥锁的性能差异，对于 map 数据类型及其操作原语来说，两者实现的功能保证是一致的，
+而且自旋锁更多的应用场景在无锁编程，所以文章末尾的基准测试不包含自旋锁 (当然，感兴趣的读者可以在本文基础上进行修改，自行对比测试结果)。</p>
+<p>💡 本文代码较多，对测试过程不感兴趣的读者可以直接跳转到文章末尾看结论。</p>
+<h2 id="读写锁和互斥锁">读写锁和互斥锁</h2>
+<p>标准库中的读写锁和互斥锁的性能差异及使用场景，在之前的 <a href="https://golang.dbwu.tech/performance/mutex/">这篇文章中</a> 已经有基础的说明，本文不再赘述。</p>
+<h2 id="自旋锁">自旋锁</h2>
+<p>基础概念在 <a href="https://dbwu.tech/posts/os_lock/">死锁、活锁、饥饿、自旋锁 一文中</a> 已经介绍过，这里不再赘述，其中自旋锁操作获取锁的核心代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (sl *spinLock) <span style="color:#447fcf">lock</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !atomic.<span style="color:#447fcf">CompareAndSwapUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取到自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上面的代码直观上很符合自旋锁的语义，只要没有获取到锁，就一直空转 CPU 尝试获取锁，但是这会带来一个问题: CPU 空转带来了很大的资源浪费，
+是否可以降低甚至避免这种资源浪费吗？</p>
+<p>一个显而易见的方法是在每两次获取锁的操作之间休眠一下，但是这样做会带来两个新的问题:</p>
+<ol>
+<li>延迟增加，本来也许下次获取锁就可以成功，但是现在必须等休眠结束才能继续获取锁</li>
+<li>引起上下文切换，因为当前 goroutine 休眠，根据 GMP 调取器的管理规则，处理器 P 会切换到其他可以运行的 goroutine, 如果当前 P 的 goroutine 队列已经是空的，
+那么会给当前 M 关联一个新的处理器，不管是哪种情况发生，都会引起上下文切换</li>
+</ol>
+<h3 id="优化版">优化版</h3>
+<p>看起来似乎没有完美的解决方案，笔者前两两天在阅读 <a href="https://github.com/panjf2000/ants">ants</a> 的源代码时，看到作者是这样处理自旋锁的:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> maxBackoff = <span style="color:#3677a9">16</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (sl *spinLock) <span style="color:#447fcf">Lock</span>() {
+</span></span><span style="display:flex;"><span>	backoff := <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !atomic.<span style="color:#447fcf">CompareAndSwapUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; backoff; i++ {
+</span></span><span style="display:flex;"><span>			runtime.<span style="color:#447fcf">Gosched</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> backoff &lt; maxBackoff {
+</span></span><span style="display:flex;"><span>			backoff &lt;&lt;= <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>作者借鉴了 TCP 流量控制中的指数退避理念，每两次获取锁的间隔时间呈指数级别增长，并且在间隔时间内执行 N 次 GMP 调取，当然这是根据该组件的场景特性决定的 (goroutine pool)，
+在实际项目中实现和使用自旋锁时，也可以根据具体的业务场景来自定义间隔时间内的操作，比如可以执行一个 CPU 密集型的任务，<strong>最终的目的只有一个: 尽可能榨干 CPU 资源</strong>。</p>
+<h3 id="基准测试">基准测试</h3>
+<p>首先来对标准库中的互斥锁、普通自旋锁、优化版自旋锁做一个简单的基准测试。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 普通自旋锁实现 --------------------------------------------
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> originSpinLock <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (sl *originSpinLock) <span style="color:#447fcf">Lock</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !atomic.<span style="color:#447fcf">CompareAndSwapUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>) {
+</span></span><span style="display:flex;"><span>		runtime.<span style="color:#447fcf">Gosched</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (sl *originSpinLock) <span style="color:#447fcf">Unlock</span>() {
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewOriginSpinLock</span>() sync.Locker {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">new</span>(originSpinLock)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 优化自旋锁实现 --------------------------------------------
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> spinLock <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> maxBackoff = <span style="color:#3677a9">16</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (sl *spinLock) <span style="color:#447fcf">Lock</span>() {
+</span></span><span style="display:flex;"><span>	backoff := <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !atomic.<span style="color:#447fcf">CompareAndSwapUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; backoff; i++ {
+</span></span><span style="display:flex;"><span>			runtime.<span style="color:#447fcf">Gosched</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> backoff &lt; maxBackoff {
+</span></span><span style="display:flex;"><span>			backoff &lt;&lt;= <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (sl *spinLock) <span style="color:#447fcf">Unlock</span>() {
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint32</span>((*<span style="color:#6ab825;font-weight:bold">uint32</span>)(sl), <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewSpinLock</span>() sync.Locker {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">new</span>(spinLock)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 标准库的互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkMutex</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	m := sync.Mutex{}
+</span></span><span style="display:flex;"><span>	b.<span style="color:#447fcf">RunParallel</span>(<span style="color:#6ab825;font-weight:bold">func</span>(pb *testing.PB) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> pb.<span style="color:#447fcf">Next</span>() {
+</span></span><span style="display:flex;"><span>			m.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>			m.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 普通自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkSpinLock</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	spin := <span style="color:#447fcf">NewOriginSpinLock</span>()
+</span></span><span style="display:flex;"><span>	b.<span style="color:#447fcf">RunParallel</span>(<span style="color:#6ab825;font-weight:bold">func</span>(pb *testing.PB) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> pb.<span style="color:#447fcf">Next</span>() {
+</span></span><span style="display:flex;"><span>			spin.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>			spin.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 优化版自旋锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkBackOffSpinLock</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	spin := <span style="color:#447fcf">NewSpinLock</span>()
+</span></span><span style="display:flex;"><span>	b.<span style="color:#447fcf">RunParallel</span>(<span style="color:#6ab825;font-weight:bold">func</span>(pb *testing.PB) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> pb.<span style="color:#447fcf">Next</span>() {
+</span></span><span style="display:flex;"><span>			spin.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>			spin.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>从测试结果可以看到，优化后的自旋锁相比普通自旋锁和互斥锁，性能有了很大的提高。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>// goos: linux
+</span></span><span style="display:flex;"><span>// goarch: amd64
+</span></span><span style="display:flex;"><span>// cpu: Intel(R) Core(TM) i5-8300H CPU @ 2.30GHz
+</span></span><span style="display:flex;"><span>// BenchmarkMutex
+</span></span><span style="display:flex;"><span>// BenchmarkMutex-8                <span style="color:#3677a9">21886387</span>                55.83 ns/op
+</span></span><span style="display:flex;"><span>// BenchmarkSpinLock
+</span></span><span style="display:flex;"><span>// BenchmarkSpinLock-8             <span style="color:#3677a9">46848830</span>                25.81 ns/op
+</span></span><span style="display:flex;"><span>// BenchmarkBackOffSpinLock
+</span></span><span style="display:flex;"><span>// BenchmarkBackOffSpinLock-8      <span style="color:#3677a9">55894545</span>                21.16 ns/op
+</span></span></code></pre></div><h2 id="分段锁">分段锁</h2>
+<blockquote>
+<p>分段锁 (Segmented Locking) 是一种并发控制的技术，它将共享资源划分成多个不重叠的片段，并对每个片段进行独立的加锁，通过这种方法可以减小锁的粒度，提高系统的并发性能。</p>
+</blockquote>
+<p>使用分段锁时，每个线程只需要获取 key 所在的范围片段的锁，而不必像互斥锁那样锁住并独占整个共享资源，有效避免了多个线程因为竞争全局锁而导致的等待和延迟，提高系统的并发性能。</p>
+<p>虽然分段锁可以提高系统的并发性能，但同时也会增加锁冲突的概率，并且需要付出额外的开销来维护锁的状态 (互斥锁只需要一把全局锁即可，分段锁每个区间范围都需要一把锁)。</p>
+<p><img src="https://dbwu.tech/images/thread_safe_map.png" alt="读写锁和分段锁差异"></p>
+<h3 id="代码实现">代码实现</h3>
+<p>笔者在项目中用到的分段锁组件是开源的 <a href="https://github.com/orcaman/concurrent-map">concurrent-map</a>, 下面就以该组件的源代码为基础，来分析如何实现一个分段锁，本文选用实现了泛型的 v2 版本。</p>
+<h3 id="map-对象">Map 对象</h3>
+<p><code>ConcurrentMap</code> 对象表示实现了分段锁的 Map 对象，内部有两个字段:</p>
+<ol>
+<li>表示区域元素对象的 shares 字段</li>
+<li>表示哈希函数的 sharding 字段</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ConcurrentMap[K comparable, V any] <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	shards   []*ConcurrentMapShared[K, V]
+</span></span><span style="display:flex;"><span>	sharding <span style="color:#6ab825;font-weight:bold">func</span>(key K) <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>GetShard</code> 方法用于计算给定的参数 key 对应的区间元素集合对象并返回。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m ConcurrentMap[K, V]) <span style="color:#447fcf">GetShard</span>(key K) *ConcurrentMapShared[K, V] {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 优化版: m % n = m &amp; ( n - 1 )
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">return</span> m.shards[<span style="color:#24909d">uint</span>(m.<span style="color:#447fcf">sharding</span>(key))%<span style="color:#24909d">uint</span>(SHARD_COUNT)]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="区间元素集合对象">区间元素集合对象</h3>
+<p><code>ConcurrentMapShared</code> 对象表示 Map 中某个区间元素集合对象，内部有两个字段:</p>
+<ol>
+<li>用于存储具体元素的 map, 数据结构就是标准库中的 map 类型</li>
+<li>内嵌一个读写锁，用于管理对 map 结构的读写并发控制</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ConcurrentMapShared[K comparable, V any] <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	items        <span style="color:#6ab825;font-weight:bold">map</span>[K]V
+</span></span><span style="display:flex;"><span>	sync.RWMutex
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="操作原语">操作原语</h3>
+<p>下面来看一下常用的几个操作原语的代码实现。</p>
+<h4 id="1-set">1. SET</h4>
+<p>方法的内部执行分为 4 步:</p>
+<ol>
+<li>通过 key 获取区间元素集合对象</li>
+<li><strong>获取写锁</strong></li>
+<li>写入 key 对应的数据</li>
+<li><strong>释放写锁</strong></li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m ConcurrentMap[K, V]) <span style="color:#447fcf">Set</span>(key K, value V) {
+</span></span><span style="display:flex;"><span>	shard := m.<span style="color:#447fcf">GetShard</span>(key)
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	shard.items[key] = value
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="2-get">2. GET</h4>
+<p>方法的内部执行分为 4 步:</p>
+<ol>
+<li>通过 key 获取区间元素集合对象</li>
+<li><strong>获取读锁</strong></li>
+<li>写入 key 对应的数据</li>
+<li><strong>释放读锁</strong></li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m ConcurrentMap[K, V]) <span style="color:#447fcf">Get</span>(key K) (V, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	shard := m.<span style="color:#447fcf">GetShard</span>(key)
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	val, ok := shard.items[key]
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> val, ok
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="3-has">3. Has</h4>
+<p>出了返回值之外，内部实现和 <code>GET</code> 方法实现一致，这里不在赘述。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m ConcurrentMap[K, V]) <span style="color:#447fcf">Has</span>(key K) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	shard := m.<span style="color:#447fcf">GetShard</span>(key)
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	_, ok := shard.items[key]
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ok
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="4-remove">4. Remove</h4>
+<p>方法的内部执行分为 4 步:</p>
+<ol>
+<li>通过 key 获取区间元素集合对象</li>
+<li><strong>获取写锁</strong></li>
+<li>写入 key 对应的数据</li>
+<li><strong>释放写锁</strong></li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m ConcurrentMap[K, V]) <span style="color:#447fcf">Remove</span>(key K) {
+</span></span><span style="display:flex;"><span>	shard := m.<span style="color:#447fcf">GetShard</span>(key)
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">delete</span>(shard.items, key)
+</span></span><span style="display:flex;"><span>	shard.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="哈希算法">哈希算法</h3>
+<blockquote>
+<p>FNV32 是一种快速哈希函数，采用 32 位哈希值，算法实现非常简单并且具有很高的性能和较低的哈希碰撞率。</p>
+</blockquote>
+<p>值得注意的是，<code>concurrent-map</code> 并没有使用标准库的 <code>&quot;hash/fnv&quot;</code> 方法作为求内部哈希函数实现，而是在组件内部重新实现了一个 <code>fnv32</code> 函数，
+但是算法用到的算子常数 <code>FNV_PRIME</code> 和 <code>FNV_OFFSET_BASIS</code>,  <code>concurrent-map</code> 和标准库是保持一致的，感兴趣的读者可以对比一下实现差异。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> strfnv32[K fmt.Stringer](key K) <span style="color:#6ab825;font-weight:bold">uint32</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">fnv32</span>(key.<span style="color:#447fcf">String</span>())
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fnv32</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">uint32</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>除此之外，也可以通过 <code>NewWithCustomShardingFunction</code> 函数在创建 Map 时来指定哈希函数:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> NewWithCustomShardingFunction[K comparable, V any](sharding <span style="color:#6ab825;font-weight:bold">func</span>(key K) <span style="color:#6ab825;font-weight:bold">uint32</span>) ConcurrentMap[K, V] {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> create[K, V](sharding)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="syncmap">sync.Map</h2>
+<p>标准库中的 <code>sync.Map</code> 的底层实现和应用场景在之前的 <a href="https://dbwu.tech/golang_sync_map/">这篇文章中</a> 已经有基础的说明，本文不再赘述。</p>
+<h2 id="基准测试-1">基准测试</h2>
+<p>最后，我们对文章开头提到的三种方案进行基准测试，根据测试结果来总结不同方案的各自适用场景。</p>
+<p>下面的测试代码分别对 读多写少、读少写多、读写均等这三种常见的负载场景，进行了性能基准测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> maps
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;strconv&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;testing&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cmap <span style="color:#ed9d13">&#34;github.com/orcaman/concurrent-map/v2&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 线程安全 Map 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ThreadSafeMap <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Get</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) any
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Set</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val any)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// -------------------------------------------------------------------
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// map 数据类型 + 读写锁实现线程安全的 map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> MutexMap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	sync.RWMutex
+</span></span><span style="display:flex;"><span>	m <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]any
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *MutexMap) <span style="color:#447fcf">Get</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) any {
+</span></span><span style="display:flex;"><span>	m.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	v, ok := m.m[key]
+</span></span><span style="display:flex;"><span>	m.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> v
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *MutexMap) <span style="color:#447fcf">Set</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val any) {
+</span></span><span style="display:flex;"><span>	m.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	m.m[key] = val
+</span></span><span style="display:flex;"><span>	m.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// -------------------------------------------------------------------
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// sync.Map 实现线程安全的 map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> SyncMap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	m sync.Map
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s *SyncMap) <span style="color:#447fcf">Get</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) any {
+</span></span><span style="display:flex;"><span>	v, _ := s.m.<span style="color:#447fcf">Load</span>(key)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> v
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s *SyncMap) <span style="color:#447fcf">Set</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val any) {
+</span></span><span style="display:flex;"><span>	s.m.<span style="color:#447fcf">Store</span>(key, val)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// -------------------------------------------------------------------
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 分段锁实现线程安全的 map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ConcurMap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	m cmap.ConcurrentMap[<span style="color:#6ab825;font-weight:bold">string</span>, any]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *ConcurMap) <span style="color:#447fcf">Get</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) any {
+</span></span><span style="display:flex;"><span>	v, _ := c.m.<span style="color:#447fcf">Get</span>(key)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> v
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *ConcurMap) <span style="color:#447fcf">Set</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val any) {
+</span></span><span style="display:flex;"><span>	c.m.<span style="color:#447fcf">Set</span>(key, val)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 基准测试
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">benchmark</span>(b *testing.B, m ThreadSafeMap, read, write <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; b.N; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 注意: 这里的读写操作有一部分 key 是重合的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 读操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> k := <span style="color:#3677a9">0</span>; k &lt; read*<span style="color:#3677a9">100</span>; k++ {
+</span></span><span style="display:flex;"><span>			wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(key <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>				m.<span style="color:#447fcf">Get</span>(strconv.<span style="color:#447fcf">Itoa</span>(i * key))
+</span></span><span style="display:flex;"><span>				wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>			}(k)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 写操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> k := <span style="color:#3677a9">0</span>; k &lt; write*<span style="color:#3677a9">100</span>; k++ {
+</span></span><span style="display:flex;"><span>			wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(key <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>				m.<span style="color:#447fcf">Set</span>(strconv.<span style="color:#447fcf">Itoa</span>(i*key), key)
+</span></span><span style="display:flex;"><span>				wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>			}(k)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 读写比例 9:1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkReadMoreRWMutex</span>(b *testing.B)   { <span style="color:#447fcf">benchmark</span>(b, &amp;MutexMap{m: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]any)}, <span style="color:#3677a9">9</span>, <span style="color:#3677a9">1</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkReadMoreSyncMap</span>(b *testing.B)   { <span style="color:#447fcf">benchmark</span>(b, &amp;SyncMap{m: sync.Map{}}, <span style="color:#3677a9">9</span>, <span style="color:#3677a9">1</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkReadMoreConcurMap</span>(b *testing.B) { <span style="color:#447fcf">benchmark</span>(b, &amp;ConcurMap{m: cmap.New[any]()}, <span style="color:#3677a9">9</span>, <span style="color:#3677a9">1</span>) }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 读写比例 1:9
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkWriteMoreRWMutex</span>(b *testing.B)   { <span style="color:#447fcf">benchmark</span>(b, &amp;MutexMap{m: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]any)}, <span style="color:#3677a9">1</span>, <span style="color:#3677a9">9</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkWriteMoreSyncMap</span>(b *testing.B)   { <span style="color:#447fcf">benchmark</span>(b, &amp;SyncMap{m: sync.Map{}}, <span style="color:#3677a9">1</span>, <span style="color:#3677a9">9</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkWriteMoreConcurMap</span>(b *testing.B) { <span style="color:#447fcf">benchmark</span>(b, &amp;ConcurMap{m: cmap.New[any]()}, <span style="color:#3677a9">1</span>, <span style="color:#3677a9">9</span>) }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 读写比例 5:5
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkEqualRWMutex</span>(b *testing.B)   { <span style="color:#447fcf">benchmark</span>(b, &amp;MutexMap{m: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]any)}, <span style="color:#3677a9">5</span>, <span style="color:#3677a9">5</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkEqualSyncMap</span>(b *testing.B)   { <span style="color:#447fcf">benchmark</span>(b, &amp;SyncMap{m: sync.Map{}}, <span style="color:#3677a9">5</span>, <span style="color:#3677a9">5</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkEqualConcurMap</span>(b *testing.B) { <span style="color:#447fcf">benchmark</span>(b, &amp;ConcurMap{m: cmap.New[any]()}, <span style="color:#3677a9">5</span>, <span style="color:#3677a9">5</span>) }
+</span></span></code></pre></div><p>运行基准测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -count=<span style="color:#3677a9">1</span> -run=<span style="color:#ed9d13">&#39;^$&#39;</span> -bench=. -benchtime=3s  -benchmem
+</span></span></code></pre></div><p>输出结果如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>goos: linux
+</span></span><span style="display:flex;"><span>goarch: amd64
+</span></span><span style="display:flex;"><span>cpu: Intel(R) Core(TM) i5-8300H CPU @ 2.30GHz
+</span></span><span style="display:flex;"><span>BenchmarkReadMoreRWMutex-8                  <span style="color:#3677a9">9107</span>            <span style="color:#3677a9">362827</span> ns/op           <span style="color:#3677a9">84094</span> B/op       <span style="color:#3677a9">3001</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkReadMoreSyncMap-8                  <span style="color:#3677a9">7740</span>            <span style="color:#3677a9">765258</span> ns/op          <span style="color:#3677a9">128974</span> B/op       <span style="color:#3677a9">3284</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkReadMoreConcurMap-8               <span style="color:#3677a9">10000</span>            <span style="color:#3677a9">345271</span> ns/op           <span style="color:#3677a9">83985</span> B/op       <span style="color:#3677a9">3000</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkWriteMoreRWMutex-8                 <span style="color:#3677a9">6212</span>            <span style="color:#3677a9">825778</span> ns/op          <span style="color:#3677a9">137330</span> B/op       <span style="color:#3677a9">3656</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkWriteMoreSyncMap-8                 <span style="color:#3677a9">3352</span>           <span style="color:#3677a9">1155236</span> ns/op          <span style="color:#3677a9">157766</span> B/op       <span style="color:#3677a9">6041</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkWriteMoreConcurMap-8               <span style="color:#3677a9">9480</span>            <span style="color:#3677a9">370214</span> ns/op          <span style="color:#3677a9">119970</span> B/op       <span style="color:#3677a9">3653</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkEqualRWMutex-8                     <span style="color:#3677a9">7108</span>            <span style="color:#3677a9">529450</span> ns/op          <span style="color:#3677a9">104626</span> B/op       <span style="color:#3677a9">3249</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkEqualSyncMap-8                     <span style="color:#3677a9">5360</span>            <span style="color:#3677a9">735393</span> ns/op          <span style="color:#3677a9">133008</span> B/op       <span style="color:#3677a9">4601</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkEqualConcurMap-8                   <span style="color:#3677a9">9548</span>            <span style="color:#3677a9">347809</span> ns/op          <span style="color:#3677a9">104303</span> B/op       <span style="color:#3677a9">3250</span> allocs/op
+</span></span><span style="display:flex;"><span>PASS
+</span></span></code></pre></div><p>从基准测试的输出结果来看，不论是哪种应用场景，结合运行速度还是内存分配，三者的排序都是一致的: <strong>分段锁优于读写锁 + map, 后者优于 sync.Map</strong> 。
+笔者没有遇到过 100% 的只读或只写操作的应用场景，所以没有做对应的基准测试，不过这里可以猜测一下:</p>
+<ol>
+<li>100% 只读场景下 sync.Map 的性能最好 (不过既然都 100% 只读了, 直接使用 map 类型即可，因为无需加锁，所以性能肯定最高)</li>
+<li>100% 只写场景下 分段锁 的性能最好</li>
+</ol>
+<p>感兴趣的读者可以通过调整基准测试代码的百分比参数来验证一下，这里是 <a href="https://github.com/orcaman/concurrent-map/blob/master/concurrent_map_bench_test.go">concurrent-map 官方的基准测试代码</a>。</p>
+<h2 id="小结">小结</h2>
+<p>本文主要介绍了在 Go 语言中如何实现线程安全的 map 的三种方法，并通过三种常见的业务场景对方法进行了性能基准测试，最后，我们来简单总结下三种方法的特点。</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>优点</th>
+<th>不足</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>读写锁 + map</td>
+<td>自定义性最强，性能适中</td>
+<td>需要开发实现</td>
+</tr>
+<tr>
+<td>sync.Map</td>
+<td>标准库自带，开箱即用，方便省心</td>
+<td>性能较低, API 参数类型是 any，需要数据类型转换</td>
+</tr>
+<tr>
+<td>分段锁</td>
+<td>性能最好</td>
+<td>标准库未提供，需要引入第三方组件</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/orcaman/concurrent-map">concurrent-map</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/golang_lockfree/">Go 无锁编程</a></li>
+<li><a href="https://halfrost.com/go_map_chapter_one/#toc-22">Map 实现中的一些优化</a></li>
+<li><a href="https://blog.joway.io/posts/modern-memory-cache/">设计实现高性能本地内存缓存</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/bloom_filter/"><i class="fa fa-chevron-circle-left"></i> 布隆过滤器</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Go 线程安全 map 方案选型"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

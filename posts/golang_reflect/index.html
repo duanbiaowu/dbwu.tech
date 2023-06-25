@@ -1,0 +1,810 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Go 的反射与三大定律 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="1.反射可以通过 interface{} 得到反射对象; 2.反射可以通过反射对象得到 interface{}; 3.修改反射对象的前提是值必须可以被修改; 反射三大定律背后的实现原理是什么？" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 的反射与三大定律" />
+<meta property="og:description" content="1.反射可以通过 interface{} 得到反射对象; 2.反射可以通过反射对象得到 interface{}; 3.修改反射对象的前提是值必须可以被修改; 反射三大定律背后的实现原理是什么？" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_reflect/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-30T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go 的反射与三大定律"/>
+<meta name="twitter:description" content="1.反射可以通过 interface{} 得到反射对象; 2.反射可以通过反射对象得到 interface{}; 3.修改反射对象的前提是值必须可以被修改; 反射三大定律背后的实现原理是什么？"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Go 的反射与三大定律</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>在计算机学中，反射 (reflection) 是指计算机程序在运行时 (runtime) 可以访问、检测和修改它本身的状态或行为的一种能力。简单来说，反射就是程序在运行的时候能够观察并且修改自己的行为。</p>
+</blockquote>
+<h2 id="常见场景">常见场景</h2>
+<p>Go 中 <code>反射</code> 常见的使用场景有 <strong>元数据编程</strong>，<strong>确认接口实现机制</strong>。</p>
+<h3 id="元数据编程">元数据编程</h3>
+<p>通过 <code>反射</code> 获取字段标签，实现简单的元数据编程，比如 <code>ORM</code> 框架中的 <code>Model</code> 属性。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;reflect&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> User <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Name <span style="color:#6ab825;font-weight:bold">string</span> <span style="color:#ed9d13">`column:&#34;username&#34; type:&#34;varchar(32)&#34;`</span>
+</span></span><span style="display:flex;"><span>	Age  <span style="color:#6ab825;font-weight:bold">int</span>    <span style="color:#ed9d13">`column:&#34;age&#34; type:&#34;tinyint&#34;`</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> u User
+</span></span><span style="display:flex;"><span>	t := reflect.<span style="color:#447fcf">TypeOf</span>(u)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Name 字段对应的数据表字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> name, ok := t.<span style="color:#447fcf">FieldByName</span>(<span style="color:#ed9d13">&#34;Name&#34;</span>); ok {
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;column = %s, type = %s\n&#34;</span>,
+</span></span><span style="display:flex;"><span>			name.Tag.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;column&#34;</span>),
+</span></span><span style="display:flex;"><span>			name.Tag.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;type&#34;</span>),
+</span></span><span style="display:flex;"><span>		)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Age 字段对应的数据表字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> age, ok := t.<span style="color:#447fcf">FieldByName</span>(<span style="color:#ed9d13">&#34;Age&#34;</span>); ok {
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;column = %s, type = %s\n&#34;</span>,
+</span></span><span style="display:flex;"><span>			age.Tag.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;column&#34;</span>),
+</span></span><span style="display:flex;"><span>			age.Tag.<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;type&#34;</span>),
+</span></span><span style="display:flex;"><span>		)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    column = username, type = varchar(32)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    column = age, type = tinyint
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">*/</span>
+</span></span></code></pre></div><h3 id="是否实现接口">是否实现接口</h3>
+<p>Go 中没有关键字 <code>instanceof</code> 来确认一个类型是否实现了某个接口，不过可以通过 <code>reflect</code> 包提供的 API 来确认。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;reflect&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CustomStr <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">String</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CustomError <span style="color:#6ab825;font-weight:bold">struct</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (*CustomError) <span style="color:#447fcf">Error</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (*CustomError) <span style="color:#447fcf">String</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CustomStr2 <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	CustomStr
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CustomStr3 <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">String</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 error 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	typeOfError := reflect.<span style="color:#447fcf">TypeOf</span>((*<span style="color:#6ab825;font-weight:bold">error</span>)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 CustomError 结构体类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	customError := reflect.<span style="color:#447fcf">TypeOf</span>(CustomError{})
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 CustomError 结构体指针类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	customErrorPtr := reflect.<span style="color:#447fcf">TypeOf</span>(&amp;CustomError{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 CustomError 结构体类型是否实现了 error 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(customError.<span style="color:#447fcf">Implements</span>(typeOfError)) <span style="color:#999;font-style:italic">// false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 CustomError 结构体指针类型是否实现了 error 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(customErrorPtr.<span style="color:#447fcf">Implements</span>(typeOfError)) <span style="color:#999;font-style:italic">// true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 CustomError 结构体指针类型 (通过 nil 转换来的) 是否实现了 error 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(customErrorPtr.<span style="color:#447fcf">Implements</span>(reflect.<span style="color:#447fcf">TypeOf</span>((*CustomStr)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>())) <span style="color:#999;font-style:italic">// true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 CustomError 结构体指针类型是否实现了 error 接口 (嵌套的)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(customErrorPtr.<span style="color:#447fcf">Implements</span>(reflect.<span style="color:#447fcf">TypeOf</span>((*CustomStr2)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>())) <span style="color:#999;font-style:italic">// true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 判断 CustomError 结构体指针类型是否实现了 CustomStr3 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(customErrorPtr.<span style="color:#447fcf">Implements</span>(reflect.<span style="color:#447fcf">TypeOf</span>((*CustomStr3)(<span style="color:#6ab825;font-weight:bold">nil</span>)).<span style="color:#447fcf">Elem</span>())) <span style="color:#999;font-style:italic">// true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#999;font-style:italic">/**
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">    true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">*/</span>
+</span></span></code></pre></div><h2 id="内部实现">内部实现</h2>
+<p>我们来探究一下 <code>reflect</code> 的内部实现文件目录为 <code>$GOROOT/src/reflect</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="反射类型">反射类型</h2>
+<p>反射类型相关的结构体和方法在 <code>type.go</code> 文件内定义。</p>
+<h3 id="type-接口">Type 接口</h3>
+<p><code>Type</code> 接口用于数据类型和对应的反射方法的抽象表示。</p>
+<p><code>Type</code> 类型是可以比较的，例如使用 <code>==</code> 操作符，因此可以作为 <code>map</code> 数据类型的 <code>key</code>, 如果两个 <code>Type</code> 值表示相同的类型，则它们相等。</p>
+<p>每个数据类型对应的方法都是不一样的，反过来也一样，每个方法不一定适用于所有数据类型，具体的限制在标准库的文档中都有注释说明。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Type <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 适用于所有数据类型的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回在内存中分配该类型时的对齐方式（以字节为单位）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Align</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当作为结构体中的字段时，FieldAlign 返回类型时的对齐方式（以字节为单位）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">FieldAlign</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型的方法集合中第 i 个方法 (如果 i 越界，会导致 panic) 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 对于非接口类型 T 或者 *T，返回的方法的 Type 和 Func 字段描述了一个函数，其第一个参数是接收方，只有导出的方法是可访问的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 对于接口类型，返回的方法的 Type 字段给出了方法签名，没有接收方，Func 字段为 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 返回的方法列表按照字典顺序排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Method</span>(<span style="color:#6ab825;font-weight:bold">int</span>) Method
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回在类型的方法集合中名字对应的方法，根据是否存在对应方法，返回 true/false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 对于非接口类型 T 或者 *T，返回的方法的 Type 和 Func 字段描述了一个函数，其第一个参数是接收方
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 对于接口类型，返回的方法的 Type 字段给出了方法签名，没有接收方，Func 字段为 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">MethodByName</span>(<span style="color:#6ab825;font-weight:bold">string</span>) (Method, <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回使用 Method 可访问的方法的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 注意，NumMethod 只对接口类型计算未导出的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">NumMethod</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回已定义类型在其包内的类型名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 对于没有定义的类型返回空字符串
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Name</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回已定义类型的包路径，即唯一标识包的导入路径，如 &#34;encoding/base64&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型是预声明 (也就是内置类型) 的 (string, error) 或者未定义的 (*T, struct{}, []int, 或者非定义类型的别名, 例如: type A int)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 则返回空字符串
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">PkgPath</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回存储给定类型值所需要字节数，类似于调用 unsafe.Sizeof()
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Size</span>() <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型的字符串表示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 字符串表示可以使用缩短的包名 (例如: 用 base64 代替 &#34;encoding/base64&#34;)，并且不保证在类型之间是唯一的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果需要测试类型标识，请直接比较类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">String</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Kind 返回类型的特定表示，详情见 Kind 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Kind</span>() Kind
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型是否实现了接口 u
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Implements</span>(u Type) <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型是否可以赋值给 u
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">AssignableTo</span>(u Type) <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型是否可以转换为类型 u
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 即使 ConvertibleTo 返回 true, 转换过程依然可能发生 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如: 一个 slice []T 可以转换为 *[N]T, 但是如果它的长度小于 N, 发生 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">ConvertibleTo</span>(u Type) <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型是否可以比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 即使 Comparable 返回 true, 比较过程依然可能发生 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如: interface values 可以比较，但是如果 interface 对应的动态类型不支持比较，panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Comparable</span>() <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 只适用于某些类型的方法，具体取决于 Kind
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 具体的对应关系如下:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Int*, Uint*, Float*, Complex*:  Bits
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Array:                          Elem, Len
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Chan:                           ChanDir, Elem
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Func:                           In, NumIn, Out, NumOut, IsVariadic.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Map:                            Key, Elem
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Pointer:                        Elem
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Slice:                          Elem
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	Struct:                         Field, FieldByIndex, FieldByName, FieldByNameFunc, NumField
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型的大小（以位为单位）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不符合上述规则，panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Bits</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回 channel 类型的方向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是 channel, panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">ChanDir</span>() ChanDir
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回函数类型的最后一个参数是否为可变参数，如果是，t.In(t.NumIn() - 1) 返回参数的隐式实际类型 []T 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 具体的例子:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// For concreteness, if t represents func(x int, y ... float64), then
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	t.NumIn() == 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	t.In(0) is the reflect.Type for &#34;int&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	t.In(1) is the reflect.Type for &#34;[]float64&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	t.IsVariadic() == true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是一个 Func, panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">IsVariadic</span>() <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回类型的元素类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不符合上述规则，panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Elem</span>() Type
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回结构体类型的第 i 个字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是结构体或参数 i 越界, panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Field</span>(i <span style="color:#6ab825;font-weight:bold">int</span>) StructField
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回与索引对应的嵌套字段, 这相当于对每个索引 i 依次调用 Field
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是结构体, panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">FieldByIndex</span>(index []<span style="color:#6ab825;font-weight:bold">int</span>) StructField
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回结构体指定名称的字段，以及一个标记字段是否存在的 bool 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">FieldByName</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) (StructField, <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回满足匹配函数的名称的结构体字段，以及一个标记字段是否存在的 bool 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// FieldByNameFunc 会考虑结构体本身的字段，以及嵌入到结构体中的字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 按照 BFS 算法，在包含满足匹配函数的一个或多个字段的最外层嵌套处停止 (BFS: 由浅入深)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果该深度有多个字段满足匹配函数，它们将相互抵消，FieldByNameFunc 不返回任何匹配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这种行为反映了 Go 在包含嵌入字段的结构体中处理名称查找的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">FieldByNameFunc</span>(match <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span>) (StructField, <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回函数类型的第 i 个参数的类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是函数或者 i 越界, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">In</span>(i <span style="color:#6ab825;font-weight:bold">int</span>) Type
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回 map 类型的 key 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是 map, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Key</span>() Type
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回数组类型的长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是数组, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Len</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回结构体类型的字段数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是结构体, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">NumField</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回函数类型的参数数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是函数, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">NumIn</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回函数类型的返回值数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是函数, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">NumOut</span>() <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Out 返回函数类型的第 i 个返回值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果类型不是函数, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 i 越界, 抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Out</span>(i <span style="color:#6ab825;font-weight:bold">int</span>) Type
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">common</span>() *rtype
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">uncommon</span>() *uncommonType
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="kind-类型">Kind 类型</h3>
+<p><code>Kind</code> 类型表示一种特定类型，零值时表示无效类型，该类型将 Go 语言中所有数据类型通过常量生成器的方式定义出来。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Kind <span style="color:#6ab825;font-weight:bold">uint</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	Invalid Kind = <span style="color:#6ab825;font-weight:bold">iota</span>
+</span></span><span style="display:flex;"><span>	Bool
+</span></span><span style="display:flex;"><span>	Int
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	String
+</span></span><span style="display:flex;"><span>	Struct
+</span></span><span style="display:flex;"><span>	UnsafePointer
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><h3 id="rtype-对象">rtype 对象</h3>
+<p><code>rtype</code> 对象表示反射类型，是一个 <code>Type</code> 接口的通用实现，被嵌入在其他数据类型对象内。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> rtype <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	size       <span style="color:#6ab825;font-weight:bold">uintptr</span>  <span style="color:#999;font-style:italic">// 类型占用内存大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ptrdata    <span style="color:#6ab825;font-weight:bold">uintptr</span>  <span style="color:#999;font-style:italic">// 类型可以包含指针的字节数 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	hash       <span style="color:#6ab825;font-weight:bold">uint32</span>   <span style="color:#999;font-style:italic">// 类型 Hash, 避免在 Hash 表中计算 (缓存的作用)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tflag      tflag    <span style="color:#999;font-style:italic">// 类型标志位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	align      <span style="color:#6ab825;font-weight:bold">uint8</span>    <span style="color:#999;font-style:italic">// 内存对齐信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fieldAlign <span style="color:#6ab825;font-weight:bold">uint8</span>    <span style="color:#999;font-style:italic">// 类型结构体字段对齐字节数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kind       <span style="color:#6ab825;font-weight:bold">uint8</span>    <span style="color:#999;font-style:italic">// 类型的 Kind 表示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	equal     <span style="color:#6ab825;font-weight:bold">func</span>(unsafe.Pointer, unsafe.Pointer) <span style="color:#6ab825;font-weight:bold">bool</span> <span style="color:#999;font-style:italic">// 比较两个对象是否相等
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gcdata    *<span style="color:#6ab825;font-weight:bold">byte</span>     <span style="color:#999;font-style:italic">// GC 类型数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	str       nameOff   <span style="color:#999;font-style:italic">// 类型名称偏移量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ptrToThis typeOff   <span style="color:#999;font-style:italic">// 类型指针偏移量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>在 <code>rtype</code> 对象的基础上，基础数据结构通过内嵌，再依次单独定义，这里列举一下 <code>数组</code> 和 <code>切片</code>, 其他类型以此类推:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 数组类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> arrayType <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	rtype
+</span></span><span style="display:flex;"><span>	elem  *rtype 
+</span></span><span style="display:flex;"><span>	slice *rtype 
+</span></span><span style="display:flex;"><span>	len   <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 切片类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> sliceType <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	rtype
+</span></span><span style="display:flex;"><span>	elem *rtype 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="typeof-函数">Typeof 函数</h3>
+<p><code>Typeof</code> 函数返回参数 i 对应的动态类型的反射类型，如果参数 i 是一个 <code>nil</code>, 返回 <code>nil</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TypeOf</span>(i any) Type {
+</span></span><span style="display:flex;"><span>	eface := *(*emptyInterface)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;i))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">toType</span>(eface.typ)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="totype-函数">toType 函数</h3>
+<p><code>toType</code> 函数将 <code>*rtype</code> 转换为一个反射类型，</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">toType</span>(t *rtype) Type {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> t == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> t
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="反射值">反射值</h2>
+<p>反射值相关的结构体和方法在 <code>value.go</code> 文件内定义。</p>
+<h3 id="value-对象">Value 对象</h3>
+<p><code>Value</code> 对象表示值对应的 <code>反射对象</code>， 提供了获取/设置值的方法。</p>
+<p>在使用特定于值的方法之前，请先使用 <code>Kind</code> 方法查找值的适配性，调用不适配该类型的方法会导致运行时 <code>panic</code>, 有三种情况例外:</p>
+<ol>
+<li>零值表示没有值 (声明了但是未初始化)</li>
+<li>如果 IsValid 方法返回 false, Kind 方法也返回 false</li>
+<li>String 方法返回 &ldquo;<!-- raw HTML omitted -->&rdquo;</li>
+</ol>
+<p><code>Value</code> 所表示的值可以被多个 <code>goroutine</code> 并发使用，当然前提是该值类型本身支持直接并发操作 (例如 <code>map</code> 就不支持并发写)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Value <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// typ 表示由值表示的值类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	typ *rtype
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 指向指的指针，如果设置了 flagIndir, 则是指向数据的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果设置了 flagIndir 或 typ.pointers 方法返回 true 时有效
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ptr unsafe.Pointer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// flag 持有 value 的元数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 最低位表示如下:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	- flagStickyRO: 通过未导出的非嵌入字段获得, 因此是只读的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	- flagEmbedRO:  通过未导出的嵌入字段获得, 因此是只读的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	- flagIndir:    持有指向数据的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	- flagAddr:     v.CanAddr is true (表示设置了 flagIndir)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//	- flagMethod:   v 是方法值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 接下来的 5 个 bits 给出值的 Kind 类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 除了方法值之外，它会重复 typ.Kind()
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 其余 23 位以上给出方法 values 的方法编号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 flag.kind（）!= Func，代码可以假设没有设置 flagMethod 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 ifaceIndir(typ)，代码可以假设 flagIndir 已设置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	flag
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="valueof-函数">ValueOf 函数</h3>
+<p><code>ValueOf</code> 函数返回一个存储在参数接口 i 中，初始化后的具体的新值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ValueOf</span>(i any) Value {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> i == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> Value{}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 所有数据总是逃逸到堆上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 控制生存周期更容易
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">escapes</span>(i)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">unpackEface</span>(i)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="escapes-函数">escapes 函数</h3>
+<p><code>escapes</code> 函数保证参数变量逃逸到堆上。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 学习小技巧: 控制变量逃逸到堆上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Dummy 注解标记值 x 逃逸
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">escapes</span>(x any) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> dummy.b {
+</span></span><span style="display:flex;"><span>		dummy.x = x
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> dummy <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	b <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	x any
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="emptyinterface-对象">emptyInterface 对象</h3>
+<p><code>emptyInterface</code> 对象表示一个 interface{} 值的头部。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> emptyInterface <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	typ  *rtype
+</span></span><span style="display:flex;"><span>	word unsafe.Pointer
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="ifaceindir-函数">ifaceIndir 函数</h3>
+<p><code>ifaceIndir</code> 函数返回参数 t 是否间接存储在一个 <code>interface</code> 值中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ifaceIndir</span>(t *rtype) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> t.kind&amp;kindDirectIface == <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="unpackeface-函数">unpackEface 函数</h3>
+<p><code>unpackEface</code> 函数将一个 <code>emptyInterface</code> 对象转换为一个 <code>Value</code> 对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">unpackEface</span>(i any) Value {
+</span></span><span style="display:flex;"><span>	e := (*emptyInterface)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;i))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注意: 在确认 e.word 是否为一个指针之前，不要读取 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 避免赋值时 panic, Value 结构体第二个字段为 unsafe.Pointer
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	t := e.typ
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> t == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> Value{}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	f := <span style="color:#447fcf">flag</span>(t.<span style="color:#447fcf">Kind</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">ifaceIndir</span>(t) {
+</span></span><span style="display:flex;"><span>		f |= flagIndir
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> Value{t, e.word, f}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="caninterface-方法">CanInterface 方法</h3>
+<p><code>CanInterface</code> 方法返回调用 <code>Interface</code> 方法是否不会产生 <code>panic</code>, 虽然返回值是 <code>bool</code>，但是函数内部却可能直接 <code>panic</code>, 所以把兼容性处理的工作交给了调用方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">CanInterface</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v.flag == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">panic</span>(&amp;ValueError{<span style="color:#ed9d13">&#34;reflect.Value.CanInterface&#34;</span>, Invalid})
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> v.flag&amp;flagRO == <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="interface-方法">Interface 方法</h3>
+<p>将 <code>Value</code> 对象转换为一个 <code>interface{}</code> 类型返回 (Go 1.18 及之后是 <code>any</code> 类型，这里为了兼容，统一用 <code>interface{}</code> 来描述)，如果 <code>Value</code> 对象是通过访问未导出的结构体字段获得的，抛出 <code>panic</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">Interface</span>() (i any) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">valueInterface</span>(v, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="value-转换为具体类型">Value 转换为具体类型</h3>
+<p><code>Value</code> 除了可以将转换为 <code>interface{}</code> 类型之外，也可以转换为具体的类型，这里列举一下 <code>bool</code> 和 <code>bytes</code>, 其他类型以此类推：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">Bool</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v.<span style="color:#447fcf">kind</span>() != Bool {
+</span></span><span style="display:flex;"><span>		v.<span style="color:#447fcf">panicNotBool</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> *(*<span style="color:#6ab825;font-weight:bold">bool</span>)(v.ptr)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">Bytes</span>() []<span style="color:#6ab825;font-weight:bold">byte</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v.typ == bytesType {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> *(*[]<span style="color:#6ab825;font-weight:bold">byte</span>)(v.ptr)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> v.<span style="color:#447fcf">bytesSlow</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="elem-方法">Elem 方法</h3>
+<p><code>Elem</code> 方法返回参数 v 作为接口时包含的值，或参数 v 作为指针时指向的值，如果 v 的 <code>Kind</code> 类型不是接口或指针，产生 <code>panic</code>, 如果 v == nil，返回 <code>nil</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">Elem</span>() Value {
+</span></span><span style="display:flex;"><span>	k := v.<span style="color:#447fcf">kind</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> k {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> Interface:
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> Pointer:
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">panic</span>(&amp;ValueError{<span style="color:#ed9d13">&#34;reflect.Value.Elem&#34;</span>, v.<span style="color:#447fcf">kind</span>()})
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="canset-方法">CanSet 方法</h3>
+<p><code>CanSet</code> 方法返回参数 v 是否可以被修改，一个 <code>Value</code> 只有满足以下两个条件时才可以被修改:</p>
+<ol>
+<li>可寻址</li>
+<li>可导出的结构体字段</li>
+</ol>
+<p>如果 <code>CanSet</code> 方法返回 false, 调用 Set 方法或其他特定类型的 Setter 方法时 (例如 SetBool, SetInt 等)，产生 <code>panic</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">CanSet</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> v.flag&amp;(flagAddr|flagRO) == flagAddr
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="set-方法">Set 方法</h3>
+<p><code>Set</code> 方法将 <code>Value</code> 设置为参数 x, 和数据类型转换的基础通用规则一样，x 的值必须可以赋值给 v 的类型。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">Set</span>(x Value) {
+</span></span><span style="display:flex;"><span>	v.<span style="color:#447fcf">mustBeAssignable</span>()    <span style="color:#999;font-style:italic">// 是否可以被设置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	x.<span style="color:#447fcf">mustBeExported</span>()      <span style="color:#999;font-style:italic">// 是否对外公开
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	...
+</span></span><span style="display:flex;"><span>	x = x.<span style="color:#447fcf">assignTo</span>(<span style="color:#ed9d13">&#34;reflect.Set&#34;</span>, v.typ, target)
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mustbeassignable-方法">mustBeAssignable 方法</h3>
+<p><code>mustBeAssignable</code> 方法用于检测赋值操作，如果不可赋值时产生 <code>panic</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f flag) <span style="color:#447fcf">mustBeAssignable</span>() {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mustbeexported-方法">mustBeExported 方法</h3>
+<p><code>mustBeExported</code> 方法用于检测是否可导出，如果不可导出时产生 <code>panic</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f flag) <span style="color:#447fcf">mustBeExported</span>() {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="assignto-方法">assignTo 方法</h3>
+<p><code>assignTo</code> 方法返回一个直接分配到 dst 的 <code>Value</code>, 如果参数 v 是不可分配的，产生 <code>panic</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (v Value) <span style="color:#447fcf">assignTo</span>(context <span style="color:#6ab825;font-weight:bold">string</span>, dst *rtype, target unsafe.Pointer) Value {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="implements-方法">implements 方法</h2>
+<p><code>implements</code> 方法返回类型 V 是否实现来接口 T。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">implements</span>(T, V *rtype) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> T.<span style="color:#447fcf">Kind</span>() != Interface {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果 T 不是接口类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	t := (*interfaceType)(unsafe.<span style="color:#447fcf">Pointer</span>(T))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(t.methods) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 空的接口，任意类型都自动实现该接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 相同的算法适用于这两种情况，但是接口类型和具体类型的方法表不同，因此代码 (算法部分) 是重复的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在两种情况下，算法都是对两个列表: T 的方法和 V 的方法，同时进行线性扫描 (时间复杂度 O(N))
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为方法表是按照唯一的顺序存储的 (字典顺序，没有重复的方法名)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以对 V 的方法的扫描必须与 T 的每个方法都匹配，否则 V 就没有实现 T
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这样可以在线性时间内进行扫描，而不是单纯搜索所需的平方级复杂度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> V.<span style="color:#447fcf">Kind</span>() == Interface {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 接口类型判断
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		v := (*interfaceType)(unsafe.<span style="color:#447fcf">Pointer</span>(V))
+</span></span><span style="display:flex;"><span>		i := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt; <span style="color:#24909d">len</span>(v.methods); j++ {
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> vmName.<span style="color:#447fcf">name</span>() == tmName.<span style="color:#447fcf">name</span>() &amp;&amp; V.<span style="color:#447fcf">typeOff</span>(vm.typ) == t.<span style="color:#447fcf">typeOff</span>(tm.typ) {
+</span></span><span style="display:flex;"><span>                ...
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> i++; i &gt;= <span style="color:#24909d">len</span>(t.methods) {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 普通类型判断
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	v := V.<span style="color:#447fcf">uncommon</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	i := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	vmethods := v.<span style="color:#447fcf">methods</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt; <span style="color:#24909d">int</span>(v.mcount); j++ {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> vmName.<span style="color:#447fcf">name</span>() == tmName.<span style="color:#447fcf">name</span>() &amp;&amp; V.<span style="color:#447fcf">typeOff</span>(vm.mtyp) == t.<span style="color:#447fcf">typeOff</span>(tm.typ) {
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> i++; i &gt;= <span style="color:#24909d">len</span>(t.methods) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="三大定律">三大定律</h2>
+<h3 id="反射可以通过-interface-得到反射对象">反射可以通过 interface{} 得到反射对象</h3>
+<p><img src="https://dbwu.tech/images/reflect_1.png" alt="反射_1"></p>
+<ul>
+<li>通过调用 <code>reflect.ValueOf</code> 方法，获取到具体的值对应的 <code>reflect.Value</code> 对象</li>
+<li>通过调用 <code>reflect.TypeOf</code> 方法，获取到具体的值对应的 <code>reflect.Type</code> 对象</li>
+</ul>
+<h3 id="反射可以通过反射对象得到-interface">反射可以通过反射对象得到 <code>interface{}</code></h3>
+<p><img src="https://dbwu.tech/images/reflect_2.png" alt="反射_2"></p>
+<ul>
+<li>通过调用 <code>reflect.Interface</code> 方法，获取到具体的值对应的 <code>interface{}</code></li>
+</ul>
+<p>例如:</p>
+<ol>
+<li>通过调用 <code>reflect.Bool</code> 方法，获取到具体的值对应的 <code>bool</code></li>
+<li>通过调用 <code>reflect.Bytes</code> 方法，获取到具体的值对应的 <code>[]byte</code></li>
+</ol>
+<h3 id="修改反射对象的前提是值必须可以被修改">修改反射对象的前提是值必须可以被修改</h3>
+<p><img src="https://dbwu.tech/images/reflect_3.png" alt="反射_3"></p>
+<ul>
+<li>通过调用 <code>reflect.Set</code> 方法，修改反射对象</li>
+<li>通过调用 <code>mustbeassignable</code>，检测反射对象是否可以修改</li>
+<li>通过调用 <code>mustbeexported</code>，确认反射对象是否可导出</li>
+<li>通过调用 <code>assignTo 方法</code>，修改反射对象并返回一个新对象</li>
+<li>以上过程中如果任意条件不满足，直接产生 <code>panic</code></li>
+</ul>
+<h2 id="小结">小结</h2>
+<p>基础数据类型对象和 <code>反射对象</code> 之间的完全转化需要两个步骤:</p>
+<ol>
+<li>基础数据类型转换为 <code>interface{}</code></li>
+<li><code>interface{}</code> 转换为 <code>反射对象</code></li>
+</ol>
+<p>反过来，步骤正好逆向：</p>
+<ol>
+<li><code>反射对象</code> 转换为 <code>interface{}</code></li>
+<li><code>interface{}</code> 转换为基础数据类型</li>
+</ol>
+<p><code>反射</code> 的内部实现分析完了，最后来总结下 <code>反射</code> 的优缺点及应用场景。</p>
+<h3 id="优点">优点</h3>
+<ul>
+<li>避免硬编码，提高灵活性</li>
+<li>获取代码运行时能力，可以补足标准库缺失的能力，如动态修改值、判断是否实现接口、动态调用方法 (动态语言的特性) 等</li>
+</ul>
+<h3 id="缺点">缺点</h3>
+<ul>
+<li>有一定的学习和使用成本</li>
+<li>降低代码可读性</li>
+<li>降低代码性能</li>
+<li>规避了编译器检查，可能造成潜在的运行时 <code>panic</code> 或 <code>Bug</code></li>
+</ul>
+<h3 id="使用建议">使用建议</h3>
+<ul>
+<li>框架内部可以使用，比如标准库中的 <code>encoding/json</code> 包使用反射来解析数据类型，开源的 <code>ORM</code> 框架中使用反射来获取对象与数据表映射关系</li>
+<li>普通代码中不建议使用，尤其是位于 <code>hot path</code> 上面的业务代码</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ol>
+<li><a href="https://zh.wikipedia.org/wiki/%E5%8F%8D%E5%B0%84%E5%BC%8F%E7%BC%96%E7%A8%8B">反射 - 维基百科</a></li>
+<li><a href="https://dbwu.tech/posts/golang_implements/">Go 如何实现 implements</a></li>
+<li><a href="https://dbwu.tech/posts/golang_oop/">Go 的面向对象编程</a></li>
+</ol>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/docker_best_practices/"><i class="fa fa-chevron-circle-left"></i> Docker 官方提供的最佳实践</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/chatgpt/">ChatGPT 初体验 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Go 的反射与三大定律"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

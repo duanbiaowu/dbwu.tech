@@ -299,6 +299,12 @@
 </span></span><span style="display:flex;"><span>Benchmark_Stack/*performance.MutexStack-8               <span style="color:#3677a9">20625786</span>               172.5 ns/op
 </span></span></code></pre></div><p>通过输出结果可以看到，使用 <code>CAS</code> 实现的无锁方案的性能要优于使用 <code>Mutex</code> 实现的有锁方案。这里仅仅是一个简陋的测试实现，感兴趣的读者可以在此基础上改进，
 例如提高 <code>goroutine</code> 的数量，<code>栈</code> 的入栈、出栈比例等，然后观察无所方案带来的性能优势。</p>
+<h2 id="标准库中的无锁编程">标准库中的无锁编程</h2>
+<ul>
+<li>sync.WaitGroup 中的 <code>state</code> 字段</li>
+<li>sync.Pool 中的 <code>poolDequeue.headTail</code> 字段</li>
+</ul>
+<p>详情可以阅读之前的文章。</p>
 <h2 id="小结">小结</h2>
 <p><code>atomic</code> 包提供的 <code>CAS</code> 操作是一个相对底层的调用，在标准库中的很多实现中，都可以看到其身影。</p>
 <p><img src="https://dbwu.tech/images/atomic_cas.png" alt="CompareAndSwapPointer"></p>
@@ -337,12 +343,12 @@
     <ul>
         <li>
         
-            <a href="https://dbwu.tech/posts/golang_atomic/"><i class="fa fa-chevron-circle-left"></i> sync/atomic Code Review</a>
+            <a href="https://dbwu.tech/posts/golang_atomic/"><i class="fa fa-chevron-circle-left"></i> sync/atomic Code Reading</a>
         
         </li>
         <li>
         
-            <a href="https://dbwu.tech/posts/golang_sync_once/">sync.Once Code Review <i class="fa fa-chevron-circle-right"></i> </a>
+            <a href="https://dbwu.tech/posts/golang_sync_once/">sync.Once Code Reading <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>

@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>sync.Pool Code Review - 蛮荆</title>
+  <title>sync.Pool Code Reading - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。本文通过底层源代码来分析 sync.Pool 高性能背后的设计与实现&hellip;" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Pool Code Review" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Pool Code Reading" />
 <meta property="og:description" content="sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/golang_sync_pool/" /><meta property="article:section" content="posts" />
@@ -16,7 +16,7 @@
 <meta property="article:modified_time" content="2023-06-15T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="sync.Pool Code Review"/>
+<meta name="twitter:title" content="sync.Pool Code Reading"/>
 <meta name="twitter:description" content="sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。"/>
 
 <meta name="generator" content="Hugo 0.113.0">
@@ -103,7 +103,7 @@
 
 <article>
 
-    <h1>sync.Pool Code Review</h1>
+    <h1>sync.Pool Code Reading</h1>
 
     
       
@@ -690,6 +690,7 @@
 <li><a href="https://colobu.com/2019/10/08/how-is-sync-Pool-improved-in-Go-1-13/">Go 1.13中 sync.Pool 是如何优化的?</a></li>
 <li><a href="https://www.cnblogs.com/cyfonly/p/5800758.html">伪共享（false sharing），并发编程无声的性能杀手</a></li>
 <li><a href="https://github.com/cch123/golang-notes/blob/master/memory_barrier.md">memory barrier</a></li>
+<li><a href="https://medium.com/@genchilu/whats-false-sharing-and-how-to-solve-it-using-golang-as-example-ef978a305e10">What’s false sharing and how to solve it</a></li>
 </ul>
 
 
@@ -733,7 +734,7 @@
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="sync.Pool Code Review"
+        data-term="sync.Pool Code Reading"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"
