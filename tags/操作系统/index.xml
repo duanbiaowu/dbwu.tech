@@ -103,6 +103,15 @@
      </item>
    
      <item>
+       <title>为什么 Linux “一切皆文件”</title>
+       <link>https://dbwu.tech/posts/linux_everything_is_a_file/</link>
+       <pubDate>Fri, 19 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/linux_everything_is_a_file/</guid>
+       <description>在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源 &amp;hellip;</description>
+     </item>
+   
+     <item>
        <title>context.Context Code Reading</title>
        <link>https://dbwu.tech/posts/golang_context/</link>
        <pubDate>Fri, 12 May 2023 00:00:00 +0000</pubDate>

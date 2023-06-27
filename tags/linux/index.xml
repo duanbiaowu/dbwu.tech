@@ -1,15 +1,15 @@
 
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
  <channel>
-   <title>翻译 on 蛮荆</title>
-   <link>https://dbwu.tech/tags/%E7%BF%BB%E8%AF%91/</link>
-   <description>Recent content in 翻译 on 蛮荆</description>
+   <title>Linux on 蛮荆</title>
+   <link>https://dbwu.tech/tags/linux/</link>
+   <description>Recent content in Linux on 蛮荆</description>
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Thu, 11 May 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Fri, 19 May 2023 00:00:00 +0000</lastBuildDate>
    
-       <atom:link href="https://dbwu.tech/tags/%E7%BF%BB%E8%AF%91/index.xml" rel="self" type="application/rss+xml" />
+       <atom:link href="https://dbwu.tech/tags/linux/index.xml" rel="self" type="application/rss+xml" />
    
    
      <item>

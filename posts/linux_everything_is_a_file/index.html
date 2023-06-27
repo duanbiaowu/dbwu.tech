@@ -1,0 +1,379 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>为什么 Linux “一切皆文件” - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源 &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="为什么 Linux “一切皆文件”" />
+<meta property="og:description" content="在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源 &hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/linux_everything_is_a_file/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-05-19T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-05-19T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="为什么 Linux “一切皆文件”"/>
+<meta name="twitter:description" content="在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源 &hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>为什么 Linux “一切皆文件”</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F">操作系统</a>
+    
+    
+    <a href="https://dbwu.tech/tags/linux">Linux</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。
+每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源。</p>
+<blockquote>
+<p>一切皆为文件的理念提供了最高级的抽象，开发者只需要使用一套 API 就可以操作 Linux 系统中的绝大部分资源。</p>
+</blockquote>
+<p>一个典型的 Linux 系统的文件结构如下所示:</p>
+<p><img src="https://dbwu.tech/images/linux_file_structure.png" alt="图片来源: https://tldp.org/LDP/intro-linux/html/sect_03_01.html"></p>
+<h2 id="常见文件类型">常见文件类型</h2>
+<h3 id="1-普通文件">1. 普通文件</h3>
+<p>普通文件并不单单指文本文件，还包括可执行二进制程序、程序的输入输出等。</p>
+<h3 id="2-目录文件">2. 目录文件</h3>
+<p>目录文件包含一组文件的所有者、权限和大小等信息。</p>
+<h3 id="3-设备文件">3. 设备文件</h3>
+<p>所有物理设备都是通过设备文件进行访问的，设备文件保存有关特定设备的位置、类型和访问模式等信息，主要分为两种类型: <strong>块设备文件和字符设备文件</strong>。</p>
+<p><strong>块设备文件</strong> 用于访问块设备 I/O, 块设备使用的是缓冲 I/O，这意味着数据收集在缓冲区中，直到可以传输整个块为止。</p>
+<p><strong>字符设备文件</strong> 与字符或原始设备进行无缓冲数据传输，数据传输按照字符逐个进行，单次可以传输多个字符。</p>
+<p>此外，某些设备（例如磁盘分区）可以以块设备或字符设备模式访问，每个设备文件对应一种访问模式，因此这种<strong>具有多种访问模式的物理设备将具有多个设备文件</strong>。</p>
+<p>设备文件全部位于 <code>dev</code> 目录，执行下面的命令:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ls -l /dev
+</span></span></code></pre></div><p>输出结果中会逐行输出单个设备文件，第一个字符 b 表示该设备为块设备。</p>
+<h3 id="4-特殊文件">4. 特殊文件</h3>
+<p>特殊文件用于输入和输出的机制，本质上也是一种 “设备文件”，典型的特殊文件如:</p>
+<ul>
+<li><strong>/dev/null</strong>   : 用于丢弃进程的输出流</li>
+<li><strong>/dev/full</strong>   : 对该文件进行写入时始终返回相同的错误代码：ENOSPC (表示设备上没有可用空间)</li>
+<li><strong>/dev/zero</strong>   : 用于一些需要初始化变量、清空内存或写入特定位模式的应用程序</li>
+<li><strong>/dev/random</strong> : 利用物理过程（例如键盘敲击、鼠标移动、磁盘I/O等）的噪声来收集随机性，并将其整合以产生高质量的随机数。由于这些物理过程本身具有随机性，因此可以确保生成的随机数是真正的随机数，而不是伪随机数</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看设备文件</span>
+</span></span><span style="display:flex;"><span>$ ls -l /dev/ | grep -e  <span style="color:#ed9d13">&#34;null\|zero&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>crw-rw-rw- <span style="color:#3677a9">1</span> root root   1,   <span style="color:#3677a9">3</span> Jun <span style="color:#3677a9">21</span> 20:39 null
+</span></span><span style="display:flex;"><span>crw-rw-rw- <span style="color:#3677a9">1</span> root root   1,   <span style="color:#3677a9">5</span> Jun <span style="color:#3677a9">21</span> 20:39 zero
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># /dev/null 示例</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ <span style="color:#24909d">echo</span> <span style="color:#ed9d13">&#34;Hello World&#34;</span> &gt; /dev/null
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># /dev/full 示例</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ echo: write error: no space left on device
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># /dev/zero 示例</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 将 /dev/zero 的输出写入到 text.txt 文件中，并且限制文件的大小为 10MB。</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 由于从 /dev/zero 中读取的所有数据都是零值，因此最终 test.txt 文件中将包含 10MB 的零值字节</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ dd <span style="color:#6ab825;font-weight:bold">if</span>=/dev/zero <span style="color:#40ffff">of</span>=test.txt <span style="color:#40ffff">bs</span>=1M <span style="color:#40ffff">count</span>=<span style="color:#3677a9">10</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># /dev/random 示例</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 从 /dev/random 中读取 16 个字节的随机数据，并转换为一个无符号整数 (十进制表示形式)</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># -t u4 参数指定以无符号 4 字节整数形式输出数据</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># -An 参数指定不要输出地址信息</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ head -c <span style="color:#3677a9">16</span> /dev/random | od -t u4 -An
+</span></span></code></pre></div><h3 id="5-链接文件">5. 链接文件</h3>
+<p>使用 <code>ln</code> 命令创建硬链接和软链接。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 创建硬链接</span>
+</span></span><span style="display:flex;"><span>$ ln /tmp/abc.txt /tmp/def.txt
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 创建软链接</span>
+</span></span><span style="display:flex;"><span>$ ln -s /tmp/abc.txt /tmp/def.txt
+</span></span></code></pre></div><h3 id="5-套接字文件">5. 套接字文件</h3>
+<p>套接字文件是一种特殊类型的文件，用于实现进程间通信 (IPC), 可以看作是网络套接字与本地套接字的混合体。</p>
+<p>对于进程间通信，套接字提供了一种简单而强大的方式来传递数据，它们可以在同一台计算机上的进程之间进行通信，也可以在不同计算机上的进程之间进行通信。
+套接字文件通常存储在文件系统的特定目录中，例如 /var/run 或 /tmp，通常分为由操作系统系统软件创建的和由应用程序创建的。</p>
+<h3 id="6-命名管道文件">6. 命名管道文件</h3>
+<p>命名管道允许多个进程之间通过一个共享的命名管道文件进行通信，进程可以向管道写入数据，并从管道读取数据，就好像在普通文件中读写数据一样。</p>
+<h2 id="查看文件类型">查看文件类型</h2>
+<p>调用 <code>ls</code> 命令时，输出结果中会逐行输出单个文件，<strong>第一个字符</strong> 表示该文件的类型。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">字母</th>
+<th style="text-align:left">文件类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">-</td>
+<td style="text-align:left">普通文件</td>
+</tr>
+<tr>
+<td style="text-align:left">d</td>
+<td style="text-align:left">目录文件</td>
+</tr>
+<tr>
+<td style="text-align:left">l</td>
+<td style="text-align:left">链接文件</td>
+</tr>
+<tr>
+<td style="text-align:left">c</td>
+<td style="text-align:left">特殊文件</td>
+</tr>
+<tr>
+<td style="text-align:left">s</td>
+<td style="text-align:left">套接字文件</td>
+</tr>
+<tr>
+<td style="text-align:left">p</td>
+<td style="text-align:left">命名管道文件</td>
+</tr>
+<tr>
+<td style="text-align:left">b</td>
+<td style="text-align:left">块设备文件</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 例如，我们可以查看 /var/run 目录下的文件列表</span>
+</span></span><span style="display:flex;"><span>$ ls -l /var/run
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>total <span style="color:#3677a9">60</span>
+</span></span><span style="display:flex;"><span>drwxr-xr-x <span style="color:#3677a9">2</span> dnsmasq  nogroup  <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">20</span> 21:51 dnsmasq
+</span></span><span style="display:flex;"><span>drwx------ <span style="color:#3677a9">6</span> root     root     <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">24</span> 08:09 docker
+</span></span><span style="display:flex;"><span>-rw-r--r-- <span style="color:#3677a9">1</span> root     root        <span style="color:#3677a9">3</span> Jun <span style="color:#3677a9">24</span> 08:09 docker.pid
+</span></span><span style="display:flex;"><span>srw-rw---- <span style="color:#3677a9">1</span> root     docker      <span style="color:#3677a9">0</span> Jun <span style="color:#3677a9">24</span> 08:09 docker.sock
+</span></span><span style="display:flex;"><span>-rw-r--r-- <span style="color:#3677a9">1</span> root     root        <span style="color:#3677a9">4</span> Jun <span style="color:#3677a9">24</span> 08:09 docker-ssd.pid
+</span></span><span style="display:flex;"><span>drwxr-xr-x <span style="color:#3677a9">3</span> root     root     <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">20</span> 22:34 google
+</span></span><span style="display:flex;"><span>drwxrwxrwt <span style="color:#3677a9">2</span> root     root     <span style="color:#3677a9">4096</span> Jan  <span style="color:#3677a9">1</span>  <span style="color:#3677a9">1970</span> lock
+</span></span><span style="display:flex;"><span>drwxr-xr-x <span style="color:#3677a9">2</span> root     root     <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">24</span> 08:09 metrics
+</span></span><span style="display:flex;"><span>drwxr-xr-x <span style="color:#3677a9">2</span> root     root     <span style="color:#3677a9">4096</span> Jan  <span style="color:#3677a9">1</span>  <span style="color:#3677a9">1970</span> mount
+</span></span><span style="display:flex;"><span>drwxrwsr-x <span style="color:#3677a9">2</span> postgres postgres <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">20</span> 21:54 postgresql
+</span></span><span style="display:flex;"><span>-rw-r--r-- <span style="color:#3677a9">1</span> root     root        <span style="color:#3677a9">1</span> Jun <span style="color:#3677a9">24</span> 08:09 rsyslogd.pid
+</span></span><span style="display:flex;"><span>drwxr-xr-x <span style="color:#3677a9">3</span> root     root     <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">20</span> 21:52 runit
+</span></span><span style="display:flex;"><span>drwxr-xr-x <span style="color:#3677a9">2</span> root     root     <span style="color:#3677a9">4096</span> Jun <span style="color:#3677a9">20</span> 21:55 sshd
+</span></span><span style="display:flex;"><span>-rw-r--r-- <span style="color:#3677a9">1</span> root     root        <span style="color:#3677a9">4</span> Jun <span style="color:#3677a9">24</span> 08:09 sshd.pid
+</span></span><span style="display:flex;"><span>-rw-r--r-- <span style="color:#3677a9">1</span> root     root        <span style="color:#3677a9">3</span> Jun <span style="color:#3677a9">24</span> 08:09 supervisor.pid
+</span></span><span style="display:flex;"><span>-rw-rw-r-- <span style="color:#3677a9">1</span> root     utmp      <span style="color:#3677a9">768</span> Jun <span style="color:#3677a9">24</span> 08:09 utmp
+</span></span><span style="display:flex;"><span>-rw------- <span style="color:#3677a9">1</span> root     root        <span style="color:#3677a9">0</span> Jun <span style="color:#3677a9">24</span> 08:09 xtables.lock
+</span></span></code></pre></div><h2 id="常见文件操作">常见文件操作</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">API</th>
+<th style="text-align:left">语义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">open</td>
+<td style="text-align:left">打开或创建一个文件</td>
+</tr>
+<tr>
+<td style="text-align:left">read</td>
+<td style="text-align:left">从一个已打开的文件中读取数据</td>
+</tr>
+<tr>
+<td style="text-align:left">write</td>
+<td style="text-align:left">向一个已打开的文件中写入数据</td>
+</tr>
+<tr>
+<td style="text-align:left">close</td>
+<td style="text-align:left">关闭一个已经打开的文件句柄</td>
+</tr>
+<tr>
+<td style="text-align:left">&hellip;</td>
+<td style="text-align:left"></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>开发者可以直接调用 API 对文件进行操作，而无需关心文件的具体类型，这种 “多态性” 是直接建立在操作系统上面的。</p>
+</blockquote>
+<h2 id="小结">小结</h2>
+<p>Linux 中 <strong>一切皆为文件</strong> 的设计理念带来了许多好处:</p>
+<ul>
+<li>统一接口: 使用相同的 API 可以对所有类型的文件进行操作，例如读取、写入、移动、删除、修改权限等</li>
+<li>简化管理: 使用相同的工具和方式来管理文件和设备的操作，例如备份、复制、移动、删除、链接等</li>
+<li>编程性 : 一个程序可以通过文件与其他程序通信，使得程序之间的交互、测试、集成等行为变得更容易，并且可以针对不同的应用场景，使用适用的编程语言来编写代码，提升灵活性和开发效率</li>
+<li>扩展性 : 可以创建自定义的文件系统以支持特定的文件或设备类型，最终将新的硬件或软件集成到已有系统中</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="http://ibgwww.colorado.edu/~lessem/psyc5112/usail/concepts/filesystems/everything-is-a-file.html">Everything is a File</a></li>
+<li><a href="https://tldp.org/LDP/intro-linux/html/sect_03_01.html">General overview of the Linux file system</a></li>
+<li><a href="https://www.linuxandubuntu.com/home/everything-is-file-in-linux-part-1">Everything Is File In Linux</a></li>
+<li><a href="https://www.linuxandubuntu.com/home/everything-is-file-in-linux-part-2">Everything Is File In Linux</a></li>
+<li><a href="https://www.tecmint.com/everything-is-file-and-types-of-files-linux/">Explanation of “Everything is a File” and Types of Files in Linux</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_context/"><i class="fa fa-chevron-circle-left"></i> context.Context Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_channel/">Go channel 的 15 条规则和底层实现 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="为什么 Linux “一切皆文件”"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
