@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Sun, 25 Jun 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Fri, 30 Jun 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>ants Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_ants/</link>
+       <pubDate>Fri, 30 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_ants/</guid>
+       <description>ants 是一个高性能且低损耗的 goroutine 池，组件内部会创建一个固定容量的 goroutine 池，并且管理和回收池中的 goroutine，主要应用场景是允许开发者限制并发程序中的 goroutine 数量，更多的特性 &amp;hellip;</description>
+     </item>
    
      <item>
        <title>Go 线程安全 map 方案选型</title>

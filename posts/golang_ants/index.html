@@ -1,0 +1,708 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>ants Code Reading - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="ants 是一个高性能且低损耗的 goroutine 池，组件内部会创建一个固定容量的 goroutine 池，并且管理和回收池中的 goroutine，主要应用场景是允许开发者限制并发程序中的 goroutine 数量，更多的特性 &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="ants Code Reading" />
+<meta property="og:description" content="ants 是一个高性能且低损耗的 goroutine 池，组件内部会创建一个固定容量的 goroutine 池，并且管理和回收池中的 goroutine，主要应用场景是允许开发者限制并发程序中的 goroutine 数量，更多的特性 &hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_ants/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-06-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-06-30T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="ants Code Reading"/>
+<meta name="twitter:description" content="ants 是一个高性能且低损耗的 goroutine 池，组件内部会创建一个固定容量的 goroutine 池，并且管理和回收池中的 goroutine，主要应用场景是允许开发者限制并发程序中的 goroutine 数量，更多的特性 &hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>ants Code Reading</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>goroutine 使用简单，但并不意味着没有成本。</p>
+</blockquote>
+<p>ants 是一个高性能且低损耗的 <code>goroutine</code> 池，组件内部会创建一个固定容量的 <code>goroutine</code> 池，并且管理和回收池中的 <code>goroutine</code>，
+主要应用场景是允许开发者限制并发程序中的 <code>goroutine</code> 数量，更多的特性介绍请参考 <a href="https://github.com/panjf2000/ants">Github 主页</a>。</p>
+<h2 id="示例代码">示例代码</h2>
+<p>我们首先通过两个示例程序来直观地感受一下使用 goroutine 池前后的差异。</p>
+<h3 id="未使用-goroutine-池">未使用 goroutine 池</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;runtime&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync/atomic&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	sum <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> i <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动 100 个 goroutine 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i = <span style="color:#3677a9">1</span>; i &lt;= <span style="color:#3677a9">100</span>; i++ {
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(n <span style="color:#6ab825;font-weight:bold">int32</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>			atomic.<span style="color:#447fcf">AddInt32</span>(&amp;sum, n)
+</span></span><span style="display:flex;"><span>		}(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	log.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;goroutines numbers = %d\n&#34;</span>, runtime.<span style="color:#447fcf">NumGoroutine</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	log.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;sum = %d, want = %d&#34;</span>, sum, <span style="color:#3677a9">5050</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码输出结果如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>goroutines <span style="color:#40ffff">numbers</span> = <span style="color:#3677a9">101</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">sum</span> = 5050, <span style="color:#40ffff">want</span> = <span style="color:#3677a9">5050</span>
+</span></span></code></pre></div><p>程序运行过程中一共启动了 101 个 <code>goroutine</code>, 其中 1 个是 <code>main goroutine</code>, 其他的 100 个是通过 go 关键字启动的 <code>goroutine</code> 。</p>
+<h3 id="使用-goroutine-池">使用 goroutine 池</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;runtime&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync/atomic&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/panjf2000/ants/v2&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	sum <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> ants.<span style="color:#447fcf">Release</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	p, err := ants.<span style="color:#447fcf">NewPoolWithFunc</span>(<span style="color:#3677a9">10</span>, <span style="color:#6ab825;font-weight:bold">func</span>(i <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>		atomic.<span style="color:#447fcf">AddInt32</span>(&amp;sum, i.(<span style="color:#6ab825;font-weight:bold">int32</span>))
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> p.<span style="color:#447fcf">Release</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">1</span>; i &lt;= <span style="color:#3677a9">100</span>; i++ {
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		_ = p.<span style="color:#447fcf">Invoke</span>(<span style="color:#24909d">int32</span>(i))
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	log.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;goroutines numbers = %d\n&#34;</span>, runtime.<span style="color:#447fcf">NumGoroutine</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	log.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;sum = %d, want = %d&#34;</span>, sum, <span style="color:#3677a9">5050</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行代码输出结果如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>goroutines <span style="color:#40ffff">numbers</span> = <span style="color:#3677a9">15</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">sum</span> = 5050, <span style="color:#40ffff">want</span> = <span style="color:#3677a9">5050</span>
+</span></span></code></pre></div><p>程序运行过程中一共启动了 15 个 <code>goroutine</code>, 其中 1 个是 <code>main goroutine</code>, 还有 10 个是通过 ants 组件限制数量的 <code>goroutine</code>,
+剩余的 4 个是 ants 组件用于管理调度的内部 <code>goroutine</code> 。</p>
+<h2 id="源码解析">源码解析</h2>
+<p>通过上面两个示例程序的结果比较，ants 确实能够有效降低和控制 <code>goroutine</code> 的数量，这个功能可以有效解决海量 <code>goroutine</code> 场景下的内存暴涨问题。
+性能方面，官方给出的基准测试结果是: ants 的吞吐性能相较于原生 goroutine 可以保持在 2~6 倍的性能压制，而内存消耗则可以达到 10~20 倍的节省优势，
+感兴趣的读者可以查看 <a href="https://github.com/panjf2000/ants/blob/dev/ants_benchmark_test.go">这里的基准测试</a>。</p>
+<h2 id="数据结构">数据结构</h2>
+<h3 id="uml">UML</h3>
+<p><img src="https://dbwu.tech/images/ants_uml.png" alt="ants UML"></p>
+<p>读者在阅读下面的源代码分析时，可以对照着结构图进行校验。</p>
+<h3 id="通用池和专用池">通用池和专用池</h3>
+<p>ants 中内置了两种不同模式的 <code>goroutine pool</code>:</p>
+<h4 id="1-pool">1. Pool</h4>
+<p><code>ants.Pool</code> 表示通用的 <code>goroutine pool</code>, 也就是每个 <code>goroutine</code> 中可以是不同的任务执行函数。</p>
+<h4 id="2-poolwithfunc">2. PoolWithFunc</h4>
+<p><code>ants.PoolWithFunc</code> 表示专用的 <code>goroutine pool</code>, 也就是每个 <code>goroutine</code> 中是相同的任务执行函数，但是参数可以不同 (上面的示例代码中使用就是这种模式)。</p>
+<p>本文以 <code>ants.Pool</code> 模式下的源代码来进行分析。</p>
+<h3 id="池对象">池对象</h3>
+<p>Pool 表示组件的核心对象，我们挑选几个关键属性字段来进行说明。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Pool <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 池的容量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是负责执行 worker 的数量上限
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	capacity <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前正在执行的 worker 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是 goroutine 的数量 (每个 worker 启动一个 goroutine)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	running <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标准库的锁接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 组件内部使用了自旋锁作为具体的实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lock sync.Locker
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存储闲置的 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	workers workerQueue
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 池的状态标识 (标识池是否已关闭)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	state <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取闲置 worker 时使用的信号量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cond *sync.Cond
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 池的配置选项对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	options *Options
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="配置项">配置项</h3>
+<p><code>Options</code> 对象表示池对象的属性配置，可以在创建池对象时通过 <code>FUNCTIONAL OPTIONS</code> 模式注入自定义的属性值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Options <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 任务的过期时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 空闲 worker 的最后运行时间与当前时间之差
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果大于这个值，表示该 worker 已过期
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 定时清理任务会清理过期的 worker 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ExpiryDuration time.Duration
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化池的时候是否预分配 worker 队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	PreAlloc <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 pool.Submit 方法阻塞时，最多可以阻塞的 worker 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 默认值为 0，表示不限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	MaxBlockingTasks <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 为 true 时，pool.Submit 方法永远不会阻塞，也就是 MaxBlockingTasks 属性不起作用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 pool.Submit 方法因阻塞而无法完成时，返回 ErrPoolOverload 错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Nonblocking <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 任务 goroutine 触发 panic 时的错误捕获及处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	PanicHandler <span style="color:#6ab825;font-weight:bold">func</span>(<span style="color:#6ab825;font-weight:bold">interface</span>{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 自定义日志对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 默认使用标准库中的 log 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Logger Logger
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 任务 goroutine 是否常驻内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	DisablePurge <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">WithExpiryDuration</span>(options Options) Option {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">WithPreAlloc</span>(options Options) Option {}
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="worker-接口">worker 接口</h3>
+<p><code>worker</code> 接口是任务执行者的抽象表示，简单地理解就是一个专门干活的 <code>goroutine</code>, 该接口提供了 5 个操作语义:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">方法名称</th>
+<th style="text-align:left">语义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">run</td>
+<td style="text-align:left">启动一个 goroutine 执行任务</td>
+</tr>
+<tr>
+<td style="text-align:left">finish</td>
+<td style="text-align:left">任务已经完成，退出 goroutine</td>
+</tr>
+<tr>
+<td style="text-align:left">lastUsedTime</td>
+<td style="text-align:left">最后的任务执行时间</td>
+</tr>
+<tr>
+<td style="text-align:left">inputFunc</td>
+<td style="text-align:left">提交一个任务到 goroutine</td>
+</tr>
+<tr>
+<td style="text-align:left">inputParam</td>
+<td style="text-align:left">任务参数</td>
+</tr>
+</tbody>
+</table>
+<p><code>ants.Pool</code> 池对应的 worker 接口实现对象是 <code>goWorker</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> goWorker <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对应的池对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pool *Pool
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 需要执行的任务函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	task <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">func</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 最后的任务执行时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lastUsed time.Time
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>下面是 <code>goWorker</code> 对象对于接口的具体实现:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (w *goWorker) <span style="color:#447fcf">run</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通知 goroutine 池: 运行 goroutine 数量 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	w.pool.<span style="color:#447fcf">addRunning</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动一个 goroutine 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 通知 goroutine 池: 运行 goroutine 数量 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			w.pool.<span style="color:#447fcf">addRunning</span>(-<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将当前 goWorker 对象放入对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 可以提升后续获取 goWorker 对象操作的性能
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			w.pool.workerCache.<span style="color:#447fcf">Put</span>(w)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> p := <span style="color:#24909d">recover</span>(); p != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// panic 处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> ph := w.pool.options.PanicHandler; ph != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#447fcf">ph</span>(p)
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					w.pool.options.Logger.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;worker exits from panic: %v\n%s\n&#34;</span>, p, debug.<span style="color:#447fcf">Stack</span>())
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 发送闲置 goWorker 对象信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			w.pool.cond.<span style="color:#447fcf">Signal</span>()
+</span></span><span style="display:flex;"><span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> f := <span style="color:#6ab825;font-weight:bold">range</span> w.task {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> f == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果执行函数为 nil (这里的 nil 充当了 goroutine 的退出信号)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 直接退出即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 执行具体的函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">f</span>()
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将当前 goWorker 对象放入 worker 队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 最大程度地复用当前 goWorker 对象，同时避免 goroutine 的上下文切换带来的开销
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> ok := w.pool.<span style="color:#447fcf">revertWorker</span>(w); !ok {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果放入队列失败，可能是由于:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 1. Pool 池对象已关闭
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 2. Pool 池对象当前运行的 goroutine 数量已到达限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 此时直接退出当前 goroutine 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 向任务 channel 发送一个 nil, 充当了 goroutine 的退出信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (w *goWorker) <span style="color:#447fcf">finish</span>() {
+</span></span><span style="display:flex;"><span>	w.task &lt;- <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回 worker 最后的任务执行时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (w *goWorker) <span style="color:#447fcf">lastUsedTime</span>() time.Time {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> w.lastUsed
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 向 worker 提交一个新的任务
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (w *goWorker) <span style="color:#447fcf">inputFunc</span>(fn <span style="color:#6ab825;font-weight:bold">func</span>()) {
+</span></span><span style="display:flex;"><span>	w.task &lt;- fn
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 因为 Pool.Submit 提交任务的原型为 func (p *Pool) Submit(task func()) error {}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 所以 goWorker 对象中的任务函数没有参数值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (w *goWorker) <span style="color:#447fcf">inputParam</span>(<span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;unreachable&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="worker-队列接口">worker 队列接口</h3>
+<p><code>workerQueue</code> 接口表示存放 <code>worker</code> 的队列容器接口，和一般的容器类接口相似, 该接口提供了 6 个操作语义:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">方法名称</th>
+<th style="text-align:left">语义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">len</td>
+<td style="text-align:left">队列中 worker 数量</td>
+</tr>
+<tr>
+<td style="text-align:left">isEmpty</td>
+<td style="text-align:left">队列是否为空</td>
+</tr>
+<tr>
+<td style="text-align:left">insert</td>
+<td style="text-align:left">将一个 worker 放入队列</td>
+</tr>
+<tr>
+<td style="text-align:left">detach</td>
+<td style="text-align:left">从队列中取出一个 worker</td>
+</tr>
+<tr>
+<td style="text-align:left">refresh</td>
+<td style="text-align:left">检测过期的 worker 并返回</td>
+</tr>
+<tr>
+<td style="text-align:left">reset</td>
+<td style="text-align:left">重置队列为空</td>
+</tr>
+</tbody>
+</table>
+<p>组件内部给出了两种队列实现方案，分别是基于 <code>Stack (栈)</code> 和 <code>Ring Queue (环形队列)</code>，两种方案的内部实现和常规数据结构算法实现基本一致，这里不再赘述。</p>
+<h2 id="方法">方法</h2>
+<h3 id="池的初始化">池的初始化</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewPool</span>(size <span style="color:#6ab825;font-weight:bold">int</span>, options ...Option) (*Pool, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pool 的配置项加载和默认值处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	opts := <span style="color:#447fcf">loadOptions</span>(options...)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化 Pool 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p := &amp;Pool{
+</span></span><span style="display:flex;"><span>		capacity: <span style="color:#24909d">int32</span>(size),
+</span></span><span style="display:flex;"><span>		lock:     syncx.<span style="color:#447fcf">NewSpinLock</span>(),
+</span></span><span style="display:flex;"><span>		options:  opts,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注册 worker 对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p.workerCache.New = <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> &amp;goWorker{
+</span></span><span style="display:flex;"><span>			pool: p,
+</span></span><span style="display:flex;"><span>			task: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">func</span>(), workerChanCap),
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据配置决定是否预分配 worker 队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> p.options.PreAlloc {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果使用预分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 使用 Ring Queue 作为队列的数据结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.workers = <span style="color:#447fcf">newWorkerArray</span>(queueTypeLoopQueue, size)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果不使用预分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 使用 Stack 作为队列的数据结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.workers = <span style="color:#447fcf">newWorkerArray</span>(queueTypeStack, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	... 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动一个 goroutine, 清除过期 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p.<span style="color:#447fcf">goPurge</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> p, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>池的初始化操作完成后，接下来就是等待调用方提交具体的任务函数。</p>
+<h3 id="提交任务到-pool">提交任务到 Pool</h3>
+<p>调用方提交任务函数到池中的时候，会尝试获取一个可用的 worker 来执行任务函数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">Submit</span>(task <span style="color:#6ab825;font-weight:bold">func</span>()) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> p.<span style="color:#447fcf">IsClosed</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 Pool 已关闭, 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> ErrPoolClosed
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> w := p.<span style="color:#447fcf">retrieveWorker</span>(); w != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取到了可用的 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接将参数任务提交给 worker 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		w.<span style="color:#447fcf">inputFunc</span>(task)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 没有获取到可用的 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> ErrPoolOverload
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="获取可用的-worker">获取可用的 worker</h3>
+<p><code>retrieveWorker</code> 方法会根据配置项，采用不同的策略获取可用的 worker 。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">retrieveWorker</span>() (w worker) {
+</span></span><span style="display:flex;"><span>	spawnWorker := <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从对象池中获取一个 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		w = p.workerCache.<span style="color:#447fcf">Get</span>().(*goWorker)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取到 worker 之后直接运行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		w.<span style="color:#447fcf">run</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	p.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 首先尝试从队列获取 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	w = p.workers.<span style="color:#447fcf">detach</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> w != <span style="color:#6ab825;font-weight:bold">nil</span> { 
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从队列中获取到了 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> capacity := p.<span style="color:#447fcf">Cap</span>(); capacity == -<span style="color:#3677a9">1</span> || capacity &gt; p.<span style="color:#447fcf">Running</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果队列为空并且满足以下两个条件任意一个:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    1. Pool 没有容量限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    2. 当前 worker 数量没有达到 Pool 的容量限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接创建一个新的 worker 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">spawnWorker</span>()
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果上述条件都不满足
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 只能等待其他执行完的 worker 归还到队列中，然后再获取
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> p.options.Nonblocking {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Pool 的任务提交模式是非阻塞的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	retry:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> p.options.MaxBlockingTasks != <span style="color:#3677a9">0</span> &amp;&amp; p.<span style="color:#447fcf">Waiting</span>() &gt;= p.options.MaxBlockingTasks {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果等待 worker 的 goroutine 数量超过限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等待 worker 的 goroutine 数量 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.<span style="color:#447fcf">addWaiting</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等待可用的 worker 信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.cond.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 等待 worker 的 goroutine 数量 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.<span style="color:#447fcf">addWaiting</span>(-<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> w = p.workers.<span style="color:#447fcf">detach</span>(); w == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果接收到了信号，但是依然没有从队列中获取到 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明队列中的 worker 被其他 goroutine 抢先一步获取到了 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> p.<span style="color:#447fcf">Free</span>() &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 此时如果还有没有达到 Pool 的容量限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 直接创建一个新的 worker 并返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>				<span style="color:#447fcf">spawnWorker</span>()
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">goto</span> retry
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="定时清除过期-worker">定时清除过期 worker</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">purgeStaleWorkers</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据配置项创建定时器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ticker := time.<span style="color:#447fcf">NewTicker</span>(p.options.ExpiryDuration)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 终止定时器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ticker.<span style="color:#447fcf">Stop</span>()
+</span></span><span style="display:flex;"><span>		atomic.<span style="color:#447fcf">StoreInt32</span>(&amp;p.purgeDone, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-ctx.<span style="color:#447fcf">Done</span>():
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 退出信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-ticker.C:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 执行清理操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> isDormant <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>		p.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 检测过期的 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		staleWorkers := p.workers.<span style="color:#447fcf">refresh</span>(p.options.ExpiryDuration)
+</span></span><span style="display:flex;"><span>		n := p.<span style="color:#447fcf">Running</span>()
+</span></span><span style="display:flex;"><span>		isDormant = n == <span style="color:#3677a9">0</span> || n == <span style="color:#24909d">len</span>(staleWorkers)
+</span></span><span style="display:flex;"><span>		p.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 停止过期 worker 的执行 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> staleWorkers {
+</span></span><span style="display:flex;"><span>			staleWorkers[i].<span style="color:#447fcf">finish</span>()
+</span></span><span style="display:flex;"><span>			staleWorkers[i] = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果当前没有运行的 worker, 所有的 worker 都已过期
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 但是与此同时还有正在提交任务的 goroutine 在等待可用的 worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接发送信号通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> isDormant &amp;&amp; p.<span style="color:#447fcf">Waiting</span>() &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			p.cond.<span style="color:#447fcf">Broadcast</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="辅助方法">辅助方法</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回阻塞在提交任务的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">Waiting</span>() <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回 Pool 的容量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">Cap</span>() <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回 Pool 是否已关闭
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (p *Pool) <span style="color:#447fcf">IsClosed</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p>本文从源代码的角度，剖析了知名的开源组件 <code>ants</code>, 着重分析了 <code>Pool</code>, <code>worker</code>, <code>worker 队列</code> 三个核心对象的设计与实现，
+组件代码逻辑可以参照官方的流程图。</p>
+<p><img src="https://dbwu.tech/images/ants_flow.png" alt="图片来源: https://github.com/panjf2000/ants"></p>
+<h2 id="组件本身存在的问题">组件本身存在的问题</h2>
+<p>可以参考 TiDB <a href="https://www.zenlife.tk/go-manual-scheduler.md">大佬的文章</a> 中的 Section: “跟 goroutine pool 或者 worker pool 有什么区别？”。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/panjf2000/ants">ants</a></li>
+<li><a href="https://www.cockroachlabs.com/blog/rubbing-control-theory/">Rubbing control theory on the Go scheduler</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_thread_safe_map/"><i class="fa fa-chevron-circle-left"></i> Go 线程安全 map 方案选型</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="ants Code Reading"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
