@@ -1,0 +1,682 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>fastcache 高性能的设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="fastcache 高性能的设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_fastcache/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-06T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-06T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="fastcache 高性能的设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>fastcache 高性能的设计与实现</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>fastcache 是一个线程安全并且支持大量数据存储的高性能缓存组件库。</p>
+</blockquote>
+<p>这是官方 <code>Github</code> 主页上的项目介绍，和 <code>fasthttp</code> 名字一样以 <code>fast</code> 打头，作者对项目代码的自信程度可见一斑。此外该库的核心代码非常轻量，
+笔者本来学习的目的分析下内部的代码实现。</p>
+<h2 id="基准测试">基准测试</h2>
+<p>官方给出了 <code>fastcache</code>, <code>bigcache</code>, 标准库 <code>map</code>, <code>sync.Map</code> 的基准测试比较结果。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#40ffff">GOMAXPROCS</span>=<span style="color:#3677a9">4</span> go <span style="color:#24909d">test</span> github.com/VictoriaMetrics/fastcache -bench=<span style="color:#ed9d13">&#39;Set|Get&#39;</span> -benchtime=10s
+</span></span><span style="display:flex;"><span>goos: linux
+</span></span><span style="display:flex;"><span>goarch: amd64
+</span></span><span style="display:flex;"><span>pkg: github.com/VictoriaMetrics/fastcache
+</span></span><span style="display:flex;"><span>BenchmarkBigCacheSet-4      	    2000	  <span style="color:#3677a9">10566656</span> ns/op	   6.20 MB/s	 <span style="color:#3677a9">4660369</span> B/op	       <span style="color:#3677a9">6</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkBigCacheGet-4      	    2000	   <span style="color:#3677a9">6902694</span> ns/op	   9.49 MB/s	  <span style="color:#3677a9">684169</span> B/op	  <span style="color:#3677a9">131076</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkBigCacheSetGet-4   	    1000	  <span style="color:#3677a9">17579118</span> ns/op	   7.46 MB/s	 <span style="color:#3677a9">5046744</span> B/op	  <span style="color:#3677a9">131083</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkCacheSet-4         	    5000	   <span style="color:#3677a9">3808874</span> ns/op	  17.21 MB/s	    <span style="color:#3677a9">1142</span> B/op	       <span style="color:#3677a9">2</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkCacheGet-4         	    5000	   <span style="color:#3677a9">3293849</span> ns/op	  19.90 MB/s	    <span style="color:#3677a9">1140</span> B/op	       <span style="color:#3677a9">2</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkCacheSetGet-4      	    2000	   <span style="color:#3677a9">8456061</span> ns/op	  15.50 MB/s	    <span style="color:#3677a9">2857</span> B/op	       <span style="color:#3677a9">5</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkStdMapSet-4        	    2000	  <span style="color:#3677a9">10559382</span> ns/op	   6.21 MB/s	  <span style="color:#3677a9">268413</span> B/op	   <span style="color:#3677a9">65537</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkStdMapGet-4        	    5000	   <span style="color:#3677a9">2687404</span> ns/op	  24.39 MB/s	    <span style="color:#3677a9">2558</span> B/op	      <span style="color:#3677a9">13</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkStdMapSetGet-4     	     100	 <span style="color:#3677a9">154641257</span> ns/op	   0.85 MB/s	  <span style="color:#3677a9">387405</span> B/op	   <span style="color:#3677a9">65558</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkSyncMapSet-4       	     500	  <span style="color:#3677a9">24703219</span> ns/op	   2.65 MB/s	 <span style="color:#3677a9">3426543</span> B/op	  <span style="color:#3677a9">262411</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkSyncMapGet-4       	    5000	   <span style="color:#3677a9">2265892</span> ns/op	  28.92 MB/s	    <span style="color:#3677a9">2545</span> B/op	      <span style="color:#3677a9">79</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkSyncMapSetGet-4    	    1000	  <span style="color:#3677a9">14595535</span> ns/op	   8.98 MB/s	 <span style="color:#3677a9">3417190</span> B/op	  <span style="color:#3677a9">262277</span> allocs/op
+</span></span></code></pre></div><p>从测试的结果中可以看到:</p>
+<ul>
+<li><code>fastcache</code> 在所有操作上都要比 <code>bigcache</code> 快</li>
+<li><code>fastcache</code> 在 <code>只写 + 读写混合</code> 操作比标准库的 <code>map, sync.Map</code> 要快，<code>只读</code> 操作比后者要慢</li>
+</ul>
+<h2 id="组件特性">组件特性</h2>
+<ul>
+<li>高性能</li>
+<li>线程安全</li>
+<li>设计为存储大量数据 (没有 GC 开销)</li>
+<li>自动删除比较旧数据</li>
+<li>使用简单</li>
+<li>源代码简单且非常轻量</li>
+<li>缓存数据可以保存到文件，也可以从文件中加载</li>
+</ul>
+<h2 id="示例">示例</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/VictoriaMetrics/fastcache&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化一个大小为 32MB 的缓存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cache := fastcache.<span style="color:#447fcf">New</span>(<span style="color:#3677a9">32</span> * <span style="color:#3677a9">1024</span> * <span style="color:#3677a9">1024</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	key := []<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`hello`</span>)
+</span></span><span style="display:flex;"><span>	val := []<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`world`</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cache.<span style="color:#447fcf">Set</span>(key, val)                      <span style="color:#999;font-style:italic">// 设置 K-V
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(cache.<span style="color:#447fcf">Has</span>(key))              <span style="color:#999;font-style:italic">// true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(cache.<span style="color:#447fcf">Has</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`hello2`</span>))) <span style="color:#999;font-style:italic">// false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;hello = %s\n&#34;</span>, cache.<span style="color:#447fcf">Get</span>(<span style="color:#6ab825;font-weight:bold">nil</span>, key)) <span style="color:#999;font-style:italic">// hello= world
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    
+</span></span><span style="display:flex;"><span>	cache.<span style="color:#447fcf">Del</span>(key)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(cache.<span style="color:#447fcf">Has</span>(key)) <span style="color:#999;font-style:italic">// fasle
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>从示例代码可以看到，除了初始化时需要指定缓存的大小，组件提供的 API 就是常规的 “键值对” 语义操作，例如 <code>Get</code>, <code>Set</code>, <code>Del</code> 等。</p>
+<h2 id="源码分析">源码分析</h2>
+<p>笔者选择的 <a href="github.com/VictoriaMetrics/fastcache">fastcache</a> 版本为 <code>v1.12.1</code>。</p>
+<h3 id="哈希算法">哈希算法</h3>
+<p><code>fastcache</code> 库内部采用的哈希算法为 <a href="https://github.com/cespare/xxhash">XXH64</a>。</p>
+<blockquote>
+<p>XXH64 算法是一种非常快速的哈希算法，它能够利用 RAM 的速度限制工作，采用 64 位计算进行处理，能够生成 64 位哈希值。
+XXH64 算法的优点在于高度可移植性，可以在不同平台上生成相同的哈希值，适用于高性能的哈希表、数据结构和验证测试等场景。</p>
+</blockquote>
+<h2 id="数据结构">数据结构</h2>
+<h3 id="常量">常量</h3>
+<p>因为 <code>桶的大小</code> 和 <code>桶的数据存储重写次数</code> 两个字段存储在一个变量中 (可以并发原子操作)，所以这里使用两个常量来区分这两个字段各自的字节数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 每个缓存中的桶数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> bucketsCount = <span style="color:#3677a9">512</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 每个桶中的单个数据块大小 64KB
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> chunkSize = <span style="color:#3677a9">64</span> * <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 桶的大小 (用变量的前 40 位表示)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> bucketSizeBits = <span style="color:#3677a9">40</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 桶的数据存储环形缓冲区的重写次数 (用变量的后 24 位表示)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> genSizeBits = <span style="color:#3677a9">64</span> - bucketSizeBits
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 桶的数据存储最大重写次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> maxGen = <span style="color:#3677a9">1</span>&lt;&lt;genSizeBits - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 单个桶的大小上限
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> maxBucketSize <span style="color:#6ab825;font-weight:bold">uint64</span> = <span style="color:#3677a9">1</span> &lt;&lt; bucketSizeBits
+</span></span></code></pre></div><h3 id="cache-对象">Cache 对象</h3>
+<p><code>Cache</code> 用来表示 <code>缓存对象</code>，包含了 2 个字段：</p>
+<ul>
+<li>用于存储数据的 bucket 桶，数据结构是数组，固定长度 512</li>
+<li>用于表示 <code>GetBig/SetBig</code> (针对大数据读写) 方法调用的统计信息</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Cache <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	buckets [bucketsCount]bucket
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	bigStats BigStats
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="bucket-桶">bucket 桶</h3>
+<p><code>bucket</code> 桶负责具体数据的获取和存储，每个桶的数据存放量是根据 <code>缓存的数据总量</code> 平均计算得出的 (例如总量为 <code>2GB</code>, 那么每个桶的数据就是 <code>4MB</code>)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> bucket <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 读写锁，涉及到并发操作时使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mu sync.RWMutex
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存放数据的二维数组，是一个环形缓冲区 (也可以理解为一个环形链表)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 由 65536 个数据块组成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunks [][]<span style="color:#6ab825;font-weight:bold">byte</span> 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 数据哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 用于快速为指定 key 找到对应的存储位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">uint64</span>]<span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 数据索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idx <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 表示二维数组被重写的次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 用于校验环形缓冲区的数据有效性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gen <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Get 操作次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	getCalls    <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Set 操作次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	setCalls    <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 未命中次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	misses      <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 哈希碰撞次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	collisions  <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 数据异常次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	corruptions <span style="color:#6ab825;font-weight:bold">uint64</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="数据结构图">数据结构图</h3>
+<p><img src="https://dbwu.tech/images/fastcache_uml.png" alt="fastcache 数据结构"></p>
+<h2 id="方法">方法</h2>
+<h3 id="创建缓存对象">创建缓存对象</h3>
+<p><code>New</code> 根据容量参数创建一个缓存对象并返回。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// maxBytes 最小为 32 MB, 最大不能超过可用内存大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">New</span>(maxBytes <span style="color:#6ab825;font-weight:bold">int</span>) *Cache {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> c Cache
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据容量大小和桶的数量 (固定为 512) 计算单个桶的容量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (maxBytes + bucketsCount - 1) 等于容量不能整除 512 的部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxBucketBytes := <span style="color:#24909d">uint64</span>((maxBytes + bucketsCount - <span style="color:#3677a9">1</span>) / bucketsCount)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> c.buckets[:] {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 逐个初始化桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		c.buckets[i].<span style="color:#447fcf">Init</span>(maxBucketBytes)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;c
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="桶初始化">桶初始化</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (b *bucket) <span style="color:#447fcf">Init</span>(maxBytes <span style="color:#6ab825;font-weight:bold">uint64</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据桶容量大小和数据块数量 (固定为 64KB) 计算单个数据块大小 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxChunks := (maxBytes + chunkSize - <span style="color:#3677a9">1</span>) / chunkSize
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化数据块二维数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.chunks = <span style="color:#24909d">make</span>([][]<span style="color:#6ab825;font-weight:bold">byte</span>, maxChunks)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.m = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">uint64</span>]<span style="color:#6ab825;font-weight:bold">uint64</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 桶重置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.<span style="color:#447fcf">Reset</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="桶重置">桶重置</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (b *bucket) <span style="color:#447fcf">Reset</span>() {
+</span></span><span style="display:flex;"><span>	b.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	chunks := b.chunks
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> chunks {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 归还数据块到全局空闲区 (空闲区持有该数据块指针)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">putChunk</span>(chunks[i])
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 重置数据块中的数据 (避免后面被复用时产生垃圾数据问题)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		chunks[i] = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 重新初始化哈希索引 (可以重建 map 底层数据结构，提升性能)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.m = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">uint64</span>]<span style="color:#6ab825;font-weight:bold">uint64</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 重置其他字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.idx = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	b.gen = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint64</span>(&amp;b.getCalls, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint64</span>(&amp;b.setCalls, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint64</span>(&amp;b.misses, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint64</span>(&amp;b.collisions, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StoreUint64</span>(&amp;b.corruptions, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	b.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="set-操作">Set 操作</h3>
+<p><strong><code>Set</code> 操作分成两部分完成</strong>，首先计算出指定 <code>key</code> 所在的桶，然后将 <code>value</code> 存入对应的桶中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cache) <span style="color:#447fcf">Set</span>(k, v []<span style="color:#6ab825;font-weight:bold">byte</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h := xxhash.<span style="color:#447fcf">Sum64</span>(k)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算桶的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idx := h % bucketsCount
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 value 存入对应的桶中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.buckets[idx].<span style="color:#447fcf">Set</span>(k, v, h)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (b *bucket) <span style="color:#447fcf">Set</span>(k, v []<span style="color:#6ab825;font-weight:bold">byte</span>, h <span style="color:#6ab825;font-weight:bold">uint64</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Set 操作次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.setCalls, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(k) &gt;= (<span style="color:#3677a9">1</span>&lt;&lt;<span style="color:#3677a9">16</span>) || <span style="color:#24909d">len</span>(v) &gt;= (<span style="color:#3677a9">1</span>&lt;&lt;<span style="color:#3677a9">16</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// key 或 value 的长度超过 65536
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 此时已经调用 SetBig 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算 key + value 存储所需空间大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// kvLenBuf 表示 {key + value} 的指纹
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> kvLenBuf [<span style="color:#3677a9">4</span>]<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>	kvLenBuf[<span style="color:#3677a9">0</span>] = <span style="color:#24909d">byte</span>(<span style="color:#24909d">uint16</span>(<span style="color:#24909d">len</span>(k)) &gt;&gt; <span style="color:#3677a9">8</span>)
+</span></span><span style="display:flex;"><span>    kvLenBuf[<span style="color:#3677a9">1</span>] = <span style="color:#24909d">byte</span>(<span style="color:#24909d">len</span>(k))
+</span></span><span style="display:flex;"><span>    kvLenBuf[<span style="color:#3677a9">2</span>] = <span style="color:#24909d">byte</span>(<span style="color:#24909d">uint16</span>(<span style="color:#24909d">len</span>(v)) &gt;&gt; <span style="color:#3677a9">8</span>)
+</span></span><span style="display:flex;"><span>    kvLenBuf[<span style="color:#3677a9">3</span>] = <span style="color:#24909d">byte</span>(<span style="color:#24909d">len</span>(v))
+</span></span><span style="display:flex;"><span>	kvLen := <span style="color:#24909d">uint64</span>(<span style="color:#24909d">len</span>(kvLenBuf) + <span style="color:#24909d">len</span>(k) + <span style="color:#24909d">len</span>(v))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> kvLen &gt;= chunkSize {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// key + value 的空间大小超过单个数据块限制 (64K)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 桶的数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunks := b.chunks
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 哈希索引是否需要重建标志位 (取决于环形缓冲区是否重写了)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	needClean := <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 操作加锁，注意这里是互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idx := b.idx
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idxNew := idx + kvLen
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前计数器 / 单个数据块大小 = 当前数据块的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunkIdx := idx / chunkSize
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新后的计数器 / 单个数据块大小 = 下一个数据块的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunkIdxNew := idxNew / chunkSize
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> chunkIdxNew &gt; chunkIdx {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果下一个数据块的索引 大于 当前数据块的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明存储的 key 和 value 的数据跨了两个数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> chunkIdxNew &gt;= <span style="color:#24909d">uint64</span>(<span style="color:#24909d">len</span>(chunks)) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果下一个数据块的索引 大于 数据块的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明所有数据块已全部使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 此时采用环形缓冲区的方式: 从头开始存储数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 重置索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			idx = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			idxNew = kvLen
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 从第一个数据块开始
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			chunkIdx = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 重写的次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			b.gen++
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> b.gen&amp;((<span style="color:#3677a9">1</span>&lt;&lt;genSizeBits)-<span style="color:#3677a9">1</span>) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 重写次数达到上限
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				b.gen++
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新哈希索引重建标志位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			needClean = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果数据块还有剩余空间可供使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			idx = chunkIdxNew * chunkSize
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			idxNew = idx + kvLen
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新数据块索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			chunkIdx = chunkIdxNew
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 重置数据块里的数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		chunks[chunkIdx] = chunks[chunkIdx][:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	chunk := chunks[chunkIdx]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> chunk == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从全局空闲区获取一个数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		chunk = <span style="color:#447fcf">getChunk</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 重置数据块里的数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		chunk = chunk[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 指纹写入数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunk = <span style="color:#24909d">append</span>(chunk, kvLenBuf[:]...)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// key 写入数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunk = <span style="color:#24909d">append</span>(chunk, k...)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// value 写入数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunk = <span style="color:#24909d">append</span>(chunk, v...)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新数据块信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunks[chunkIdx] = chunk
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新数据哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.m[h] = idx | (b.gen &lt;&lt; bucketSizeBits)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.idx = idxNew
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> needClean {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果缓冲区重写了，重新解析和构建数据哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		b.<span style="color:#447fcf">cleanLocked</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 操作解锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="get-操作">Get 操作</h3>
+<p><strong><code>Get</code> 操作分成两部分完成</strong>，首先计算出指定 <code>key</code> 所在的桶，然后从桶中获取对应的 <code>value</code>, 作为可选性，调用方可以将接收 <code>value</code> 的变量作为第一个参数传入 (复用 []byte, 节省内存)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 dst 参数为 nil, 返回的结果变量为新创建的 []byte
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 dst 参数不为 nil, 返回的结果直接写入 dst 参数变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cache) <span style="color:#447fcf">Get</span>(dst, k []<span style="color:#6ab825;font-weight:bold">byte</span>) []<span style="color:#6ab825;font-weight:bold">byte</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h := xxhash.<span style="color:#447fcf">Sum64</span>(k)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算桶的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idx := h % bucketsCount
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从对应的桶中获取 value
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dst, _ = c.buckets[idx].<span style="color:#447fcf">Get</span>(dst, k, h, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> dst
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (b *bucket) <span style="color:#447fcf">Get</span>(dst, k []<span style="color:#6ab825;font-weight:bold">byte</span>, h <span style="color:#6ab825;font-weight:bold">uint64</span>, returnDst <span style="color:#6ab825;font-weight:bold">bool</span>) ([]<span style="color:#6ab825;font-weight:bold">byte</span>, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Get 操作次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.getCalls, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否获取 key 对应的 value
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	found := <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 桶的数据块
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chunks := b.chunks
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 操作加锁，注意这里是读写锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.mu.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取指定数据的哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	v := b.m[h]
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取环形缓冲区重写次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bGen := b.gen &amp; ((<span style="color:#3677a9">1</span> &lt;&lt; genSizeBits) - <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 v 小于等于 0，说明没有对应的 key 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接跳转到 end label 返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取索引写入后，环形缓冲区重写次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		gen := v &gt;&gt; bucketSizeBits
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取数据位置的哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		idx := v &amp; ((<span style="color:#3677a9">1</span> &lt;&lt; bucketSizeBits) - <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 分别说下这 3 个判断条件:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// gen == bGen &amp;&amp; idx &lt; b.idx
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//     说明该索引写入后，缓冲区没有发生过重写，并且哈希索引没有越界    
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// gen+1 == bGen &amp;&amp; idx &gt;= b.idx
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//     说明该索引写入后，虽然缓冲区被重写过 1 次，但是当前数据还没有被重写
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// gen == maxGen &amp;&amp; bGen == 1 &amp;&amp; idx &gt;= b.idx
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//     说明该索引写入后，虽然缓冲区已达到重写次数上限并且进行了重建，但是当前数据还没有被重写
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 符合上述 3 个条件之一，说明对应的数据没有受到影响，可以正常使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> gen == bGen &amp;&amp; idx &lt; b.idx || gen+<span style="color:#3677a9">1</span> == bGen &amp;&amp; idx &gt;= b.idx || gen == maxGen &amp;&amp; bGen == <span style="color:#3677a9">1</span> &amp;&amp; idx &gt;= b.idx {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 计算数据块索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			chunkIdx := idx / chunkSize
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> chunkIdx &gt;= <span style="color:#24909d">uint64</span>(<span style="color:#24909d">len</span>(chunks)) {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 如果数据块索引 大于 数据块数量 (发生了越界，说明指纹信息错误)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                <span style="color:#999;font-style:italic">// 数据异常次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                <span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.corruptions, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">goto</span> end
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			chunk := chunks[chunkIdx]
+</span></span><span style="display:flex;"><span>			idx %= chunkSize
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> idx+<span style="color:#3677a9">4</span> &gt;= chunkSize {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 如果数据索引 大于 数据块长度 (发生了越界，说明指纹信息错误)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                <span style="color:#999;font-style:italic">// 数据异常次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                <span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.corruptions, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">goto</span> end
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 根据指纹分别计算 key 和 value 对应的位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			kvLenBuf := chunk[idx : idx+<span style="color:#3677a9">4</span>]
+</span></span><span style="display:flex;"><span>			keyLen := (<span style="color:#24909d">uint64</span>(kvLenBuf[<span style="color:#3677a9">0</span>]) &lt;&lt; <span style="color:#3677a9">8</span>) | <span style="color:#24909d">uint64</span>(kvLenBuf[<span style="color:#3677a9">1</span>])
+</span></span><span style="display:flex;"><span>			valLen := (<span style="color:#24909d">uint64</span>(kvLenBuf[<span style="color:#3677a9">2</span>]) &lt;&lt; <span style="color:#3677a9">8</span>) | <span style="color:#24909d">uint64</span>(kvLenBuf[<span style="color:#3677a9">3</span>])
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新索引值，开始获取 {key + value} 数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			idx += <span style="color:#3677a9">4</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> idx+keyLen+valLen &gt;= chunkSize {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果 {key + value} 数据长度 大于 单个数据块长度 (发生了越界，说明指纹信息错误)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 数据异常次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.corruptions, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">goto</span> end
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果参数 key 和指纹中存储的 key 相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">// 说明参数 key 对应的 value 找到了，否则就是产生了哈希碰撞
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">string</span>(k) == <span style="color:#24909d">string</span>(chunk[idx:idx+keyLen]) {
+</span></span><span style="display:flex;"><span>				idx += keyLen
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> returnDst {
+</span></span><span style="display:flex;"><span>					dst = <span style="color:#24909d">append</span>(dst, chunk[idx:idx+valLen]...)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				found = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 哈希碰撞次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.collisions, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>end:
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 操作解锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b.mu.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !found {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 未命中次数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		atomic.<span style="color:#447fcf">AddUint64</span>(&amp;b.misses, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> dst, found
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="桶的哈希缓存重建">桶的哈希缓存重建</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (b *bucket) <span style="color:#447fcf">cleanLocked</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取环形缓冲区重写次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bGen := b.gen &amp; ((<span style="color:#3677a9">1</span> &lt;&lt; genSizeBits) - <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取索引计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bIdx := b.idx
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取数据哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bm := b.m
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> k, v := <span style="color:#6ab825;font-weight:bold">range</span> bm {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取索引写入后，环形缓冲区重写次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		gen := v &gt;&gt; bucketSizeBits
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取数据位置的哈希索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		idx := v &amp; ((<span style="color:#3677a9">1</span> &lt;&lt; bucketSizeBits) - <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果对应数据没有受到缓冲区重写的影响，就跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 否则就将数据的哈希索引删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> (gen+<span style="color:#3677a9">1</span> == bGen || gen == maxGen &amp;&amp; bGen == <span style="color:#3677a9">1</span>) &amp;&amp; idx &gt;= bIdx || gen == bGen &amp;&amp; idx &lt; bIdx {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">delete</span>(bm, k)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="调用关系图">调用关系图</h2>
+<p><img src="https://dbwu.tech/images/fastcache_flow.jpg" alt="fastcache 调用关系"></p>
+<h2 id="高性能设计细节">高性能设计细节</h2>
+<p><code>fastcache</code> 采用类似 <code>bigcache</code> 的设计思路:</p>
+<ul>
+<li><code>缓存</code> 由许多 <code>桶</code> 组成，每个桶都持有一个锁 (分段锁)，这样可以提高多核 CPU 的性能，因为多个 CPU 可以同时访问不同的桶</li>
+<li>每个桶由一个哈希索引 (数据块的位置) 和 65536 个数据块组成，每个桶的指针数量最多为 <code>桶的存储容量 / 64KB</code> (这里指 bucket.chunks 字段)。
+例如，64GB 缓存将包含大约 1M 指针，而类似大小的 map[string][]byte 将包含大约 1B 指针，这将导致巨大的 GC 开销</li>
+</ul>
+<p>从设计上来说，和每个桶持有一个大的数据块相比，<code>fastcache</code> 采用的 64KB 的数据块减少了内存碎片和总内存使用量。
+此外当从 <code>全局数据块空闲区</code> 获取数据块时，会直接调用 <code>Mmap</code> 分配到堆外内存，减少了总内存使用量，因为 GC 会更频繁地收集未使用的内存，无需调整 GOGC。</p>
+<h2 id="使用约束和限制">使用约束和限制</h2>
+<p><code>fastcache</code> 组件库的使用有 4 个约束条件，在技术选型的时候比较重要，不过从下面的 4 点要求来看，实际应用中可以通过设计合理的数据类型来规避这些约束条件。</p>
+<ul>
+<li>缓存数据的 <code>key</code> 和 <code>value</code> 数据类型必须是 <code>[]byte</code>, 如果是其他类型，必须在存储前转换为 <code>[]byte</code></li>
+<li>缓存数据大小超过 <code>64K</code>, 必须调用 <code>SetBig</code> 方法存储</li>
+<li>缓存数据没有过期时间，只有当缓存数据的数量溢出时，才会删除比较旧的数据，通用的实践是将过期时间存入数据中</li>
+<li>缓存数据采用 <code>环形缓冲区</code> 存储，这意味着数据量过大的情况下，新的数据会重写并覆盖掉旧的数据</li>
+</ul>
+<p><strong>此外值得注意的是</strong>，Set 方法并没有返回值来表示操作的执行结果，这种设计丢失了方法语义，并且在某些极端情况下造成难以排查的 Bug。</p>
+<h2 id="小结">小结</h2>
+<p>本文主要分析了 <code>fastcache</code> 组件的缓存设计与实现，我们可以从中学习到 3 个非常重要的设计技巧: <code>采用分段锁降低锁的粒度</code>, <code>采用指纹 + 哈希索引快速定位数据位置</code>， <code>map 使用 [uint64]uint32 作为非指针优化从而避免 GC</code>,
+在组件的基础上，也许我们可以进一步优化 (例如将桶的锁粒度细化到数据块)？感兴趣的读者可以通过修改源代码进行测试 (毕竟 fastcache 的源代码非常轻量)。
+此外需要注意的是，<code>fastcache</code> 提供的 <code>Get</code>, <code>Set</code> 方法参数类型都是 <code>[]byte</code>, 这意味着在调用方法前，必须现将具体的数据类型或对象转换为 <code>[]byte</code>, 这会带来额外的 CPU 消耗。
+最后，<code>fastcache</code> 提供的 <code>缓存数据 &lt;=&gt; 文件</code> 写入和加载功能以及 <code>全局数据块空闲区</code>，由于时间关系，本文不再分析其具体代码实现。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/VictoriaMetrics/fastcache">fastcache</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_ants/"><i class="fa fa-chevron-circle-left"></i> ants Code Reading</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="fastcache 高性能的设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
