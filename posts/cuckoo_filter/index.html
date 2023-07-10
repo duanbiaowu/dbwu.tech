@@ -1,0 +1,698 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>布谷鸟过滤器 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="布谷鸟过滤器" />
+<meta property="og:description" content="布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/cuckoo_filter/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-10T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-10T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="布谷鸟过滤器"/>
+<meta name="twitter:description" content="布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>布谷鸟过滤器</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="基本概念">基本概念</h2>
+<p><code>布谷鸟过滤器</code> 是一种节省内存空间的概率数据结构，基于 <code>布谷鸟哈希算法</code> 实现的过滤器，和 <code>布隆过滤器</code> 一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。</p>
+<h2 id="和布隆过滤器比较">和布隆过滤器比较</h2>
+<h3 id="优点">优点</h3>
+<ul>
+<li>布谷鸟过滤器支持删除元素，布隆过滤器不支持</li>
+<li>高负载因子场景下，布谷鸟过滤器查询效率更高</li>
+<li>对于存储数据量较大且期望误判率较低 (小于 3%) 的场景下，布谷鸟过滤器存储空间开销更低</li>
+<li>布谷鸟过滤器比布隆过滤器更容易实现</li>
+</ul>
+<h3 id="缺点">缺点</h3>
+<ul>
+<li>布谷鸟过滤器采用一种备用候选桶的方案，候选桶与首选桶可以通过 <strong>位置 + 值指纹的哈希</strong> 通过 <strong>异或计算</strong> 得出，这种对应关系要求桶的大小必须是 2 的指数倍数 (如 4, 8, 16, 32&hellip;)</li>
+<li>布隆过滤器插入时计算好哈希直接写入位即可，而布谷鸟过滤器在计算后可能会出现对应位置上已经存储了指纹，这时就需要将已存储的值踢出到候选桶，碰撞概率和插入耗时随着表元素增多而增大，因此其插入性能低于布隆过滤器</li>
+<li>布隆过滤器插入重复元素时没有影响 (可以重复插入)，而布谷鸟过滤器对已存在的值会执行 <strong>踢出</strong> 操作，因此重复元素的插入存在上限</li>
+<li>布谷鸟过滤器的删除并不完美，删除操作在相同哈希值仅被插入一次时是完美的，<strong>如果元素没有插入就进行删除，可能会出现误删除</strong> (删除了相同哈希值的其他元素)，
+如果元素插入了多次，但是每次删除操作只删除一个值，那么就需要知道元素插入了多少次才能彻底删除，或者循环删除直到失败为止</li>
+</ul>
+<p>PS: 如果只需要保证 <code>一定不存在</code> 语义，那么删除时不论是否存在重复元素，直接删除即可。</p>
+<h2 id="布谷鸟哈希算法描述">布谷鸟哈希算法描述</h2>
+<ul>
+<li>使用两个哈希函数 <code>H1</code>, <code>H2</code> 和两个哈希表 <code>T1</code>, <code>T2</code></li>
+<li>插入元素 x
+<ul>
+<li>计算 x 的两个哈希值 <code>idx1 = H1(x)</code>, <code>idx2 = H2(x)</code></li>
+<li>如果 <code>T1[idx1]</code>, <code>T2[idx2]</code> 有一个为空，插入 x, 两者都为空，随便选一个插入 x</li>
+<li>如果 <code>T1[idx1]</code>, <code>T2[idx2]</code> 都不为空，则随便选择其中一个 (设为 <code>y</code>) 将其踢出，插入 <code>x</code></li>
+<li>重复上述过程，插入元素 <code>y</code></li>
+<li>如果插入时，踢出次数过多，则说明哈希表满了，进行扩容 (<code>ReHash</code>)，扩容完成后再次插入</li>
+</ul>
+</li>
+<li>查询元素 x
+<ul>
+<li>读取 <code>T1[idx1]</code>, <code>T2[idx2]</code> 的值，和 x 比较</li>
+</ul>
+</li>
+</ul>
+<p><img src="https://dbwu.tech/images/cuckoohash.png" alt="算法示例"></p>
+<p>图(a) 算法过程描述:</p>
+<ul>
+<li>插入元素 x</li>
+<li>将对应桶的元素 y 踢出</li>
+<li>将元素 y 插入到桶 z</li>
+<li>将对应桶的元素 z 踢出</li>
+<li>将元素 z 插入到其他桶中</li>
+</ul>
+<p>图(b) 算法过程描述:</p>
+<ul>
+<li>插入元素 x</li>
+<li>插入失败，因为桶已经满了</li>
+<li>触发扩容</li>
+</ul>
+<h3 id="伪代码">伪代码</h3>
+<p>按照算法描述，翻译成伪代码如下 (不考虑并发情况):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;math/rand&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	TSize = <span style="color:#3677a9">1024</span> <span style="color:#999;font-style:italic">// 假设表的大小为 1024
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	T1 = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">int</span>]any, TSize) <span style="color:#999;font-style:italic">// 哈希表 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	T2 = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">int</span>]any, TSize) <span style="color:#999;font-style:italic">// 哈希表 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 哈希函数 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回随机数作为哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">H1</span>(x any) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> rand.<span style="color:#447fcf">Intn</span>(TSize)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 哈希函数 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回随机数作为哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">H2</span>(x any) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> rand.<span style="color:#447fcf">Intn</span>(TSize)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 扩容操作，这里省略具体实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ReHash</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// do something
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 随机踢出一个元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 返回踢出的哈希桶编号以及元素索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">KicksOut</span>(x any) any {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 哈希桶已满
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(T1) == TSize &amp;&amp; <span style="color:#24909d">len</span>(T2) == TSize {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
+</span></span><span style="display:flex;"><span>	n := rand.<span style="color:#447fcf">Intn</span>(<span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> y any <span style="color:#999;font-style:italic">// 被踢出的元素 y
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 直接利用 Go map 的无序遍历特性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 遍历时将 [第一个元素] 作为随机元素踢出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> n == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从 T1 桶随机选择一个元素踢出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> k, v := <span style="color:#6ab825;font-weight:bold">range</span> T1 {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将 x 插入到 y 的桶 (覆盖式)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			T1[k] = x
+</span></span><span style="display:flex;"><span>			y = v
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从 T2 桶随机选择一个元素踢出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> k, v := <span style="color:#6ab825;font-weight:bold">range</span> T2 {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将 x 插入到 y 的桶 (覆盖式)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			T2[k] = x
+</span></span><span style="display:flex;"><span>			y = v
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> y
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 插入元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Insert</span>(x any) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	idx1, idx2 := <span style="color:#447fcf">H1</span>(x), <span style="color:#447fcf">H2</span>(x)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 T1 桶对应桶为空，则插入 T1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> _, ok := T1[idx1]; !ok {
+</span></span><span style="display:flex;"><span>		T1[idx1] = x
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 T2 桶对应桶为空，则插入 T2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> _, ok := T2[idx2]; !ok {
+</span></span><span style="display:flex;"><span>		T2[idx2] = x
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	y := <span style="color:#447fcf">KicksOut</span>(x)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 哈希桶已满，进行扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> y == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">ReHash</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 插入元素 y
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">Insert</span>(y)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="不同的版本">不同的版本</h3>
+<h4 id="一个哈希桶">一个哈希桶</h4>
+<p><img src="https://dbwu.tech/images/cuckoohash_single_bucket.png" alt="两个哈希函数和一个哈希桶"></p>
+<p>如图所示，在未发生哈希碰撞之前，哈希桶的利用率只有 50%。</p>
+<h4 id="四路哈希桶">四路哈希桶</h4>
+<p><img src="https://dbwu.tech/images/cuckoohash_four_entires.png" alt="两个哈希函数和四路哈希桶"></p>
+<p>如图所示是一个改进的哈希桶，每个桶有 4 个槽位，当哈希函数映射到同一个桶时，其它 3 个槽位如果有空位，那么就不会有元素被踢出，降低了碰撞概率。</p>
+<h2 id="布谷鸟过滤器">布谷鸟过滤器</h2>
+<p><code>布谷鸟过滤器</code> 对 <code>布谷鸟哈希算法</code> 进行了如下优化改进:</p>
+<ul>
+<li>使用多路哈希桶提高桶的利用率</li>
+<li>只存储 key 的指纹以减少内存使用</li>
+</ul>
+<h3 id="通过异或计算寻找新桶">通过异或计算寻找新桶</h3>
+<blockquote>
+<p>异或计算性质: 三个值中的任意两个值进行异或计算，都可以得出第三个值。</p>
+</blockquote>
+<p>示例代码: 数字 1, 2, 3 执行异或计算</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">1</span> ^ <span style="color:#3677a9">2</span>) <span style="color:#999;font-style:italic">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span> ^ <span style="color:#3677a9">1</span>) <span style="color:#999;font-style:italic">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span> ^ <span style="color:#3677a9">2</span>) <span style="color:#999;font-style:italic">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><code>布谷鸟过滤器</code> 为了节省内存，保存的是 x 的指纹信息，而非源值，那么当某个元素 x 被踢出时，需要找一个新桶 <code>h2(x)</code>，如何在不损失 x 的指纹信息的情况下，计算新桶 (候选桶) 并存储呢？</p>
+<p><code>布谷鸟过滤器</code> 采用了巧妙的算法: 将桶 <code>h1(x)</code> 和 x 的指纹信息哈希值 <code>hash( finger(x) )</code> 进行 <code>异或计算</code> 得出新的桶，这样当新桶的值后面被踢出时，
+可以通过 <code>异或计算</code> 反转得到 x 的指纹信息。</p>
+<p>对于元素 x, 计算两个哈希值:</p>
+<blockquote>
+<p>h1(x) = hash(x), h2(x) = h1(x) ⊕ hash(x’s fingerprint)</p>
+</blockquote>
+<p>踢出桶上的元素时 (不管该桶是 <code>h1(x)</code> 还是 <code>h2(x)</code>)，直接使用该桶的索引 <code>index</code> 和存储在桶中的指纹信息计算备用桶 <code>j</code></p>
+<blockquote>
+<p>j = i ⊕ hash(fingerprint)</p>
+</blockquote>
+<h4 id="均衡分配">均衡分配</h4>
+<p>此外，指纹与桶进行 <code>异或计算</code> 之前会进行哈希，从而在表中均衡分配。如果备用位使用 <code>i ⊕ hash(fingerprint)</code> 计算时不将指纹进行哈希，且指纹的大小与表的大小相比很小，那么踢出的元素最终会落在邻近的桶。</p>
+<p>例如使用 8 位指纹，踢出的元素将被放置到离桶 <code>i</code> 最多 256 (2^8) 的桶，因为 <code>异或计算</code> 将改变桶索引的低 8 位，而高位不会改变。
+哈希指纹可以确保这些元素可以重新定位到哈希表的不同的桶中，达到均衡分配，减少哈希碰撞并提高表的利用率。</p>
+<h3 id="空间优化">空间优化</h3>
+<p><strong>较大的桶可以提高表的利用率</strong>，使用 2 个哈希函数，桶大小为 1 时，负载因子为 <code>50%</code> (上面提到的第一种布谷鸟哈希算法版本)，
+但是当使用桶大小 <code>2, 4, 8</code> 时，负载因子分别会增加到 <code>84%, 95%, 98%</code>。</p>
+<p>实验数据表明，当误判率 <code>r &gt; 0.002</code> 时，每个桶使用 2 个槽位比 4 个槽位效果更好，当 r 为到 <code>0.00001 &lt; r ≤ 0.002</code> 时，每个桶 4 个槽位可以最小化空间。</p>
+<h4 id="半排序桶">半排序桶</h4>
+<p><strong>半排序的本质是:</strong> 对每个指纹取 4 位，该 4 位可以表示为一个 16 进制，对于 b 个指纹的 4 位存储就可以表示为 b 个 16 进制，进行 <strong>重复组合计算</strong> 后，
+可以通过索引其位置来找到对应的指纹 (也就是某个组合值)。</p>
+<p>假设每个桶包含 <code>b = 4</code> 个指纹，每个指纹 <code>f = 4 bit</code>，一个未压缩的桶占 <code>4 x 4 = 16 bit</code>。但是如果我们对每个 4 位指纹进行排序（空项被视为存储值为 &ldquo;0&rdquo; 的指纹)，
+那么共有 <code>3876</code> 个重复组合值。如果我们预先计算并将 <code>3876</code> 个值存储在一个额外的表中 (表中每个位置表示一个指纹组合)，并将桶替换为预先计算好的表，
+那么桶可以用 <code>12 bit</code> 表示整个表 (2 ^ 12 = 4096 &gt; 3876)，而不是 <code>16 bit</code> 表示桶，这样算下来，平均每个指纹可以节省 <code>1 bit</code>。</p>
+<p>3876 是怎样计算出来的？</p>
+<p><img src="https://dbwu.tech/images/combinations_repeat.png" alt="重复组合数学公式"></p>
+<p>其中 n 表示被选择的东西个数， r 表示选择个数，(顺序可以重复)。</p>
+<p>根据数学公式，我们可以编写如下代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 计算重复组合数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">multiCombination</span>(n, r <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n == <span style="color:#3677a9">0</span> || r == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	numerator := <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	denominator := <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">1</span>; i &lt;= r; i++ {
+</span></span><span style="display:flex;"><span>		numerator *= n + i - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		denominator *= i
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> numerator / denominator
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;n = %d, r = %d, combinations = %d\n&#34;</span>, <span style="color:#3677a9">16</span>, <span style="color:#3677a9">4</span>, <span style="color:#447fcf">multiCombination</span>(<span style="color:#3677a9">16</span>, <span style="color:#3677a9">4</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>在上面的代码中，计算了在 <code>16 bit</code> 中 <code>4 bit</code> 指纹的重复组合数量。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">n</span> = 16, <span style="color:#40ffff">r</span> = 4, <span style="color:#40ffff">combinations</span> = <span style="color:#3677a9">3876</span>
+</span></span></code></pre></div><h2 id="开源库">开源库</h2>
+<p>有了前文的理论基础后，接下来一起探索下具体的代码实现。笔者选择开源的 linvon/cuckoo-filter 作为研究 <code>布谷鸟过滤器</code> 代码实现，版本为 <code>v0.4.0</code>。</p>
+<h3 id="这个库的优点">这个库的优点</h3>
+<p>这里直接引用库作者的原文:</p>
+<hr>
+<p>在翻阅了 Github 上 cuckoofilter 的 golang 实现后，发现已有的实现都存在一些缺点:</p>
+<ul>
+<li>绝大部分的库都是固定 b 和 f 的，即假阳性率也是固定的，适应性不好</li>
+<li>所有的库 f 都是以字节为单位的，只能以 8 的倍数来调整，不方便调整假阳性率</li>
+<li>所有的库都没有实现半排序桶，相比于布隆过滤器的优势大打折扣</li>
+</ul>
+<p>因为作者的场景需要更优的空间和自定的假阳性率，因此移植了原论文的 C++ 实现，并做了一些优化，主要包括:</p>
+<ul>
+<li>支持调节参数</li>
+<li>支持半排序桶</li>
+<li>压缩空间到紧凑的位数组，按位存储指纹</li>
+<li>支持二进制序列化</li>
+</ul>
+<hr>
+<h3 id="示例">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/linvon/cuckoo-filter&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化一个布谷鸟过滤器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 使用半排序桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 	  每个桶包含 4 个指纹, 每个指纹 4 bits
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 最大存放元素数量 4096
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cf := cuckoo.<span style="color:#447fcf">NewFilter</span>(<span style="color:#3677a9">4</span>, <span style="color:#3677a9">4</span>, <span style="color:#3677a9">1</span>&lt;&lt;<span style="color:#3677a9">12</span>, cuckoo.TableTypePacked)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 添加一些元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cf.<span style="color:#447fcf">Add</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`Hello World`</span>))
+</span></span><span style="display:flex;"><span>	cf.<span style="color:#447fcf">Add</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`Hello Golang`</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测元素是否存在
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%v\n&#34;</span>, cf.<span style="color:#447fcf">Contain</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`Hello World`</span>)))
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%v\n&#34;</span>, cf.<span style="color:#447fcf">Contain</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`Hello Golang`</span>)))
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;%v\n&#34;</span>, cf.<span style="color:#447fcf">Contain</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`Hello Rust`</span>)))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 输出元素数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;filter size = %d\n&#34;</span>, cf.<span style="color:#447fcf">Size</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 删除元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cf.<span style="color:#447fcf">Delete</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`Hello World`</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 输出过滤器统计信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;\n&#34;</span>, cf.<span style="color:#447fcf">Info</span>())
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">true</span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">true</span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">false</span>
+</span></span><span style="display:flex;"><span>filter <span style="color:#40ffff">size</span> = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>CuckooFilter Status:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>PackedHashtable with tag size: <span style="color:#3677a9">4</span> bits
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">4</span> packed bits(<span style="color:#3677a9">3</span> bits after compression) and <span style="color:#3677a9">0</span> direct bits
+</span></span><span style="display:flex;"><span>Associativity: <span style="color:#3677a9">4</span>
+</span></span><span style="display:flex;"><span>Total <span style="color:#999;font-style:italic"># of rows: 2048</span>
+</span></span><span style="display:flex;"><span>Total <span style="color:#999;font-style:italic"># slots: 8192</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Keys stored: <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>Load factor: 0.0001220703125
+</span></span><span style="display:flex;"><span>Hashtable size: <span style="color:#3677a9">3</span> KB
+</span></span><span style="display:flex;"><span>bit/key:   <span style="color:#3677a9">24632</span>
+</span></span></code></pre></div><h3 id="源码解析">源码解析</h3>
+<h4 id="接口">接口</h4>
+<p><code>linvon/cuckoo-filter</code> 实现了 <code>普通单表</code> 和空间优化的 <code>基于半排序桶的压缩表</code>，将两者的通用部分抽象为 <code>table</code> 接口，通过运行时的 <code>工厂方法</code> 可以在初始化时根据不同的参数生成不同的过滤器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 普通表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	TableTypeSingle = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 压缩表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	TableTypePacked = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> table <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getTable</span>(tableType <span style="color:#6ab825;font-weight:bold">uint</span>) <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> tableType {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> TableTypePacked:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">NewPackedTable</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">NewSingleTable</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>} 
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/linvon_cuckoofilter_uml.png" alt="UML"></p>
+<h4 id="过滤器数据结构">过滤器数据结构</h4>
+<p><code>victimCache</code> 结构体表示过滤器执行 <code>Add</code> 操作时被 <code>踢出</code> 的元素对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> victimCache <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	index <span style="color:#6ab825;font-weight:bold">uint</span>
+</span></span><span style="display:flex;"><span>	tag   <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>	used  <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Filter</code> 结构体表示 <code>过滤器</code> 对象，非常简洁，只有三个字段: <code>被踢出元素</code>, <code>元素数量</code>, <code>底层用于存储的表实例</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Filter <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	victim   victimCache
+</span></span><span style="display:flex;"><span>	numItems <span style="color:#6ab825;font-weight:bold">uint</span>
+</span></span><span style="display:flex;"><span>	table    table
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="初始化过滤器">初始化过滤器</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewFilter</span>(tagsPerBucket, bitsPerItem, maxNumKeys, tableType <span style="color:#6ab825;font-weight:bold">uint</span>) *Filter {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据表内存放元素和每个桶的元素指纹数量，计算需要的桶的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	numBuckets := <span style="color:#447fcf">getNextPow2</span>(<span style="color:#24909d">uint64</span>(maxNumKeys / tagsPerBucket))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果表的负载因子过高，就将桶的数量扩容 (翻 1 倍)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 负载因子如何计算出来的呢？
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    框架这里进行了 3 个硬编码的值:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//        默认:      0.99
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//        桶大小为 2: 0.85
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//        桶大小为 4: 0.96
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">float64</span>(maxNumKeys)/<span style="color:#24909d">float64</span>(numBuckets*tagsPerBucket) &gt; <span style="color:#447fcf">maxLoadFactor</span>(tagsPerBucket) {
+</span></span><span style="display:flex;"><span>		numBuckets &lt;&lt;= <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 桶最少得有 1 个
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> numBuckets == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		numBuckets = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 工厂方法根据参数类型生成过滤器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	table := <span style="color:#447fcf">getTable</span>(tableType).(table)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 表初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	_ = table.<span style="color:#447fcf">Init</span>(tagsPerBucket, bitsPerItem, numBuckets, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;Filter{
+</span></span><span style="display:flex;"><span>		table: table,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="添加元素">添加元素</h4>
+<p><code>Add</code> 方法添加一个元素到表中，返回是否添加成功。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">Add</span>(item []<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果被踢出的元素没有找到可用的桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那么继续添加元素只会进入恶行循环，降低性能
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 此时直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> f.victim.used {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算哈希值和桶索引，然后将元素添加到表中对应的桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	i, tag := f.<span style="color:#447fcf">generateIndexTagHash</span>(item)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> f.<span style="color:#447fcf">addImpl</span>(i, tag)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="查找元素">查找元素</h4>
+<p><code>Contain</code> 方法检测给定元素是否存在于表中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">Contain</span>(key []<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算元素的哈希值和桶索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	i1, tag := f.<span style="color:#447fcf">generateIndexTagHash</span>(key)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算候选桶索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	i2 := f.<span style="color:#447fcf">altIndex</span>(i1, tag)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	hit := f.victim.used &amp;&amp; tag == f.victim.tag &amp;&amp; (i1 == f.victim.index || i2 == f.victim.index)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 满足以下两个条件之一，说明参数元素存在于表中:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    1. 参数元素和表内被踢出元素的哈希值以及桶位置相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    2. 在表的某个桶内找到了相同的参数元素哈希
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> hit || f.table.<span style="color:#447fcf">FindTagInBuckets</span>(i1, i2, tag) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="计算元素数量">计算元素数量</h4>
+<p><code>Size</code> 方法计算表内当前存储的元素数量，如果 <code>被踢出元素</code> 一直没有找到可用的桶，元素数量 + 1。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">Size</span>() <span style="color:#6ab825;font-weight:bold">uint</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> c <span style="color:#6ab825;font-weight:bold">uint</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> f.victim.used {
+</span></span><span style="display:flex;"><span>		c = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> f.numItems + c
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="计算负载因子">计算负载因子</h4>
+<p><code>LoadFactor</code> 方法计算当前表的 <code>负载因子</code>, 计算公式为:</p>
+<blockquote>
+<p>表内当前元素数量 / 表内可存储元素数量</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">LoadFactor</span>() <span style="color:#6ab825;font-weight:bold">float64</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">1.0</span> * <span style="color:#24909d">float64</span>(f.<span style="color:#447fcf">Size</span>()) / <span style="color:#24909d">float64</span>(f.table.<span style="color:#447fcf">SizeInTags</span>())
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="重置过滤器">重置过滤器</h4>
+<p><code>Reset</code> 方法会重置过滤器，相当于重新初始化。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">Reset</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 底层表内元素初始化为 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    f.table.<span style="color:#447fcf">Reset</span>()
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 元素计数归 0  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    f.numItems = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 重置被踢出元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    f.victim.index = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>    f.victim.tag = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>    f.victim.used = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="计算误判率">计算误判率</h4>
+<p><code>FalsePositiveRate</code> 方法计算 <code>过滤器</code> 的 <code>误判率</code>，<strong>需要注意的是，该方法会调用 <code>Reset</code> 方法重置 <code>过滤器</code></strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">FalsePositiveRate</span>() <span style="color:#6ab825;font-weight:bold">float64</span> {
+</span></span><span style="display:flex;"><span>	n1 := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>, <span style="color:#3677a9">4</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	f.<span style="color:#447fcf">Reset</span>() <span style="color:#999;font-style:italic">// 重置过滤器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取底层表可存储元素数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n := f.table.<span style="color:#447fcf">SizeInTags</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 循环向表内添加元素，元素为 [0 ... n]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">0</span>); i &lt; <span style="color:#24909d">uint32</span>(n); i++ {
+</span></span><span style="display:flex;"><span>		binary.BigEndian.<span style="color:#447fcf">PutUint32</span>(n1, i)
+</span></span><span style="display:flex;"><span>		f.<span style="color:#447fcf">Add</span>(n1)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算误判率采用的检测次数 (这里硬编码为 10 W)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> rounds <span style="color:#6ab825;font-weight:bold">uint32</span> = <span style="color:#3677a9">100000</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 误判计数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fp := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">0</span>); i &lt; rounds; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 给定一个不可能存在表中的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		binary.BigEndian.<span style="color:#447fcf">PutUint32</span>(n1, i+<span style="color:#24909d">uint32</span>(n)+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 正常情况下，Contain 方法返回的都是 false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> f.<span style="color:#447fcf">Contain</span>(n1) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Contain 方法返回 true, 则属于误判
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 误判计数 + 1 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fp++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	f.<span style="color:#447fcf">Reset</span>()  <span style="color:#999;font-style:italic">// 重置过滤器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 误判计数 / 检测次数 = 误判率
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">float64</span>(fp) / <span style="color:#24909d">float64</span>(rounds)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="哈希算法">哈希算法</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>module github.com/linvon/cuckoo-filter
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>go 1.14
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>require github.com/dgryski/go-metro v0.0.0-20200812162917-85c65e2d0165
+</span></span></code></pre></div><p>从 <code>go.mod</code> 文件定义中可以看到，<code>linvon/cuckoo-filter</code> 使用的哈希算法是 <code>MetroHash</code>。</p>
+<blockquote>
+<p><code>MetroHash</code> 是一个哈希函数算法，可用于计算输入数据的 <code>64 位</code> 和 <code>128 位 </code>哈希值，支持增量式哈希计算，具有较高的性能和较低的碰撞率概率。</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *Filter) <span style="color:#447fcf">altIndex</span>(index <span style="color:#6ab825;font-weight:bold">uint</span>, tag <span style="color:#6ab825;font-weight:bold">uint32</span>) <span style="color:#6ab825;font-weight:bold">uint</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 0x5bd1e995 是 MurmurHash2 算法的哈希常量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> f.<span style="color:#447fcf">indexHash</span>(<span style="color:#24909d">uint32</span>(index) ^ (tag * <span style="color:#3677a9">0x5bd1e995</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>此外，在计算 <code>候选桶</code> 的索引时，也用到了 <code>Murmur2</code> 算法。</p>
+<h4 id="省略部分">省略部分</h4>
+<p><code>普通单表</code> 和 <code>压缩表</code> 的底层表存储实现，由于时间关系不再展开分析，感兴趣的读者可以自行阅读源代码。</p>
+<h4 id="调用关系图">调用关系图</h4>
+<p><img src="https://dbwu.tech/images/linvon_cuckoofilter_call.png" alt="调用关系示意图"></p>
+<h2 id="小结">小结</h2>
+<p>本文概括了 <code>布谷鸟过滤器</code> 的算法描述，并对比了其和 <code>布隆过滤器</code> 的主要差异。在代码实现方面，笔者选择了开源的 <a href="https://github.com/linvon/cuckoo-filter">linvon/cuckoo-filter</a>,
+着重分析了库的接口设计和主要 API 方法实现。最后顺带提一下，如果读者决定使用 <code>linvon/cuckoo-filter</code> 到项目中，需要注意的是:
+库内部并没有做 <code>并发限制</code>，使用 <code>Add</code>, <code>Contain</code> 等方法时可能会遇到常见的 <code>并发竞态</code> 问题，这就要求调用方在使用时需要做好相应的并发处理。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="http://www.cs.cmu.edu/~binfan/papers/conext14_cuckoofilter.pdf">Cuckoo Filter: Practically Better Than Bloom</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Cuckoo_filter">Cuckoo filter</a></li>
+<li><a href="https://www.qtmuniao.com/2021/12/07/cuckoo-hash-and-cuckoo-filter/">布谷鸟哈希和布谷鸟过滤器</a></li>
+<li><a href="http://www.linvon.cn/posts/cuckoo_guide/">布谷鸟过滤器实战对比与调参指南</a></li>
+<li><a href="http://www.linvon.cn/posts/cuckoo/">布谷鸟过滤器：实际上优于布隆过滤器</a></li>
+<li><a href="https://github.com/linvon/cuckoo-filter">linvon/cuckoo-filter</a></li>
+<li><a href="http://www.lkozma.net/cuckoo_hashing_visualization/">Cuckoo Hashing Visualization</a></li>
+<li><a href="https://en.wikipedia.org/wiki/List_of_hash_functions">List of hash functions</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_fastcache/"><i class="fa fa-chevron-circle-left"></i> fastcache 高性能设计与实现</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="布谷鸟过滤器"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

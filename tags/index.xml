@@ -7,13 +7,22 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Thu, 06 Jul 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 10 Jul 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
    
      <item>
-       <title>fastcache 高性能的设计与实现</title>
+       <title>布谷鸟过滤器</title>
+       <link>https://dbwu.tech/posts/cuckoo_filter/</link>
+       <pubDate>Mon, 10 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/cuckoo_filter/</guid>
+       <description>布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。</description>
+     </item>
+   
+     <item>
+       <title>fastcache 高性能设计与实现</title>
        <link>https://dbwu.tech/posts/golang_fastcache/</link>
        <pubDate>Thu, 06 Jul 2023 00:00:00 +0000</pubDate>
        

@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>fastcache 高性能的设计与实现 - 蛮荆</title>
+  <title>fastcache 高性能设计与实现 - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="fastcache 高性能的设计与实现" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="fastcache 高性能设计与实现" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/golang_fastcache/" /><meta property="article:section" content="posts" />
@@ -16,7 +16,7 @@
 <meta property="article:modified_time" content="2023-07-06T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="fastcache 高性能的设计与实现"/>
+<meta name="twitter:title" content="fastcache 高性能设计与实现"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.113.0">
@@ -103,7 +103,7 @@
 
 <article>
 
-    <h1>fastcache 高性能的设计与实现</h1>
+    <h1>fastcache 高性能设计与实现</h1>
 
     
       
@@ -135,7 +135,7 @@
 <p>fastcache 是一个线程安全并且支持大量数据存储的高性能缓存组件库。</p>
 </blockquote>
 <p>这是官方 <code>Github</code> 主页上的项目介绍，和 <code>fasthttp</code> 名字一样以 <code>fast</code> 打头，作者对项目代码的自信程度可见一斑。此外该库的核心代码非常轻量，
-笔者本来学习的目的分析下内部的代码实现。</p>
+笔者本着学习的目的分析下内部的代码实现。</p>
 <h2 id="基准测试">基准测试</h2>
 <p>官方给出了 <code>fastcache</code>, <code>bigcache</code>, 标准库 <code>map</code>, <code>sync.Map</code> 的基准测试比较结果。</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#40ffff">GOMAXPROCS</span>=<span style="color:#3677a9">4</span> go <span style="color:#24909d">test</span> github.com/VictoriaMetrics/fastcache -bench=<span style="color:#ed9d13">&#39;Set|Get&#39;</span> -benchtime=10s
@@ -629,6 +629,8 @@ XXH64 算法的优点在于高度可移植性，可以在不同平台上生成�
         </li>
         <li>
         
+            <a href="https://dbwu.tech/posts/cuckoo_filter/">布谷鸟过滤器 <i class="fa fa-chevron-circle-right"></i> </a>
+        
         </li>
     </ul>
 </section>
@@ -644,7 +646,7 @@ XXH64 算法的优点在于高度可移植性，可以在不同平台上生成�
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="fastcache 高性能的设计与实现"
+        data-term="fastcache 高性能设计与实现"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"
