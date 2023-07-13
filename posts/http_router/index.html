@@ -1,0 +1,1547 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>HTTP Router 算法演进 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="HTTP Router 算法演进" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/http_router/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-13T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-13T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="HTTP Router 算法演进"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>HTTP Router 算法演进</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>本文从开发中常见的应用场景 “路由管理” 为例，介绍三种常用的实现方案背后的数据结构和算法 (代码实现为 Go 语言)。</p>
+<h2 id="应用示例">应用示例</h2>
+<p>下面是一个典型的 REST 风格的 API 列表:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td>/users/list</td>
+</tr>
+<tr>
+<td>GET</td>
+<td>/users/dbwu</td>
+</tr>
+<tr>
+<td>POST</td>
+<td>/users</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td>/users/dbwu</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td>/users/dbwu</td>
+</tr>
+</tbody>
+</table>
+<p>上面的 API 翻译为 Go 代码，大致如下 (忽略方法的具体实现):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;net/http&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	http.<span style="color:#447fcf">HandleFunc</span>(<span style="color:#ed9d13">&#34;/users/list&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	http.<span style="color:#447fcf">HandleFunc</span>(<span style="color:#ed9d13">&#34;/users/dbwu&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	http.<span style="color:#447fcf">HandleFunc</span>(<span style="color:#ed9d13">&#34;/users&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	http.<span style="color:#447fcf">HandleFunc</span>(<span style="color:#ed9d13">&#34;/users/dbwu&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	http.<span style="color:#447fcf">HandleFunc</span>(<span style="color:#ed9d13">&#34;/users/dbwu&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	log.<span style="color:#447fcf">Fatal</span>(http.<span style="color:#447fcf">ListenAndServe</span>(<span style="color:#ed9d13">&#34;:8080&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="标准库方案">标准库方案</h2>
+<p>最简单的方案就是直接使用 <code>map[string]func()</code> 作为路由的数据结构，键为具体的路由，值为具体的处理方法。</p>
+<p>标准库中使用的就是这种方案，我们可以简单追踪一下对应的代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 路由管理数据结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ServeMux <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	mu    sync.RWMutex          <span style="color:#999;font-style:italic">// 对象操作读写锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m     <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]muxEntry   <span style="color:#999;font-style:italic">// 存储路由映射关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>方法从 http.HandleFunc 方法开始追踪:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 注册路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">HandleFunc</span>(pattern <span style="color:#6ab825;font-weight:bold">string</span>, handler <span style="color:#6ab825;font-weight:bold">func</span>(ResponseWriter, *Request)) {
+</span></span><span style="display:flex;"><span>	DefaultServeMux.<span style="color:#447fcf">HandleFunc</span>(pattern, handler)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (mux *ServeMux) <span style="color:#447fcf">HandleFunc</span>(pattern <span style="color:#6ab825;font-weight:bold">string</span>, handler <span style="color:#6ab825;font-weight:bold">func</span>(ResponseWriter, *Request)) {
+</span></span><span style="display:flex;"><span>	mux.<span style="color:#447fcf">Handle</span>(pattern, <span style="color:#447fcf">HandlerFunc</span>(handler))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (mux *ServeMux) <span style="color:#447fcf">Handle</span>(pattern <span style="color:#6ab825;font-weight:bold">string</span>, handler Handler) {
+</span></span><span style="display:flex;"><span>	mux.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> mux.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> _, exist := mux.m[pattern]; exist {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果注册的 URL 重复了，抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;http: multiple registrations for &#34;</span> + pattern)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> mux.m == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 惰性初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		mux.m = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]muxEntry)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注册完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	e := muxEntry{h: handler, pattern: pattern}
+</span></span><span style="display:flex;"><span>	mux.m[pattern] = e
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="优点和不足">优点和不足</h3>
+<p>使用 <code>map[string]func()</code> 作为路由的数据结构，最明显的优点就是:</p>
+<ol>
+<li>实现简单: map 是标准库内置的数据结构，可以直接使用并且代码可读性高</li>
+<li>性能较高: 因为路由写入操作只会发生一次 (注册时)，后续的操作全部是读取操作，基于标准库的 map 性能已经足够优秀</li>
+</ol>
+<p>同时，该方案的不足也是显而易见的:</p>
+<ol>
+<li>内存浪费: 即使存在很多前缀相同的路径 (例如 /users, /users/list, /users/dbwu, 三个路径的前缀都是 /users, 这部分是可以复用的)，map 结构还是会每个路径单独映射，浪费大量的内存</li>
+<li>不够灵活: 难以处理动态路由和正则表达式匹配等复杂的路径 (例如 /users/:id 或 /users/{id:[0-9]+})</li>
+<li>无法处理重复路径：如果多个处理方法绑定到相同的路径上 (例如 GET /users 和 POST /users)，map 只能存储一个键值对，也就是只有最后一个注册的处理函数会被调用</li>
+<li>不支持中间件：map 结构不支持中间件，这在现代 Web 开发中几乎是不可接受的</li>
+</ol>
+<p>基于以上特点，在真实的项目开发中不会使用 <code>map[string]func()</code> 作为路由的实现数据结构。</p>
+<h2 id="trie-tree">Trie Tree</h2>
+<blockquote>
+<p>Trie Tree 也称为字典树或前缀树，是一种用于高效存储和检索、用于从某个集合中查到某个特定 key 的数据结构。
+这些 key 通常是字符串，节点之间的父子关系不是由整个 key 定义，而是由 key 中的单个字符定义。
+对某个 key 对应的元素进行相关操作 (写入、更新、删除) 就是一次 DFS (深度优先遍历) 过程。</p>
+</blockquote>
+<h3 id="算法复杂度">算法复杂度</h3>
+<ul>
+<li>N: 字符串的数量</li>
+<li>M: 字符串的平均长度</li>
+<li>L: 字符串的长度</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>空间复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>O(NM)</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>插入</td>
+<td>O(L)</td>
+</tr>
+<tr>
+<td>查找</td>
+<td>O(L)</td>
+</tr>
+<tr>
+<td>删除</td>
+<td>O(L)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Trie Tree 的核心思想是空间换时间，利用字符串的公共前缀来减少字符比较操作，提升查询效率。</p>
+</blockquote>
+<h3 id="图示">图示</h3>
+<p><img src="https://dbwu.tech/images/trie12.jpeg" alt="图片来源: https://theoryofprogramming.wordpress.com/2015/01/16/trie-tree-implementation/"></p>
+<p>如图所示，是一个典型的 Trie Tree, 其中包含了如下元素:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#ed9d13">&#34;their&#34;</span>, <span style="color:#ed9d13">&#34;there&#34;</span>, <span style="color:#ed9d13">&#34;this&#34;</span>, <span style="color:#ed9d13">&#34;that&#34;</span>, <span style="color:#ed9d13">&#34;does&#34;</span>, <span style="color:#ed9d13">&#34;did&#34;</span>
+</span></span></code></pre></div><p>本文不再描述算法的具体操作过程了，读者可以通过代码来感受一下，如果希望抓住细节，可以阅读维基百科的介绍，
+或者通过 <a href="https://www.cs.usfca.edu/~galles/visualization/Trie.html">这个可视化在线工具</a> 来手动操作体验。</p>
+<h3 id="实现代码">实现代码</h3>
+<p>首先写一个基础版的 Trie Tree 代码，对算法本身做一个初步认识。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> trie
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Trie Tree 节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Trie <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标记当前节点是否为有效的路由
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如添加了路由 /users
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那么 /user, /usr 不能算作有效的路由
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是只有字符 &#34;s&#34; 节点的 IsPath 字段为 true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	IsPath <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Children <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">byte</span>]*Trie
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">New</span>() Trie {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> Trie{<span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">byte</span>]*Trie)}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Add 添加一个路由到 Trie Tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (t *Trie) <span style="color:#447fcf">Add</span>(path <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	parent := t
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 逐个 byte 加入到 Trie Tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> path {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> child, ok := parent.Children[path[i]]; ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果子节点不为空，继续向下遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			parent = child
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果子节点为空，构造新的节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			newChild := &amp;Trie{<span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">byte</span>]*Trie)}
+</span></span><span style="display:flex;"><span>			parent.Children[path[i]] = newChild
+</span></span><span style="display:flex;"><span>			parent = newChild
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新当前路由的叶子节点的 IsPath 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	parent.IsPath = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Find 返回指定路由是否存在于 Trie Tree 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (t *Trie) <span style="color:#447fcf">Find</span>(path <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	parent := t
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> path {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> child, ok := parent.Children[path[i]]; ok {
+</span></span><span style="display:flex;"><span>			parent = child
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> parent.IsPath
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>然后对上面的实现代码做一个简单的小测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> trie
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;testing&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestTrie</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	trieTree := <span style="color:#447fcf">New</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> got := trieTree.<span style="color:#447fcf">Find</span>(<span style="color:#ed9d13">&#34;hello&#34;</span>); got != <span style="color:#6ab825;font-weight:bold">false</span> {
+</span></span><span style="display:flex;"><span>		t.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;Get() = %v, want %v&#34;</span>, got, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	trieTree.<span style="color:#447fcf">Add</span>(<span style="color:#ed9d13">&#34;hello&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> got := trieTree.<span style="color:#447fcf">Find</span>(<span style="color:#ed9d13">&#34;hello&#34;</span>); got != <span style="color:#6ab825;font-weight:bold">true</span> {
+</span></span><span style="display:flex;"><span>		t.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;Get() = %v, want %v&#34;</span>, got, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> got := trieTree.<span style="color:#447fcf">Find</span>(<span style="color:#ed9d13">&#34;he&#34;</span>); got != <span style="color:#6ab825;font-weight:bold">false</span> {
+</span></span><span style="display:flex;"><span>		t.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;Get() = %v, want %v&#34;</span>, got, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	trieTree.<span style="color:#447fcf">Add</span>(<span style="color:#ed9d13">&#34;he&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> got := trieTree.<span style="color:#447fcf">Find</span>(<span style="color:#ed9d13">&#34;he&#34;</span>); got != <span style="color:#6ab825;font-weight:bold">true</span> {
+</span></span><span style="display:flex;"><span>		t.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;Get() = %v, want %v&#34;</span>, got, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="实现路由管理">实现路由管理</h3>
+<p>现在，我们将刚才的 “算法部分” 代码配合标准库提供的 API 代码，完成一个基础版的路由管理功能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;net/http&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Router 节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Router <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Path   <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	Method <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标记当前节点是否为有效的路由
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如添加了路由 /users
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那么 /user, /usr 不能算作有效的路由
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是只有字符 &#34;s&#34; 节点的 IsPath 字段为 true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	IsPath <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Children <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">byte</span>]*Router
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Handler http.HandlerFunc
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewRouter</span>() *Router {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;Router{IsPath: <span style="color:#6ab825;font-weight:bold">false</span>, Children: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">byte</span>]*Router)}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Add 添加一个路由到 Router
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">Add</span>(method, path <span style="color:#6ab825;font-weight:bold">string</span>, handler http.HandlerFunc) {
+</span></span><span style="display:flex;"><span>	parent := r
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 逐个 byte 加入到 Router Tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> path {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> child, ok := parent.Children[path[i]]; ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果子节点不为空，继续向下遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			parent = child
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果子节点为空，构造新的节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			newChild := <span style="color:#447fcf">NewRouter</span>()
+</span></span><span style="display:flex;"><span>			parent.Children[path[i]] = newChild
+</span></span><span style="display:flex;"><span>			parent = newChild
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	parent.Method = method
+</span></span><span style="display:flex;"><span>	parent.Handler = handler
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新当前路由的叶子节点的 IsPath 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	parent.IsPath = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Find 返回指定路由是否存在于 Router 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">Find</span>(method, path <span style="color:#6ab825;font-weight:bold">string</span>) (http.HandlerFunc, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	parent := r
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> path {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> child, ok := parent.Children[path[i]]; ok {
+</span></span><span style="display:flex;"><span>			parent = child
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> parent.Handler, parent.IsPath &amp;&amp; parent.Method == method
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 实现 http.Handler 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">ServeHTTP</span>(w http.ResponseWriter, req *http.Request) {
+</span></span><span style="display:flex;"><span>	handler, ok := r.<span style="color:#447fcf">Find</span>(req.Method, req.URL.Path)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">handler</span>(w, req)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		http.<span style="color:#447fcf">NotFound</span>(w, req)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 处理所有路由的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出请求 Method 和 URL
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">allHandler</span>(w http.ResponseWriter, req *http.Request) {
+</span></span><span style="display:flex;"><span>	_, _ = fmt.<span style="color:#447fcf">Fprintln</span>(w, req.Method, req.URL)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	r := <span style="color:#447fcf">NewRouter</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	r.<span style="color:#447fcf">Add</span>(<span style="color:#ed9d13">&#34;GET&#34;</span>, <span style="color:#ed9d13">&#34;/hello&#34;</span>, allHandler)
+</span></span><span style="display:flex;"><span>	r.<span style="color:#447fcf">Add</span>(<span style="color:#ed9d13">&#34;GET&#34;</span>, <span style="color:#ed9d13">&#34;/users/list&#34;</span>, allHandler)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	log.<span style="color:#447fcf">Fatal</span>(http.<span style="color:#447fcf">ListenAndServe</span>(<span style="color:#ed9d13">&#34;:8080&#34;</span>, r))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>为了节省篇幅，这里就不写测试代码了，下面进行几个简单的测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 启动服务</span>
+</span></span><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 测试两个正常的 URL</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ curl 127.0.0.1:8080/hello
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>GET /hello
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ curl 127.0.0.1:8080/users/list
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>GET /users/list
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 测试两个不存在的 URL</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ curl 127.0.0.1:8080
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">404</span> page not found
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ curl 127.0.0.1:8080/users/123456
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">404</span> page not found
+</span></span></code></pre></div><h3 id="优点">优点</h3>
+<p>Trie Tree 时间复杂度低，和一般的树形数据结构相比，Trie Tree 拥有更快的前缀搜索和查询性能，和查询时间复杂度为 O(1) 常数的哈希算法相比，
+Trie Tree 支持前缀搜索，并且可以节省哈希函数的计算开销和避免哈希值碰撞的情况，最后，Trie Tree 还支持对关键字进行字典排序。</p>
+<h3 id="适用场景">适用场景</h3>
+<ul>
+<li>排序   :  一组字符串 key 的字典排序，可以通过为给定 key 构建一个 Trie Tree， 然后通过前序方式遍历树来实现, burstsort 是 2007 年最快的字符串排序算法，其基础数据结构就是 Trie Tree</li>
+<li>全文索引: 通过一种特殊的 Trie Tree 实现，一般称为后缀树，可用于索引文本中的所有后缀以执行快速全文搜索</li>
+<li>搜索引擎: 当你在搜索引擎的输入框中输入关键字时，自动补全的提示信息</li>
+<li>生物信息: 基因序列对比软件</li>
+<li>路由管理: 网络 IP 路由表，Web 中的 HTTP Router 管理</li>
+</ul>
+<h3 id="不适用场景">不适用场景</h3>
+<ul>
+<li>字符串公共前缀太少，造成 Trie Tree 节点稀疏分布，这时哈希表是更好的选择</li>
+<li>节点之间的父子节点使用指针连接，对 CPU 和自带 GC 语言不太友好</li>
+<li>字符集过大会造成过多的存储空间占用 (Trie Tree 是空间换时间)</li>
+<li>字符串过长会使 Trie Tree 深度变大，这时应该使用接下来讲到的 Radix Tree</li>
+</ul>
+<h2 id="radix-tree">Radix Tree</h2>
+<blockquote>
+<p>Radix Tree（基数树）是一种特殊的数据结构，用于高效地存储和搜索字符串键值对，它是一种基于前缀的树状结构，通过将相同前缀的键值对合并在一起来减少存储空间的使用。
+Radix Tree 的关键思想是利用公共前缀来合并节点，每个节点代表一个字符，从根节点到叶子节点的路径即为一个字符串键，每个节点上存储着一个字符串的部分子串，并且每个节点可以代表多个键值对。</p>
+</blockquote>
+<h3 id="算法复杂度-1">算法复杂度</h3>
+<ul>
+<li>N: 字符串的数量</li>
+<li>M: 字符串的平均长度</li>
+<li>L: 字符串的长度</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>空间复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>O(NM)</td>
+</tr>
+</tbody>
+</table>
+<p>注意: Radix Tree 的使用场景是树中有较多节点拥有相同前缀，所以即使和 Trie Tree 的空间复杂度一样，但是实际应用中，Radix Tree 通过压缩公共前缀，
+空间使用要比 Trie Tree 节省很多。</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>插入</td>
+<td>O(L)</td>
+</tr>
+<tr>
+<td>查找</td>
+<td>O(L)</td>
+</tr>
+<tr>
+<td>删除</td>
+<td>O(L)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="操作示例">操作示例</h3>
+<p>下面引用维基百科页面上的示例图来说明 Radix Tree 的操作过程。</p>
+<p>初始状态下，树中包含两个节点，分别是字符串 test 和 slow。</p>
+<h4 id="1-将字符串-water-插入到树中">1. 将字符串 water 插入到树中</h4>
+<p><img src="https://dbwu.tech/images/radix_tree_op1.png" alt="图片来源: https://en.wikipedia.org/wiki/Radix_tree"></p>
+<p>因为字符串 water 和已有的两个节点没有公共前缀，所以直接插入到新的节点中。</p>
+<h4 id="2-将字符串-slower-插入到树中">2. 将字符串 slower 插入到树中</h4>
+<p><img src="https://dbwu.tech/images/radix_tree_op2.png" alt="图片来源: https://en.wikipedia.org/wiki/Radix_tree"></p>
+<p>字符串 slower 和已有的节点 slow 存在公共前缀 slow, 所以放在 slow 节点下面。</p>
+<h4 id="3-将字符串-tester-插入到树中">3. 将字符串 tester 插入到树中</h4>
+<p><img src="https://dbwu.tech/images/radix_tree_op3.png" alt="图片来源: https://en.wikipedia.org/wiki/Radix_tree"></p>
+<p>字符串 tester 和已有的节点 test 存在公共前缀 test, 所以放在 test 节点下面。</p>
+<h4 id="4-将字符串-team-插入到树中">4. 将字符串 team 插入到树中</h4>
+<p><img src="https://dbwu.tech/images/radix_tree_op4.png" alt="图片来源: https://en.wikipedia.org/wiki/Radix_tree"></p>
+<p>字符串 team 和已有的节点 test 存在公共前缀 te, 将 test 节点分裂为 st 和 am 两个子节点，两个子节点的父节点为 te。</p>
+<h4 id="5-将字符串-toast-插入到树中">5. 将字符串 toast 插入到树中</h4>
+<p><img src="https://dbwu.tech/images/radix_tree_op5.png" alt="图片来源: https://en.wikipedia.org/wiki/Radix_tree"></p>
+<p>字符串 toast 和已有的节点 te 存在公共前缀 t, 将 te 节点分裂为 e 和 oast 两个子节点，两个子节点的父节点为 t, 将 te 原来的两个子节点放在 e 节点下面。</p>
+<h3 id="实现代码-1">实现代码</h3>
+<p>笔者选择了开源的组件库 <a href="https://github.com/julienschmidt/httprouter">httprouter</a> 来作为代码实现的学习方案，选择这个组件的主要原因有两点：</p>
+<ol>
+<li>该组件专注于路由管理，代码量少且结构简单，涉及到 Radix Tree 数据结构和算法的代码已经独立到一个文件中，这可以大大降低我们阅读源代码的压力和时间成本</li>
+<li>很多 Web 框架中的路由管理功能都是基于该组件实现的，比如非常流行的 Gin</li>
+</ol>
+<p><img src="https://dbwu.tech/images/based_on_httpRouter.png" alt="Web Frameworks based on HttpRouter"></p>
+<p>httprouter 提供的 API 非常简洁，例如下面是一个简单的 Demo :</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;net/http&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;github.com/julienschmidt/httprouter&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>    router := httprouter.<span style="color:#447fcf">New</span>()
+</span></span><span style="display:flex;"><span>    router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/&#34;</span>, someHandle)
+</span></span><span style="display:flex;"><span>    router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/hello/:name&#34;</span>, someHandle)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    log.<span style="color:#447fcf">Fatal</span>(http.<span style="color:#447fcf">ListenAndServe</span>(<span style="color:#ed9d13">&#34;:8080&#34;</span>, router))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>接下来我们分为两部分来学习 httprouter 组件的源代码实现:</p>
+<ol>
+<li>Radix Tree 数据结构和算法的实现</li>
+<li>基于 Radix Tree 的路由管理功能实现</li>
+</ol>
+<p><img src="https://dbwu.tech/images/httprouter_uml.png" alt="httprouter UML"></p>
+<p>💡 <strong>重要提示</strong>: 下文中的代码和注释内容较多，读者如果时间有限，可以快速浏览一下核心对象及方法和文末的总结，在需要了解细节时再回来阅读。</p>
+<h3 id="radix-tree-实现">Radix Tree 实现</h3>
+<h4 id="工作原理简述">工作原理简述</h4>
+<p>路由管理功能中，底层的数据结构是使用公共前缀的树形结构，也就是基数树。在该数据结构中，所有具有公共前缀的节点共享同一个父节点，
+下面是一个关于这种数据结构的示例 (请求方法为 GET)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>Priority   Path             Handle
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">9</span>          <span style="color:#ed9d13">\ </span>               *&lt;1&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span>          ├s               nil
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>          |├earch<span style="color:#ed9d13">\ </span>        *&lt;2&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>          |└upport<span style="color:#ed9d13">\ </span>       *&lt;3&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>          ├blog<span style="color:#ed9d13">\ </span>          *&lt;4&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>          |    └:post      nil
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>          |         └<span style="color:#ed9d13">\ </span>    *&lt;5&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>          ├about-us<span style="color:#ed9d13">\ </span>      *&lt;6&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>          |        └team<span style="color:#ed9d13">\ </span> *&lt;7&gt;
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>          └contact<span style="color:#ed9d13">\ </span>       *&lt;8&gt;
+</span></span></code></pre></div><p>对上面的结构图做一个简单的说明:</p>
+<ul>
+<li>*&lt;数字&gt; 代表 Handler 方法指针</li>
+<li>search 节点和 support 节点拥有共同的父节点 s ，并且 s 没有对应的 Handle， 只有叶子节点才有 Handler</li>
+<li>从 root 节点开始，一直到叶子节点，算作一条路由的完整路径</li>
+<li>路径搜索的顺序是从上向下 -&gt; 从左到右，为了快速找到尽可能多的路由，子节点越多的节点优先级越高</li>
+</ul>
+<p>将上面的结构图转换代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/&#34;</span>, func1)
+</span></span><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/search/&#34;</span>, func2)
+</span></span><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/support/&#34;</span>, func3)
+</span></span><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/blog/:post/&#34;</span>, func5)
+</span></span><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/about-us/&#34;</span>, func6)
+</span></span><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/about-us/team/&#34;</span>, func7)
+</span></span><span style="display:flex;"><span>router.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/contact/&#34;</span>, func8)
+</span></span></code></pre></div><h4 id="node-对象">node 对象</h4>
+<p>node 对象表示 Radix Tree 的单个节点。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 节点类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> nodeType <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	static nodeType = <span style="color:#6ab825;font-weight:bold">iota</span> 
+</span></span><span style="display:flex;"><span>	root        <span style="color:#999;font-style:italic">// 根节点 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	param       <span style="color:#999;font-style:italic">// 参数节点 (例如 /users/:id)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	catchAll    <span style="color:#999;font-style:italic">// 通用节点，匹配任意参数 (例如 /users/*logs)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> node <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	path      <span style="color:#6ab825;font-weight:bold">string</span>    <span style="color:#999;font-style:italic">// 路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wildChild <span style="color:#6ab825;font-weight:bold">bool</span>      <span style="color:#999;font-style:italic">// 是否为参数节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nType     nodeType  <span style="color:#999;font-style:italic">// 节点类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxParams <span style="color:#6ab825;font-weight:bold">uint8</span>     <span style="color:#999;font-style:italic">// 路径参数个数上限
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	priority  <span style="color:#6ab825;font-weight:bold">uint32</span>    <span style="color:#999;font-style:italic">// 优先级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	indices   <span style="color:#6ab825;font-weight:bold">string</span>    <span style="color:#999;font-style:italic">// 导致当前节点和其子节点分裂的首个字符 (wildChild == true 时, indices == &#34;&#34;)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	children  []*node   <span style="color:#999;font-style:italic">// 子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	handle    Handle    <span style="color:#999;font-style:italic">// 路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h4 id="添加路由">添加路由</h4>
+<p>addRoute 方法将给定的路由处理方法绑定到具体的 Path 上面，该方法不是并发安全的，也就是需要通过加锁等机制将操作串行化。</p>
+<p>为了最大化提升读者的阅读体验和效率，这里将代码剖析注解直接贴在源代码中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (n *node) <span style="color:#447fcf">addRoute</span>(path <span style="color:#6ab825;font-weight:bold">string</span>, handle Handle) {
+</span></span><span style="display:flex;"><span>	fullPath := path
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前节点优先级 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n.priority++
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算路径中的参数个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	numParams := <span style="color:#447fcf">countParams</span>(path)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// non-empty tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(n.path) &gt; <span style="color:#3677a9">0</span> || <span style="color:#24909d">len</span>(n.children) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 说明当前 Radix Tree 已经存在节点了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 接下来进入 walk 循环标签
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	walk:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点最大参数个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> numParams &gt; n.maxParams {
+</span></span><span style="display:flex;"><span>				n.maxParams = numParams
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 查找当前节点路径和参数路径的最长公共前缀
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 公共前缀中不能包含 &#39;:&#39;  &#39;*&#39; 通配符 (因为这样就无法区分具体的路径了)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// PS: 查找最长公共前缀应该独立为一个函数，提高代码可读性，编译器会自动内联优化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     Gin 框架中已经独立为一个函数 longestCommonPrefix 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     https://github.com/gin-gonic/gin/blob/d4a64265f21993368c90602c18e778bf04ef36db/tree.go#L75C6-L75C6
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			i := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>			max := <span style="color:#447fcf">min</span>(<span style="color:#24909d">len</span>(path), <span style="color:#24909d">len</span>(n.path))
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">for</span> i &lt; max &amp;&amp; path[i] == n.path[i] {
+</span></span><span style="display:flex;"><span>				i++
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果最长公共前缀长度小于当前节点路径长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 这意味着可能是下列两种情况之一 :
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    1. 最长公共前缀 &gt; 0, 例如当前节点路径为 /users, 参数路径为 /usr
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    2. 最长公共前缀 == 0, 例如当前节点路径为 /users, 参数路径为 /books
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 此时当前节点就需要分裂成两个节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> i &lt; <span style="color:#24909d">len</span>(n.path) {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 将当前节点路径中非 “公共前缀” 部分独立到一个新的子节点中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				child := node{
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 路径为当前节点路径中非 “公共前缀” 部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					path:      n.path[i:],
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 类型待定, 没有 handler
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					nType:     static,
+</span></span><span style="display:flex;"><span>					indices:   n.indices,
+</span></span><span style="display:flex;"><span>                    children:  n.children,
+</span></span><span style="display:flex;"><span>                    handle:    n.handle,
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 优先级 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					priority:  n.priority - <span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 遍历新的子节点的所有子节点 (也就是当前节点的所有子节点)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 更新当前节点最大参数个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> child.children { 
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> child.children[i].maxParams &gt; child.maxParams {
+</span></span><span style="display:flex;"><span>						child.maxParams = child.children[i].maxParams
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 将新节点作为当前节点的子节点 (当前节点之前的子节点已经被挂载到了新节点的子节点上面)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.children = []*node{&amp;child}
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 获取导致当前节点和其子节点分裂的首个字符，并更新 indices 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// (例如 /users/dbwu 和 /users/dbwt, 更新 indices 字段为 &#34;u&#34;)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.indices = <span style="color:#24909d">string</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>{n.path[i]})
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新当前节点的路径为公共前缀
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.path = path[:i]
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 删除当前节点的路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.handle = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 删除当前节点的参数节点标志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.wildChild = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果最长公共前缀长度小于参数路径长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 为什么这样判断呢？
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    因为如果最长公共前缀长度大于等于参数路径长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    说明参数路径本身就是公共前缀的一部分，就没必要插入这个新节点了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 将新节点插入到当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> i &lt; <span style="color:#24909d">len</span>(path) {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 删除公共前缀部分，剩余部分的 path 是子节点的路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				path = path[i:]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前节点是参数节点 (例如 /users/:id)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> n.wildChild {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 代码执行到这里说明: 最长公共前缀长度大于等于当前节点路径长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 也就是说: 参数路径的长度要大于当前节点路径长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// (例如 当前节点路径为 /users/:id, 参数路径为 /users/:id/profile)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 获取到当前节点的第一个子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n = n.children[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 当前节点要插入一个新节点，优先级 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n.priority++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 更新当前节点最大参数个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">if</span> numParams &gt; n.maxParams {
+</span></span><span style="display:flex;"><span>						n.maxParams = numParams
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>					numParams--
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 检测通配符模式是否匹配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(path) &gt;= <span style="color:#24909d">len</span>(n.path) &amp;&amp; n.path == path[:<span style="color:#24909d">len</span>(n.path)] &amp;&amp;
+</span></span><span style="display:flex;"><span>						n.nType != catchAll &amp;&amp;
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 检测更长的通配符匹配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// (例如当前节点的 path = name, 子节点的路径是 path = names)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						(<span style="color:#24909d">len</span>(n.path) &gt;= <span style="color:#24909d">len</span>(path) || path[<span style="color:#24909d">len</span>(n.path)] == <span style="color:#ed9d13">&#39;/&#39;</span>) {
+</span></span><span style="display:flex;"><span>						
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 如果通配符模式匹配，进入下一次循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#6ab825;font-weight:bold">continue</span> walk
+</span></span><span style="display:flex;"><span>					} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 通配符发生了冲突
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// (例如当前节点的 path = /users/:id/profile, 子节点的路径是 path = /users/:name/profile)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#6ab825;font-weight:bold">var</span> pathSeg <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>						
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 如果当前节点类型是通用节点 (通配符类型)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#6ab825;font-weight:bold">if</span> n.nType == catchAll {
+</span></span><span style="display:flex;"><span>							pathSeg = path
+</span></span><span style="display:flex;"><span>						} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 如果当前节点类型不是通用节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							<span style="color:#999;font-style:italic">// 将 path 字符串进行分割
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							<span style="color:#999;font-style:italic">// (例如 path = /users/:id/profile, 分割之后 pathSeg = profile)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							pathSeg = strings.<span style="color:#447fcf">SplitN</span>(path, <span style="color:#ed9d13">&#34;/&#34;</span>, <span style="color:#3677a9">2</span>)[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>						}
+</span></span><span style="display:flex;"><span>						
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 提取出参数 path 的前缀
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// (例如 fullPath = /users/:id/profile, 当前节点 path = :id, prefix = /user/:id)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						prefix := fullPath[:strings.<span style="color:#447fcf">Index</span>(fullPath, pathSeg)] + n.path
+</span></span><span style="display:flex;"><span>						
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 直接抛出一个 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 信息中会输出产生冲突的具体通配符 path
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;&#39;&#34;</span> + pathSeg +
+</span></span><span style="display:flex;"><span>							<span style="color:#ed9d13">&#34;&#39; in new path &#39;&#34;</span> + fullPath +
+</span></span><span style="display:flex;"><span>							<span style="color:#ed9d13">&#34;&#39; conflicts with existing wildcard &#39;&#34;</span> + n.path +
+</span></span><span style="display:flex;"><span>							<span style="color:#ed9d13">&#34;&#39; in existing prefix &#39;&#34;</span> + prefix +
+</span></span><span style="display:flex;"><span>							<span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				c := path[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前节点是一个参数节点并且只有一个子节点 并且参数 path 是以 &#34;/&#34; 开头的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// (例如当前节点 path = /:name/profile, 参数 path = /:name/setting)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> n.nType == param &amp;&amp; c == <span style="color:#ed9d13">&#39;/&#39;</span> &amp;&amp; <span style="color:#24909d">len</span>(n.children) == <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 将当前节点修改为其第一个子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n = n.children[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 优先级 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n.priority++
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 进入下一次循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">continue</span> walk
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 检测新增子节点的 path 的首字母是否存在于当前节点的 indices 字段中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">len</span>(n.indices); i++ {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> c == n.indices[i] {
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 更新子节点的优先级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						i = n.<span style="color:#447fcf">incrementChildPrio</span>(i)
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 更新当前节点为对应的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//  (
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//    例如当前节点 path = p, 包含两个子节点 rofile, assword)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//    此时 indices 字段就包含字符 r 和 a, 正好和两个子节点相对应
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//    新增子节点的 path = projects, 删除和当前节点的公共前缀符 p 后，变成了 rojects 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//    然后当前节点会被更新为 rofile 子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//    最后，跳转到下一次循环，然后拿 rofile 和 rojects 进行对比
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">//  )
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						n = n.children[i]
+</span></span><span style="display:flex;"><span>						
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 进入下一次循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#6ab825;font-weight:bold">continue</span> walk
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果上面的条件都不满足
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 直接将新的子节点插入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> c != <span style="color:#ed9d13">&#39;:&#39;</span> &amp;&amp; c != <span style="color:#ed9d13">&#39;*&#39;</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果参数 path 的第一个字符不是通配符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 将第一个字符追加到当前节点的 indices 字段 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n.indices += <span style="color:#24909d">string</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>{c})
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 初始化一个新的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					child := &amp;node{
+</span></span><span style="display:flex;"><span>						maxParams: numParams,
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 将新的子节点追加到当前节点的子节点列表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n.children = <span style="color:#24909d">append</span>(n.children, child)
+</span></span><span style="display:flex;"><span>                    <span style="color:#999;font-style:italic">// 更新子节点的优先级 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n.<span style="color:#447fcf">incrementChildPrio</span>(<span style="color:#24909d">len</span>(n.indices) - <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 更新当前节点为新增的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					n = child
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				n.<span style="color:#447fcf">insertChild</span>(numParams, path, fullPath, handle)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> i == <span style="color:#24909d">len</span>(path) { 
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果公共前缀和参数 path 长度相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 说明参数 path 本身就是当前节点 path 的一部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> n.handle != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果当前节点已经注册了路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 那么再次注册时等于重复注册
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 直接抛出 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;a handle is already registered for path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前节点没有注册路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 说明当前节点是作为其子节点的公共前缀符而存在的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// (例如 当前节点 path = p, 包含两个子节点 rofile, assword))
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.handle = handle
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> { 
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果当前节点是一个空节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明当前 Radix Tree 没有任何节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接插入一个新节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 并且将插入的新节点类型标记为 root
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// PS: 笔者认为这两行边界检测代码应该放在函数开头部分，提高可读性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		n.<span style="color:#447fcf">insertChild</span>(numParams, path, fullPath, handle)
+</span></span><span style="display:flex;"><span>		n.nType = root
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>incrementChildPrio 方法用于更新给定子节点的优先级，并在必要的时候进行排序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (n *node) <span style="color:#447fcf">incrementChildPrio</span>(pos <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将对应索引的子节点的优先级 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n.children[pos].priority++
+</span></span><span style="display:flex;"><span>	prio := n.children[pos].priority
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 向前移动位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (例如原本的子节点顺序为 [a, b, c, d], 此时传入参数 2, 移动之后的子节点顺序为 [c, a, b, d])
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newPos := pos
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> newPos &gt; <span style="color:#3677a9">0</span> &amp;&amp; n.children[newPos-<span style="color:#3677a9">1</span>].priority &lt; prio {
+</span></span><span style="display:flex;"><span>		n.children[newPos-<span style="color:#3677a9">1</span>], n.children[newPos] = n.children[newPos], n.children[newPos-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		newPos--
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新当前节点的 indices 字段信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (例如原本的 indices 字段为 abcd, 此时传入参数 2, 移动之后的 indices 字段为 cabd
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> newPos != pos {
+</span></span><span style="display:flex;"><span>		n.indices = n.indices[:newPos] + <span style="color:#999;font-style:italic">// unchanged prefix, might be empty
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.indices[pos:pos+<span style="color:#3677a9">1</span>] + <span style="color:#999;font-style:italic">// the index char we move
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.indices[newPos:pos] + n.indices[pos+<span style="color:#3677a9">1</span>:] <span style="color:#999;font-style:italic">// rest without char at &#39;pos&#39;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回移动后的新的位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> newPos
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>insertChild 方法负责执行将具体的 path 插入到节点中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (n *node) <span style="color:#447fcf">insertChild</span>(numParams <span style="color:#6ab825;font-weight:bold">uint8</span>, path, fullPath <span style="color:#6ab825;font-weight:bold">string</span>, handle Handle) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 参数 path 已经处理完的计算数量 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> offset <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 查找前缀直到第一个参数匹配或者通配符 (以 &#39;:&#39; 或 &#39;*&#39; 开头)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 参数匹配 (类似这种形式 :name)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 通配符 (类似这种形式 *logs)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 为了便于描述，下文中统一将 参数匹配符号 和 通配符号 统称为 Token
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i, max := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(path); numParams &gt; <span style="color:#3677a9">0</span>; i++ {
+</span></span><span style="display:flex;"><span>		c := path[i]
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> c != <span style="color:#ed9d13">&#39;:&#39;</span> &amp;&amp; c != <span style="color:#ed9d13">&#39;*&#39;</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果不是 &#39;:&#39; 或 &#39;*&#39;, 直接跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 查找当前 Token 结束符, 也就是下一个 &#39;/&#39;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// (例如 Token 为 /:name/profile, 查找的就是 :name 后面的 / 符号)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		end := i + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> end &lt; max &amp;&amp; path[end] != <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">switch</span> path[end] {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Token 中嵌套 Token，直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">// (例如 /:name:id)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#39;:&#39;</span>, <span style="color:#ed9d13">&#39;*&#39;</span>:
+</span></span><span style="display:flex;"><span>				<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;only one wildcard per path segment is allowed, has: &#39;&#34;</span> +
+</span></span><span style="display:flex;"><span>					path[i:] + <span style="color:#ed9d13">&#34;&#39; in path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>				end++
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 Token 所在的索引位置已经有节点了，直接 panic 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// (例如已经存在了节点 path = /users/dbwu, 就不能再定义 path = /user/:name)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(n.children) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;wildcard route &#39;&#34;</span> + path[i:end] +
+</span></span><span style="display:flex;"><span>				<span style="color:#ed9d13">&#34;&#39; conflicts with existing children in path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// Token 至少需要一个字符表示的参数名称, 否则直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// (例如 :name, :id 中的 name 和 id 就是 Token 的参数名称)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> end-i &lt; <span style="color:#3677a9">2</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;wildcards must be named with a non-empty name in path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 Token 的类型是参数匹配符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> c == <span style="color:#ed9d13">&#39;:&#39;</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将当前节点的位置更新为 从 offset 到当前索引位置之间的 path，
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> i &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				n.path = path[offset:i]
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新 offset
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				offset = i
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 根据参数初始化一个新的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			child := &amp;node{
+</span></span><span style="display:flex;"><span>				nType:     param,
+</span></span><span style="display:flex;"><span>				maxParams: numParams,
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.children = []*node{child}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点类型为参数节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.wildChild = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前节点下降为子节点，继续后面的路由处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n = child
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前节点优先级 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.priority++
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 最大参数个数 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			numParams--
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Token 结束符比参数 path 长度要小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明参数 path 中还有子路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> end &lt; max {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新当前节点 path 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.path = path[offset:end]
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新 offset
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				offset = end
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 初始化一个新节点作为参数 path 中的子路径节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				child := &amp;node{
+</span></span><span style="display:flex;"><span>					maxParams: numParams,
+</span></span><span style="display:flex;"><span>					priority:  <span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n.children = []*node{child}
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 当前节点下降为子节点，继续后面的路由处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n = child
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> { <span style="color:#999;font-style:italic">// 如果 Token 的类型是通配符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> end != max || numParams &gt; <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 通配符类型的路径必须位于路由 path 的最后一部分，否则直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// (
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//   例如 /users/*name 是合法的，但是 /users/*name/profile 不是合法的，因为这样就无法区分其他路由了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//   例如 path = /users/dbwu/profile 是一个单独的 path, 但是却匹配了 /users/*name 这个 path
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//   因此获取到的参数 name = &#34;dbwu/profile&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//   所以不会再将后面的 /dbwu/profile 作为单独路径来处理了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// )
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;catch-all routes are only allowed at the end of the path in path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(n.path) &gt; <span style="color:#3677a9">0</span> &amp;&amp; n.path[<span style="color:#24909d">len</span>(n.path)-<span style="color:#3677a9">1</span>] == <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 新定义的通配符和已有的通配符冲突了，直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// (例如一个已有的 path = /users/dbwu, 新定义的 path = /users/:name, 如果不终止，后者就会覆盖前者)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;catch-all conflicts with existing handle for the path segment root in path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			i--
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> path[i] != <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果通配符前面没有 &#39;/&#39;, 直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;no / before catch-all in path &#39;&#34;</span> + fullPath + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			n.path = path[offset:i]
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 初始化一个新的子节点，类型为通配符节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			child := &amp;node{
+</span></span><span style="display:flex;"><span>				wildChild: <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>				nType:     catchAll,
+</span></span><span style="display:flex;"><span>				maxParams: <span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点的最大参数个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> n.maxParams &lt; <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>				n.maxParams = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.children = []*node{child}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点的 indices 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.indices = <span style="color:#24909d">string</span>(path[i])
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前节点下降为子节点，继续后面的路由处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n = child
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前节点优先级 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.priority++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 初始化一个新节点作为参数 path 中的剩余部分的节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			child = &amp;node{
+</span></span><span style="display:flex;"><span>				path:      path[i:],
+</span></span><span style="display:flex;"><span>				nType:     catchAll,
+</span></span><span style="display:flex;"><span>				maxParams: <span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>				handle:    handle,  <span style="color:#999;font-style:italic">// 绑定路由的处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				priority:  <span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新当前节点的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			n.children = []*node{child}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 通配符类型的路径必须位于路由 path 的最后一部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新当前节点的 path
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n.path = path[offset:]
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新当前节点的处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n.handle = handle
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="查找路由处理方法">查找路由处理方法</h4>
+<p>getValue 方法根据指定的 path，查找并返回对应的路由处理方法。</p>
+<p>返回值列表顺序如下:</p>
+<ul>
+<li>handle : path 对应的处理方法，如果没有找到，返回 nil</li>
+<li>p      : 如果 path 对应的节点类型是参数节点，会将参数返回</li>
+<li>tsr    : 路由是否可以被重定向</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (n *node) <span style="color:#447fcf">getValue</span>(path <span style="color:#6ab825;font-weight:bold">string</span>) (handle Handle, p Params, tsr <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 循环标签
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>walk: 
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果要查找的 path 长度大于当前节点的 path 长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 除了根路径 /, 其他 path 应该都可以满足这个条件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(path) &gt; <span style="color:#24909d">len</span>(n.path) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前节点的 path 是要查找的 path 的前缀
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> path[:<span style="color:#24909d">len</span>(n.path)] == n.path {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 那么就将前缀去掉，查找剩余的部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				path = path[<span style="color:#24909d">len</span>(n.path):]
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前节点类型不是参数节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 直接在其子节点中查找即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> !n.wildChild {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 通过要查找 path 的首字母快速匹配对应的子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					c := path[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">len</span>(n.indices); i++ {
+</span></span><span style="display:flex;"><span>						<span style="color:#6ab825;font-weight:bold">if</span> c == n.indices[i] {
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 更新当前节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							n = n.children[i]
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 跳转到下一个循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							<span style="color:#6ab825;font-weight:bold">continue</span> walk
+</span></span><span style="display:flex;"><span>						}
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 代码执行到这里，说明没有匹配到子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 如果路径剩余的部分正好是 &#39;/&#39;, 并且当前节点注册了路由处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 更新 tsr 重定向标记为 true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// (例如查找的 path = /users/, 当前节点 path = /users, 那么就重定向到 /users)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					tsr = (path == <span style="color:#ed9d13">&#34;/&#34;</span> &amp;&amp; n.handle != <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前节点类型是参数节点或者通配符节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 那么当前节点只会有一个子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 更新当前节点为其第一个子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				n = n.children[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">switch</span> n.nType {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前节点类型是参数节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 参数匹配 (类似这种形式 :name)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">case</span> param:
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 查找路径中的参数结束符或者 &#39;/&#39;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					end := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">for</span> end &lt; <span style="color:#24909d">len</span>(path) &amp;&amp; path[end] != <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>						end++
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> p == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 惰性初始化参数返回值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 注意初始化的时候已经指定了切片容量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						p = <span style="color:#24909d">make</span>(Params, <span style="color:#3677a9">0</span>, n.maxParams)
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 为参数返回值赋值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					i := <span style="color:#24909d">len</span>(p)
+</span></span><span style="display:flex;"><span>					p = p[:i+<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>					p[i].Key = n.path[<span style="color:#3677a9">1</span>:]
+</span></span><span style="display:flex;"><span>					p[i].Value = path[:end]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果路径还没有匹配完，
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">if</span> end &lt; <span style="color:#24909d">len</span>(path) {
+</span></span><span style="display:flex;"><span>                        <span style="color:#999;font-style:italic">// 如果子节点下面还存在子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                        <span style="color:#999;font-style:italic">// (例如 path = /users/:name/:setting, 当前匹配到 :name, 发现其还有子节点)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                        <span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(n.children) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 更新查找路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							path = path[end:]
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 更新当前节点为其第一个子节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							n = n.children[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 跳转到下一个循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							<span style="color:#6ab825;font-weight:bold">continue</span> walk
+</span></span><span style="display:flex;"><span>						}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 没有查到到对应到路由处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						tsr = (<span style="color:#24909d">len</span>(path) == end+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>						<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> handle = n.handle; handle != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>                        <span style="color:#999;font-style:italic">// 如果当前节点有对应到路由处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                        <span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>					} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(n.children) == <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 如果当前节点没有对应到路由处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 确认其子节点是否为 &#39;/&#39; 并且子节点有对应到路由处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 这样就可以进行进行重定向了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						n = n.children[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>						tsr = (n.path == <span style="color:#ed9d13">&#34;/&#34;</span> &amp;&amp; n.handle != <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 如果当前节点类型是通配符节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 通配符 (类似这种形式 *logs)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">case</span> catchAll:
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> p == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>                        <span style="color:#999;font-style:italic">// 惰性初始化参数返回值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                        <span style="color:#999;font-style:italic">// 注意初始化的时候已经指定了切片容量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						p = <span style="color:#24909d">make</span>(Params, <span style="color:#3677a9">0</span>, n.maxParams)
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 通配符不会有子节点，直接赋值后返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 为参数返回值赋值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					i := <span style="color:#24909d">len</span>(p)
+</span></span><span style="display:flex;"><span>					p = p[:i+<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>					p[i].Key = n.path[<span style="color:#3677a9">2</span>:]
+</span></span><span style="display:flex;"><span>					p[i].Value = path
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>					handle = n.handle
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 代码执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 说明当前节点的类型不在枚举范围内，直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;invalid node type&#34;</span>)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> path == n.path {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果要查找的 path 等于当前节点的 path
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 检测当前节点是否有路由处理函数，如果有的话，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> handle = n.handle; handle != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果要查找的 path 等于 / 并且当前节点类型不是 root, 并且当前节点是参数节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 允许重定向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> path == <span style="color:#ed9d13">&#34;/&#34;</span> &amp;&amp; n.wildChild &amp;&amp; n.nType != root {
+</span></span><span style="display:flex;"><span>				tsr = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前节点没有路由处理函数，但是有一个子节点的路径为 &#39;/&#39;, 这时允许重定向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// (例如当前节点的 path = /users/, 但是查找的 path = /users, 此时就允许重定向到 /users/ 上面)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#24909d">len</span>(n.indices); i++ {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> n.indices[i] == <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>					n = n.children[i]
+</span></span><span style="display:flex;"><span>					tsr = (<span style="color:#24909d">len</span>(n.path) == <span style="color:#3677a9">1</span> &amp;&amp; n.handle != <span style="color:#6ab825;font-weight:bold">nil</span>) ||
+</span></span><span style="display:flex;"><span>						(n.nType == catchAll &amp;&amp; n.children[<span style="color:#3677a9">0</span>].handle != <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 没有查到到对应到路由处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 根据条件更新是否允许重定向字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		tsr = (path == <span style="color:#ed9d13">&#34;/&#34;</span>) ||
+</span></span><span style="display:flex;"><span>			(<span style="color:#24909d">len</span>(n.path) == <span style="color:#24909d">len</span>(path)+<span style="color:#3677a9">1</span> &amp;&amp; n.path[<span style="color:#24909d">len</span>(path)] == <span style="color:#ed9d13">&#39;/&#39;</span> &amp;&amp;
+</span></span><span style="display:flex;"><span>				path == n.path[:<span style="color:#24909d">len</span>(n.path)-<span style="color:#3677a9">1</span>] &amp;&amp; n.handle != <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="路由管理实现">路由管理实现</h3>
+<p>相比于上面 Radix Tree 的实现，路由管理功能实现要简单的多，这里分析一下核心的代码。</p>
+<h4 id="router-对象">Router 对象</h4>
+<p>Router 对象表示全局的路由管理对象，可以将不同的 HTTP Method + Path 请求分发给不同的路由处理函数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Router <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 路由管理的核心字段，每个 HTTP Method 对应一个 Radix Tree 结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   GET =&gt; Radix Tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   POST =&gt; Radix Tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   DELETE =&gt; Radix Tree
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	trees <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]*node
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否启用请求的自动重定向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (例如当前请求为 /foo/, 但是路由管理注册的路径只有 /foo, 此时就将 /foo/ 重定向到 /fooo)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (重定向时，GET 请求的响应码为 301， 其他请求的为 307)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	RedirectTrailingSlash <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否启用自动修复路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 首先会删除路径中多余的部分，例如 ../ 和 //
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 然后再次查找路径 (这一次不区分大小写)，看是否可以匹配到对应的路径处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果能匹配到路径，就进行重定向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (重定向时，GET 请求的响应码为 301， 其他请求的为 307)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    RedirectFixedPath <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否启用 Method Not Allowed
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 启用机制后，如果当前路径没有匹配到对应的路径处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   查看其他当前路径是否注册了其他 HTTP 请求类型的路径处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   如果注册了，返回 405 状态码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果没有开启机制，当前路径没有匹配到对应的路径处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   返回 404 状态码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    HandleMethodNotAllowed <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否启用 OPTIONS 请求响应
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    HandleOPTIONS <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 404 响应方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果没有设置，就使用标准库的 404 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    NotFound http.Handler
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 405 响应方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果没有设置，就使用标准库的 Error 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   其中响应文本为 Method Not Allowed，状态码为 405
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    MethodNotAllowed http.Handler
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 用于捕获并处理 panic 错误的方法，返回错误码 500 (Internal Server Error)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 保证程序因为没有捕获 panic 而崩溃退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    PanicHandler <span style="color:#6ab825;font-weight:bold">func</span>(http.ResponseWriter, *http.Request, <span style="color:#6ab825;font-weight:bold">interface</span>{})
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 通过编译期间保证 Router 必须实现 http.Handler 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> _ http.Handler = <span style="color:#447fcf">New</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 创建并返回一个路由管理实例
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">New</span>() *Router {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;Router{
+</span></span><span style="display:flex;"><span>		RedirectTrailingSlash:  <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>		RedirectFixedPath:      <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>		HandleMethodNotAllowed: <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>		HandleOPTIONS:          <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="注册路由处理方法">注册路由处理方法</h4>
+<p>Router 提供了常见的 HTTP 请求路由处理方法注册的 API, 每个方法的内部都是调用了 Handle 方法，下面是 GET 方法和 POST 方法的实现代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 注册 GET 请求处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">GET</span>(path <span style="color:#6ab825;font-weight:bold">string</span>, handle Handle) {
+</span></span><span style="display:flex;"><span>	r.<span style="color:#447fcf">Handle</span>(http.MethodGet, path, handle)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 注册 POST 请求处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">POST</span>(path <span style="color:#6ab825;font-weight:bold">string</span>, handle Handle) {
+</span></span><span style="display:flex;"><span>    r.<span style="color:#447fcf">Handle</span>(http.MethodPost, path, handle)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>Handle 方法将指定的 HTTP Method + Path 和路由处理方法进行绑定。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">Handle</span>(method, path <span style="color:#6ab825;font-weight:bold">string</span>, handle Handle) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(path) &lt; <span style="color:#3677a9">1</span> || path[<span style="color:#3677a9">0</span>] != <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果路径为空或者路径第一个字符不等于 &#39;/&#39;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这种路径格式就是不合法的，直接 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;path must begin with &#39;/&#39; in path &#39;&#34;</span> + path + <span style="color:#ed9d13">&#34;&#39;&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> r.trees == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 初始化 trees 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		r.trees = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]*node)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	root := r.trees[method]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> root == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 初始化参数 HTTP 方法对应的 Radix Tree 结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		root = <span style="color:#24909d">new</span>(node)
+</span></span><span style="display:flex;"><span>		r.trees[method] = root
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		r.globalAllowed = r.<span style="color:#447fcf">allowed</span>(<span style="color:#ed9d13">&#34;*&#34;</span>, <span style="color:#ed9d13">&#34;&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 添加路由的注册方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 详情见前文对于 addRoute 方法的注解
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	root.<span style="color:#447fcf">addRoute</span>(path, handle)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="servehttp-实现">ServeHTTP 实现</h4>
+<p>ServeHTTP 方法负责处理 HTTP 请求并返回响应，同时实现了标准库中的 http.Handler 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// net/http/server.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Handler <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">ServeHTTP</span>(ResponseWriter, *Request)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Router) <span style="color:#447fcf">ServeHTTP</span>(w http.ResponseWriter, req *http.Request) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> r.PanicHandler != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将 panic 错误处理函数注册到 defer 函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">defer</span> r.<span style="color:#447fcf">recv</span>(w, req)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取当前请求路径 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	path := req.URL.Path
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测当前请求方法是否存在对应的 Radix Tree 结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> root := r.trees[req.Method]; root != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> handle, ps, tsr := root.<span style="color:#447fcf">getValue</span>(path); handle != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前请求路径有对应的处理方法，直接调用即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">handle</span>(w, req, ps)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> req.Method != http.MethodConnect &amp;&amp; path != <span style="color:#ed9d13">&#34;/&#34;</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// PS: 上面的 if 条件分支都已经直接返回了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     这里实在没必要再写一个 else 条件分支
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     整个库的代码，可读性比较低 ～
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前请求路径没有对应的处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 将响应状态码设置为 301 (永久重定向，针对 GET 方法)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			code := <span style="color:#3677a9">301</span> 
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> req.Method != http.MethodGet {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前请求不是 GET 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 将响应状态码设置为 307 (临死重定向，针对非 GET 方法)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 为什么不使用 301 呢？
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 因为 308 和 307 不允许请求从 POST 修改为 GET
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Temporary redirect, request with same method
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// As of Go 1.3, Go does not support status code 308.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				code = <span style="color:#3677a9">307</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果请求路径需要重定向并且路由支持重定向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> tsr &amp;&amp; r.RedirectTrailingSlash {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果路径的长度大于 1 并且路径是以 &#39;/&#39; 字符结尾的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 就将末尾的 &#39;/&#39; 字符删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(path) &gt; <span style="color:#3677a9">1</span> &amp;&amp; path[<span style="color:#24909d">len</span>(path)-<span style="color:#3677a9">1</span>] == <span style="color:#ed9d13">&#39;/&#39;</span> {
+</span></span><span style="display:flex;"><span>					req.URL.Path = path[:<span style="color:#24909d">len</span>(path)-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 在路径的结尾加一个 &#39;/&#39; 字符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					req.URL.Path = path + <span style="color:#ed9d13">&#34;/&#34;</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 返回重定向响应
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				http.<span style="color:#447fcf">Redirect</span>(w, req, req.URL.<span style="color:#447fcf">String</span>(), code)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前请求路径没有对应的处理方法 并且 也没有符合规则的重定向条件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 尝试修复请求路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> r.RedirectFixedPath {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 去除路径中的多余部分并返回经过修正后是否有匹配的路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				fixedPath, found := root.<span style="color:#447fcf">findCaseInsensitivePath</span>(
+</span></span><span style="display:flex;"><span>					<span style="color:#447fcf">CleanPath</span>(path),
+</span></span><span style="display:flex;"><span>					r.RedirectTrailingSlash,
+</span></span><span style="display:flex;"><span>				)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> found {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果经过修正，可以找到匹配的路径
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 直接重定向
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					req.URL.Path = <span style="color:#24909d">string</span>(fixedPath)
+</span></span><span style="display:flex;"><span>					http.<span style="color:#447fcf">Redirect</span>(w, req, req.URL.<span style="color:#447fcf">String</span>(), code)
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 代码执行到了这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明上面的几个条件都不符合，当前请求路径还是没有找到对应的处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> req.Method == http.MethodOptions &amp;&amp; r.HandleOPTIONS {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果请求方法是 OPTIONS, 并且路由管理允许响应 OPTIONS
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 返回一个 OPTIONS 响应
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> allow := r.<span style="color:#447fcf">allowed</span>(path, http.MethodOptions); allow != <span style="color:#ed9d13">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>			w.<span style="color:#447fcf">Header</span>().<span style="color:#447fcf">Set</span>(<span style="color:#ed9d13">&#34;Allow&#34;</span>, allow)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> r.GlobalOPTIONS != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				r.GlobalOPTIONS.<span style="color:#447fcf">ServeHTTP</span>(w, req)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> r.HandleMethodNotAllowed { 
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果请求方法不是 OPTIONS, 或者路由管理不允许响应 OPTIONS
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 返回一个 405 响应
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> allow := r.<span style="color:#447fcf">allowed</span>(path, req.Method); allow != <span style="color:#ed9d13">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>			w.<span style="color:#447fcf">Header</span>().<span style="color:#447fcf">Set</span>(<span style="color:#ed9d13">&#34;Allow&#34;</span>, allow)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> r.MethodNotAllowed != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				r.MethodNotAllowed.<span style="color:#447fcf">ServeHTTP</span>(w, req)
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				http.<span style="color:#447fcf">Error</span>(w,
+</span></span><span style="display:flex;"><span>					http.<span style="color:#447fcf">StatusText</span>(http.StatusMethodNotAllowed),
+</span></span><span style="display:flex;"><span>					http.StatusMethodNotAllowed,
+</span></span><span style="display:flex;"><span>				)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> r.NotFound != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果路由管理中注册了 404 处理函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 直接调用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		r.NotFound.<span style="color:#447fcf">ServeHTTP</span>(w, req)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果路由管理中没有注册 404 处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 调用标准库中的 404 处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		http.<span style="color:#447fcf">NotFound</span>(w, req)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="优点-1">优点</h3>
+<p>Radix Tree 通过合并公共前缀来降低存储空间的开销，避免了 Trie Tree 字符串过长和字符集过大时导致的存储空间过多问题，同时公共前缀优化了路径层数，提升了插入、查询、删除等操作效率。</p>
+<h3 id="适用场景-1">适用场景</h3>
+<ul>
+<li>字典和前缀匹配 ：适合用作字典或关联数组的底层数据结构，可以快速找到以给定前缀开头的所有键，例如 Redis 中的某个前缀 key</li>
+<li>IP 路由表     ：可以高效地存储和搜索 IP 地址及其对应的路由表信息</li>
+<li>文件系统和目录 ：每个节点可以表示一个目录或文件，节点之间的关系通过共同的路径前缀进行连接</li>
+<li>编译器        ：可以用于编译器中的符号表管理，符号表存储了程序中定义的变量、函数名和类型等信息，Radix Tree 可以快速查找和更新符号表项，支持高效的名称解析和类型检查</li>
+</ul>
+<h3 id="不适用场景-1">不适用场景</h3>
+<ul>
+<li>字符串公共前缀太少，造成 Radix Tree 节点稀疏分布 (退化到 Trie Tree)，这时哈希表是更好的选择 (这个问题在 Trie Tree 中同样存在)</li>
+<li>字符集过小，可以直接使用其他简单的数据结构</li>
+<li>动态数据集，也就是数据集需要频繁地进行插入和删除操作，由于 Radix Tree 的节点需要合并和路径重组，动态修改树结构可能引起较大的开销，在这种情况下，这时平衡二叉搜索树结构（AVL树、红黑树）更适合</li>
+<li>节点之间的父子节点使用指针连接，对 CPU 和自带 GC 语言不太友好 (这个问题在 Trie Tree 中同样存在)</li>
+</ul>
+<h2 id="trie-tree-和-radix-tree-对比">Trie Tree 和 Radix Tree 对比</h2>
+<p>下面是插入 4 个单词 [PLAN, PLAY, POLL, POST] 后的结果 (粗体字符表示节点字符，圆圈内字符串表示该节点表示的值)。</p>
+<p><img src="https://dbwu.tech/images/trie_vs_radix.png" alt="图片来源: https://subscription.packtpub.com/"></p>
+<h2 id="小结">小结</h2>
+<p>本文从开发中常见的 “路由管理” 功能为出发点，探索了实现背后用到的数据结构和算法，并先后分析了各解决方案的优化过程，分别是 Go 标准库、手动实现 Trie Tree、开源的 Radix Tree,
+希望读者在读完文章后，能准确地理解 Trie Tree 和 Radix Tree 的差异及其适用场景，如果在此基础上还有兴趣和时间，可以深入了解下由这两种数据结构演变出的其他数据结构和算法。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Radix_tree">Radix tree</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Trie">Trie tree</a></li>
+<li><a href="https://github.com/julienschmidt/httprouter">httprouter</a></li>
+<li><a href="https://github.com/gin-gonic/gin/">gin</a></li>
+<li><a href="https://github.com/redis/redis/blob/6.0.14/src/rax.h">Redis Rax</a></li>
+<li><a href="https://github.com/antirez/rax">Rax, an ANSI C radix tree implementation</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/cuckoo_filter/"><i class="fa fa-chevron-circle-left"></i> 布谷鸟过滤器</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="HTTP Router 算法演进"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
