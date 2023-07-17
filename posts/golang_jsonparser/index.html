@@ -1,0 +1,873 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>jsonparser 为什么比标准库的 encoding/json 快 10 倍 ? - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_jsonparser/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-17T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-17T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BC%96%E7%A8%8B">高性能编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>jsonparser 是一个开源 JSON 包，号称比标准库 JSON 包性能高 10 倍 (具体情况取决于具体的负载大小和数据情况)，内存分配优化到 0。
+项目的目标是在不牺牲开发者用户体验和保持包 API 简洁的前提下，尽可能地提升 JSON 操作的性能。</p>
+</blockquote>
+<h2 id="基准测试">基准测试</h2>
+<p>官方给出了 <code>3 种类型</code> 的基准测试结果，分别是 <code>少量数据</code>、<code>中等数据</code> 和 <code>大量数据</code> 情况下的 JSON 负载。</p>
+<p><code>jsonparser</code> 的性能在很大程度上取决于使用情况，当不需要处理完整记录而只需要处理某几个字段时 (尤其是访问第三方接口时，大多数情况下我们只需要几个字段) 性能表现非常好。</p>
+<h3 id="少量数据">少量数据</h3>
+<p>每个测试将 190 字节的 http 日志转换为 JSON。</p>
+<table>
+<thead>
+<tr>
+<th>Library</th>
+<th>time/op</th>
+<th>bytes/op</th>
+<th>allocs/op</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>encoding/json struct</td>
+<td>7879</td>
+<td>880</td>
+<td>18</td>
+</tr>
+<tr>
+<td>encoding/json interface{}</td>
+<td>8946</td>
+<td>1521</td>
+<td>38</td>
+</tr>
+<tr>
+<td>buger/jsonparser</td>
+<td><strong>1367</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>buger/jsonparser (EachKey API)</td>
+<td><strong>809</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+</tbody>
+</table>
+<p>从输出的结果中可以看到，<code>jsonparser</code> 要比标准库快 <code>≈ 10</code> 倍，内存分配优化到 0。</p>
+<h3 id="中等数据">中等数据</h3>
+<p>每个测试处理一个 2.4kb 的 JSON 记录，读取多个嵌套字段和 1 个数组。</p>
+<table>
+<thead>
+<tr>
+<th>Library</th>
+<th>time/op</th>
+<th>bytes/op</th>
+<th>allocs/op</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>encoding/json struct</td>
+<td>57749</td>
+<td>1336</td>
+<td>29</td>
+</tr>
+<tr>
+<td>encoding/json interface{}</td>
+<td>79297</td>
+<td>10627</td>
+<td>215</td>
+</tr>
+<tr>
+<td>buger/jsonparser</td>
+<td><strong>15955</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>buger/jsonparser (EachKey API)</td>
+<td><strong>8916</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+</tbody>
+</table>
+<p>从输出的结果中可以看到，<code>jsonparser</code> 要比标准库快 <code>≈ 6.5</code> 倍，内存分配优化到 0。</p>
+<h3 id="大量数据">大量数据</h3>
+<p>每个测试处理一个 24kb 的 JSON 记录，读取 2 个数组，并获取数组中每个元素的一些字段。</p>
+<table>
+<thead>
+<tr>
+<th>Library</th>
+<th>time/op</th>
+<th>bytes/op</th>
+<th>allocs/op</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>encoding/json struct</td>
+<td>748336</td>
+<td>8272</td>
+<td>307</td>
+</tr>
+<tr>
+<td>encoding/json interface{}</td>
+<td>1224271</td>
+<td>215425</td>
+<td>3395</td>
+</tr>
+<tr>
+<td>buger/jsonparser</td>
+<td><strong>85308</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+</tbody>
+</table>
+<p>从输出的结果中可以看到，<code>jsonparser</code> 要比标准库快 <code>≈ 9</code> 倍，内存分配优化到 0。</p>
+<h2 id="和标准库的差异">和标准库的差异</h2>
+<p><code>jsonparser</code> 和标准库中的 <code>JSON</code> 工作方式不同，不会 <strong>编码/解码</strong> 整个数据结构，而是 <strong>按需操作</strong> (当然，这背后的代价就是开发效率会降低)。</p>
+<h3 id="方法对应关系">方法对应关系</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>标准库</th>
+<th>jsonparser</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>编码</td>
+<td>Marshal</td>
+<td>Set</td>
+</tr>
+<tr>
+<td>解码</td>
+<td>Unmarshal</td>
+<td>Get</td>
+</tr>
+</tbody>
+</table>
+<p>此外，<code>jsonparser</code> 在 Get 方法的基础上封装了很多针对单个字段的实用小方法，例如 <code>GetInt</code>, <code>GetString</code> 等，下面是一个简单的示例。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/buger/jsonparser&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// JSON 字符串
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dataJson = []<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">{
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">  &#34;person&#34;: {
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    &#34;name&#34;: {
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">      &#34;first&#34;: &#34;Leonid&#34;,
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">      &#34;last&#34;: &#34;Bugaev&#34;,
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">      &#34;fullName&#34;: &#34;Leonid Bugaev&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    },
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    &#34;github&#34;: {
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">      &#34;handle&#34;: &#34;buger&#34;,
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">      &#34;followers&#34;: 109
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    },
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    &#34;avatars&#34;: [
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">      { &#34;url&#34;: &#34;https://avatars1.githubusercontent.com/u/14009?v=3&amp;s=460&#34;, &#34;type&#34;: &#34;thumbnail&#34; }
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    ]
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">  },
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">  &#34;company&#34;: {
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">    &#34;name&#34;: &#34;Acme&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">  }
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">}
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13">`</span>)
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 解析对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	github := <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		Handle    <span style="color:#6ab825;font-weight:bold">string</span> <span style="color:#ed9d13">`json:&#34;handle&#34;`</span>
+</span></span><span style="display:flex;"><span>		Followers <span style="color:#6ab825;font-weight:bold">int</span>    <span style="color:#ed9d13">`json:&#34;followers&#34;`</span>
+</span></span><span style="display:flex;"><span>	}{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	err := jsonparser.<span style="color:#447fcf">ObjectEach</span>(dataJson, <span style="color:#6ab825;font-weight:bold">func</span>(key []<span style="color:#6ab825;font-weight:bold">byte</span>, value []<span style="color:#6ab825;font-weight:bold">byte</span>, dataType jsonparser.ValueType, offset <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> <span style="color:#24909d">string</span>(key) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#34;handle&#34;</span>:
+</span></span><span style="display:flex;"><span>			github.Handle = <span style="color:#24909d">string</span>(value)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#34;followers&#34;</span>:
+</span></span><span style="display:flex;"><span>			followers, _ := jsonparser.<span style="color:#447fcf">ParseInt</span>(value)
+</span></span><span style="display:flex;"><span>			github.Followers = <span style="color:#24909d">int</span>(followers)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}, <span style="color:#ed9d13">&#34;person&#34;</span>, <span style="color:#ed9d13">&#34;github&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;github = %+v\n\n&#34;</span>, github)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 编码结构体
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	githubJson, err := jsonparser.<span style="color:#447fcf">Set</span>([]<span style="color:#24909d">byte</span>(<span style="color:#ed9d13">`{}`</span>), []<span style="color:#24909d">byte</span>(fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">`{&#34;handle: %s&#34;, &#34;followers&#34;: &#34;%d&#34;}`</span>, github.Handle, github.Followers)), <span style="color:#ed9d13">&#34;github&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;github json = %s\n\n&#34;</span>, githubJson)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 解析多个 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	paths := [][]<span style="color:#6ab825;font-weight:bold">string</span>{
+</span></span><span style="display:flex;"><span>		{<span style="color:#ed9d13">&#34;person&#34;</span>, <span style="color:#ed9d13">&#34;name&#34;</span>, <span style="color:#ed9d13">&#34;fullName&#34;</span>},
+</span></span><span style="display:flex;"><span>		{<span style="color:#ed9d13">&#34;person&#34;</span>, <span style="color:#ed9d13">&#34;avatars&#34;</span>, <span style="color:#ed9d13">&#34;[0]&#34;</span>, <span style="color:#ed9d13">&#34;url&#34;</span>},
+</span></span><span style="display:flex;"><span>		{<span style="color:#ed9d13">&#34;company&#34;</span>, <span style="color:#ed9d13">&#34;name&#34;</span>},
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	jsonparser.<span style="color:#447fcf">EachKey</span>(dataJson, <span style="color:#6ab825;font-weight:bold">func</span>(i <span style="color:#6ab825;font-weight:bold">int</span>, bytes []<span style="color:#6ab825;font-weight:bold">byte</span>, valueType jsonparser.ValueType, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> i {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#3677a9">0</span>:
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;fullName = %s\n&#34;</span>, bytes)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#3677a9">1</span>:
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;avatars[0].url = %s\n&#34;</span>, bytes)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#3677a9">2</span>:
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;company.name = %s\n\n&#34;</span>, bytes)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}, paths...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 解析整数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n, err := jsonparser.<span style="color:#447fcf">GetInt</span>(dataJson, <span style="color:#ed9d13">&#34;person&#34;</span>, <span style="color:#ed9d13">&#34;github&#34;</span>, <span style="color:#ed9d13">&#34;followers&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;n = %d\n\n&#34;</span>, n)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 解析字符串
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	name, err := jsonparser.<span style="color:#447fcf">GetString</span>(dataJson, <span style="color:#ed9d13">&#34;company&#34;</span>, <span style="color:#ed9d13">&#34;name&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;name = %s\n&#34;</span>, name)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">github</span> = {Handle:buger Followers:109}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>github <span style="color:#40ffff">json</span> = {<span style="color:#ed9d13">&#34;github&#34;</span>:{<span style="color:#ed9d13">&#34;handle: buger&#34;</span>, <span style="color:#ed9d13">&#34;followers&#34;</span>: <span style="color:#ed9d13">&#34;109&#34;</span>}}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">fullName</span> = Leonid Bugaev
+</span></span><span style="display:flex;"><span>avatars[0].url = https://avatars1.githubusercontent.com/u/14009?v=3&amp;<span style="color:#40ffff">s</span>=<span style="color:#3677a9">460</span>
+</span></span><span style="display:flex;"><span>company.name = Acme
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">n</span> = <span style="color:#3677a9">109</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">name</span> = Acme
+</span></span></code></pre></div><p>从上面的示例代码可以看到，使用 <code>jsonparser</code> 和标准库完全不兼容，<code>解码</code> 相关操作 API 的使用方式尚可接收，<code>编码</code> 提供的 <code>Set</code> 方法要手动配置大量对象和字段，
+开发效率相较于标准库要低很多，而且结构体对象嵌套过深的情况下，很容易写出 Bug 代码，<del>软件工程没有银弹</del>。</p>
+<h2 id="代码实现">代码实现</h2>
+<p>笔者的 Go 版本为 <code>go1.19 linux/amd64</code>, 选择的 <code>jsonparser</code> 版本为 <code>v1.1.1</code>。</p>
+<p><code>jsonparser</code> 的核心代码全部放在了一个文件中 <code>parser.go</code>, 我们主要关注两种操作的实现: <code>解码 / Get</code> 和 <code>编码 / Set</code>。</p>
+<h3 id="数据类型">数据类型</h3>
+<p><code>jsonparser</code> 将合法的 JSON 数据类型简单进行了常量映射:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// JSON 数据类型常量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ValueType <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	NotExist = <span style="color:#447fcf">ValueType</span>(<span style="color:#6ab825;font-weight:bold">iota</span>)
+</span></span><span style="display:flex;"><span>	String
+</span></span><span style="display:flex;"><span>	Number
+</span></span><span style="display:flex;"><span>	Object
+</span></span><span style="display:flex;"><span>	Array
+</span></span><span style="display:flex;"><span>	Boolean
+</span></span><span style="display:flex;"><span>	Null
+</span></span><span style="display:flex;"><span>	Unknown
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>为了规避 <code>GC</code>, 用于 JSON 字符串转义分配的 <code>[]byte</code> 切片容量上限，超过这个上限值后，转义结果会被分配到 <code>堆上</code> 引发 <code>GC</code>，
+也就是 <code>[]byte</code> 切片的长度超过 64 之后，会被分配到 <code>堆上</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 规避 GC 的切片容量上限常量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> unescapeStackBufSize = <span style="color:#3677a9">64</span>
+</span></span></code></pre></div><h3 id="辅助方法">辅助方法</h3>
+<p><code>stringEnd</code> 尝试寻找当前字符串的结尾，也就是 <code>&quot;</code>, 支持转义的情况，例如 <code>\&quot;</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">stringEnd</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">bool</span>) {}
+</span></span></code></pre></div><p><code>blockEnd</code> 尝试寻找当前数组或对象的结尾，数组的开始和结尾表示为 <code>[</code> 和 <code>]</code>, 对象的开始和结尾表示为 <code>{</code> 和 <code>}</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">blockEnd</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, openSym <span style="color:#6ab825;font-weight:bold">byte</span>, closeSym <span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><p><code>lastToken</code> 找到最后一个不属于该集合 <code>[' ', '\n', '\r', '\t']</code> 内的字符。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">lastToken</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><p><code>nextToken</code> 找到下一个不属于该集合 <code>[' ', '\n', '\r', '\t']</code> 内的字符。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">nextToken</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><p><code>tokenEnd</code> 尝试寻找当前 <code>token</code> 的结束位置，只要遇到集合内字符 <code>[' ', '\n', '\r', '\t', ',', '}', ']']</code>, 都被认为是当前 <code>token</code> 的结束位置。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">tokenEnd</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><p><code>findTokenStart</code> 尝试查找当前 <code>token</code> 的开始位置。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">findTokenStart</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, token <span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><p><code>findKeyStart</code> 尝试查找指定 <code>key</code> 的开始位置。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">findKeyStart</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, key <span style="color:#6ab825;font-weight:bold">string</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {}
+</span></span></code></pre></div><p><code>getType</code> 返回指定字符的数据类型，返回值就是上面提到的 <code>JSON 数据类型常量</code> 其中之一。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getType</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, offset <span style="color:#6ab825;font-weight:bold">int</span>) ([]<span style="color:#6ab825;font-weight:bold">byte</span>, ValueType, <span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {}
+</span></span></code></pre></div><h3 id="searchkeys-状态机">searchKeys 状态机</h3>
+<p>该方法的内部代码较长，这里就不用具体的文字描述流程了，直接将重点的代码部分用注释进行标记。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">searchKeys</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, keys ...<span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	keyLevel := <span style="color:#3677a9">0</span>           <span style="color:#999;font-style:italic">// 当前查找 key 的 层级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	level := <span style="color:#3677a9">0</span>              <span style="color:#999;font-style:italic">// 当前遍历层级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	i := <span style="color:#3677a9">0</span>                  <span style="color:#999;font-style:italic">// 当前遍历字符索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ln := <span style="color:#24909d">len</span>(data)         <span style="color:#999;font-style:italic">// 参数 data 长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lk := <span style="color:#24909d">len</span>(keys)         <span style="color:#999;font-style:italic">// 参数 keys 的层级，如示例代码中的 person.name.fullName
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lastMatched := <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> lk == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 keys 参数的层级为 0，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> stackbuf [unescapeStackBufSize]<span style="color:#6ab825;font-weight:bold">byte</span> <span style="color:#999;font-style:italic">// 长度为 64 byte 切片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i &lt; ln {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 从左向右, 逐个 byte 遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> data[i] {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#39;&#34;&#39;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 遍历到 &#34; 字符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			i++
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将当前位置设置为 key 的开始位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			keyBegin := i
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			strEnd, keyEscaped := <span style="color:#447fcf">stringEnd</span>(data[i:])
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> strEnd == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果没有找到对应的结尾 &#34; 字符，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将下次遍历字符位置更新为: 结尾 &#34; 字符的下一个字符位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			i += strEnd
+</span></span><span style="display:flex;"><span>			keyEnd := i - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 查找结尾 &#34; 字符的下一个 token
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 正常的情况下应该是一个冒号 : 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    例如 `&#34;fullName&#34;: &#34;Leonid Bugaev&#34;` 中 &#34;fullName&#34; 后面跟着的 : 字符 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			valueOffset := <span style="color:#447fcf">nextToken</span>(data[i:])
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> valueOffset == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 如果没有直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 将下次遍历字符位置更新为: 下一个 token 的位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			i += valueOffset
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> data[i] == <span style="color:#ed9d13">&#39;:&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果下一个 token 正好是一个冒号 :
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 说明两个 &#34; 之间的字符串是一个 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> level &lt; <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果当前层级为 0, 说明参数 JSON 字符串格式是错的，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 将字符串 key 提取出来
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				key := data[keyBegin:keyEnd]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 处理 key 字符串转义的情况
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">var</span> keyUnesc []<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> !keyEscaped {
+</span></span><span style="display:flex;"><span>					keyUnesc = key
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> ku, err := <span style="color:#447fcf">Unescape</span>(key, stackbuf[:]); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					keyUnesc = ku
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> level &lt;= <span style="color:#24909d">len</span>(keys) {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">equalStr</span>(&amp;keyUnesc, keys[level-<span style="color:#3677a9">1</span>]) {
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 如果当前字符串和参数 keys 当前查找元素相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 那么标记参数 keys 当前查找元素已经找到
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						lastMatched = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>						<span style="color:#999;font-style:italic">// 如果当前层级减 1 等于当前查找 key 层级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#6ab825;font-weight:bold">if</span> keyLevel == level-<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 当前查找 key 层级加 1 (说明又找到了一个 key)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							keyLevel++
+</span></span><span style="display:flex;"><span>							<span style="color:#999;font-style:italic">// 如果当前查找 key 层级等于参数 keys 的层级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							<span style="color:#999;font-style:italic">// 说明参数中的所有 key 已经全部找到，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>							<span style="color:#6ab825;font-weight:bold">if</span> keyLevel == lk {
+</span></span><span style="display:flex;"><span>								<span style="color:#6ab825;font-weight:bold">return</span> i + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>							}
+</span></span><span style="display:flex;"><span>						}
+</span></span><span style="display:flex;"><span>					} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>                        <span style="color:#999;font-style:italic">// 如果当前字符串和查到的 keys 第一个元素不相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                        <span style="color:#999;font-style:italic">// 那么标记参数 keys 当前查找元素未找到
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						<span style="color:#999;font-style:italic">// 接下来继续从参数 keys 的第一个元素开始查找
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>						lastMatched = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果当前层级比参数 keys 层级还要大
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 说明没有找到对应的 keys, 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 如果下一个 token 不是一个冒号 :
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                <span style="color:#999;font-style:italic">// 说明两个 &#34; 之间的字符串不是一个 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 那么就从当前位置继续向后遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				
+</span></span><span style="display:flex;"><span>				i--
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#39;{&#39;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> !lastMatched {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 如果父级 keys 未匹配，此时应该匹配 key (也就是应该以 &#34; 开头)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 所以直接跳过当前的对象块 {} 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				
+</span></span><span style="display:flex;"><span>				end := <span style="color:#447fcf">blockEnd</span>(data[i:], <span style="color:#ed9d13">&#39;{&#39;</span>, <span style="color:#ed9d13">&#39;}&#39;</span>)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> end == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				i += end - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果父级 keys 已经匹配，将当前遍历层级加 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				level++
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#39;}&#39;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果遇到 } 字符，将当前层级变量减 1 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 如果当前层级 和 当前查找 key 的 层级相同，将 keyLevel 层级减 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     说明当前 key 的所有子 keys 不可能在这个对象中找到了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			level--
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> level == keyLevel {
+</span></span><span style="display:flex;"><span>				keyLevel--
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#39;[&#39;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前层级 和 当前查找 key 的 层级相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     并且当前查找 key 的类型是数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> keyLevel == level &amp;&amp; keys[level][<span style="color:#3677a9">0</span>] == <span style="color:#ed9d13">&#39;[&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">var</span> keyLen = <span style="color:#24909d">len</span>(keys[level])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				...
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 通过 ArrayEach 遍历数组元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#447fcf">ArrayEach</span>(data[i:], <span style="color:#6ab825;font-weight:bold">func</span>(value []<span style="color:#6ab825;font-weight:bold">byte</span>, dataType ValueType, offset <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>                    ...
+</span></span><span style="display:flex;"><span>				})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> valueFound == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果没有当前 key, 说明数组中不存在对应的 key 元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 没有必要继续查找了，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果数组中存在对应的 key 元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 递归从该元素中查找参数 keys 剩余的部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					subIndex := <span style="color:#447fcf">searchKeys</span>(valueFound, keys[level+<span style="color:#3677a9">1</span>:]...)
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">if</span> subIndex &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>						<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> i + valueOffset + subIndex
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前层级 和 当前查找 key 的 层级不相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//     或者当前查找 key 的类型不是数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 直接跳过当前数组 [] 数据块接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> arraySkip := <span style="color:#447fcf">blockEnd</span>(data[i:], <span style="color:#ed9d13">&#39;[&#39;</span>, <span style="color:#ed9d13">&#39;]&#39;</span>); arraySkip == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					i += arraySkip - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#ed9d13">&#39;:&#39;</span>:
+</span></span><span style="display:flex;"><span>    		<span style="color:#999;font-style:italic">// 边界情况处理，正常的 JSON key 中不应该包含 :
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接返回 -1 表示没有找到对应的 keys
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		i++ <span style="color:#999;font-style:italic">// 索引 + 1, 遍历下个字符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>searchKeys</code> 方法是整个 <code>解析操作</code> 的核心方法，内部实现类似于 <code>有限状态机</code> 机制，通过将 JSON 字符串作为输入参数，并根据定义的状态转换规则逐个解析字符，
+结果返回解析到的索引，或者 -1 (解析失败)。</p>
+<p><del>PS: 方法实现代码中的变量命名和 <code>for</code> 循环表达式有些槽点</del>。</p>
+<h3 id="状态机组成部分">状态机组成部分</h3>
+<ul>
+<li><strong>输入参数</strong>  : 存储解析的 JSON 字符串</li>
+<li><strong>解析器</strong>    : 解析 JSON 字符串并返回相应的数据结构 (<code>searchKeys</code> 方法返回的是 <code>[]byte</code>)</li>
+<li><strong>状态转移表</strong> : 定义状态转换规则，包括当前状态、下一个字符以及下一个状态 (<code>searchKeys</code> 主要是通过上面提到的辅助方法来完成的)</li>
+<li><strong>状态栈</strong>    : 记录状态转换过程中的状态 (<code>searchKeys</code> 用了几个变量来记录状态，例如 <code>keyLevel</code>, <code>level</code>, <code>ln</code>, <code>lk</code> 等)</li>
+</ul>
+<h3 id="状态转移表">状态转移表</h3>
+<table>
+<thead>
+<tr>
+<th>状态字符</th>
+<th>初始</th>
+<th>对象开始</th>
+<th>对象结束</th>
+<th>key 开始</th>
+<th>key 结束</th>
+<th>数组开始</th>
+<th>数组结束</th>
+<th>比较 key</th>
+<th>跳过当前数据块</th>
+<th>停止解析</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>{</td>
+<td>对象开始        </td>
+<td>停止解析        </td>
+<td></td>
+<td>停止解析        </td>
+<td>跳过当前数据块</td>
+<td>对象开始</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>}</td>
+<td>停止解析</td>
+<td>对象结束</td>
+<td>停止解析</td>
+<td></td>
+<td></td>
+<td>对象结束</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>&quot;</td>
+<td>停止解析</td>
+<td>key 开始</td>
+<td></td>
+<td>key 结束</td>
+<td></td>
+<td>停止解析</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>:</td>
+<td>停止解析</td>
+<td>停止解析</td>
+<td>停止解析</td>
+<td>停止解析</td>
+<td>停止解析</td>
+<td>停止解析</td>
+<td>停止解析</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>[</td>
+<td>停止解析</td>
+<td>数组开始</td>
+<td></td>
+<td>比较 key</td>
+<td></td>
+<td>跳过当前数据块</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><code>状态转移表</code> 定义完毕后，状态机开始从初始状态读取参数字符，并根据 <code>状态转移表</code> 进行状态转换。如果在状态转换过程中遇到格式错误的字符，则会停止解析过程并返回错误 (-1)。
+如果所有的参数都可以正常解析，状态机最终返回对应的数据结构。</p>
+<p><img src="https://dbwu.tech/images/jsonparser.png" alt="状态机示意图"></p>
+<h3 id="get-方法">Get 方法</h3>
+<p>介绍了上面的 <code>searchKeys 状态机</code> 和 <code>辅助方法</code> 之后，我们来重点分析一下 <code>Get</code> 方法的内部实现。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Get</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, keys ...<span style="color:#6ab825;font-weight:bold">string</span>) (value []<span style="color:#6ab825;font-weight:bold">byte</span>, dataType ValueType, offset <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	a, b, _, d, e := <span style="color:#447fcf">internalGet</span>(data, keys...)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> a, b, d, e
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Get</code> 方法内部直接调用了 <code>internalGet</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">internalGet</span>(data []<span style="color:#6ab825;font-weight:bold">byte</span>, keys ...<span style="color:#6ab825;font-weight:bold">string</span>) (value []<span style="color:#6ab825;font-weight:bold">byte</span>, dataType ValueType, offset, endOffset <span style="color:#6ab825;font-weight:bold">int</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第一步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(keys) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> offset = <span style="color:#447fcf">searchKeys</span>(data, keys...); offset == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, NotExist, -<span style="color:#3677a9">1</span>, -<span style="color:#3677a9">1</span>, KeyPathNotFoundError
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第二步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nO := <span style="color:#447fcf">nextToken</span>(data[offset:])
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> nO == -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, NotExist, offset, -<span style="color:#3677a9">1</span>, MalformedJsonError
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第三步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	offset += nO
+</span></span><span style="display:flex;"><span>	value, dataType, endOffset, err = <span style="color:#447fcf">getType</span>(data, offset)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> value, dataType, offset, endOffset, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第四步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> dataType == String {
+</span></span><span style="display:flex;"><span>		value = value[<span style="color:#3677a9">1</span> : <span style="color:#24909d">len</span>(value)-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> value[:<span style="color:#24909d">len</span>(value):<span style="color:#24909d">len</span>(value)], dataType, offset, endOffset, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>如果给定的 <code>[]byte</code> 参数长度大于 0，那么会先调用 <code>searchKeys</code> 方法确认一下给定的参数 <code>keys</code> 是否都存在，如果不存在，直接返回错误信息</li>
+<li>然后会以 <code>searchKeys</code> 方法返回的位置为基准，查找下一个可用 <code>token</code> 位置，如果不存在，说明该 JSON 字符串格式是错误的</li>
+<li>接着会通过上面 <code>两个位置</code> 相加，调用 <code>getType</code> 计算出 <code>key</code> 对应的元素类型，返回值就是 <code>JSON 数据类型常量</code> 其中之一，如果 <code>getType</code> 返回了 JSON 字符串格式错误，就直接返回错误</li>
+<li>最后，如果 <code>key</code> 对应的元素类型为字符串，那么把两边 <code>&quot;</code> 删除，返回结果</li>
+</ol>
+<h3 id="set-和-delete-方法">Set 和 Delete 方法</h3>
+<p>上面讲完了 <code>Get</code> 方法的操作流程，<code>Set</code> 和 <code>Delete</code> 的操作类似，都是在方法内部维护了一套 <code>有限状态机</code>，由于时间关系，这里不再分析代码实现了，
+感兴趣的读者可以自行阅读源代码。</p>
+<h3 id="其他工具类函数">其他工具类函数</h3>
+<p>除了核心的 <code>编码/解码</code> 方法外，包还有一些内置的辅助工具函数:</p>
+<table>
+<thead>
+<tr>
+<th>文件名</th>
+<th>函数</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bytes.go</td>
+<td>parseInt</td>
+<td>将 <code>[]byte</code> 解析为整数，标准的 Leetcode 题解 :)</td>
+</tr>
+<tr>
+<td>bytes_unsafe.go</td>
+<td>bytesToString</td>
+<td>将 <code>[]byte</code> 高效转换为 <code>string</code>,  老朋友了 :)</td>
+</tr>
+<tr>
+<td>bytes_unsafe.go</td>
+<td>StringToBytes</td>
+<td>将 <code>string</code> 高效转换为 <code>[]byte</code>,  老朋友了 :)</td>
+</tr>
+<tr>
+<td>escape.go</td>
+<td></td>
+<td>参照 <code>rfc7159</code> 文档实现的 JSON 编码/解码</td>
+</tr>
+</tbody>
+</table>
+<h3 id="包的整体调用关系">包的整体调用关系</h3>
+<p><img src="https://dbwu.tech/images/jsonparser_flow.png" alt="调用关系图"></p>
+<h2 id="高性能原理">高性能原理</h2>
+<ul>
+<li>数据类型简化，不使用标准库 <code>JSON</code> 和 <code>反射</code> 包，没有 <code>interface{}</code> 类型，核心数据结构是 <code>[]byte</code>, 核心算法实现了 <code>有限状态机</code> 的算法机制</li>
+<li>底层数据结构使用 <code>[]byte</code> 并且利用切片的引用特性，达到无内存分配</li>
+<li>不会自动进行类型转换，默认情况都是 <code>[]byte</code>, 具体的转换工作让开发者决定</li>
+<li>不会 <code>编码/解码</code> 整个数据结构，而是按需操作 (牺牲了开发效率)</li>
+</ul>
+<h2 id="小结">小结</h2>
+<p>通过对 <code>jsonparser</code> 库源代码的分析，我们可以得出其高性能背后的实现原理: 将所有的操作回归到 JSON 字符串本身，
+<strong>通过 <code>避免反射</code>, <code>[]byte 参数引用</code>, <code>基于状态机编码/解码操作</code> 三个核心优化，相对标准库将性能提升了将近 10 倍</strong>。但是需要注意的是，
+<code>jsonparser</code> 库和标准库完全不兼容，而且从示例代码中，可以明显看到使用其代码可读性和开发效率远不如标准库，这也算是为高性能付出的 <code>应用层代价</code>。</p>
+<p>最后顺便提一句，字节跳动开源了他们基于汇编进行开发 JOSN 组件库 <a href="https://github.com/bytedance/sonic">sonic</a>, 将 JSON 操作性能又提升到了一个新的高度。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/buger/jsonparser">jsonparser</a></li>
+<li><a href="https://www.json.org/json-en.html">Introducing JSON</a></li>
+<li><a href="https://github.com/bytedance/sonic">sonic</a></li>
+<li><a href="https://xie.infoq.cn/article/d144592e5aec0179cafc5cf1b">sonic：基于 JIT 技术的开源全场景高性能 JSON 库</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/http_router/"><i class="fa fa-chevron-circle-left"></i> HTTP Router 算法演进</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
