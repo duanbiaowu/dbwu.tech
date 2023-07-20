@@ -1,0 +1,578 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>漏桶算法和令牌桶算法 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="漏桶算法和令牌桶算法是接口限流设计中常用的两种算法，本文通过 Go 语言中两个常用的开源组件，研究下两种算法的区别和具体代码实现。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="漏桶算法和令牌桶算法" />
+<meta property="og:description" content="漏桶算法和令牌桶算法是接口限流设计中常用的两种算法，本文通过 Go 语言中两个常用的开源组件，研究下两种算法的区别和具体代码实现。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_ratelimit/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-15T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-15T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="漏桶算法和令牌桶算法"/>
+<meta name="twitter:description" content="漏桶算法和令牌桶算法是接口限流设计中常用的两种算法，本文通过 Go 语言中两个常用的开源组件，研究下两种算法的区别和具体代码实现。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>漏桶算法和令牌桶算法</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B">软件工程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1">微服务</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><strong>限流的目的</strong> 是通过对并发请求进行限速来保护系统，请求一旦达到限制速率，就可以选择性地拒绝服务，例如下面的几种方案:</p>
+<ul>
+<li>提示用户系统繁忙，请稍后重试</li>
+<li>提示用户进入排队等待</li>
+<li>跳转到指定页面</li>
+<li>&hellip;.</li>
+</ul>
+<p><code>漏桶</code> 算法和 <code>令牌桶</code> 算法是 <code>接口限流设计</code> 中常用的两种算法，本文通过两个常用的开源组件，研究下两者的区别和具体代码实现。</p>
+<h2 id="漏桶">漏桶</h2>
+<p><code>漏桶</code> 算法将 <code>服务的请求量限额</code> 比喻为一个一直装满水的桶，每隔固定时间向外漏 <code>N</code> 滴水。如果请求方接到了这滴水，就可以继续请求服务，如果没有接到，就需要等待下一滴水。
+也就是说，不管请求量有多少，单位时间内请求额度 (漏水流出的容量) 是固定的。</p>
+<p><img src="https://dbwu.tech/images/leaky_bucket.png" alt="图片来源: https://blog.joway.io/posts/deep-into-rpc-ratelimiter/"></p>
+<h2 id="算法实现">算法实现</h2>
+<p>笔者选择的组件是由 <code>Uber</code> 开源的 <a href="https://github.com/uber-go/ratelimit">uber-go/ratelimit</a> 作为研究 <code>漏桶</code> 算法代码实现，版本为 <code>v0.2.0</code>。</p>
+<h3 id="示例代码">示例代码</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/ratelimit&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 每秒速率限制为 1000 个请求
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 平均每个请求 1 ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rl := ratelimit.<span style="color:#447fcf">New</span>(<span style="color:#3677a9">1000</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	prev := time.<span style="color:#447fcf">Now</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>		now := rl.<span style="color:#447fcf">Take</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 打印每个请求距离上个请求的时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		fmt.<span style="color:#447fcf">Println</span>(i, now.<span style="color:#447fcf">Sub</span>(prev)) 
+</span></span><span style="display:flex;"><span>		prev = now
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 0 1ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 1 1ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 2 1ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 3 1ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 4 1ms
+</span></span></span></code></pre></div><h3 id="接口">接口</h3>
+<p><code>Limiter</code> 用来进行限流，可能存在多个 <code>goroutine</code> 并发的情况。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Limiter <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Take 方法调用时可能会阻塞以确保限流被满足
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Take</span>() time.Time
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Clock</code> 通过时间来计算请求速率限制 (内部实现是在标准库的 <code>time</code> 包上面封装了一层，便于在测试中 Mock)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Clock <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Now</span>() time.Time
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Sleep</span>(time.Duration)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="两种实现">两种实现</h3>
+<p>对于 <code>Limiter</code> 接口，<code>ratelimit</code> 组件的内部通过实现了两种方案，分别基于 <code>互斥锁</code> 和基于 <code>atomic (无锁编程)</code>，
+本文主要基于 <code>互斥锁</code> 方案的代码进行分析，对 <code>无锁</code> 方案感兴趣的读者可以自行阅读源代码，如果对 <code>无锁</code> 概念比较模糊，
+建议阅读 <a href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB">扩展列表的文章</a>。</p>
+<p>除此之外，还有一个表示不限流的 <code>unlimited</code> 也实现了 <code>Limiter</code> 接口。</p>
+<p><img src="https://dbwu.tech/images/uber_ratelimit_interface.png" alt="Limiter 接口及其实现"></p>
+<h3 id="限流器配置对象">限流器配置对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> config <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	clock Clock         
+</span></span><span style="display:flex;"><span>	slack <span style="color:#6ab825;font-weight:bold">int</span>           <span style="color:#999;font-style:italic">// 浮动请求数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	per   time.Duration <span style="color:#999;font-style:italic">// 单个时间周期 (默认为 1 秒)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 通过 FUNCTIONAL OPTIONS 模式设置配置信息 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">buildConfig</span>(opts []Option) config {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 先给出默认配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c := config{
+</span></span><span style="display:flex;"><span>		clock: clock.<span style="color:#447fcf">New</span>(),
+</span></span><span style="display:flex;"><span>		slack: <span style="color:#3677a9">10</span>,
+</span></span><span style="display:flex;"><span>		per:   time.Second,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据参数自定义配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, opt := <span style="color:#6ab825;font-weight:bold">range</span> opts {
+</span></span><span style="display:flex;"><span>		opt.<span style="color:#447fcf">apply</span>(&amp;c)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> c
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/uber_ratelimit_build_config.png" alt="设置配置信息"></p>
+<h3 id="限流器对象">限流器对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mutexLimiter <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	sync.Mutex
+</span></span><span style="display:flex;"><span>	last       time.Time     <span style="color:#999;font-style:italic">// 上次请求时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sleepFor   time.Duration <span style="color:#999;font-style:italic">// 当前请求休眠时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	perRequest time.Duration <span style="color:#999;font-style:italic">// 单个请求时间片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxSlack   time.Duration <span style="color:#999;font-style:italic">// 最大浮动请求时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	clock      Clock
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>newMutexBased</code> 通过 <code>FUNCTIONAL OPTIONS</code> 模式创建一个 <code>限流器</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newMutexBased</span>(rate <span style="color:#6ab825;font-weight:bold">int</span>, opts ...Option) *mutexLimiter {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据参数构造配置信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	config := <span style="color:#447fcf">buildConfig</span>(opts)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过配置信息得到限流的单个生命周期 (默认为 1 秒)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 单个声明周期 / 最大请求速率 = 单个请求时间片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如 rate = 1000, config.per = 1 秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     意味着单个请求时间片为 1 毫秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	perRequest := config.per / time.<span style="color:#447fcf">Duration</span>(rate)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// maxSlack 表示最大请求浮动时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 最大请求浮动时间 = -1 * 浮动请求数量 * perRequest
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 例如 config.slack = 10, perRequest = 1 毫秒, maxSlack = -10 毫秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	l := &amp;mutexLimiter{
+</span></span><span style="display:flex;"><span>		perRequest: perRequest,
+</span></span><span style="display:flex;"><span>		maxSlack:   -<span style="color:#3677a9">1</span> * time.<span style="color:#447fcf">Duration</span>(config.slack) * perRequest,
+</span></span><span style="display:flex;"><span>		clock:      config.clock,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> l
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="实现-limiter-接口">实现 Limiter 接口</h3>
+<p><code>Take</code> 方法可能会在并发调用时阻塞，保证每个请求的时间片均为 <code>config.per / rate</code> (也就是 <code>perRequst</code>)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (t *mutexLimiter) <span style="color:#447fcf">Take</span>() time.Time {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	t.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> t.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	now := t.clock.<span style="color:#447fcf">Now</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第一个请求到达时，初始化最后访问时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> t.last.<span style="color:#447fcf">IsZero</span>() {
+</span></span><span style="display:flex;"><span>		t.last = now
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> t.last
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// sleepFor 根据 perRequest 时间片和最后的请求花费的时间，来计算当前请求需要的休眠时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 由于距离上次请求的时间可能比 perRequest 时间片要多
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因此 t.perRequest - now.Sub(t.last) 得出的结果可能为负数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	t.sleepFor += t.perRequest - now.<span style="color:#447fcf">Sub</span>(t.last)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// sleepFor 不能为负数 (如果执行到这里，sleepFor 依然为负数，说明距离上次请求的时间太久远了)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为这意味着会将之前的请求速率进行累加，从而突破了最大请求速率限制，这不符合漏桶算法的规则
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 举例可能比较形象：在过去的 10 分钟，漏桶里面一直没有水，但是现在桶里面的水突然满了，但是漏桶本身的流速 (规则) 并不会收到影响
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> t.sleepFor &lt; t.maxSlack {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 sleepFor 比 maxSlack 还要小，直接以 maxSlack 为准
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 也就是说，即使距离上次请求的时间很久，面对突增的流量，我们最多给到 maxSlack 个时间片 (作为缓冲)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		t.sleepFor = t.maxSlack
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> t.sleepFor &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 休眠
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		t.clock.<span style="color:#447fcf">Sleep</span>(t.sleepFor)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新上次访问时间为休眠后时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		t.last = now.<span style="color:#447fcf">Add</span>(t.sleepFor)
+</span></span><span style="display:flex;"><span>		t.sleepFor = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新上次访问时间为当前时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		t.last = now
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> t.last
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p><code>漏桶</code> 的不足之处在于其速率限制是固定的，即使请求容量允许的情况下，仍然无法处理流量突增的场景。例如 <code>漏桶</code> 请求容量为 10W, 速率限制为 1W，
+某一个时刻流量突增，有 10W 个用户请求，但是只能有 1W 用户正常请求，剩余用户只能等待，此时就需要 <code>令牌桶</code> 算法来解决。</p>
+<h2 id="令牌桶">令牌桶</h2>
+<p><code>令牌桶</code> 算法定期向桶中添加令牌，<strong>令牌的数目可以按照需要消耗的资源进行相应的调整</strong>，请求服务时需要从桶中获取令牌，
+如果获取到令牌，可以正常访问，如果没有获取到令牌，可以选择等待，或者放弃。</p>
+<p><img src="https://dbwu.tech/images/token_bucket.png" alt="图片来源: https://www.krakend.io/docs/throttling/token-bucket/"></p>
+<h2 id="算法实现-1">算法实现</h2>
+<p>笔者选择的组件是 <a href="https://github.com/juju/ratelimit">juju/ratelimit</a> 作为研究 <code>令牌桶</code> 算法代码实现，版本为 <code>v1.0.2</code>。</p>
+<h3 id="示例代码-1">示例代码</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/juju/ratelimit&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 每秒向桶内添加 1 个 token
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 桶的 token 容量为 10 个
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b := ratelimit.<span style="color:#447fcf">NewBucketWithQuantum</span>(time.Second, <span style="color:#3677a9">10</span>, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bucket capacity = %d\n&#34;</span>, b.<span style="color:#447fcf">Capacity</span>())   <span style="color:#999;font-style:italic">// 获取桶的令牌容量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bucket rate = %f\n&#34;</span>, b.<span style="color:#447fcf">Rate</span>())           <span style="color:#999;font-style:italic">// 获取添加令牌速率
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bucket available = %d\n&#34;</span>, b.<span style="color:#447fcf">Available</span>()) <span style="color:#999;font-style:italic">// 获取桶当前可用令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	n := b.<span style="color:#447fcf">TakeAvailable</span>(<span style="color:#3677a9">5</span>) <span style="color:#999;font-style:italic">// 获取 5 个令牌
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;tokens number is %d\n&#34;</span>, n)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bucket available = %d\n&#34;</span>, b.<span style="color:#447fcf">Available</span>()) <span style="color:#999;font-style:italic">// 获取桶当前可用令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">3</span> * time.Second)
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;bucket available = %d\n&#34;</span>, b.<span style="color:#447fcf">Available</span>()) <span style="color:#999;font-style:italic">// 获取桶当前可用令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>运行代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>bucket <span style="color:#40ffff">capacity</span> = <span style="color:#3677a9">10</span>
+</span></span><span style="display:flex;"><span>bucket <span style="color:#40ffff">rate</span> = 1.000000
+</span></span><span style="display:flex;"><span>bucket <span style="color:#40ffff">available</span> = <span style="color:#3677a9">10</span>
+</span></span><span style="display:flex;"><span>tokens number is <span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span>bucket <span style="color:#40ffff">available</span> = <span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span>bucket <span style="color:#40ffff">available</span> = <span style="color:#3677a9">8</span>
+</span></span></code></pre></div><p>从代码的输出结果中可以看到，初始化时 <code>令牌桶</code> 的容量为 10，取走 5 个令牌之后，可用的剩下 5 个，然后程序休眠 3 秒，
+因为每秒放入一个令牌，所以最终 <code>令牌桶</code> 的可用令牌数量为 8 个。</p>
+<p><img src="https://dbwu.tech/images/juju_ratelimit_call.png" alt="函数调用关系"></p>
+<h3 id="接口-1">接口</h3>
+<p><code>Clock</code> 通过时间来计算请求速率限制。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Clock <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Now</span>() time.Time
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Sleep</span>(d time.Duration)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>realClock</code> 内部实现是在标准库的 <code>time</code> 包上面封装了一层。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> realClock <span style="color:#6ab825;font-weight:bold">struct</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (realClock) <span style="color:#447fcf">Now</span>() time.Time {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> time.<span style="color:#447fcf">Now</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (realClock) <span style="color:#447fcf">Sleep</span>(d time.Duration) {
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(d)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/juju_ratelimit_clock.png" alt="Clock 接口"></p>
+<h3 id="令牌桶对象">令牌桶对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Bucket <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	clock Clock
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	startTime time.Time         <span style="color:#999;font-style:italic">// 令牌桶开始计时时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	capacity <span style="color:#6ab825;font-weight:bold">int64</span>              <span style="color:#999;font-style:italic">// 令牌桶容量 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	quantum <span style="color:#6ab825;font-weight:bold">int64</span>               <span style="color:#999;font-style:italic">// 定期添加令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	fillInterval time.Duration  <span style="color:#999;font-style:italic">// 定期间隔时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	mu sync.Mutex               <span style="color:#999;font-style:italic">// 互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	availableTokens <span style="color:#6ab825;font-weight:bold">int64</span>       <span style="color:#999;font-style:italic">// 令牌桶内的令牌总数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	latestTick <span style="color:#6ab825;font-weight:bold">int64</span>            <span style="color:#999;font-style:italic">// 上次获取令牌时间片 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/juju_ratelimit_bucket.png" alt="令牌桶对象"></p>
+<h3 id="创建令牌桶">创建令牌桶</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewBucketWithQuantum</span>(fillInterval time.Duration, capacity, quantum <span style="color:#6ab825;font-weight:bold">int64</span>) *Bucket {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">NewBucketWithQuantumAndClock</span>(fillInterval, capacity, quantum, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewBucketWithQuantumAndClock</span>(fillInterval time.Duration, capacity, quantum <span style="color:#6ab825;font-weight:bold">int64</span>, clock Clock) *Bucket {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 参数检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;Bucket{
+</span></span><span style="display:flex;"><span>		clock:           clock,
+</span></span><span style="display:flex;"><span>		startTime:       clock.<span style="color:#447fcf">Now</span>(),
+</span></span><span style="display:flex;"><span>		latestTick:      <span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>		fillInterval:    fillInterval,
+</span></span><span style="display:flex;"><span>		capacity:        capacity,
+</span></span><span style="display:flex;"><span>		quantum:         quantum,
+</span></span><span style="display:flex;"><span>		availableTokens: capacity,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>创建新的 <code>令牌桶</code> 时，会初始化 <code>startTime</code> 字段为当前时间，<code>latestTick</code> 时间片为 0, <code>availableTokens</code> 字段和 <code>capacity</code> 字段一致。</p>
+<h3 id="获取令牌桶容量">获取令牌桶容量</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">Capacity</span>() <span style="color:#6ab825;font-weight:bold">int64</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> tb.capacity
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>因为 <code>令牌桶</code> 的容量在创建时就初始化完成且不可修改，所以直接返回 <code>capacity</code> 字段即可。</p>
+<h3 id="获取令牌桶添加速率">获取令牌桶添加速率</h3>
+<p><code>Rate</code> 方法返回 <code>每秒</code> 向 <code>令牌桶</code> 添加令牌的个数，计算时会将秒转换为纳秒单位。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">Rate</span>() <span style="color:#6ab825;font-weight:bold">float64</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">1e9</span> * <span style="color:#24909d">float64</span>(tb.quantum) / <span style="color:#24909d">float64</span>(tb.fillInterval)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>currentTick</code> 方法返回从 <code>令牌桶</code> 开始计时到当前的时间片。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">currentTick</span>(now time.Time) <span style="color:#6ab825;font-weight:bold">int64</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">int64</span>(now.<span style="color:#447fcf">Sub</span>(tb.startTime) / tb.fillInterval)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="获取桶内可用令牌数量">获取桶内可用令牌数量</h3>
+<p><code>Available</code> 方法返回 <code>令牌桶</code> 内可用的的令牌个数，因为存在并发的情况，所以 <strong>函数返回值不可作为调用获取令牌方法时的参数</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">Available</span>() <span style="color:#6ab825;font-weight:bold">int64</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> tb.<span style="color:#447fcf">available</span>(tb.clock.<span style="color:#447fcf">Now</span>())
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="获取令牌">获取令牌</h3>
+<p><code>TakeAvailable</code> 方法从 <code>令牌桶</code> 内获取指定数量的令牌 (无阻塞)，返回获取到的令牌数量，如果返回 0, 说明没有可用的令牌。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">TakeAvailable</span>(count <span style="color:#6ab825;font-weight:bold">int64</span>) <span style="color:#6ab825;font-weight:bold">int64</span> {
+</span></span><span style="display:flex;"><span>	tb.mu.<span style="color:#447fcf">Lock</span>() <span style="color:#999;font-style:italic">// 获取令牌期间加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">defer</span> tb.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> tb.<span style="color:#447fcf">takeAvailable</span>(tb.clock.<span style="color:#447fcf">Now</span>(), count)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>takeAvailable</code> 方法是获取令牌的具体实现，新增了一个便于测试的 <code>time.Time</code> 参数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">takeAvailable</span>(now time.Time, count <span style="color:#6ab825;font-weight:bold">int64</span>) <span style="color:#6ab825;font-weight:bold">int64</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据时间片调整桶内可用令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tb.<span style="color:#447fcf">adjustavailableTokens</span>(tb.<span style="color:#447fcf">currentTick</span>(now))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> tb.availableTokens &lt;= <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 没有可用的令牌
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> count &gt; tb.availableTokens {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取令牌数量大于可用的令牌数量时，返回可用令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		count = tb.availableTokens
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 减少桶内可用令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tb.availableTokens -= count
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> count
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>adjustavailableTokens</code> 方法根据时间片调整桶内可用令牌数量。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (tb *Bucket) <span style="color:#447fcf">adjustavailableTokens</span>(tick <span style="color:#6ab825;font-weight:bold">int64</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新桶的上次请求时间片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lastTick := tb.latestTick
+</span></span><span style="display:flex;"><span>	tb.latestTick = tick
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> tb.availableTokens &gt;= tb.capacity {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 桶内可用令牌大于等于桶的容量，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// (tick - lastTick) * tb.quantum = 自上次请求后应该新增的令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 更新桶内令牌数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tb.availableTokens += (tick - lastTick) * tb.quantum
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> tb.availableTokens &gt; tb.capacity {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果桶内可用令牌大于桶的容量，以桶的容量为准
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		tb.availableTokens = tb.capacity
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="小结-1">小结</h3>
+<p>通过对源代码的实现分析，可以看到 <code>juju/ratelimit</code> 的功能实现非常简洁，<strong>最重要的是，没有使用额外的 <code>goroutine</code> 去完成 <code>定期向桶内添加令牌</code> 这个操作，
+而是在获取时去实时计算，简化了内部实现逻辑的同时，非常便于扩展和测试</strong>。</p>
+<h2 id="总结">总结</h2>
+<p>本文通过对两个高质量 (Github starts &gt; 2500) 的开源组件的源代码进行分析，认识并理解了 <code>漏桶</code> 和 <code>令牌桶</code> 的差别以及具体实现。
+<strong>从算法的实现角度来讲，两个算法的核心都基于 <code>时间片</code>，<code>漏桶</code> 算法中的 <code>时间片</code> 作为单个请求的时间间隔，
+而 <code>令牌桶</code> 算法中的 <code>时间片</code> 作为定期向桶内添加令牌的时间基准</strong>。</p>
+<p><code>漏桶</code> 算法和 <code>令牌桶</code> 算法看起来很像，不过还是有一定区别。<code>漏桶</code> 流出的速率固定，而 <code>令牌桶</code> 只要在桶中有令牌，那就可以获取并请求服务。
+也就是说，<code>令牌桶</code> 允许一定程度的并发超过其速率限制，例如某一个时刻流量突增，有 10W 个用户请求，只要令牌桶中有 10W 个令牌，那么这 10W 个请求全都会放过去，
+但是 <code>漏桶</code> 不能超过其速率限制。<code>令牌桶</code> 在桶中没有令牌的情况下会退化为 <code>漏桶</code> 算法 (只能定期添加，速率变成了固定的)。</p>
+<h3 id="依然存在的问题">依然存在的问题</h3>
+<p>无论是 <code>漏桶</code> 算法还是 <code>令牌桶</code> 算法，都需要在初始化时指定一个固定值作为桶的 “容量参数”，但在现代的微服务架构中，一个服务的负载能力往往是会不断变化的:</p>
+<ul>
+<li>随着新增代码带来的变化</li>
+<li>随着服务依赖的下游性能变化而变化</li>
+<li>随着服务部署所在节点 (CPU/磁盘) 性能变化而变化</li>
+<li>随着服务部署节点数变化而变化</li>
+<li>随着业务需求变化而变化</li>
+<li>随着时间段变化而变化</li>
+</ul>
+<p>即使参数值是从配置中心获取的，但是依然无法动态修改，而且参数值依赖开发/运维人员的个人经验判断，无法自动化这个流程意味着容易出现误操作，从而引发 Bug。</p>
+<p>写到这里，笔者脑海中浮现的第一个解决方案是：结合 K8S 的自动扩容, 对单个 Pod 中的服务进行压测，然后根据压测结果计算出合理的漏桶和令牌痛的参数值，保存在 Pod 配置文件或者服务配置中心，
+在服务初始化时从配置中读取参数值然后注入到漏桶或令牌桶即可。</p>
+<p>更多方案欢迎大家在评论区积极讨论 :-)</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/uber-go/ratelimit">uber-go/ratelimit</a></li>
+<li><a href="https://github.com/juju/ratelimit">juju/ratelimit</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/golang_lockfree/">高性能 - 无锁编程</a></li>
+<li><a href="https://golang.dbwu.tech/performance/mutex/">高性能 - 互斥锁与读写锁</a></li>
+<li><a href="https://dbwu.tech/posts/golang_sync_pool/">sync.Pool 源码阅读</a></li>
+<li><a href="https://wiki.mikrotik.com/wiki/Manual:HTB-Token_Bucket_Algorithm">Manual:HTB-Token Bucket Algorithm</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Leaky_bucket">Leaky_bucket</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Token_bucket">Token_bucket</a></li>
+<li><a href="https://blog.joway.io/posts/deep-into-rpc-ratelimiter/">RPC 漫谈： 限流问题</a></li>
+<li><a href="https://juejin.cn/post/6898897317806800904">限流浅谈</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/http_router/"><i class="fa fa-chevron-circle-left"></i> HTTP Router 算法演进</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_jsonparser/">jsonparser 为什么比标准库的 encoding/json 快 10 倍 ? <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="漏桶算法和令牌桶算法"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -1,0 +1,376 @@
+
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+ <channel>
+   <title>微服务 on 蛮荆</title>
+   <link>https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1/</link>
+   <description>Recent content in 微服务 on 蛮荆</description>
+   <generator>Hugo -- gohugo.io</generator>
+   <language>en</language>
+   <copyright>codean.net@gmail.com</copyright>
+   <lastBuildDate>Sat, 15 Jul 2023 00:00:00 +0000</lastBuildDate>
+   
+       <atom:link href="https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1/index.xml" rel="self" type="application/rss+xml" />
+   
+   
+     <item>
+       <title>jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?</title>
+       <link>https://dbwu.tech/posts/golang_jsonparser/</link>
+       <pubDate>Mon, 17 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_jsonparser/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>漏桶算法和令牌桶算法</title>
+       <link>https://dbwu.tech/posts/golang_ratelimit/</link>
+       <pubDate>Sat, 15 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_ratelimit/</guid>
+       <description>漏桶算法和令牌桶算法是接口限流设计中常用的两种算法，本文通过 Go 语言中两个常用的开源组件，研究下两种算法的区别和具体代码实现。</description>
+     </item>
+   
+     <item>
+       <title>HTTP Router 算法演进</title>
+       <link>https://dbwu.tech/posts/http_router/</link>
+       <pubDate>Thu, 13 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/http_router/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>布谷鸟过滤器</title>
+       <link>https://dbwu.tech/posts/cuckoo_filter/</link>
+       <pubDate>Mon, 10 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/cuckoo_filter/</guid>
+       <description>布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。</description>
+     </item>
+   
+     <item>
+       <title>fastcache 高性能设计与实现</title>
+       <link>https://dbwu.tech/posts/golang_fastcache/</link>
+       <pubDate>Thu, 06 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_fastcache/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>ants Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_ants/</link>
+       <pubDate>Fri, 30 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_ants/</guid>
+       <description>ants 是一个高性能且低损耗的 goroutine 池，组件内部会创建一个固定容量的 goroutine 池，并且管理和回收池中的 goroutine，主要应用场景是允许开发者限制并发程序中的 goroutine 数量，更多的特性 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>Go 线程安全 map 方案选型</title>
+       <link>https://dbwu.tech/posts/golang_thread_safe_map/</link>
+       <pubDate>Sun, 25 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_thread_safe_map/</guid>
+       <description>Go 语言标准库中的 map 数据类型并不是线程安全的，多个 goroutine 可以并发读取同一个 map, 但是不能并发写入同一个 map, 否则会引发 panic, 为了解决这个问题 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>布隆过滤器</title>
+       <link>https://dbwu.tech/posts/bloom_filter/</link>
+       <pubDate>Tue, 20 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/bloom_filter/</guid>
+       <description>布隆过滤器（英语：Bloom Filter）是 1970 年由布隆提出的，是一个很长的二进制向量和一系列随机映射函数。布隆过滤器可以用于检索一个元素是否在一个集合中。它的优点是空间效率和查询时间都远远超过一般的算法，缺点是有一定的误识别率和删除困难。</description>
+     </item>
+   
+     <item>
+       <title>死锁、活锁、饥饿、自旋锁</title>
+       <link>https://dbwu.tech/posts/os_lock/</link>
+       <pubDate>Mon, 19 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/os_lock/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>sync.Pool Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_pool/</link>
+       <pubDate>Thu, 15 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_pool/</guid>
+       <description>sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。本文通过底层源代码来分析 sync.Pool 高性能背后的设计与实现&amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>Go 内存管理概述</title>
+       <link>https://dbwu.tech/posts/golang_memory/</link>
+       <pubDate>Tue, 13 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_memory/</guid>
+       <description>Go 语言的底层内存分配实现方案参考了 TCMalloc, 通过多级缓存机制、 内存对象大小分类来完成不同的分配策略以提升性能。</description>
+     </item>
+   
+     <item>
+       <title>Go netpoll Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_netpoll/</link>
+       <pubDate>Mon, 12 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_netpoll/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>goroutine 泄漏与检测</title>
+       <link>https://dbwu.tech/posts/golang_goroutine_leak/</link>
+       <pubDate>Sun, 11 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_goroutine_leak/</guid>
+       <description>Go 语言内置 GC，因此一般不会内存泄漏，但是 goroutine 可能会发生泄漏，泄漏的 goroutine 引用的内存同样无法被 GC 正常回收 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>time/Timer Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_timer/</link>
+       <pubDate>Sat, 10 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_timer/</guid>
+       <description>Go 语言中的计时器常用于定期执行某个操作或者在指定时间内执行某个操作，例如实现超时、周期性执行任务等场景，主要通过标准库的 time 包中的相关方法来实现，如 time.After(), time.Tick() 等。</description>
+     </item>
+   
+     <item>
+       <title>GMP Scheduler Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_gmp/</link>
+       <pubDate>Fri, 09 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_gmp/</guid>
+       <description>Go 语言中的 GMP 是指用于管理 goroutine 的调度器，其内部使用了一种称为 M:N 的调度模型，其中 M 个用户级 goroutine 被分配到 N 个内核级线程上执行。调度器负责将 goroutine 分配给处理器 P, 并在需要时将 goroutine 从一个处理器 P 转移到另一个处理器 P &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>Go channel 的 15 条规则和底层实现</title>
+       <link>https://dbwu.tech/posts/golang_channel/</link>
+       <pubDate>Thu, 08 Jun 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_channel/</guid>
+       <description>Go 语言中 channel 发送、接收、关闭规则都有哪些？底层又是如何实现的呢？</description>
+     </item>
+   
+     <item>
+       <title>为什么 Linux “一切皆文件”</title>
+       <link>https://dbwu.tech/posts/linux_everything_is_a_file/</link>
+       <pubDate>Fri, 19 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/linux_everything_is_a_file/</guid>
+       <description>在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>context.Context Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_context/</link>
+       <pubDate>Fri, 12 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_context/</guid>
+       <description>context.Context 类型表示上下文信息，作用是在 API 通信、进程通信、函数调用之间传递超时时间、取消信号和其他数据值。</description>
+     </item>
+   
+     <item>
+       <title>runtime/HACKING.md</title>
+       <link>https://dbwu.tech/posts/golang_hacking/</link>
+       <pubDate>Thu, 11 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_hacking/</guid>
+       <description>最近阅读标准库源代码时，偶然间发现 runtime 包下面的一个 markdown 文件，大致读了一下，感觉对理解 GMP 调度的基础概念和标准库中的各类注解指令非常有帮助，决定翻译出来，正好提高一下自己的英文水平。</description>
+     </item>
+   
+     <item>
+       <title>Goland 最佳实践</title>
+       <link>https://dbwu.tech/posts/goland_best_practice/</link>
+       <pubDate>Wed, 10 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/goland_best_practice/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>sync.Once Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_once/</link>
+       <pubDate>Sun, 23 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_once/</guid>
+       <description>sync.Once 可以保证某段程序在运行期间的只执行一次，典型的使用场景有初始化配置, 数据库连接等，那么它的内部是如何实现的呢？</description>
+     </item>
+   
+     <item>
+       <title>Go 无锁编程</title>
+       <link>https://dbwu.tech/posts/golang_lockfree/</link>
+       <pubDate>Sat, 22 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_lockfree/</guid>
+       <description>锁是一种常见的同步机制，用来解决多个线程同时访问共享资源导致的数据竞争问题。在高并发场景下，锁的使用可能会成为性能瓶颈，因为线程需要频繁地加锁和释放锁，这会增加上下文切换开销并降低程序的吞吐量。</description>
+     </item>
+   
+     <item>
+       <title>sync/atomic Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_atomic/</link>
+       <pubDate>Fri, 21 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_atomic/</guid>
+       <description>sync/atomic 包提供了原子同步操作原语，整个操作过程无需加锁，也不会产生 goroutine 上下文切换。</description>
+     </item>
+   
+     <item>
+       <title>goroutine 交替打印奇偶数</title>
+       <link>https://dbwu.tech/posts/goroutine_alternate_print/</link>
+       <pubDate>Thu, 20 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/goroutine_alternate_print/</guid>
+       <description>使用两个 &lt;code&gt;goroutine&lt;/code&gt; 交替并且顺序地打印数字 1&amp;hellip;10, 要求其中一个 &lt;code&gt;goroutine&lt;/code&gt; 打印奇数，另一个 &lt;code&gt;goroutine&lt;/code&gt; 打印偶数。</description>
+     </item>
+   
+     <item>
+       <title>GODEBUG</title>
+       <link>https://dbwu.tech/posts/golang_godebug/</link>
+       <pubDate>Wed, 19 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_godebug/</guid>
+       <description>GODEBUG 环境变量可以控制程序运行时的调度信息输出，方便开发者了解程序运行内部细节。</description>
+     </item>
+   
+     <item>
+       <title>Go 并发模式</title>
+       <link>https://dbwu.tech/posts/golang_concurrency_patterns/</link>
+       <pubDate>Tue, 18 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_concurrency_patterns/</guid>
+       <description>Go 语言常用的并发模式代码模板，已更新。</description>
+     </item>
+   
+     <item>
+       <title>Go 汇编</title>
+       <link>https://dbwu.tech/posts/golang_asm/</link>
+       <pubDate>Mon, 17 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_asm/</guid>
+       <description>为什么要学习汇编语言？更加接近硬件底层，性能极致优化，可以降维打击所有高级编程语言。</description>
+     </item>
+   
+     <item>
+       <title>Go 高性能 Tips</title>
+       <link>https://dbwu.tech/posts/golang_performance_tips/</link>
+       <pubDate>Mon, 10 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_performance_tips/</guid>
+       <description>阅读 Go 标准库和开源框架代码时，经常会发现这些 Tips 的踪迹。</description>
+     </item>
+   
+     <item>
+       <title>技术文章配图指南</title>
+       <link>https://dbwu.tech/posts/image_tool/</link>
+       <pubDate>Tue, 04 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/image_tool/</guid>
+       <description>为什么技术文章需要配图？一图胜千言。</description>
+     </item>
+   
+     <item>
+       <title>ChatGPT 初体验</title>
+       <link>https://dbwu.tech/posts/chatgpt/</link>
+       <pubDate>Mon, 03 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/chatgpt/</guid>
+       <description>概述 ChatGPT 从 2 月份热度一直持续到现在，并且在接下来的一段时间内，热度还会持续下去。笔者从 3 月初开始慢慢接触，从最初的在 搜索引擎 和 ChatGPT 之间来回切换并验证， 到目前的简单搜索场景 80% 的时间都是直接用 ChatGPT 的，本文总结下这一个月的时间，笔者用到的最多的 4 个功能。</description>
+     </item>
+   
+     <item>
+       <title>Go 的反射与三大定律</title>
+       <link>https://dbwu.tech/posts/golang_reflect/</link>
+       <pubDate>Thu, 30 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_reflect/</guid>
+       <description>1.反射可以通过 interface{} 得到反射对象; 2.反射可以通过反射对象得到 interface{}; 3.修改反射对象的前提是值必须可以被修改; 反射三大定律背后的实现原理是什么？</description>
+     </item>
+   
+     <item>
+       <title>Docker 官方提供的最佳实践</title>
+       <link>https://dbwu.tech/posts/docker_best_practices/</link>
+       <pubDate>Wed, 29 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/docker_best_practices/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Go 内存模型</title>
+       <link>https://dbwu.tech/posts/memory_model/</link>
+       <pubDate>Fri, 24 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/memory_model/</guid>
+       <description>为什么要学习 Go 内存模型？ 因为这是理解和掌握 Go 并发编程的基础，也是学习 Go 标准库底层源码实现的前提。</description>
+     </item>
+   
+     <item>
+       <title>软件版本语义化</title>
+       <link>https://dbwu.tech/posts/version_semantics/</link>
+       <pubDate>Fri, 24 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/version_semantics/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Go 1.20 发布了</title>
+       <link>https://dbwu.tech/posts/go1.20/</link>
+       <pubDate>Sat, 11 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/go1.20/</guid>
+       <description>前言 这几天所有的热度都集中到了 ChatGPT，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术，恰巧这时 兔兔大佬 发来了灵魂拷问 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>Go 逃逸分析</title>
+       <link>https://dbwu.tech/posts/goland_escape/</link>
+       <pubDate>Fri, 03 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/goland_escape/</guid>
+       <description>Go 语言的编译器使用逃逸分析决定哪些变量分配在栈上，哪些变量分配在堆上。</description>
+     </item>
+   
+     <item>
+       <title>Go 数据竞态</title>
+       <link>https://dbwu.tech/posts/golang_data_race/</link>
+       <pubDate>Thu, 02 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_data_race/</guid>
+       <description>数据竞态是并发系统编程中最常见和最难调试的错误类型之一。当两个 goroutine 同时访问同一个变量并且至少有一个是写入操作时，就会发生数据竞态。</description>
+     </item>
+   
+     <item>
+       <title>Go 如何实现 implements 功能</title>
+       <link>https://dbwu.tech/posts/golang_implements/</link>
+       <pubDate>Tue, 31 Jan 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_implements/</guid>
+       <description>Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间。</description>
+     </item>
+   
+     <item>
+       <title>Go 的面向对象编程</title>
+       <link>https://dbwu.tech/posts/golang_oop/</link>
+       <pubDate>Mon, 30 Jan 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_oop/</guid>
+       <description>Go 语言如何实现封装、继承、多态等面向对象的特性？</description>
+     </item>
+   
+     <item>
+       <title></title>
+       <link>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</link>
+       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</guid>
+       <description>概述 技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。 业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。</description>
+     </item>
+   
+ </channel>
+</rss>

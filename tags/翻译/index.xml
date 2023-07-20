@@ -22,6 +22,15 @@
      </item>
    
      <item>
+       <title>漏桶算法和令牌桶算法</title>
+       <link>https://dbwu.tech/posts/golang_ratelimit/</link>
+       <pubDate>Sat, 15 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_ratelimit/</guid>
+       <description>漏桶算法和令牌桶算法是接口限流设计中常用的两种算法，本文通过 Go 语言中两个常用的开源组件，研究下两种算法的区别和具体代码实现。</description>
+     </item>
+   
+     <item>
        <title>HTTP Router 算法演进</title>
        <link>https://dbwu.tech/posts/http_router/</link>
        <pubDate>Thu, 13 Jul 2023 00:00:00 +0000</pubDate>
@@ -352,6 +361,15 @@
        
        <guid>https://dbwu.tech/posts/golang_oop/</guid>
        <description>Go 语言如何实现封装、继承、多态等面向对象的特性？</description>
+     </item>
+   
+     <item>
+       <title></title>
+       <link>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</link>
+       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</guid>
+       <description>概述 技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。 业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。</description>
      </item>
    
  </channel>

@@ -1,0 +1,293 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="概述 技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。 业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="" />
+<meta property="og:description" content="概述 技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。 业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/system_design/logcial_rule_correlate/" /><meta property="article:section" content="posts" />
+
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content=""/>
+<meta name="twitter:description" content="概述 技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。 业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1></h1>
+
+    
+      
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。
+业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 规则引擎的典型语法</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>rule  &lt;rule_name&gt; &lt;rule_description&gt;
+</span></span><span style="display:flex;"><span>   &lt;attribute&gt; &lt;value&gt; {
+</span></span><span style="display:flex;"><span>   when
+</span></span><span style="display:flex;"><span>      &lt;conditions&gt;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>   <span style="color:#6ab825;font-weight:bold">then</span>
+</span></span><span style="display:flex;"><span>      &lt;actions&gt;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="常见场景">常见场景</h2>
+<ul>
+<li>网页中的保险广告: 根据各种条件最后计算出你的投保金额</li>
+<li>网约车: 根据车型、天气、目的地、拥堵情况等计算出价格</li>
+<li>网上购物: 会员、优惠券、店铺活动等计算订单价格</li>
+<li>网站内容反爬虫: IP、访问频率、浏览行为模式等判定客户端是否为正常用户</li>
+<li>&hellip;</li>
+</ul>
+<h2 id="演变过程">演变过程</h2>
+<p>下面简答概括下常规的规则引擎的演变过程，以及过程中开发人员和运营人员的不同分工。</p>
+<h3 id="代码">代码</h3>
+<p>在这个阶段，业务规则全部由开发人员完成，运营有任何变更，都需要找到开发经历开发 -&gt; 测试 -&gt; 生产的过程，沟通加具体的工作量要花掉可观的时间，
+而且系统的业务规则没有任何灵活性，今天应该没有公司这么干了，不过作为上古的工作模式，这里简单提一下。</p>
+<p><img src="images/logcial_rule_correlate_1.png" alt="代码更改业务规则阶段"></p>
+<h3 id="自动配置">自动配置</h3>
+<p>将业务规则抽离出来保存到配置中，这里的配置可以是文本配置文件、代码配置文件，也可以是通过管理后台操作并最终保存到数据库的配置信息。</p>
+<p>在这个阶段，开发人员需要和运营人员提前写好所有的业务规则，虽然已经有了自动化的基本雏形，但是灵活度还远远不够 (<del>例如 10 点刚写完业务规则，11 点又想到几个新的规则&hellip;</del>)。</p>
+<p><img src="images/logcial_rule_correlate_2.png" alt="图片来源: https://g.alicdn.com/aic/aep-docs/1.6.1/ze9s2o.html"></p>
+<h3 id="表达式解析">表达式解析</h3>
+<p>使用定义好的布尔表达式替换掉代码中的 <code>if else</code> 语句，业务逻辑代码只需要对具体的布尔表达式求值，然后根据求值结果来执行不同的操作。</p>
+<p>这里以 Go 语言生态的 <a href="https://github.com/Knetic/govaluate">govaluate</a> 组件来做演示，其 Github 的主页上面的简介: 可以对任意的 Go 表达式语句求值。</p>
+<p>例如在一个视频网站中，我们可以根据用户是否 VIP 来决定播放视频广告。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取用户信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>user := <span style="color:#447fcf">getUserInfo</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>expression, err := govaluate.<span style="color:#447fcf">NewEvaluableExpression</span>(<span style="color:#ed9d13">&#34;user.level &gt; 0&#34;</span>)
+</span></span><span style="display:flex;"><span>isVip, err := expression.<span style="color:#447fcf">Evaluate</span>(<span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">panic</span>(err)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> isVip {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 不播放广告
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 播放 60s 广告
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>在这个阶段，业务规则可以随时更新，但是必须要由懂系统/服务实现编程语言的人员来编写规则，大部分情况下，业务规则依然全部由开发人员完成。</p>
+<p>对于 govaluate 组件内部将表达式编译为 AST 的过程感兴趣的读者可以看看 <a href="https://mp.weixin.qq.com/s/gLbAZShFnkPcI937pk-wpg">这篇文章</a>。</p>
+<h3 id="dsl">DSL</h3>
+<p>针对特定领域的语言，也就是专门解决某个特定领域的问题，分为内部 DSL 和外部 DSL，规则引擎中用到的都是外部 DSL，主要是给开发人员和经过培训的其他岗位人员。</p>
+<p><img src="images/logcial_rule_correlate_3.png" alt="图片来源: https://g.alicdn.com/aic/aep-docs/1.6.1/ze9s2o.html"></p>
+<p>这方面的例子太多了，我们 <strong>日常使用的编程语言和数据库 SQL 语句本质上都是高度抽象的 DSL</strong> :-)</p>
+<h4 id="elasticsearch-全文搜索">ElasticSearch 全文搜索</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 全文搜索 hello world</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>GET /xxx/yyy/_search
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;query&#34;</span> : {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;match&#34;</span> : {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;about&#34;</span> : <span style="color:#ed9d13">&#34;hello world&#34;</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="prometheus-聚合操作">Prometheus 聚合操作</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 计算 HTTP 请求总量</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sum(http_requests_total)
+</span></span></code></pre></div><p>在这个阶段，开发人员和运营人员大部分情况下分工完全独立，开发人员专注于 DSL 的丰富和完善，运营人员专注于编写各种 DSL, 但是当发布新的 DSL 语法时或者现有的 DSL 存在问题时，
+开发人员和运营人员需要沟通协调。</p>
+<h3 id="服务">服务</h3>
+<p>（不同的用户访问的服务不同，认证和鉴权由网关处理）</p>
+<h3 id="规则引擎中台">规则引擎中台</h3>
+<p>可视化操作界面，通过点击、拖拽等操作自动生成规则并保存，运营人员只需要关注操作界面即可。</p>
+<p><img src="images/logcial_rule_correlate_4.png" alt="图片来源: https://g.alicdn.com/aic/aep-docs/1.6.1/ze9s2o.html"></p>
+<p>在这个阶段，开发人员和运营人员分工完全独立。开发人员专注于中台的功能建设，运营人员专注于业务策略的调整，但是系统的业务能力依然会受到以下几个因素的影响:</p>
+<ul>
+<li>运营人员设置的业务规则有效性</li>
+<li>业务规则设置完成到生效的实时性</li>
+<li>无法实现自动化处理 (例如紧急事件的处理周期非常短，是否能在有效时间内指定出有效的规则)</li>
+<li>&hellip;</li>
+</ul>
+<h3 id="ai-构建">AI 构建</h3>
+<p>目前来看，最后阶段是使用 AI 模型来构建完全自动化的业务规则，完全解决规则引擎中台存在的问题。</p>
+<blockquote>
+<p>软件定义一切，软件吞噬一切。</p>
+</blockquote>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/Knetic/govaluate">govaluate</a></li>
+<li><a href="https://github.com/google/go-cmp">go-cmp</a></li>
+<li><a href="https://github.com/hyperjumptech/grule-rule-engine">grule-rule-engine</a></li>
+<li><a href="https://xie.infoq.cn/article/40bfff1fbca1867991a1453ac">B 站新一代 golang 规则引擎的设计与实现</a></li>
+<li><a href="https://cn.pingcap.com/blog/tidb-source-code-reading-5">TiDB 源码阅读系列文章（五）TiDB SQL Parser 的实现</a></li>
+<li><a href="https://cn.pingcap.com/blog/tidb-source-code-reading-7">TiDB 源码阅读系列文章（七）基于规则的优化</a></li>
+<li><a href="https://github.com/kiegroup/drools">Drools</a></li>
+<li><a href="https://github.com/open-policy-agent/opa/">Open Policy Agent</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_oop/">Go 的面向对象编程 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term=""
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
