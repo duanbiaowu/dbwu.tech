@@ -362,14 +362,5 @@
        <description>Go 语言如何实现封装、继承、多态等面向对象的特性？</description>
      </item>
    
-     <item>
-       <title></title>
-       <link>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</link>
-       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-       
-       <guid>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</guid>
-       <description>概述 技术实现的角度，规则引擎的功能就是布尔表达式的解析和求值过程，外加建立在求值结果之上的工作流。 业务使用的角度，规则引擎就是运营人员可以独立快速操作业务逻辑规则并且影响到最终的用户。</description>
-     </item>
-   
  </channel>
 </rss>
