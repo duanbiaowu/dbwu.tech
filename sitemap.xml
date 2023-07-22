@@ -149,6 +149,9 @@
     <loc>https://dbwu.tech/posts/golang_performance_tips/</loc>
     <lastmod>2023-04-10T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/posts/golang_fasthttp/</loc>
+    <lastmod>2023-04-07T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/tags/tools/</loc>
     <lastmod>2023-04-04T00:00:00+00:00</lastmod>
   </url><url>
@@ -181,6 +184,9 @@
   </url><url>
     <loc>https://dbwu.tech/posts/go1.20/</loc>
     <lastmod>2023-02-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/docker_arch/</loc>
+    <lastmod>2023-02-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/goland_escape/</loc>
     <lastmod>2023-02-03T00:00:00+00:00</lastmod>

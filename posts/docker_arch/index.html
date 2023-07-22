@@ -1,0 +1,421 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Docker 基础支撑技术概览 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Docker 基础支撑技术概览" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/docker_arch/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-07T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Docker 基础支撑技术概览"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Docker 基础支撑技术概览</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/docker">Docker</a>
+    
+    
+    <a href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h1 id="概述">概述</h1>
+<p><strong>Docker 容器本质上是宿主机上的进程</strong>。</p>
+<p><code>Docker</code> 通过 <code>Namespaces</code> 实现了资源隔离，通过 <code>CGroups</code> 实现了资源限制，通过 <code>UnionFS</code> 实现了高效的文件 (镜像) 操作。</p>
+<p><img src="https://dbwu.tech/images/docker_fundamentals.png" alt="图片来源: https://medium.com/@goyalsaurabh66/docker-basics-cb006b9be243"></p>
+<h1 id="namespaces">Namespaces</h1>
+<p><code>命名空间 (namespace)</code> 是一种 <strong>内核级别的资源隔离机制</strong>，用于确保运行在同一操作系统上的各进程互不干扰，
+和平时业务代码中的 <code>namespace</code> 或者 <code>package</code> 概念类似，单个 <code>命名空间</code> 中的进程只能看到该 <code>命名空间</code> 中的相关信息，例如:</p>
+<ul>
+<li>主机名称</li>
+<li>网络资源</li>
+<li>用户信息</li>
+<li>文件系统</li>
+<li>进程关系</li>
+<li>&hellip;</li>
+</ul>
+<h2 id="7-种资源类型命名空间">7 种资源类型命名空间</h2>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>系统调用参数</th>
+<th>隔离内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IPC</td>
+<td>CLONE_NEWIPC</td>
+<td>主机名和域名</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>CLONE_NEWNET</td>
+<td>网络设备、网络栈、端口等</td>
+</tr>
+<tr>
+<td>Mount</td>
+<td>CLONE_NEWNS</td>
+<td>挂载点 (文件系统)</td>
+</tr>
+<tr>
+<td>PID</td>
+<td>CLONE_NEWPID</td>
+<td>进程 ID</td>
+</tr>
+<tr>
+<td>User</td>
+<td>CLONE_NEWUSER</td>
+<td>用户和用户组 ID</td>
+</tr>
+<tr>
+<td>UTS</td>
+<td>CLONE_NEWUTS</td>
+<td>主机名和域名</td>
+</tr>
+<tr>
+<td>CGroups</td>
+<td>CLONE_NEWCGROUP</td>
+<td>CGroups root directory</td>
+</tr>
+</tbody>
+</table>
+<p>以上 7 种命名空间基本覆盖了一个进程运行所需要的独立环境。</p>
+<h2 id="proc-目录">proc 目录</h2>
+<p>Linux 中每个进程都有一个 <code>/proc/$pid/ns</code> 的目录，里面保存了该进程所在对应 <code>命名空间</code> 的链接。</p>
+<p>以笔者机器中的 MySQL 进程为例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ls -l /proc/17042/ns/
+</span></span><span style="display:flex;"><span>total <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>lrwxrwxrwx <span style="color:#3677a9">1</span> xxx xxx <span style="color:#3677a9">0</span> Feb <span style="color:#3677a9">11</span> 21:18 ipc -&gt; ipc:[4026532808]
+</span></span><span style="display:flex;"><span>lrwxrwxrwx <span style="color:#3677a9">1</span> xxx xxx <span style="color:#3677a9">0</span> Feb <span style="color:#3677a9">11</span> 21:18 mnt -&gt; mnt:[4026532806]
+</span></span><span style="display:flex;"><span>lrwxrwxrwx <span style="color:#3677a9">1</span> xxx xxx <span style="color:#3677a9">0</span> Feb <span style="color:#3677a9">11</span> 21:18 net -&gt; net:[4026532812]
+</span></span><span style="display:flex;"><span>lrwxrwxrwx <span style="color:#3677a9">1</span> xxx xxx <span style="color:#3677a9">0</span> Feb <span style="color:#3677a9">11</span> 21:18 pid -&gt; pid:[4026532810]
+</span></span><span style="display:flex;"><span>lrwxrwxrwx <span style="color:#3677a9">1</span> xxx xxx <span style="color:#3677a9">0</span> Feb <span style="color:#3677a9">11</span> 21:18 user -&gt; user:[4026531837]
+</span></span><span style="display:flex;"><span>lrwxrwxrwx <span style="color:#3677a9">1</span> xxx xxx <span style="color:#3677a9">0</span> Feb <span style="color:#3677a9">11</span> 21:18 uts -&gt; uts:[4026532807]
+</span></span></code></pre></div><p>每个文件都是对应的 <code>命名空间</code> 文件描述符，方括号里面的值是 <code>命名空间</code> 的 inode，如果两个进程所属 <code>命名空间</code> 一样，
+那么它们的 inode 列表是一样的，反之亦然。如果某个 <code>命名空间</code> 中没有进程了，它会被自动删除，不需要手动删除。
+但有个例外，如果 <code>命名空间</code> 对应的文件已经被某个应用进程打开，那么该 <code>命名空间</code> 是不会被删除的，这个特性可以使某个 <code>命名空间</code> 常驻，
+便于后续往里面添加进程。</p>
+<h2 id="系统调用-api">系统调用 API</h2>
+<ul>
+<li>clone()   : 实现线程的系统调用，用来创建一个新的进程，并设置它的 <code>命名空间</code></li>
+<li>unshare() : 将进程脱离某个 <code>命名空间</code></li>
+<li>setns()   : 将进程加入某个 <code>命名空间</code></li>
+</ul>
+<p><img src="https://dbwu.tech/images/docker_ns_cgrp.png" alt="图片来源: https://bikramat.medium.com/namespace-vs-cgroup-60c832c6b8c8"></p>
+<p>通过 <code>命名空间</code> 为进程实现了资源隔离，但是 <code>命名空间</code> 无法提供物理资源的使用限制，比如 CPU 或者 内存，如果一台主机上面多个运行的容器中，
+有一个容器疯狂抢占内存资源，那么其他容器都会受到影响。如何对多个容器进行物理资源限制，就要用到接下来介绍的 <code>CGroups</code>。</p>
+<h1 id="cgroups">CGroups</h1>
+<p><code>CGroup</code> 全称 <code>Linux Control Group</code>， 是 Linux 内核的一个功能，用来 <strong>限制、控制与分离一个进程组群的资源</strong>（如 CPU、内存、磁盘输入输出等）,
+除此之外，还可以为资源设置权重、计算使用量、操控进程启动和停止等。</p>
+<h2 id="主要功能">主要功能</h2>
+<p><code>CGroup</code> 从设计之初使命就很明确，为进程提供资源控制，它主要的功能包括：</p>
+<ul>
+<li><strong>资源限制</strong>  （Resource Limitation）：可以对进程组使用的资源总额进行限制，如设定进程运行时使用内存的上限，一旦超过这个配额就发出 OOM（Out of Memory）</li>
+<li><strong>优先级分配</strong>（Prioritization）：通过分配的 CPU 时间片数量及硬盘 IO 带宽大小，相当于控制了进程运行的优先级</li>
+<li><strong>资源统计</strong>  （Accounting）： 可以统计系统的资源使用量，如 CPU 使用时长、内存用量等，非常适用于计费功能</li>
+<li><strong>进程控制</strong>  （Control）：可以对进程组执行挂起、恢复等操作</li>
+</ul>
+<p>常见的操作有:</p>
+<ul>
+<li>隔离一个进程集合（比如：Nginx 的所有进程），并限制他们所消费的资源，比如绑定 CPU 的核数</li>
+<li>为一组进程分配足够使用的内存</li>
+<li>为一组进程分配相应的网络带宽和磁盘存储限制</li>
+<li>限制访问某些设备（通过设置设备的白名单）</li>
+</ul>
+<p><img src="https://dbwu.tech/images/cgroup_quota.png" alt="图片来源: https://blog.devgenius.io/container-namespace-introduction-6a1e26f8707a"></p>
+<h2 id="核心概念">核心概念</h2>
+<ul>
+<li><strong>task</strong>：任务，对应于系统中运行的一个实体，一般是指进程</li>
+<li><strong>subsystem</strong>：子系统，具体的资源控制器，控制某个特定的资源使用，比如 CPU 子系统可以控制 CPU 时间，内存子系统可以控制内存使用量</li>
+<li><strong>CGroup</strong>：控制组，一组任务和子系统的关联关系，表示对这些任务进行怎样的资源管理策略。一个任务可以加入某个 CGroup，也可以从某个 CGroup 迁移到另外一个 CGroup</li>
+<li><strong>hierarchy</strong>：层级树，一系列 CGroup 组成的树形结构。每个节点都是一个 CGroup，CGroup 可以有多个子节点，子节点默认会继承父节点的属性，系统中可以有多个 hierarchy</li>
+</ul>
+<h2 id="subsystem-子资源系统">subsystem (子资源系统)</h2>
+<p><code>subsystem</code> 实际上就是 <code>CGroup</code> 的资源控制系统，每种 <code>subsystem</code> 独立地控制一种资源。</p>
+<ul>
+<li>Block IO（blkio)：限制块设备（磁盘、SSD、USB 等）的 IO 速率</li>
+<li>CPU Set(cpuset)：限制任务能运行在哪些 CPU 核上</li>
+<li>CPU Accounting(cpuacct)：生成 CGroup 中任务使用 CPU 的报告</li>
+<li>CPU (CPU)：限制调度器分配的 CPU 时间</li>
+<li>Devices (devices)：允许或者拒绝 CGroup 中任务对设备的访问</li>
+<li>Freezer (freezer)：挂起或者重启 CGroup 中的任务</li>
+<li>Memory (memory)：限制 CGroup 中任务使用内存的量，并生成任务当前内存的使用情况报告</li>
+<li>Network Classifier(net_cls)：为 cgroup 中的报文设置特定的 classid 标志，这样 tc 等工具就能根据标记对网络进行配置</li>
+<li>Network Priority (net_prio)：对每个网络接口设置报文的优先级</li>
+<li>perf_event：识别任务的 CGroup 成员，可以用来做性能分析</li>
+</ul>
+<p><strong>本质上来说，<code>CGroup</code> 是内核附加在程序上的一系列钩子（hooks），通过程序运行时对资源的调度触发相应的钩子以达到资源追踪和限制的目的</strong>。</p>
+<h1 id="unionfs">UnionFS</h1>
+<p><code>UnionFS</code> 将不同物理位置的目录合并到同一个目录中。</p>
+<p><img src="https://dbwu.tech/images/unionfs.jpg" alt="图片来源: https://www.linuxjournal.com/article/7714"></p>
+<p><code>Docker</code> 将 <code>UnionFS</code> 的设计理念扩展到了容器的镜像管理功能，并通过不同的存储驱动来管理镜像和容器文件。</p>
+<h1 id="aufs">AUFS</h1>
+<p><code>AUFS</code> 的全称是 <code>Advanced Multi-layered unification filesytem</code>，即 <code>UnionFS</code> 的升级版，它能够提供更优秀的性能和效率。
+和 <code>UnionFS</code> 一样，它的 <strong>主要功能是：将多个目录合并为一个目录</strong>。</p>
+<p>多个目录怎样结合成一个目录呢？<strong>具体的读写操作如下</strong>:</p>
+<ul>
+<li>默认情况下，最上层的目录为读写层，只能有一个；下面可以有一个或者多个只读层</li>
+<li>读文件，打开文件的时候使用了 O_RDONLY 选项：从最上面一个开始往下逐层去找，打开第一个找到的文件，读取其中的内容</li>
+<li>写文件，打开文件时用了 O_WRONLY 或者 O_RDWR 选项</li>
+<li>如果在最上层找到了该文件，直接打开，否则，从上往下开始查找，找到文件后，把文件复制到最上层，然后再打开这个 copy（所以，如果要读写的文件很大，这个过程耗时会很久）</li>
+<li>删除文件：在最上层创建一个 whiteout 文件，.wh.&lt;origin_file_name&gt;，就是在原来的文件名字前面加上 .wh.</li>
+</ul>
+<p><img src="https://dbwu.tech/images/docker_mount_layers.png" alt="图片来源: https://coolshell.cn/articles/17061.html"></p>
+<p>上面的图片非常形象地展现了合并的过程，每一个镜像层都是建立在另一个镜像层之上的，除了顶层的镜像层可读写外，其他的镜像层都是只读的，
+所有的镜像都建立在一些底层基础镜像上面，比如 <code>Kernel</code>, <code>Golang</code> 等，这种合并过程通过组合的方式提供了非常大的灵活性，
+只读的镜像层通过共享能够减小镜像文件体积，减少磁盘的占用空间。</p>
+<p><code>AUFS</code> 作为联合文件系统，能够将不同目录中的层联合（Union）到同一个目录中，这些目录在 <code>AUFS</code> 中称作分支，整个联合的过程被称为联合挂载（Union Mount）：</p>
+<p><img src="https://dbwu.tech/images/aufs_layers.jpeg" alt="图片来源: https://docs.docker.com/storage/storagedriver/aufs-driver/"></p>
+<p>当我们使用 <code>docker run</code> 命令创建镜像时，会在镜像的最上层添加一个可写的层，也就是容器层，所有对于运行时容器的修改其实都是对这个容器读写层的修改。
+<strong>容器和镜像的区别就在于，所有的镜像都是只读的，而每一个容器就等于镜像加上一个可读写的层，也就是同一个镜像可以对应多个容器</strong>。</p>
+<p><img src="https://dbwu.tech/images/docker_sharing_layers.jpeg" alt="图片来源: https://docs.docker.com/storage/storagedriver/"></p>
+<h2 id="各发行版推荐存储驱动">各发行版推荐存储驱动</h2>
+<p><code>AUFS</code> 只是 <code>Docker</code> 使用的存储驱动的其中一种，除了 <code>AUFS</code> 之外，<code>Docker</code> 还支持了不同的存储驱动。在最新版的 <code>Docker</code> 中，<code>overlay2</code> 取代 <code>AUFS</code> 成为了推荐存储驱动。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Linux 发行版</th>
+<th style="text-align:left">推荐存储驱动</th>
+<th style="text-align:left">备选存储驱动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Ubuntu</td>
+<td style="text-align:left"><code>overlay2</code></td>
+<td style="text-align:left"><code>overlay</code>, <code>devicemapper</code>, <code>aufs</code>, <code>zfs</code>, <code>vfs</code></td>
+</tr>
+<tr>
+<td style="text-align:left">Debian</td>
+<td style="text-align:left"><code>overlay2</code></td>
+<td style="text-align:left"><code>overlay</code>, <code>devicemapper</code>, <code>aufs</code>, <code>vfs</code></td>
+</tr>
+<tr>
+<td style="text-align:left">CentOS</td>
+<td style="text-align:left"><code>overlay2</code></td>
+<td style="text-align:left"><code>overlay</code>, <code>devicemapper</code>, <code>zfs</code>, <code>vfs</code></td>
+</tr>
+<tr>
+<td style="text-align:left">Fedora</td>
+<td style="text-align:left"><code>overlay2</code></td>
+<td style="text-align:left"><code>overlay</code>, <code>devicemapper</code>, <code>zfs</code>, <code>vfs</code></td>
+</tr>
+<tr>
+<td style="text-align:left">SLES 15</td>
+<td style="text-align:left"><code>overlay2</code></td>
+<td style="text-align:left"><code>overlay</code>, <code>devicemapper</code>, <code>vfs</code></td>
+</tr>
+<tr>
+<td style="text-align:left">RHEL</td>
+<td style="text-align:left"><code>overlay2</code></td>
+<td style="text-align:left"><code>overlay</code>, <code>devicemapper</code>, <code>vfs</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="查看当前存储驱动">查看当前存储驱动</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker info | grep -i storage
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Storage Driver: overlay2
+</span></span></code></pre></div><h1 id="小结">小结</h1>
+<p>本文简单介绍了 <code>Docker</code> 背后的基础支撑技术，没有深入探索底层 API 和具体实践，感兴趣的读者可以参考扩展阅读文章列表自己动手打造 &ldquo;山寨版 Docker&rdquo; :-)</p>
+<h1 id="reference">Reference</h1>
+<ul>
+<li><a href="https://coolshell.cn/articles/17049.html">DOCKER基础技术：LINUX CGROUP</a></li>
+<li><a href="https://coolshell.cn/articles/17061.html">DOCKER基础技术：AUFS</a></li>
+<li><a href="https://www.infoq.cn/news/docker-kernel-knowledge-namespace-resource-isolation">Docker 背后的内核知识——Namespace 资源隔离</a></li>
+<li><a href="https://www.infoq.cn/news/docker-kernel-knowledge-cgroups-resource-isolation">Docker 背后的内核知识——CGroups 资源限制</a></li>
+<li><a href="https://docs.docker.com/storage/storagedriver/select-storage-driver/">Docker storage drivers</a></li>
+<li><a href="https://www.linuxjournal.com/article/7714">Kernel Korner - Unionfs: Bringing Filesystems Together</a></li>
+<li><a href="https://draveness.me/docker/">Docker 核心技术与实现原理</a></li>
+<li><a href="https://book.douban.com/subject/26894736/">Docker——容器与容器云</a></li>
+<li><a href="https://cizixs.com/2017/08/29/linux-namespace/">docker 容器基础技术：linux namespace 简介</a></li>
+<li><a href="https://cizixs.com/2017/08/25/linux-cgroup/">docker 容器基础技术：linux cgroup 简介</a></li>
+<li><a href="https://cizixs.com/2017/09/13/docker-aufs-storage-driver/">aufs 简介以及在 docker 中的使用</a></li>
+<li><a href="https://github.com/pandengyang/docker.sh">Shell 开发的一个简易 docker</a></li>
+<li><a href="https://book.douban.com/subject/27082348/">自己动手写Docker</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/goland_escape/"><i class="fa fa-chevron-circle-left"></i> Go 逃逸分析</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/go1.20/">Go 1.20 发布了 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Docker 基础支撑技术概览"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

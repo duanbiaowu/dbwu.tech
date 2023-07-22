@@ -1,0 +1,426 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>fasthttp 为什么比标准库 net/http 快 10 倍 ? - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="fasthttp 为什么比标准库 net/http 快 10 倍 ?" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_fasthttp/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-07T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="fasthttp 为什么比标准库 net/http 快 10 倍 ?"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>fasthttp 为什么比标准库 net/http 快 10 倍 ?</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BC%96%E7%A8%8B">高性能编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p><code>fasthttp</code> 是一个使用 Go 语言开发的 HTTP 包，主打高性能，针对 HTTP 请求响应流程中的 <code>hot path</code> 代码进行了优化，达到零内存分配，性能比标准库的 <code>net/http</code> 快 10 倍。</p>
+</blockquote>
+<p>上面是来自官方 <code>Github</code> 主页的项目介绍，抛开其介绍内容不谈，光从名字本身来看，作者对项目代码的自信程度可见一斑。</p>
+<p>本文不会讲解 <code>fasthttp</code> 的应用方法，而是会重点分析 <code>fasthttp</code> 高性能的背后实现原理。</p>
+<h2 id="基准测试">基准测试</h2>
+<p>我们可以通过基准测试看看 <code>fasthttp</code> 是否真的如描述所言，吊打标准库的 <code>net/http</code>，下面是官方提供的基准测试结果:</p>
+<h3 id="nethttp">net/http</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ <span style="color:#40ffff">GOMAXPROCS</span>=<span style="color:#3677a9">4</span> go <span style="color:#24909d">test</span> -bench=<span style="color:#ed9d13">&#39;HTTPClient(Do|GetEndToEnd)&#39;</span> -benchmem -benchtime=10s
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientDoFastServer-4                    	 2000000	      <span style="color:#3677a9">8774</span> ns/op	    <span style="color:#3677a9">2619</span> B/op	      <span style="color:#3677a9">35</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd1TCP-4                 	  500000	     <span style="color:#3677a9">22951</span> ns/op	    <span style="color:#3677a9">5047</span> B/op	      <span style="color:#3677a9">56</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd10TCP-4                	 1000000	     <span style="color:#3677a9">19182</span> ns/op	    <span style="color:#3677a9">5037</span> B/op	      <span style="color:#3677a9">55</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd100TCP-4               	 1000000	     <span style="color:#3677a9">16535</span> ns/op	    <span style="color:#3677a9">5031</span> B/op	      <span style="color:#3677a9">55</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd1Inmemory-4            	 1000000	     <span style="color:#3677a9">14495</span> ns/op	    <span style="color:#3677a9">5038</span> B/op	      <span style="color:#3677a9">56</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd10Inmemory-4           	 1000000	     <span style="color:#3677a9">10237</span> ns/op	    <span style="color:#3677a9">5034</span> B/op	      <span style="color:#3677a9">56</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd100Inmemory-4          	 1000000	     <span style="color:#3677a9">10125</span> ns/op	    <span style="color:#3677a9">5045</span> B/op	      <span style="color:#3677a9">56</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkNetHTTPClientGetEndToEnd1000Inmemory-4         	 1000000	     <span style="color:#3677a9">11132</span> ns/op	    <span style="color:#3677a9">5136</span> B/op	      <span style="color:#3677a9">56</span> allocs/op
+</span></span></code></pre></div><h3 id="fasthttp">fasthttp</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ <span style="color:#40ffff">GOMAXPROCS</span>=<span style="color:#3677a9">4</span> go <span style="color:#24909d">test</span> -bench=<span style="color:#ed9d13">&#39;kClient(Do|GetEndToEnd)&#39;</span> -benchmem -benchtime=10s
+</span></span><span style="display:flex;"><span>BenchmarkClientDoFastServer-4                           	50000000	       <span style="color:#3677a9">397</span> ns/op	       <span style="color:#3677a9">0</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd1TCP-4                        	 2000000	      <span style="color:#3677a9">7388</span> ns/op	       <span style="color:#3677a9">0</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd10TCP-4                       	 2000000	      <span style="color:#3677a9">6689</span> ns/op	       <span style="color:#3677a9">0</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd100TCP-4                      	 3000000	      <span style="color:#3677a9">4927</span> ns/op	       <span style="color:#3677a9">1</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd1Inmemory-4                   	10000000	      <span style="color:#3677a9">1604</span> ns/op	       <span style="color:#3677a9">0</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd10Inmemory-4                  	10000000	      <span style="color:#3677a9">1458</span> ns/op	       <span style="color:#3677a9">0</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd100Inmemory-4                 	10000000	      <span style="color:#3677a9">1329</span> ns/op	       <span style="color:#3677a9">0</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkClientGetEndToEnd1000Inmemory-4                	10000000	      <span style="color:#3677a9">1316</span> ns/op	       <span style="color:#3677a9">5</span> B/op	       <span style="color:#3677a9">0</span> allocs/op
+</span></span></code></pre></div><h3 id="基准结果对比">基准结果对比</h3>
+<p>从基准测试结果来看，<code>fasthttp</code> 的执行速度要比标准库的 <code>net/http</code> 快很多，此外，<code>fasthttp</code> 的内存分配方面优化到了 <code>0</code>, 完胜 <code>net/http</code>。</p>
+<h2 id="核心优化点">核心优化点</h2>
+<p>笔者选择的 <a href="https://github.com/valyala/fasthttp">valyala/fasthttp</a> 版本为 <code>v1.45.0</code>。</p>
+<h3 id="对象复用">对象复用</h3>
+<h4 id="workerpool">workerPool</h4>
+<p><code>workerpool</code> 对象表示 <code>连接处理</code> 工作池，这样可以控制连接建立后的处理方式，而不是像标准库 <code>net/http</code> 一样，对每个请求连接都启动一个 <code>goroutine</code> 处理，
+内部的 <code>ready</code> 字段存储空闲的 <code>workerChan</code> 对象，<code>workerChanPool</code> 字段表示管理 <code>workerChan</code> 的对象池。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// workerpool.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> workerPool <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	ready []*workerChan
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	workerChanPool sync.Pool
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> workerChan <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    lastUseTime time.Time
+</span></span><span style="display:flex;"><span>    ch          <span style="color:#6ab825;font-weight:bold">chan</span> net.Conn
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="请求响应-对象">请求/响应 对象</h4>
+<p>请求对象 <code>Request</code> 和响应对象 <code>Response</code> 都是通过对象池进行管理的，对应的代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// client.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	requestPool  sync.Pool
+</span></span><span style="display:flex;"><span>	responsePool sync.Pool
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 从对象池中获取 Request 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">AcquireRequest</span>() *Request {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 归还 Request 对象到对象池中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ReleaseRequest</span>(req *Request) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 从对象池中获取 Response 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">AcquireResponse</span>() *Response {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 归还 Response 对象到对象池中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ReleaseResponse</span>(resp *Response) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="cookie-对象">Cookie 对象</h4>
+<p><code>Cookie</code> 对象也是通过对象池进行管理的，对应的代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cookie.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> cookiePool = &amp;sync.Pool{
+</span></span><span style="display:flex;"><span>	New: <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> &amp;Cookie{}
+</span></span><span style="display:flex;"><span>	},
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 从对象池中获取 Cookie 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">AcquireCookie</span>() *Cookie {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 归还 Cookie 对象到对象池中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ReleaseCookie</span>(c *Cookie) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="其他对象复用">其他对象复用</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ grep -inr --include <span style="color:#ed9d13">\*</span>.go <span style="color:#ed9d13">&#34;sync.Pool&#34;</span> <span style="color:#6ab825;font-weight:bold">$(</span>go list -f {{.Dir}} github.com/valyala/fasthttp<span style="color:#6ab825;font-weight:bold">)</span> | wc -l
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">38</span>
+</span></span></code></pre></div><p>通过输出结果可以看到，<code>fasthttp</code> 中一共有 <code>38</code> 个对象是通过对象池进行管理的，可以说几乎复用了所有对象，So Crazy!</p>
+<h3 id="byte-复用">[]byte 复用</h3>
+<p><code>fasthttp</code> 中复用的对象在使用完成后归还到对象池之前，需要调用对应的 <code>Reset</code> 方法进行重置，如果对象中包含 <code>[]byte</code> 类型的字段，
+那么会直接进行复用，而不是初始化新的 <code>[]byte</code>, 例如 <code>URI</code> 对象的 <code>Reset</code> 方法:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 重置 URI 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 从方法的内部实现中可以看到，类型为 []byte 的所有字段都被复用了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (u *URI) <span style="color:#447fcf">Reset</span>() {
+</span></span><span style="display:flex;"><span>	u.pathOriginal = u.pathOriginal[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	u.scheme = u.scheme[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	u.path = u.path[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	u.queryString = u.queryString[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	u.hash = u.hash[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	u.username = u.username[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	u.password = u.password[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	u.host = u.host[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>此外，涉及到单个字段的修改，如果字段是 <code>[]byte</code> 类型，还是会直接复用，例如 <code>Cookie</code> 对象的这几个方法:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cookie) <span style="color:#447fcf">SetValue</span>(value <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	c.value = <span style="color:#24909d">append</span>(c.value[:<span style="color:#3677a9">0</span>], value...)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cookie) <span style="color:#447fcf">SetValueBytes</span>(value []<span style="color:#6ab825;font-weight:bold">byte</span>) {
+</span></span><span style="display:flex;"><span>	c.value = <span style="color:#24909d">append</span>(c.value[:<span style="color:#3677a9">0</span>], value...)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cookie) <span style="color:#447fcf">SetKey</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	c.key = <span style="color:#24909d">append</span>(c.key[:<span style="color:#3677a9">0</span>], key...)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cookie) <span style="color:#447fcf">SetKeyBytes</span>(key []<span style="color:#6ab825;font-weight:bold">byte</span>) {
+</span></span><span style="display:flex;"><span>	c.key = <span style="color:#24909d">append</span>(c.key[:<span style="color:#3677a9">0</span>], key...)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上面几个方法的内部实现中，无一例外，都对 <code>[]byte</code> 类型的参数进行了复用。</p>
+<h3 id="byte-和-string-转换">[]byte 和 string 转换</h3>
+<p><code>fasthttp</code> 专门提供了 <code>[]byte</code> 和 <code>string</code> 这两种常见的数据类型相互转换的方法  ，避免了 <code>内存分配 + 复制</code>，提升性能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// s2b_new.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">b2s</span>(b []<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> *(*<span style="color:#6ab825;font-weight:bold">string</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;b))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// b2s_new.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">s2b</span>(s <span style="color:#6ab825;font-weight:bold">string</span>) (b []<span style="color:#6ab825;font-weight:bold">byte</span>) {
+</span></span><span style="display:flex;"><span>    bh := (*reflect.SliceHeader)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;b))
+</span></span><span style="display:flex;"><span>    sh := (*reflect.StringHeader)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;s))
+</span></span><span style="display:flex;"><span>    bh.Data = sh.Data
+</span></span><span style="display:flex;"><span>    bh.Cap = sh.Len
+</span></span><span style="display:flex;"><span>    bh.Len = sh.Len
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> b
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="高性能的-bytebufferpool">高性能的 bytebufferpool</h3>
+<p><code>fasthttp</code> 并没有直接使用标准库中的 <code>bytes.Buffer</code> 对象，而是引用了作者的另外一个包 <a href="https://github.com/valyala/bytebufferpool">valyala/bytebufferpool</a>,
+这个包的核心优化点是 <code>避免内存拷贝 + 底层 byte 切片复用</code>，感兴趣的读者可以看看官方给出的 <a href="https://omgnull.github.io/go-benchmark/buffer/">基准测试结果</a>。</p>
+<h3 id="避免反射">避免反射</h3>
+<p><code>fasthttp</code> 中的所有 <code>对象深拷贝</code> 内部实现中都没有使用 <code>反射</code>，而是手动实现的，这样可以完全规避 <code>反射</code> 带来的影响，例如 <code>Cookie</code> 对象的拷贝实现:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cookie.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Cookie 对象拷贝实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cookie) <span style="color:#447fcf">CopyTo</span>(src *Cookie) {
+</span></span><span style="display:flex;"><span>	c.<span style="color:#447fcf">Reset</span>()
+</span></span><span style="display:flex;"><span>	c.key = <span style="color:#24909d">append</span>(c.key, src.key...)
+</span></span><span style="display:flex;"><span>	c.value = <span style="color:#24909d">append</span>(c.value, src.value...)
+</span></span><span style="display:flex;"><span>	c.expire = src.expire
+</span></span><span style="display:flex;"><span>	c.maxAge = src.maxAge
+</span></span><span style="display:flex;"><span>	c.domain = <span style="color:#24909d">append</span>(c.domain, src.domain...)
+</span></span><span style="display:flex;"><span>	c.path = <span style="color:#24909d">append</span>(c.path, src.path...)
+</span></span><span style="display:flex;"><span>	c.httpOnly = src.httpOnly
+</span></span><span style="display:flex;"><span>	c.secure = src.secure
+</span></span><span style="display:flex;"><span>	c.sameSite = src.sameSite
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>从上面的代码中可以看到，<code>拷贝</code> 的内部实现就是手动挨个复制字段，非常 <code>原始</code> 的解决方案。</p>
+<p>另外，请求对象 <code>Request</code> 和响应对象 <code>Response</code> 的拷贝实现和 <code>Cookie</code> 有异曲同工之处:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>// client.go
+</span></span><span style="display:flex;"><span>func (req *Request) CopyTo(dst *Request) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>func (resp *Response) CopyTo(dst *Response) {
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="fasthttp-的问题">fasthttp 的问题</h2>
+<p><strong>软件工程没有银弹</strong>，高性能的背后必然是以某些条件作为代价的，<code>fasthttp</code>  的主要问题有：</p>
+<ul>
+<li><strong>降低了代码可读性</strong> (如果不了解 <code>fasthttp</code> 的设计理念，贸然读代码很可能无法理解各种方法实现)</li>
+<li><strong>增加了开发复杂性</strong>，代码开发量要比使用标准库高，对象复用导致了 <code>申请/归还</code> 流程彷佛回到了 <code>C/C++</code> 语言手动管理内存模式</li>
+<li><strong>增加了开发者心智负担</strong>，如果已经习惯了标准库的开发模式，很容易写出 <code>Bug</code></li>
+<li>如果业务中有 <strong><code>异步</code> 处理场景</strong>，框架核心的 <code>对象复用</code> 机制可能导致各种问题，如对象提前归还、对象指针 <code>hang</code> 起、还有更严重的对象字段被重置后继续引用 (这类业务逻辑问题比较难排查)</li>
+</ul>
+<h2 id="多核系统的性能优化技巧">多核系统的性能优化技巧</h2>
+<ul>
+<li>使用 <code>reuseport</code> 监听 (<code>SO_REUSEPORT</code> 允许在多核服务器上线性扩展服务器性能，详细信息请参阅 <a href="https://www.nginx.com/blog/socket-sharding-nginx-release-1-9-1/">这个链接</a> )</li>
+<li>使用 <code>GOMAXPROCS=1</code> 为每个 CPU 核运行一个单独的服务器实例 (进程和 CPU 绑定)</li>
+<li>确保多队列网卡的中断均匀分布在 CPU 内核之间，详细信息请参阅 <a href="https://blog.cloudflare.com/how-to-achieve-low-latency/">这个链接</a></li>
+</ul>
+<h2 id="fasthttp-最佳实践">fasthttp 最佳实践</h2>
+<ul>
+<li>尽可能复用对象和 <code>[]byte buffers</code>, 而不是重新分配</li>
+<li>使用 <code>[]byte</code> 特性技巧</li>
+<li>使用 <code>sync.Pool</code> 对象池</li>
+<li>在生产环境对程序进行性能分析，<code>go tool pprof --alloc_objects app mem.pprof</code> 通常比 <code>go tool pprof app cpu.pprof</code> 更容易体现性能瓶颈</li>
+<li>为 <code>hot path</code> 上的代码编写测试和基准测试</li>
+<li>避免 <code>[]byte</code> 和 <code>string</code> 直接进行类型转换，因为这可能会导致 <code>内存分配 + 复制</code>，可以参考 <code>fasthttp</code> 包内的 <code>s2b</code> 方法和 <code>b2s</code> 方法</li>
+<li>定期对代码进行 <a href="https://go.dev/doc/articles/race_detector">竞态检测</a>, 一般会直接集成到 <code>CI</code> 中</li>
+<li>使用 <code>quicktemplate</code> 而非 <code>html/template</code> 模板</li>
+</ul>
+<h2 id="是否采用-fasthttp">是否采用 fasthttp</h2>
+<p><code>fasthttp</code> 是为一些高性能边缘场景设计的，如果你的业务需要支撑较高的 <code>QPS</code> 并且保持一致的低延迟时间，那么采用 <code>fasthttp</code> 是非常合理的，
+反之 <code>fasthttp</code> 可能并不适合 (增加开发复杂度和开发者心智负担)。大多数情况下，标准库 <code>net/http</code> 是更好的选择，因为它简单易用并且兼容性很高。
+如果你的业务流量很少，那么两者之间的 <code>所谓性能差异</code> 几乎可以忽略 (果断使用标准库的 net/http 包就可以)。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/golang_performance_tips/">Go 高性能 Tips</a></li>
+<li><a href="https://github.com/valyala/fasthttp">valyala/fasthttp</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIyMTY3NDI3Ng==&amp;mid=2247483684&amp;idx=1&amp;sn=c5ea929423489e142b9f23770670ca1b&amp;chksm=e8386f6fdf4fe67992588a871b508e60413979a78731fcc8f83f556b6420efa8adb8ea9ea99d&amp;cur_album_id=2677937327092105219&amp;scene=190#rd">fasthttp中运用哪些go优化技巧？</a></li>
+<li><a href="https://xargin.com/why-fasthttp-is-fast-and-the-cost-of-it/">fasthttp 快在哪里</a></li>
+<li><a href="https://www.jianshu.com/p/a0e766f8dcb0">fasthttp剖析</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/image_tool/"><i class="fa fa-chevron-circle-left"></i> 技术文章配图指南</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_performance_tips/">Go 高性能 Tips <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="fasthttp 为什么比标准库 net/http 快 10 倍 ?"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
