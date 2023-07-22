@@ -1366,14 +1366,15 @@
 <p><code>retake</code> 方法用于抢占处理器，主要有两种抢占方式:</p>
 <ol>
 <li>当处理器处于 <code>运行</code> 或 <code>系统调用</code> 状态时，如果当前时间距离最后一次调度时间超过 <code>10ms</code>, 抢占当前处理器</li>
-<li>当处理器处于 <code>_系统调用</code> 状态时，如果等待的过程中经历了一轮调度，抢占当前处理器</li>
+<li>当处理器处于 <code>系统调用</code> 状态时，如果等待的过程中经历了一轮调度，抢占当前处理器</li>
+<li>调用 runtime.Gosched()</li>
 </ol>
 <p>方法的内部实现中有个细节需要注意: <strong>不能使用 <code>range</code> 遍历 <code>allp</code>, 因为在整个遍历过程中，可能会有解锁再次加锁的情况 (也就意味着 allp 会发生变化)，
 所以在循环的 &ldquo;条件判断表达式&rdquo; 部分，每次需要重新获取 allp 的长度</strong>。这里涉及到一个基础知识点:</p>
 <blockquote>
 <p>for 遍历和 for + range 遍历计算长度的方式不一样。</p>
 </blockquote>
-<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// goroutine 运行多长时间会被抢占
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 单个 goroutine 运行多长时间会被抢占
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> forcePreemptNS = <span style="color:#3677a9">10</span> * <span style="color:#3677a9">1000</span> * <span style="color:#3677a9">1000</span> <span style="color:#999;font-style:italic">// 10ms
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
 </span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">retake</span>(now <span style="color:#6ab825;font-weight:bold">int64</span>) <span style="color:#6ab825;font-weight:bold">uint32</span> {
@@ -1472,6 +1473,7 @@
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://www.yuque.com/aceld/golang/srxd6d#5c3da99e">Go调度器调度场景过程全解析</a></li>
+<li><a href="https://tpaschalis.me/goroutines-size/">What is a goroutine? And what is their size?</a></li>
 </ul>
 
 

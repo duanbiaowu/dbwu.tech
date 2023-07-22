@@ -1,0 +1,343 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>UUID 通用技术选型 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="分布式唯一 ID 是指在分布式系统中生成的全局唯一标识符。在分布式系统中，由于多个节点同时操作数据可能会导致数据冲突或者重复，因此需要为每个数据对象赋予一个唯一的标识符，以便在系统范围内进行区分。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="UUID 通用技术选型" />
+<meta property="og:description" content="分布式唯一 ID 是指在分布式系统中生成的全局唯一标识符。在分布式系统中，由于多个节点同时操作数据可能会导致数据冲突或者重复，因此需要为每个数据对象赋予一个唯一的标识符，以便在系统范围内进行区分。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/uuid/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-17T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-17T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="UUID 通用技术选型"/>
+<meta name="twitter:description" content="分布式唯一 ID 是指在分布式系统中生成的全局唯一标识符。在分布式系统中，由于多个节点同时操作数据可能会导致数据冲突或者重复，因此需要为每个数据对象赋予一个唯一的标识符，以便在系统范围内进行区分。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>UUID 通用技术选型</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B">软件工程</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><strong>分布式唯一 ID</strong> 是指在分布式系统中生成的全局唯一标识符。在分布式系统中，由于多个节点同时操作数据可能会导致数据冲突或者重复，因此需要为每个数据对象赋予一个唯一的标识符，以便在系统范围内进行区分。</p>
+<p>本文主要介绍 <strong>三种</strong> 常见类型的实现方案，并简要概述各个方案的优缺点，并在附录部分给出 Go 语言的几个开源组件，读者可以根据自己的业务场景进行技术选型。</p>
+<h2 id="1完全依赖三方组件">1.完全依赖三方组件</h2>
+<p>ID 的生成规则和读写操作完全由第三方组件控制，例如常见的 <code>MySQL 自增 ID</code>, <code>Redis Incr 序列号</code>, <code>MongoDB ObjectId</code> 等。</p>
+<p>下面对 MySQL, Redis, MongoDB 方案做一个简单的概括，读者了解即可 (<del>因为生产环境中不会这么使用</del>)。</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MySQL 自增 ID</td>
+<td>简单易维护，单表保证 ID 唯一性</td>
+<td>性能较低，扩展性差，主从同步或切换时数据生成过程不可控，依赖于 MySQL 可用性</td>
+</tr>
+<tr>
+<td>Redis 自增 ID</td>
+<td>简单易维护，性能比数据库高，保证 ID 唯一性</td>
+<td>扩展性差，需要做好对应的配置和应用层代码，依赖于 Redis 可用性</td>
+</tr>
+<tr>
+<td>MongoDB</td>
+<td>简单易维护，保证 ID 唯一性</td>
+<td>扩展性差，存储空间占用多 (128 bit)，依赖于 MongoDB 可用性</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2不完全依赖三方组件">2.不完全依赖三方组件</h2>
+<p>ID 的生成规则有部分因子取决于数据源或配置信息，例如常见的 <code>Snowflake</code> 雪花算法。</p>
+<p><strong>Snowflake</strong> (雪花算法) 是一种生成分布式全局唯一 ID 的算法，生成的 ID 称为 Snowflake IDs 或 snowflakes。这种算法由 Twitter 创建，
+并用于推文的 ID, Go 语言生态可以看看 <a href="https://github.com/bwmarrin/snowflake">这个组件</a>。</p>
+<p><img src="https://dbwu.tech/images/snowflake.png" alt="图片来源: https://atakde.medium.com/twitter-snowflake-approach-is-cool-3156f78017cb"></p>
+<table>
+<thead>
+<tr>
+<th>bits</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>未使用，保留</td>
+</tr>
+<tr>
+<td>41</td>
+<td>时间戳</td>
+</tr>
+<tr>
+<td>10</td>
+<td>服务器标识</td>
+</tr>
+<tr>
+<td>12</td>
+<td>序列号</td>
+</tr>
+</tbody>
+</table>
+<p><code>Snowflake</code> 算法的 ID 理论生成速度峰值为:</p>
+<blockquote>
+<p>2^10 * 2^12 = 2^22 = 4194304/秒</p>
+</blockquote>
+<p>实际应用中，可以进行具体的 bit 调整，例如可以将服务器标识中的一部分 bit 取出作为数据中心标识。</p>
+<h3 id="优点">优点</h3>
+<ul>
+<li>生成速度快，不依赖其他组件，独立生成</li>
+<li>高可用，不依赖于单点，每个服务器都可以独立生成 ID</li>
+<li>ID 辨识度高，天然支持排序</li>
+<li>扩展性强</li>
+</ul>
+<h3 id="缺点">缺点</h3>
+<ul>
+<li><strong>时钟回拨</strong> (很严重)</li>
+<li>能够表达的时间有限，最多 ≈ 70 年</li>
+<li>生成的 ID 可以根据时间往后推算和预测</li>
+</ul>
+<blockquote>
+<p>时钟回拨是指在特定的情况下，系统时钟或者计算机的时间被意外地向后调整了一段时间，导致系统中某些时间相关的操作出现异常。</p>
+</blockquote>
+<p>时钟回拨通常发生在网络时间同步出现故障或者手动修改系统时间的情况下，如果发生时钟回拨，整个 uuid 可能会出现重复，直接影响到一些和时间相关的关键程序的正确运行，比如金融交易、时间序列、安全协议等。
+针对上述 <code>Snowflake</code> 算法存在的缺点和问题，百度开源了解决方案 <a href="https://github.com/baidu/uid-generator">UidGenerator</a>。</p>
+<h2 id="3完全独立实现">3.完全独立实现</h2>
+<p>ID 的生成规则由运行进程独立完成，不依赖任何第三方组件和配置信息，例如 <code>UUID</code>, <code>GUID</code> 等，本文以 <code>UUID</code> 为例分析下，对 <code>GUID</code> 感兴趣的读者，可以参考附录列表的 <code>GUID</code> 开源组件。</p>
+<p><strong>UUID</strong> 是通用唯一识别码（<code>Universally Unique Identifier</code>) 的缩写，开放软件基金会 (OSF) 规范定义了使用网卡、 MAC 地址、时间戳、命名空间（Namespace）、随机或伪随机数、序列号等元素来生成 UUID。</p>
+<p>UUID 有 5 个版本，每个版本都有不同的生成规则:</p>
+<ol>
+<li>V1: 基于时间戳和 MAC 地址生成，MAC 地址包括网卡的物理地址和一个伪随机数</li>
+<li>V2: 将版本 V1 的时间戳前四位换为 POSIX 的 UID 或 GID，基本不使用</li>
+<li>V3: 基于命名空间和名称生成，使用 MD5 哈希算法，不推荐使用</li>
+<li>V4: 使用伪随机数完全随机生成，重复概率与随机数种子、生成器质量相关</li>
+<li>V5: 类似于版本 V3，使用 SHA-1 哈希算法代替 MD5</li>
+</ol>
+<p><strong>目前主流使用的是版本 4</strong>，Go 语言生态可以看看 <a href="https://github.com/bwmarrin/snowflake">这个组件</a>。</p>
+<p>在 Linux 系统中，可以直接使用命令生成 uuid:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ uuidgen
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>a6ba6a13-c5ee-4eef-a7d4-3410b1fc7098
+</span></span></code></pre></div><p>也可以使用 <a href="https://www.uuidgenerator.net/version4">这个网站</a> 在线生成。</p>
+<p><img src="https://dbwu.tech/images/uuidonline.jpg" alt="在线生成 UUID"></p>
+<h3 id="优点-1">优点</h3>
+<ul>
+<li>生成速度快，不依赖其他组件，独立生成</li>
+<li>无序，避免按照时间顺序递增或递减 (当然这也可以被认为是一个缺点)</li>
+<li>扩展性强</li>
+</ul>
+<h3 id="缺点-1">缺点</h3>
+<ul>
+<li>存储空间占用多 (128 bit) 以及写入时的性能较低</li>
+<li>可读性低，常见的业务场景需要二次转换 (例如邀请拉新活动需要根据二维码中的 UUID 找到对应的用户 ID)</li>
+<li>应用服务容器化后，主机名、网卡可能高度相似，提高了重复概率</li>
+</ul>
+<h2 id="小结">小结</h2>
+<p>本文主要介绍了关于 <code>分布式唯一 ID</code> 三种实现方案以及各自的优缺点，综上所述，笔者比较推荐的方案是 <code>Snowflake</code> 算法，毕竟大多数服务还是运行在云服务商提供的基础设施上，
+<code>时钟回拨</code> 这个问题基本可以被完全规避。最后，希望这篇文章可以帮助读者在做对应的技术选型时提供帮助。</p>
+<h2 id="附录">附录</h2>
+<ul>
+<li><a href="https://github.com/bwmarrin/snowflake">bwmarrin/snowflake</a></li>
+<li><a href="https://github.com/google/uuid">google/uuid</a></li>
+<li><a href="https://github.com/satori/go.uuid">satori/go.uuid</a></li>
+<li><a href="https://github.com/lithammer/shortuuid">lithammer/shortuuid</a></li>
+<li><a href="https://github.com/oklog/ulid">oklog/ulid</a></li>
+<li><a href="https://github.com/sony/sonyflake">sony/sonyflake</a></li>
+<li><a href="https://github.com/kjk/betterguid">kjk/betterguid</a></li>
+<li><a href="https://github.com/rs/xid">rs/xid</a></li>
+<li><a href="https://github.com/segmentio/ksuid">segmentio/ksuid</a></li>
+<li><a href="https://github.com/pborman/uuid">pborman/uuid</a></li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://segment.com/blog/a-brief-history-of-the-uuid/">A brief history of the UUID</a></li>
+<li><a href="https://atakde.medium.com/twitter-snowflake-approach-is-cool-3156f78017cb">Twitter snowflake approach is cool</a></li>
+<li><a href="https://zh.wikipedia.org/wiki/%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95">雪花算法</a></li>
+<li><a href="https://zh.wikipedia.org/wiki/%E9%80%9A%E7%94%A8%E5%94%AF%E4%B8%80%E8%AF%86%E5%88%AB%E7%A0%81">通用唯一识别码</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_performance_tips/"><i class="fa fa-chevron-circle-left"></i> Go 高性能 Tips</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_asm/">Go 汇编 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="UUID 通用技术选型"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
