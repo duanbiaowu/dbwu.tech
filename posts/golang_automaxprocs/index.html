@@ -1,0 +1,412 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>容器中如何正确配置 GOMAXPROCS ? - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="容器中如何正确配置 GOMAXPROCS ?" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_automaxprocs/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-30T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="容器中如何正确配置 GOMAXPROCS ?"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>容器中如何正确配置 GOMAXPROCS ?</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/docker">Docker</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="前言">前言</h2>
+<p>前两天看了一篇文章 <a href="https://gaocegege.com/Blog/maxprocs-cpu">GOMAXPROCS 与容器的相处之道</a>，里面提到了 Go 标准库中 <code>runtime.GOMAXPROCS</code> 方法的问题：</p>
+<blockquote>
+<p>因为系统调用 <code>sched_getaffinity</code> 并不感知它对进程的限制，所以运行在 Kubernetes 中的 Go 程序的运行时始终会认为自己可以使用宿主机上的所有 CPU，进而创建了相同数量的 P (处理器)，
+而当 GOMAXPROCS 被手动地设置为限制后的值后，CPU 密集型场景的性能就得到了很大提高。</p>
+</blockquote>
+<p>Go 标准库在应用层面并没有给出任何解决方案，Uber 公司的技术团队针对这个问题开发并开源了组件 <a href="https://github.com/uber-go/automaxprocs">automaxprocs</a>，
+对于需要严格限制 <code>P 数量</code> 的业务场景，可以使用该组件在运行时根据容器中 <code>CGroups</code> 的配置动态修改 <code>GOMAXPROCS</code>，避免资源的不合理使用。</p>
+<h2 id="内部实现">内部实现</h2>
+<p>我们一起探究下 <code>automaxprocs</code> 组件的内部代码实现，笔者选择的版本为 <code>v1.5.1</code>。</p>
+<p><strong>备注</strong>: 如果读者对 <code>CGroups</code> 概念尚不清晰，建议先阅读一下这篇文章 <a href="https://dbwu.tech/posts/docker_arch/">Docker 基础支撑技术概览</a>。</p>
+<h3 id="示例程序">示例程序</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	_ <span style="color:#ed9d13">&#34;go.uber.org/automaxprocs&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;runtime&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">10</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>			time.<span style="color:#447fcf">Sleep</span>(time.Millisecond)
+</span></span><span style="display:flex;"><span>		}()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 输出 CPU Core 的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 输出处理器 P 的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;CPU number = %d, P number = %d\n&#34;</span>, runtime.<span style="color:#447fcf">NumCPU</span>(), runtime.<span style="color:#447fcf">GOMAXPROCS</span>(-<span style="color:#3677a9">1</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="宿主机运行">宿主机运行</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>CPU <span style="color:#40ffff">number</span> = 8, P <span style="color:#40ffff">number</span> = <span style="color:#3677a9">8</span>
+</span></span></code></pre></div><p>笔者的宿主机 CPU 配置为 8 Core，通过输出的信息可以看到处理器的数量并没有被限制。</p>
+<h3 id="容器运行">容器运行</h3>
+<p>接下来构建一个配置为 <code>–cpus=2</code> 的容器运行上面的代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>CPU <span style="color:#40ffff">number</span> = 2, P <span style="color:#40ffff">number</span> = <span style="color:#3677a9">2</span>
+</span></span></code></pre></div><p>通过输出的信息可以看到处理器的数量已经被限制。</p>
+<h2 id="接口">接口</h2>
+<p><code>automaxprocs</code> 组件同时兼容 <code>CGroups</code> 和 <code>CGroups2</code>, 通过 <code>queryer</code> 接口来抽象隔离具体的版本实现。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> queryer <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">CPUQuota</span>() (<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>    _newCgroups2 = cg.NewCGroups2ForCurrentProcess
+</span></span><span style="display:flex;"><span>    _newCgroups  = cg.NewCGroupsForCurrentProcess
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/automaxprocs_queryer.png" alt="queryer 接口"></p>
+<p><code>CGroups2</code> 是 <code>CGroups</code> 的升级版本，提供了统一的控制系统并增强了资源管理能力，详情可以参考这篇文章 <a href="https://kubernetes.io/docs/concepts/architecture/cgroups/">About cgroup v2</a>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 确认当前系统的 CGroups 版本 </span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ stat -fc %T /sys/fs/cgroup/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># CGroups  输出 tmpfs</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># CGroups2 输出 cgroup2fs</span>
+</span></span></code></pre></div><p>笔者使用的 <code>Ubuntu</code> 版本为 <code>tmpfs</code>, 所以下面的代码研究以 <code>CGroups</code> 实现为主。</p>
+<h2 id="初始化函数">初始化函数</h2>
+<p><code>automaxprocs</code> 包内注册了 <code>init</code> 方法，会被其被引用时自动调用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> automaxprocs
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">init</span>() {
+</span></span><span style="display:flex;"><span>	maxprocs.<span style="color:#447fcf">Set</span>(maxprocs.<span style="color:#447fcf">Logger</span>(log.Printf))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="set-函数">Set 函数</h2>
+<p><code>Set</code> 函数是功能实现的核心代码，它会自动匹配 <code>Linux</code> 容器中的 <code>CPU</code> 资源配额并更改 <code>GOMAXPROCS</code>，对于非 <code>Linux</code> 系统或者没有配置 <code>CPU</code> 资源配置的 <code>Linux</code> 系统，
+该方法什么也不做，最后方法返回一个 <code>error</code> 和一个 <code>undo</code> 函数 (用来撤销针对 <code>GOMAXPROCS</code> 所作的修改)。</p>
+<p><strong>题外话</strong>: 这个返回的 <code>undo</code> 函数小技巧值得学习 (设计模式之状态模式)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Set</span>(opts ...Option) (<span style="color:#6ab825;font-weight:bold">func</span>(), <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	cfg := &amp;config{
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 用来获取 CPU 资源配额的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		procs:         iruntime.CPUQuotaToGOMAXPROCS,
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// GOMAXPROCS 最小值为 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		minGOMAXPROCS: <span style="color:#3677a9">1</span>,    
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 默认的 undo 函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	undoNoop := <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> max, exists := os.<span style="color:#447fcf">LookupEnv</span>(_maxProcsKey); exists {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果已经设置了 GOMAXPROCS 环境变量，就以环境变量为准
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 不做任何操作，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> undoNoop, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取 CPU 资源配额
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxProcs, status, err := cfg.<span style="color:#447fcf">procs</span>(cfg.minGOMAXPROCS)   
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 未设置 CPU 资源配额，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> status == iruntime.CPUQuotaUndefined {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> undoNoop, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取当前 GOMAXPROCS 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	prev := runtime.<span style="color:#447fcf">GOMAXPROCS</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// undo 函数更新，恢复到未修改前的 GOMAXPROCS 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	undo := <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		runtime.<span style="color:#447fcf">GOMAXPROCS</span>(prev)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	runtime.<span style="color:#447fcf">GOMAXPROCS</span>(maxProcs)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> undo, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="cpuquotatogomaxprocs-函数">CPUQuotaToGOMAXPROCS 函数</h3>
+<p><code>CPUQuotaToGOMAXPROCS</code> 函数用于获取 <code>Linux</code> 容器中的 <code>CPU</code> 资源配额，具体的实现是由 <code>newQueryer</code> 函数完成的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">CPUQuotaToGOMAXPROCS</span>(minValue <span style="color:#6ab825;font-weight:bold">int</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, CPUQuotaStatus, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	cgroups, err := <span style="color:#447fcf">newQueryer</span>()
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	quota, defined, err := cgroups.<span style="color:#447fcf">CPUQuota</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	maxProcs := <span style="color:#24909d">int</span>(math.<span style="color:#447fcf">Floor</span>(quota))
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 如果 CPU 配额比配置的最小值还要小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 就以配置的最小值为准
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> minValue &gt; <span style="color:#3677a9">0</span> &amp;&amp; maxProcs &lt; minValue {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> minValue, CPUQuotaMinUsed, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxProcs, CPUQuotaUsed, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="newqueryer-函数">newQueryer 函数</h3>
+<p><code>newQueryer</code> 函数并没有判断当前系统的 <code>CGroups</code> 版本，而是优先获取 <code>CGroups2</code> 的配置，如果获取不到，再获取 <code>CGroups</code> 的配置。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newQueryer</span>() (queryer, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 优先获取 CGroups2 配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cgroups, err := <span style="color:#447fcf">_newCgroups2</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> cgroups, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> errors.<span style="color:#447fcf">Is</span>(err, cg.ErrNotV2) {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 其次获取 CGroups 配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">_newCgroups</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>NewCGroupsForCurrentProcess</code> 函数用来获取 <code>CGroups</code> 版本的配置，具体的实现是 <code>NewCGroups</code> 函数完成的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewCGroupsForCurrentProcess</span>() (CGroups, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">NewCGroups</span>(_procPathMountInfo, _procPathCGroup)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>NewCGroups</code> 函数通过读取 <code>/proc/self/mountinfo</code> 和 <code>/proc/self/cgroup</code> 文件获取配置，最后包装成 <code>CGroups</code> 接口对象返回。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// CGroups 接口对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> CGroups <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]*CGroup
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewCGroups</span>(procPathMountInfo, procPathCGroup <span style="color:#6ab825;font-weight:bold">string</span>) (CGroups, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="cpuquota-方法">CPUQuota 方法</h3>
+<p>最后，我们看来看下 <code>CGroups</code> 版本的 <code>CPU</code> 资源配额是如何计算出来的，该功能由 <code>CPUQuota</code> 方法完成。</p>
+<p>该方法首先获取 <code>cpu.cfs_quota_us</code> 和 <code>cpu.cfs_period_us</code> 两个字段：</p>
+<blockquote>
+<p>cpu.cfs_quota_us:  CPU 周期内最多可使用的时间<!-- raw HTML omitted -->
+cpu.cfs_period_us: CPU 周期时间</p>
+</blockquote>
+<p>例如：如果 <code>cpu.cfs_quota_us</code> 是 <code>cpu.cfs_period_us</code> 的 4 倍，表示允许容器使用 4 个 <code>CPU Core</code>。</p>
+<p>如果上述两个字段任意一个未设置，方法返回 <code>-1</code>，表示不限制对 <code>CPU</code> 资源的使用，如果两个字段都设置了，使用下面的公式返回资源配额：</p>
+<blockquote>
+<p>cpu.cfs_quota_us / cpu.cfs_period_us</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (cg CGroups) <span style="color:#447fcf">CPUQuota</span>() (<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cfsQuotaUs, err := cpuCGroup.<span style="color:#447fcf">readInt</span>(_cgroupCPUCFSQuotaUsParam)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cfsPeriodUs, err := cpuCGroup.<span style="color:#447fcf">readInt</span>(_cgroupCPUCFSPeriodUsParam)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">float64</span>(cfsQuotaUs) / <span style="color:#24909d">float64</span>(cfsPeriodUs), <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p><code>uber-go/automaxprocs</code> 组件通过读取运行时环境中的 <code>CGroups</code> 相关配置文件，完成动态修改 <code>GOMAXPROCS</code> 功能。</p>
+<p><img src="https://dbwu.tech/images/automaxprocs_call.png" alt="automaxprocs 调用示意图"></p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/uber-go/automaxprocs">uber-go/automaxprocs</a></li>
+<li><a href="../../cloudnative/docker.md">Docker 基础支撑技术概览</a></li>
+<li><a href="../../sourcecode/go/runtime/gmp.md">GMP 调度器</a></li>
+<li><a href="https://gaocegege.com/Blog/maxprocs-cpu">GOMAXPROCS 与容器的相处之道</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/architecture/cgroups/">About cgroup v2</a></li>
+<li><a href="https://www.kernel.org/doc/Documentation/scheduler/sched-bwc.txt">CFS Bandwidth Control</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_singleflight/"><i class="fa fa-chevron-circle-left"></i> singleflight Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/goland_best_practice/">Goland 最佳实践 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="容器中如何正确配置 GOMAXPROCS ?"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

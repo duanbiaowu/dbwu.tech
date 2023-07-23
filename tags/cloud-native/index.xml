@@ -7,7 +7,7 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Wed, 29 Mar 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 03 Apr 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/cloud-native/index.xml" rel="self" type="application/rss+xml" />
    
@@ -202,6 +202,69 @@
      </item>
    
      <item>
+       <title>容器中如何正确配置 GOMAXPROCS ?</title>
+       <link>https://dbwu.tech/posts/golang_automaxprocs/</link>
+       <pubDate>Sun, 30 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_automaxprocs/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>singleflight Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_singleflight/</link>
+       <pubDate>Fri, 28 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_singleflight/</guid>
+       <description>singleflight 是将 多个请求的返回结果相同 + 计算过程次数限制 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 GET 和 DELETE 两种类型 API, 简化了调用方法。一个比较常见的场景是使用 singleflight 来限制同一个缓存 key 的重复请求，避免发生 缓存击穿 时，避免请求全部落到数据库，减少性能影响和宕机风险。</description>
+     </item>
+   
+     <item>
+       <title>sync.Map Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_map/</link>
+       <pubDate>Thu, 27 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_map/</guid>
+       <description>从内部底层实现来说，sync.Map 通过 entry 类型将 map 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (read map 和 dirty map 指向同一个 entry)， read, dirty 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 sync.Map 根据读写比例动态变化和转换内部字段数据结构， 尤其是 read 和 dirty 两个字段保持&amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>sync.Cond Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_cond/</link>
+       <pubDate>Wed, 26 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_cond/</guid>
+       <description>sync.Cond 不是一个常用的同步机制，在条件变量长时间无法满足时，sync.Cond 能够让出处理器的使用权，和单纯使用 for {} 进行无限等待相比，可以提高 CPU 的利用率。</description>
+     </item>
+   
+     <item>
+       <title>sync.WaitGroup Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_waitgroup/</link>
+       <pubDate>Tue, 25 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_waitgroup/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>sync.RWMutex Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_rwmutex/</link>
+       <pubDate>Mon, 24 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_rwmutex/</guid>
+       <description>如果一个 goroutine 持有了读锁进行操作，此时其他的 goroutine 可能尝试获取写锁 (参与竞争)，那么在读锁被释放之前，不会有其他 goroutine 获取到读锁 (避免竞争写锁的 goroutine 被饿死)， 一个 goroutine 在阻塞获取写锁的过程中，会阻止其他 goroutine 获得读锁。</description>
+     </item>
+   
+     <item>
+       <title>sync.Mutex Code Reading</title>
+       <link>https://dbwu.tech/posts/golang_sync_mutex/</link>
+       <pubDate>Sun, 23 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_sync_mutex/</guid>
+       <description>互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 goroutine 可以连续多次获得互斥锁，即使存在阻塞的 goroutine, 与此同时，饥饿模式是防止尾部的 goroutine 被饿死的重要机制 (高尾延时)。</description>
+     </item>
+   
+     <item>
        <title>sync.Once Code Reading</title>
        <link>https://dbwu.tech/posts/golang_sync_once/</link>
        <pubDate>Sun, 23 Apr 2023 00:00:00 +0000</pubDate>
@@ -310,6 +373,24 @@
      </item>
    
      <item>
+       <title>Docker 网络原理概览</title>
+       <link>https://dbwu.tech/posts/docker_network/</link>
+       <pubDate>Mon, 03 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/docker_network/</guid>
+       <description>&lt;code&gt;Docker&lt;/code&gt; 原生网络是基于 Linux 的 &lt;code&gt;网络命名空间&lt;/code&gt;（net namespace） 和 &lt;code&gt;虚拟网络设备&lt;/code&gt;（veth pair）实现的。当 &lt;code&gt;Docker&lt;/code&gt; 进程启动时，会在宿主机上创建一个名称为 &lt;code&gt;docker0&lt;/code&gt; 的 &lt;strong&gt;虚拟网桥&lt;/strong&gt;，在该宿主机上启动的 &lt;code&gt;Docker&lt;/code&gt; 容器会连接到这个虚拟网桥上 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>iptables 概述</title>
+       <link>https://dbwu.tech/posts/iptables/</link>
+       <pubDate>Mon, 03 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/iptables/</guid>
+       <description>iptables 是一个配置 Linux 内核防火墙的命令行工具，它基于内核的包过滤框架（packet filtering framework） netfilter, 主要用于管理数据包过滤和 NAT 规则。</description>
+     </item>
+   
+     <item>
        <title>Go 的反射与三大定律</title>
        <link>https://dbwu.tech/posts/golang_reflect/</link>
        <pubDate>Thu, 30 Mar 2023 00:00:00 +0000</pubDate>
@@ -328,6 +409,78 @@
      </item>
    
      <item>
+       <title>Go 语言内置的设计模式</title>
+       <link>https://dbwu.tech/posts/golang_design_patterns/</link>
+       <pubDate>Wed, 22 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_design_patterns/</guid>
+       <description>和传统的 GOF, Java, C# 教科书式的设计模式不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，万万不可按图索骥、生搬硬套，简单的事情复杂化。</description>
+     </item>
+   
+     <item>
+       <title>为什么 recover 必须在 defer 中调用？</title>
+       <link>https://dbwu.tech/posts/golang_panic_recover/</link>
+       <pubDate>Mon, 13 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_panic_recover/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>为什么 defer 的执行顺序和注册顺序不同？</title>
+       <link>https://dbwu.tech/posts/golang_defer/</link>
+       <pubDate>Sun, 12 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_defer/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Go map 设计与实现</title>
+       <link>https://dbwu.tech/posts/golang_map/</link>
+       <pubDate>Sat, 11 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_map/</guid>
+       <description>本文从源代码的角度分析 Go map 数据结构使用中的常见问题，例如: 为什么 map 未初始化写入时报错 ? map 是线程安全的吗 ? 为什么遍历 map 是无序的 ? &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>Go 切片扩容底层实现</title>
+       <link>https://dbwu.tech/posts/golang_slice/</link>
+       <pubDate>Fri, 10 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_slice/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Go Delve</title>
+       <link>https://dbwu.tech/posts/golang_delve/</link>
+       <pubDate>Thu, 09 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_delve/</guid>
+       <description>Delve 用来调试 Go 语言开发的程序，该工具的目标是为 Go 语言提供一个简单、功能齐全的调试工具。</description>
+     </item>
+   
+     <item>
+       <title>云原生和边缘计算简介</title>
+       <link>https://dbwu.tech/posts/what_is_cloudnative/</link>
+       <pubDate>Wed, 08 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/what_is_cloudnative/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>CDN 原理</title>
+       <link>https://dbwu.tech/posts/cdn/</link>
+       <pubDate>Tue, 28 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/cdn/</guid>
+       <description>CDN 的基本原理为反向代理，反向代理（Reverse Proxy）方式是指以代理服务器来接受 Internet 上的连接请求，然后将请求转发给内部网络上的服务器， 并将从服务器上得到的结果返回给 Internet 上请求连接的客户端，此时代理服务器对外就表现为一个节点服务器 &amp;hellip;</description>
+     </item>
+   
+     <item>
        <title>Go 内存模型</title>
        <link>https://dbwu.tech/posts/memory_model/</link>
        <pubDate>Fri, 24 Feb 2023 00:00:00 +0000</pubDate>
@@ -342,6 +495,24 @@
        <pubDate>Fri, 24 Feb 2023 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/version_semantics/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>字节序概述</title>
+       <link>https://dbwu.tech/posts/byte_order/</link>
+       <pubDate>Mon, 20 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/byte_order/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>DNS 原理</title>
+       <link>https://dbwu.tech/posts/dns/</link>
+       <pubDate>Sat, 18 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/dns/</guid>
        <description></description>
      </item>
    

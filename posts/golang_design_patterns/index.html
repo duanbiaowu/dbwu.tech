@@ -1,0 +1,697 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Go 语言内置的设计模式 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="和传统的 GOF, Java, C# 教科书式的设计模式不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，万万不可按图索骥、生搬硬套，简单的事情复杂化。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 语言内置的设计模式" />
+<meta property="og:description" content="和传统的 GOF, Java, C# 教科书式的设计模式不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，万万不可按图索骥、生搬硬套，简单的事情复杂化。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_design_patterns/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-22T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go 语言内置的设计模式"/>
+<meta name="twitter:description" content="和传统的 GOF, Java, C# 教科书式的设计模式不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，万万不可按图索骥、生搬硬套，简单的事情复杂化。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Go 语言内置的设计模式</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F">设计模式</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>在软件工程中，设计模式（design pattern）是对软件设计中普遍存在（反复出现）的各种问题，所提出的解决方案。 &ndash; 维基百科</p>
+</blockquote>
+<p>和传统的 <code>GOF</code>, <code>Java</code>, <code>C#</code> 教科书式的 <code>设计模式</code> 不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，
+万万不可按图索骥、生搬硬套，简单的事情复杂化。</p>
+<p>本文带领大家一起看一下，Go 语言标准库中自带的 <code>编程模式</code>。</p>
+<h2 id="单例模式">单例模式</h2>
+<p><strong>确保一个类只有一个实例，并提供对该实例的全局访问</strong>。</p>
+<p>通过使用标准库中的 <code>sync.Once</code> 对业务对象进行简单封装，即可实现 <code>单例模式</code>，简单安全高效。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	once     sync.Once
+</span></span><span style="display:flex;"><span>	instance Singleton
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Singleton 业务对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Singleton <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// NewInstance 单例模式方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewInstance</span>() Singleton {
+</span></span><span style="display:flex;"><span>	once.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		instance = Singleton{}
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> instance
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s1 := <span style="color:#447fcf">NewInstance</span>()
+</span></span><span style="display:flex;"><span>	s2 := <span style="color:#447fcf">NewInstance</span>()
+</span></span><span style="display:flex;"><span>	s3 := <span style="color:#447fcf">NewInstance</span>()	
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/go_native_singleton.png" alt="Go 标准库单例模式"></p>
+<h2 id="简单工厂模式">简单工厂模式</h2>
+<p>Go 语言本身没有 <code>构造方法</code> 特性，工程实践中一般使用 <code>NewXXX</code> 创建新的对象 (XXX 为对象名称)，比如标准库中的:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// errors/errors.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">New</span>(text <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> &amp;errorString{text}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// sync/cond.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewCond</span>(l Locker) *Cond {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> &amp;Cond{L: l}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>在这个基础上，如果方法返回的是 <code>interface</code> 的时候，其实就等于是 <code>简单工厂模式</code>，然后再加一层抽象的话，就接近于 <code>抽象工厂模式</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// ConfigParser 配置解析接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ConfigParser <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Parse</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// JsonParser Json 文件解析器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> JsonParser <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (j *JsonParser) <span style="color:#447fcf">Parse</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newJsonParser</span>() *JsonParser {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;JsonParser{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// YamlParser Yaml 文件解析器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> YamlParser <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (y *YamlParser) <span style="color:#447fcf">Parse</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newYamlParser</span>() *YamlParser {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;YamlParser{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ConfigType <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	JsonType ConfigType = <span style="color:#3677a9">1</span> &lt;&lt; <span style="color:#6ab825;font-weight:bold">iota</span>
+</span></span><span style="display:flex;"><span>	YamlType
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// NewConfig 根据不同的类型创建对应的解析器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewConfig</span>(t ConfigType) ConfigParser {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> t {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> JsonType:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">newJsonParser</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> YamlType:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">newYamlParser</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jsonParser := <span style="color:#447fcf">NewConfig</span>(JsonType)
+</span></span><span style="display:flex;"><span>	yamlParser := <span style="color:#447fcf">NewConfig</span>(YamlType)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/go_impl_factory.png" alt="Go 实现简单工厂模式"></p>
+<h2 id="对象池模式">对象池模式</h2>
+<p>通过回收利用对象避免获取和释放资源所需的昂贵成本，我们可以直接使用 <code>sync.Pool</code> 对象来实现功能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;net/http&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// HTTP Request 对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	reqPool = sync.Pool{
+</span></span><span style="display:flex;"><span>		New: <span style="color:#6ab825;font-weight:bold">func</span>() any {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> http.Request{}
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r1 := reqPool.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>	r2 := reqPool.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>	r3 := reqPool.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	reqPool.<span style="color:#447fcf">Put</span>(r1)
+</span></span><span style="display:flex;"><span>	reqPool.<span style="color:#447fcf">Put</span>(r2)
+</span></span><span style="display:flex;"><span>	reqPool.<span style="color:#447fcf">Put</span>(r3)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="构建模式-builder">构建模式 (Builder)</h2>
+<p>将一个复杂对象的构建与它的表示分离，使得同样的构建过程可以创建不同的表示。</p>
+<p>如果用传统的方法实现 <code>构建模式</code>，对应的 Go 语言代码大致是下面这个样子:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> QueryBuilder <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Select</span>(table <span style="color:#6ab825;font-weight:bold">string</span>, columns []<span style="color:#6ab825;font-weight:bold">string</span>) QueryBuilder
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Where</span>(conditions ...<span style="color:#6ab825;font-weight:bold">string</span>) QueryBuilder
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">GetRawSQL</span>() <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> MySQLQueryBuilder <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *MySQLQueryBuilder) <span style="color:#447fcf">Select</span>(table <span style="color:#6ab825;font-weight:bold">string</span>, columns ...<span style="color:#6ab825;font-weight:bold">string</span>) QueryBuilder {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 具体实现代码跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *MySQLQueryBuilder) <span style="color:#447fcf">Where</span>(conditions ...<span style="color:#6ab825;font-weight:bold">string</span>) QueryBuilder {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 具体实现代码跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *MySQLQueryBuilder) <span style="color:#447fcf">GetRawSQL</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 具体实现代码跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m := &amp;MySQLQueryBuilder{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	sql := m.<span style="color:#447fcf">Select</span>(<span style="color:#ed9d13">&#34;users&#34;</span>, <span style="color:#ed9d13">&#34;username&#34;</span>, <span style="color:#ed9d13">&#34;password&#34;</span>).
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">Where</span>(<span style="color:#ed9d13">&#34;id = 100&#34;</span>).
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">GetRawSQL</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(sql)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/builder.png" alt="Go 实现构建模式"></p>
+<p>上面的代码中，通过经典的链式调用来构造出具体的 SQL 语句，但是在 Go 语言中，我们一般使用另外一种模式来实现同样的功能 <code>FUNCTIONAL OPTIONS</code>，
+这似乎也是 Go 语言中最流行的模式之一。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> SQL <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Table   <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	Columns []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	Where   []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Option <span style="color:#6ab825;font-weight:bold">func</span>(s *SQL)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Table</span>(t <span style="color:#6ab825;font-weight:bold">string</span>) Option {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注意返回值类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">func</span>(s *SQL) {
+</span></span><span style="display:flex;"><span>		s.Table = t
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Columns</span>(cs ...<span style="color:#6ab825;font-weight:bold">string</span>) Option {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注意返回值类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">func</span>(s *SQL) {
+</span></span><span style="display:flex;"><span>		s.Columns = cs
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Where</span>(conditions ...<span style="color:#6ab825;font-weight:bold">string</span>) Option {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注意返回值类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">func</span>(s *SQL) {
+</span></span><span style="display:flex;"><span>		s.Where = conditions
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewSQL</span>(options ...Option) *SQL {
+</span></span><span style="display:flex;"><span>	sql := &amp;SQL{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, option := <span style="color:#6ab825;font-weight:bold">range</span> options {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">option</span>(sql)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> sql
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sql := <span style="color:#447fcf">NewSQL</span>(<span style="color:#447fcf">Table</span>(<span style="color:#ed9d13">&#34;users&#34;</span>),
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">Columns</span>(<span style="color:#ed9d13">&#34;username&#34;</span>, <span style="color:#ed9d13">&#34;password&#34;</span>),
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">Where</span>(<span style="color:#ed9d13">&#34;id = 100&#34;</span>),
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(sql)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/go_func_opts.png" alt="Go FUNCTIONAL OPTIONS 模式"></p>
+<h2 id="观察者模式">观察者模式</h2>
+<p>在对象间定义一个一对多的联系性，由此当一个对象改变了状态，所有其他相关的对象会被通知并且自动刷新。</p>
+<p>如果用传统的方法实现 <code>观察者模式</code>，对应的 Go 语言代码大致是下面这个样子:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;math&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Observer 观察者接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Observer <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">OnNotify</span>(Event)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Notifier 订阅接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Notifier <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Register</span>(Observer)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Deregister</span>(Observer)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Notify</span>(Event)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> (
+</span></span><span style="display:flex;"><span>	Event <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		Data <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	eventObserver <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		id <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	eventNotifier <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		observers <span style="color:#6ab825;font-weight:bold">map</span>[Observer]<span style="color:#6ab825;font-weight:bold">struct</span>{}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// OnNotify 观察者收到订阅的时间回调
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (o *eventObserver) <span style="color:#447fcf">OnNotify</span>(e Event) {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Register 注册观察者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (o *eventNotifier) <span style="color:#447fcf">Register</span>(l Observer) {
+</span></span><span style="display:flex;"><span>	o.observers[l] = <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Deregister 移除观察者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (o *eventNotifier) <span style="color:#447fcf">Deregister</span>(l Observer) {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">delete</span>(o.observers, l)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Notify 发出通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (o *eventNotifier) <span style="color:#447fcf">Notify</span>(e Event) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> p := <span style="color:#6ab825;font-weight:bold">range</span> o.observers {
+</span></span><span style="display:flex;"><span>		p.<span style="color:#447fcf">OnNotify</span>(e)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	notifier := eventNotifier{
+</span></span><span style="display:flex;"><span>		observers: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[Observer]<span style="color:#6ab825;font-weight:bold">struct</span>{}),
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	notifier.<span style="color:#447fcf">Register</span>(&amp;eventObserver{<span style="color:#3677a9">1</span>})
+</span></span><span style="display:flex;"><span>	notifier.<span style="color:#447fcf">Register</span>(&amp;eventObserver{<span style="color:#3677a9">2</span>})
+</span></span><span style="display:flex;"><span>	notifier.<span style="color:#447fcf">Register</span>(&amp;eventObserver{<span style="color:#3677a9">3</span>})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	notifier.<span style="color:#447fcf">Notify</span>(Event{Data: math.MaxInt64})
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/go_impl_observer.png" alt="Go 实现观察者模式"></p>
+<p>但其实我们有更简洁的方法，直接使用标准库中的 <code>sync.Cond</code> 对象，改造之后的 <code>观察者模式</code> 代码大概是这个样子:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> done = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">read</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, c *sync.Cond) {
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(name, <span style="color:#ed9d13">&#34;starts reading&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !done {
+</span></span><span style="display:flex;"><span>		c.<span style="color:#447fcf">Wait</span>() <span style="color:#999;font-style:italic">// 等待发出通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">write</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, c *sync.Cond) {
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(name, <span style="color:#ed9d13">&#34;starts writing&#34;</span>)
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	done = <span style="color:#6ab825;font-weight:bold">true</span> <span style="color:#999;font-style:italic">// 设置条件变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.L.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(name, <span style="color:#ed9d13">&#34;wakes all&#34;</span>)
+</span></span><span style="display:flex;"><span>	c.<span style="color:#447fcf">Broadcast</span>() <span style="color:#999;font-style:italic">// 通知所有观察者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	cond := sync.<span style="color:#447fcf">NewCond</span>(&amp;sync.Mutex{}) <span style="color:#999;font-style:italic">// 创建时传入一个互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 3 个观察者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">read</span>(<span style="color:#ed9d13">&#34;reader1&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">read</span>(<span style="color:#ed9d13">&#34;reader2&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">read</span>(<span style="color:#ed9d13">&#34;reader3&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 模拟延时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">write</span>(<span style="color:#ed9d13">&#34;writer-1&#34;</span>, cond) <span style="color:#999;font-style:italic">// 发出通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second) <span style="color:#999;font-style:italic">// 模拟延时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/go_native_observer.png" alt="Go 标准库观察者模式"></p>
+<p>将代码改造为 <code>sync.Cond</code> 之后，代码量更好，结构更简洁。</p>
+<h2 id="okerror-模式">ok/error 模式</h2>
+<p>在 Go 语言中，经常在一个表达式返回 <code>2</code> 个参数时使用这种模式:</p>
+<ul>
+<li>第 1 个参数是一个值或者 <code>nil</code></li>
+<li>第 2 个参数是 <code>true/false</code> 或者 <code>error</code></li>
+</ul>
+<p>在一个需要赋值的 <code>if</code> 条件语句中，使用这种模式去检测第 2 个参数值会让代码显得优雅简洁。</p>
+<h3 id="在函数返回时检测错误">在函数返回时检测错误</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">foo</span>() (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>){
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v, err := <span style="color:#447fcf">foo</span>(); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">panic</span>(err)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">println</span>(v)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="检测-map-是否存在指定的-key">检测 map 是否存在指定的 key</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	m := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">int</span>]<span style="color:#6ab825;font-weight:bold">string</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v, ok := m[<span style="color:#3677a9">0</span>]; ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">println</span>(v)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="类型断言">类型断言</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">foo</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	n := <span style="color:#447fcf">foo</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> v, ok := n.(<span style="color:#6ab825;font-weight:bold">int</span>); ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">println</span>(v)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="检测通道是否关闭">检测通道是否关闭</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>			ch &lt;- i
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">close</span>(ch)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> v, ok := &lt;-ch; ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#24909d">println</span>(v)
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// $ go run main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 输出如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 4
+</span></span></span></code></pre></div><h2 id="附加内容">附加内容</h2>
+<h2 id="闭包">闭包</h2>
+<p>有时候，我们可以利用 <code>闭包</code> 实现一些短小精悍的内部函数。</p>
+<h3 id="计数器">计数器</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	newSeqInc := <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>		seq := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>			seq++
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> seq
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	seq := <span style="color:#447fcf">newSeqInc</span>() <span style="color:#999;font-style:italic">// 创建一个计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">seq</span>())     <span style="color:#999;font-style:italic">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">seq</span>())     <span style="color:#999;font-style:italic">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">seq</span>())     <span style="color:#999;font-style:italic">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	seq2 := <span style="color:#447fcf">newSeqInc</span>() <span style="color:#999;font-style:italic">// 创建另一个计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">seq2</span>())     <span style="color:#999;font-style:italic">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">seq2</span>())     <span style="color:#999;font-style:italic">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#447fcf">seq2</span>())     <span style="color:#999;font-style:italic">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p>下面表格列出了常用的 <code>设计模式</code>，其中 Go 标准库自带的 <code>模式</code> 已经用删除线标识，读者可以和自己常用的 <code>设计模式</code> 进行对比。</p>
+<table>
+<thead>
+<tr>
+<th>创建型模式</th>
+<th>结构性模式</th>
+<th>行为型模式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><del>单例</del></td>
+<td>适配器</td>
+<td>策略</td>
+</tr>
+<tr>
+<td><del>简单工厂</del></td>
+<td>装饰者</td>
+<td><del>观察者</del></td>
+</tr>
+<tr>
+<td><del>抽象工厂</del></td>
+<td>代理</td>
+<td>状态</td>
+</tr>
+<tr>
+<td><del>对象池</del></td>
+<td></td>
+<td>责任链</td>
+</tr>
+<tr>
+<td><del>构建</del></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>长期以来，<code>设计模式</code> 一直处于尴尬的位置：初学者被各种概念和关系搞得不知所云，有经验的程序员会觉得 “这种代码写法 (这里指设计模式)，我早就知道了啊”。
+鉴于这种情况，本文中没有涉及到的 <code>设计模式</code>，笔者不打算再一一描述，感兴趣的读者可以直接跳到 <a href="https://github.com/duanbiaowu/go-examples-for-beginners/tree/master/patterns">仓库代码</a> 查看示例代码。</p>
+<blockquote>
+<p>相比于设计模式，更重要的是理解语言本身的特性以及最佳实践。</p>
+</blockquote>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/Kjp6kEIiy6ff4lHUqZXfXA">Go 与面向对象</a></li>
+<li><a href="https://zh.wikipedia.org/wiki/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F_(%E8%AE%A1%E7%AE%97%E6%9C%BA)">设计模式 - 维基百科</a></li>
+<li><a href="https://github.com/duanbiaowu/go-examples-for-beginners/tree/master/patterns">go-examples-for-beginners/patterns</a></li>
+<li><a href="https://draveness.me/holy-grail-design-pattern/">圣杯与银弹 · 没用的设计模式</a></li>
+<li><a href="https://github.com/tmrts/go-patterns">tmrts/go-patterns</a></li>
+<li><a href="https://refactoring.guru/design-patterns/go">DESIGN PATTERNS in GO</a></li>
+<li><a href="http://www.yinwang.org/blog-cn/2013/03/07/design-patterns">解密“设计模式”</a></li>
+<li><a href="https://coolshell.cn/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go 编程模式 - 酷壳</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_panic_recover/"><i class="fa fa-chevron-circle-left"></i> 为什么 recover 必须在 defer 中调用？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/docker_best_practices/">Docker 官方提供的最佳实践 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Go 语言内置的设计模式"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -1,0 +1,443 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>singleflight Code Reading - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="singleflight 是将 多个请求的返回结果相同 &#43; 计算过程次数限制 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 GET 和 DELETE 两种类型 API, 简化了调用方法。一个比较常见的场景是使用 singleflight 来限制同一个缓存 key 的重复请求，避免发生 缓存击穿 时，避免请求全部落到数据库，减少性能影响和宕机风险。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="singleflight Code Reading" />
+<meta property="og:description" content="singleflight 是将 多个请求的返回结果相同 &#43; 计算过程次数限制 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 GET 和 DELETE 两种类型 API, 简化了调用方法。一个比较常见的场景是使用 singleflight 来限制同一个缓存 key 的重复请求，避免发生 缓存击穿 时，避免请求全部落到数据库，减少性能影响和宕机风险。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_singleflight/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-28T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-28T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="singleflight Code Reading"/>
+<meta name="twitter:description" content="singleflight 是将 多个请求的返回结果相同 &#43; 计算过程次数限制 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 GET 和 DELETE 两种类型 API, 简化了调用方法。一个比较常见的场景是使用 singleflight 来限制同一个缓存 key 的重复请求，避免发生 缓存击穿 时，避免请求全部落到数据库，减少性能影响和宕机风险。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>singleflight Code Reading</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>singleflight</code> 提供了一套函数重复调用时的抑制机制，经常用来限制并发访问下的重复请求。</p>
+<p>例如一个比较常见的场景是使用 <code>singleflight</code> 来限制同一个缓存 <code>key</code> 的重复请求，避免发生 <code>缓存击穿</code> 时，避免请求全部落到数据库，减少性能影响和宕机风险。</p>
+<p><img src="https://dbwu.tech/images/singleflight.png" alt="singleflight 示意图"></p>
+<h2 id="示例">示例</h2>
+<p>参考 <a href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB">扩展阅读</a> 列表的文章。</p>
+<h2 id="内部实现">内部实现</h2>
+<p>我们来探究一下 <code>golang.org/x/sync/singleflight</code> 的内部实现，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。
+注意：这个包属于扩展包，标准库的包是 internal/singleflight/singleflight.go，因为笔者项目中用到的是扩展包，所以这里以扩展包实现为准，
+感兴趣的读者可以研究一下标准库中的包，两者大同小异。</p>
+<h3 id="uml">UML</h3>
+<p><img src="https://dbwu.tech/images/singleflight_uml.png" alt="singleflight UML"></p>
+<h3 id="errgoexit">errGoexit</h3>
+<p><code>errGoexit</code> 错误表明用户函数执行过程中，调用了 <code>runtime.Goexit()</code>, runtime.Goexit() 会直接终止程序，并在终止前执行所有 <code>defer</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> errGoexit = errors.<span style="color:#447fcf">New</span>(<span style="color:#ed9d13">&#34;runtime.Goexit was called&#34;</span>)
+</span></span></code></pre></div><h3 id="panicerror">panicError</h3>
+<p><code>panicError</code> 对象实现了标准库内置的错误接口，表示在执行给定函数期间，调用 <code>stack trace</code> 从抛出的 <code>panic</code> 中捕获 (recover) 到了具体的值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> panicError <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	value <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	stack []<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (p *panicError) <span style="color:#447fcf">Error</span>() <span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">&#34;%v\n\n%s&#34;</span>, p.value, p.stack)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="newpanicerror-方法">newPanicError 方法</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newPanicError</span>(v <span style="color:#6ab825;font-weight:bold">interface</span>{}) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	stack := debug.<span style="color:#447fcf">Stack</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// stack trace 返回的结果中，第一行的格式为 &#34;goroutine N [status]:&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 但是发生 panic 时，对应的 goroutine 可能已经不存在了，并且状态已经发生改变 (这时需要删除第一行，避免语义误导性)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> line := bytes.<span style="color:#447fcf">IndexByte</span>(stack[:], <span style="color:#ed9d13">&#39;\n&#39;</span>); line &gt;= <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		stack = stack[line+<span style="color:#3677a9">1</span>:]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;panicError{value: v, stack: stack}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="call-对象">call 对象</h3>
+<p><code>call</code> 对象表示正在执行中或已经执行完的 Do 方法的调用信息，这是一个抽象的数据集合，字段涵盖了调用周期内需要用到的数据。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> call <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 这俩字段在调用 WaitGroup 之前写入一次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 并且只能在 WaitGroup 完成后读取
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	val <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	err <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// forgotten 表明在 call 执行过程中，调用方 (并发的 goroutine) 是否调用了 Forget 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 简单来说就是，同一个 key 在获取过程中并发调用了 Forget 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	forgotten <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 返回值被其他 goroutine 复用的次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dups  <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待复用结果的 goroutine 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     goroutine 通过 Result channel 等待获取数据 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	chans []<span style="color:#6ab825;font-weight:bold">chan</span>&lt;- Result
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="group-对象">Group 对象</h3>
+<p><code>Group</code> 表示一种类型的工作并形成一个命名空间，在该命名空间中可以抑制重复执行的工作单元，简单来说，就是一个逻辑分组，通常根据业务场景来划分，比如 CMS 系统中的首页、专栏、内容页都可以作为单独的分组。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Group <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 并发调用时保护 m 字段的互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mu sync.Mutex  
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// key 和回调方法的关系映射
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     采用懒加载初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m  <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]*call 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="result-对象">Result 对象</h3>
+<p><code>Result</code> 对象表示 Do 方法返回的结果，可以在 <code>channel</code> 中传递 (channel 的另一端一般是一个等待获取数据的 goroutine)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Result <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回值支支持各种数据类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Val    <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回错误值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Err    <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回值是否被其他 goroutine 复用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Shared <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="do-方法">Do 方法</h3>
+<p><code>Do</code> 方法执行给定的回调函数并返回结果，内部确保一个给定的 <code>key</code> 在同一时间 (多个 <code>goroutine</code> 调用时) 只执行一次，如果出现重复调用，则重复调用方等待原始（第一个）调用完成后，接收并复用相同的结果。
+第二个返回值 <code>shared</code> 表示是否将返回值 v 赋值给了多个调用者 (返回值是否被复用)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (g *Group) <span style="color:#447fcf">Do</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, fn <span style="color:#6ab825;font-weight:bold">func</span>() (<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#6ab825;font-weight:bold">error</span>)) (v <span style="color:#6ab825;font-weight:bold">interface</span>{}, err <span style="color:#6ab825;font-weight:bold">error</span>, shared <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 操作加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	g.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> g.m == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 懒加载
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		g.m = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]*call)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> c, ok := g.m[key]; ok {  <span style="color:#999;font-style:italic">// 检测 key 是否存在
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 除了第 1 个抢到锁的 goroutine，其他的 goroutine 都会执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		c.dups++        <span style="color:#999;font-style:italic">// 复用数量+1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		g.mu.<span style="color:#447fcf">Unlock</span>()   <span style="color:#999;font-style:italic">// 释放锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		c.wg.<span style="color:#447fcf">Wait</span>()     <span style="color:#999;font-style:italic">// 等待 goroutine 执行完（就是第 1 个抢到锁的 goroutine）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> e, ok := c.err.(*panicError); ok {   <span style="color:#999;font-style:italic">// 回调函数抛出了 panic error
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#24909d">panic</span>(e)
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> c.err == errGoexit {  <span style="color:#999;font-style:italic">// 回调函数调用了 runtime.Goexit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			runtime.<span style="color:#447fcf">Goexit</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> c.val, c.err, <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	c := <span style="color:#24909d">new</span>(call)  <span style="color:#999;font-style:italic">// 如果没有对应的 key，创建一个新的结果集
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)     <span style="color:#999;font-style:italic">// 只有第 1 个抢到锁的 goroutine 可以调用 Add 方法，其他的 goroutine 进入 Wait 等待
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	g.m[key] = c    <span style="color:#999;font-style:italic">// 创建一个新的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	g.mu.<span style="color:#447fcf">Unlock</span>()   <span style="color:#999;font-style:italic">// 创建新 key 后，就可以解锁了，其他 goroutine 获得锁之后会进入上面的 if 流程
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	g.<span style="color:#447fcf">doCall</span>(c, key, fn)    <span style="color:#999;font-style:italic">// 调用 doCall() 执行 fn 函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> c.val, c.err, c.dups &gt; <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="dochan-方法">DoChan 方法</h3>
+<p><code>DoChan</code> 方法和 <code>Do</code> 方法功能一样 (同步和异步的区别)，但是返回一个只读 <code>channel</code>, 当 channel 准备好时，就开始接收数据，返回的 channel 不能关闭。
+此外，调用方需要根据返回值中的 <code>Err</code> 字段来处理可能发生的错误。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (g *Group) <span style="color:#447fcf">DoChan</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, fn <span style="color:#6ab825;font-weight:bold">func</span>() (<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#6ab825;font-weight:bold">error</span>)) &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> Result {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化返回值 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ch := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> Result, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 操作加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	g.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> g.m == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 懒加载
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		g.m = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]*call)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> c, ok := g.m[key]; ok {  <span style="color:#999;font-style:italic">// 检测 key 是否存在
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 除了第 1 个抢到锁的 goroutine，其他的 goroutine 都会执行到这里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>        c.dups++        <span style="color:#999;font-style:italic">// 复用数量+1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        c.chans = <span style="color:#24909d">append</span>(c.chans, ch)   <span style="color:#999;font-style:italic">// 追加到等待复用结果的 goroutine 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        g.mu.<span style="color:#447fcf">Unlock</span>()   <span style="color:#999;font-style:italic">// 释放锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> ch
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	c := &amp;call{chans: []<span style="color:#6ab825;font-weight:bold">chan</span>&lt;- Result{ch}}  <span style="color:#999;font-style:italic">// 如果没有对应的 key，创建一个新的列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.wg.<span style="color:#447fcf">Add</span>(<span style="color:#3677a9">1</span>)     <span style="color:#999;font-style:italic">// 只有第 1 个抢到锁的 goroutine 可以调用 Add 方法，其他的 goroutine 进入 Wait 等待
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	g.m[key] = c    <span style="color:#999;font-style:italic">// 创建一个新的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	g.mu.<span style="color:#447fcf">Unlock</span>()   <span style="color:#999;font-style:italic">// 创建新 key 后，就可以解锁了，其他 goroutine 获得锁之后会进入上面的 if 流程
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> g.<span style="color:#447fcf">doCall</span>(c, key, fn) <span style="color:#999;font-style:italic">// 调用 doCall() 执行 fn 函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ch
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="docall-方法">doCall 方法</h3>
+<p><code>doCall</code> 方法负责调用 <code>key</code> 对应的回调方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (g *Group) <span style="color:#447fcf">doCall</span>(c *call, key <span style="color:#6ab825;font-weight:bold">string</span>, fn <span style="color:#6ab825;font-weight:bold">func</span>() (<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#6ab825;font-weight:bold">error</span>)) {
+</span></span><span style="display:flex;"><span>	normalReturn := <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	recovered := <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 使用两个 defer 区分 panic 和 runtime.Goexit 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    避免了回调函数导致的死锁 （也就是下面的 c.wg.Done() 得不到执行）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 详情见: https://golang.org/cl/134395
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !normalReturn &amp;&amp; !recovered {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 说明回调函数内部执行了 runtime.Goexit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			c.err = errGoexit
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		c.wg.<span style="color:#447fcf">Done</span>() <span style="color:#999;font-style:italic">// 如果这里得不到执行，那么调用方的 c.wg.Wait() 就会永久阻塞
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		g.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> g.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !c.forgotten { <span style="color:#999;font-style:italic">// 如果已经删除过该 key，就不需要重复删除了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#24909d">delete</span>(g.m, key)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 这里的 panic 都是为了第一个抢到的锁的 goroutine，因为后续的 goroutine 不会执行到 doCall() 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> e, ok := c.err.(*panicError); ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 为了防止等待的 channels 被永久阻塞，需要确保这种 panic 无法恢复
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(c.chans) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#24909d">panic</span>(e)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">select</span> {} <span style="color:#999;font-style:italic">// 保留这个 goroutine 的调用堆栈，这样它就会出现在 crash dump（这种小技巧值得学习）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#24909d">panic</span>(e)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> c.err == errGoexit {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// goexit 正在处理，不需要重复调用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 正常返回, 依次向等待的 goroutine 发送数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">for</span> _, ch := <span style="color:#6ab825;font-weight:bold">range</span> c.chans {    <span style="color:#999;font-style:italic">// c.chans 是切片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				ch &lt;- Result{c.val, c.err, c.dups &gt; <span style="color:#3677a9">0</span>}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 使用一个匿名函数来执行回调函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果发生 panic，就创建一个 panic error，由调用方处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !normalReturn {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 理想情况下，我们应该根据 stack trace 返回的结果, 确定这是一个 panic 还是一个 runtime.Goexit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 能够区分两者的唯一方法是查看 recover 是否阻止了 goroutine 终止
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//     如果 recover 捕获到了错误，说明是 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//     如果 recover 没有捕获到错误，说明是 runtime.Goexit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 但是当我们知道这一点时，与 panic 相关的 stack trace 信息已经被丢弃了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> r := <span style="color:#24909d">recover</span>(); r != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					c.err = <span style="color:#447fcf">newPanicError</span>(r)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		c.val, c.err = <span style="color:#447fcf">fn</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果代码执行到这里，说明调用回调函数没有发生 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 所以可以将变量 normalReturn 设置为 true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		normalReturn = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 normalReturn != true, 说明调用回调函数发生了 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同时也说明了，发生的 panic 被捕获 (recover) 到了，而不是直接被 runtime.Goexit 终止程序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    如果直接被 runtime.Goexit 终止程序，代码就执行不到这里了，而是会直接去执行 defer
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !normalReturn {
+</span></span><span style="display:flex;"><span>		recovered = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="forget-方法">Forget 方法</h3>
+<p><code>Forget</code> 方法用于删除指定的 <code>key</code>, 后续对该 key 调用 Do 方法将执行回调函数，不再复用之前的返回值结果。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (g *Group) <span style="color:#447fcf">Forget</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	g.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> c, ok := g.m[key]; ok {
+</span></span><span style="display:flex;"><span>		c.forgotten = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">delete</span>(g.m, key)
+</span></span><span style="display:flex;"><span>	g.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p>从应用层面来说，<code>singleflight</code> 是将 <strong>多个请求的返回结果相同 + 计算过程次数限制</strong> 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 <code>GET</code> 和 <code>DELETE</code> 两种类型 API, 简化了调用方法。</p>
+<p><strong>需要注意的有两点</strong>：一是 <code>GROUP</code> 组的划分，通常根据业务模块划分即可，类似缓存的 <code>key</code> 前缀，二是 <code>key</code> 的内存占用，<code>key</code> 没有过期机制，
+对应的数据会一直占用内存，对于热门数据没有任何问题，但是对于非热门数据，会增加内存的占用，可以根据数据的大致有效期设计 <code>延迟删除</code> 方案。</p>
+<p>从内部实现来说，<code>singleflight</code> 的代码非常简洁，尤其是 3 个 <code>Do*</code> 方法之间的紧密配合，可以让我们学习到很多 <code>channel</code> 使用技巧，
+还有 <code>doCall</code> 方法中的 <strong>双重 defer 机制</strong>、判断 <strong>panic 和 runtime.Goexit</strong>，都是非常实用的 <code>Go code style</code> 代码。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://golang.dbwu.tech/performance/singleflight/">Go 高性能 - singleflight 防止缓存击穿</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_map/"><i class="fa fa-chevron-circle-left"></i> sync.Map Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_automaxprocs/">容器中如何正确配置 GOMAXPROCS ? <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="singleflight Code Reading"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

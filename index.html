@@ -421,6 +421,111 @@
     
 
     <li >
+      <h1><a href="https://dbwu.tech/posts/golang_automaxprocs/" title="容器中如何正确配置 GOMAXPROCS ?">容器中如何正确配置 GOMAXPROCS ?</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-30T00:00:00Z">2023-04-30</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p></p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/golang_singleflight/" title="singleflight Code Reading">singleflight Code Reading</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-28T00:00:00Z">2023-04-28</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p>singleflight 是将 多个请求的返回结果相同 + 计算过程次数限制 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 GET 和 DELETE 两种类型 API, 简化了调用方法。一个比较常见的场景是使用 singleflight 来限制同一个缓存 key 的重复请求，避免发生 缓存击穿 时，避免请求全部落到数据库，减少性能影响和宕机风险。</p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/golang_sync_map/" title="sync.Map Code Reading">sync.Map Code Reading</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-27T00:00:00Z">2023-04-27</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p>从内部底层实现来说，sync.Map 通过 entry 类型将 map 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (read map 和 dirty map 指向同一个 entry)， read, dirty 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 sync.Map 根据读写比例动态变化和转换内部字段数据结构， 尤其是 read 和 dirty 两个字段保持&hellip;</p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/golang_sync_cond/" title="sync.Cond Code Reading">sync.Cond Code Reading</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-26T00:00:00Z">2023-04-26</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p>sync.Cond 不是一个常用的同步机制，在条件变量长时间无法满足时，sync.Cond 能够让出处理器的使用权，和单纯使用 for {} 进行无限等待相比，可以提高 CPU 的利用率。</p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/golang_sync_waitgroup/" title="sync.WaitGroup Code Reading">sync.WaitGroup Code Reading</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-25T00:00:00Z">2023-04-25</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p></p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/golang_sync_rwmutex/" title="sync.RWMutex Code Reading">sync.RWMutex Code Reading</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-24T00:00:00Z">2023-04-24</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p>如果一个 goroutine 持有了读锁进行操作，此时其他的 goroutine 可能尝试获取写锁 (参与竞争)，那么在读锁被释放之前，不会有其他 goroutine 获取到读锁 (避免竞争写锁的 goroutine 被饿死)， 一个 goroutine 在阻塞获取写锁的过程中，会阻止其他 goroutine 获得读锁。</p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/golang_sync_mutex/" title="sync.Mutex Code Reading">sync.Mutex Code Reading</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-23T00:00:00Z">2023-04-23</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p>互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 goroutine 可以连续多次获得互斥锁，即使存在阻塞的 goroutine, 与此同时，饥饿模式是防止尾部的 goroutine 被饿死的重要机制 (高尾延时)。</p>
+    </li>
+    
+
+    <li >
       <h1><a href="https://dbwu.tech/posts/golang_sync_once/" title="sync.Once Code Reading">sync.Once Code Reading</a></h1>
       <aside>
     <ul>
@@ -601,6 +706,36 @@
     
 
     <li >
+      <h1><a href="https://dbwu.tech/posts/docker_network/" title="Docker 网络原理概览">Docker 网络原理概览</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p><code>Docker</code> 原生网络是基于 Linux 的 <code>网络命名空间</code>（net namespace） 和 <code>虚拟网络设备</code>（veth pair）实现的。当 <code>Docker</code> 进程启动时，会在宿主机上创建一个名称为 <code>docker0</code> 的 <strong>虚拟网桥</strong>，在该宿主机上启动的 <code>Docker</code> 容器会连接到这个虚拟网桥上 &hellip;</p>
+    </li>
+    
+
+    <li >
+      <h1><a href="https://dbwu.tech/posts/iptables/" title="iptables 概述">iptables 概述</a></h1>
+      <aside>
+    <ul>
+        <li>
+            <time class="post-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
+        </li>
+        
+    </ul>
+</aside>
+
+      <p>iptables 是一个配置 Linux 内核防火墙的命令行工具，它基于内核的包过滤框架（packet filtering framework） netfilter, 主要用于管理数据包过滤和 NAT 规则。</p>
+    </li>
+    
+
+    <li >
       <h1><a href="https://dbwu.tech/posts/golang_reflect/" title="Go 的反射与三大定律">Go 的反射与三大定律</a></h1>
       <aside>
     <ul>
@@ -631,26 +766,26 @@
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/memory_model/" title="Go 内存模型">Go 内存模型</a></h1>
+      <h1><a href="https://dbwu.tech/posts/golang_design_patterns/" title="Go 语言内置的设计模式">Go 语言内置的设计模式</a></h1>
       <aside>
     <ul>
         <li>
-            <time class="post-date" datetime="2023-02-24T00:00:00Z">2023-02-24</time>
+            <time class="post-date" datetime="2023-03-22T00:00:00Z">2023-03-22</time>
         </li>
         
     </ul>
 </aside>
 
-      <p>为什么要学习 Go 内存模型？ 因为这是理解和掌握 Go 并发编程的基础，也是学习 Go 标准库底层源码实现的前提。</p>
+      <p>和传统的 GOF, Java, C# 教科书式的设计模式不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，万万不可按图索骥、生搬硬套，简单的事情复杂化。</p>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/version_semantics/" title="软件版本语义化">软件版本语义化</a></h1>
+      <h1><a href="https://dbwu.tech/posts/golang_panic_recover/" title="为什么 recover 必须在 defer 中调用？">为什么 recover 必须在 defer 中调用？</a></h1>
       <aside>
     <ul>
         <li>
-            <time class="post-date" datetime="2023-02-24T00:00:00Z">2023-02-24</time>
+            <time class="post-date" datetime="2023-03-13T00:00:00Z">2023-03-13</time>
         </li>
         
     </ul>
@@ -661,26 +796,11 @@
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/go1.20/" title="Go 1.20 发布了">Go 1.20 发布了</a></h1>
+      <h1><a href="https://dbwu.tech/posts/golang_defer/" title="为什么 defer 的执行顺序和注册顺序不同？">为什么 defer 的执行顺序和注册顺序不同？</a></h1>
       <aside>
     <ul>
         <li>
-            <time class="post-date" datetime="2023-02-11T00:00:00Z">2023-02-11</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>前言 这几天所有的热度都集中到了 ChatGPT，不过我对这件事情没有什么兴趣，原本计划换换脑，看一下 Docker 基础相关技术，恰巧这时 兔兔大佬 发来了灵魂拷问 &hellip;</p>
-    </li>
-    
-
-    <li >
-      <h1><a href="https://dbwu.tech/posts/docker_arch/" title="Docker 基础支撑技术概览">Docker 基础支撑技术概览</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-02-07T00:00:00Z">2023-02-07</time>
+            <time class="post-date" datetime="2023-03-12T00:00:00Z">2023-03-12</time>
         </li>
         
     </ul>
@@ -691,68 +811,73 @@
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/goland_escape/" title="Go 逃逸分析">Go 逃逸分析</a></h1>
+      <h1><a href="https://dbwu.tech/posts/golang_map/" title="Go map 设计与实现">Go map 设计与实现</a></h1>
       <aside>
     <ul>
         <li>
-            <time class="post-date" datetime="2023-02-03T00:00:00Z">2023-02-03</time>
+            <time class="post-date" datetime="2023-03-11T00:00:00Z">2023-03-11</time>
         </li>
         
     </ul>
 </aside>
 
-      <p>Go 语言的编译器使用逃逸分析决定哪些变量分配在栈上，哪些变量分配在堆上。</p>
+      <p>本文从源代码的角度分析 Go map 数据结构使用中的常见问题，例如: 为什么 map 未初始化写入时报错 ? map 是线程安全的吗 ? 为什么遍历 map 是无序的 ? &hellip;</p>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_data_race/" title="Go 数据竞态">Go 数据竞态</a></h1>
+      <h1><a href="https://dbwu.tech/posts/golang_slice/" title="Go 切片扩容底层实现">Go 切片扩容底层实现</a></h1>
       <aside>
     <ul>
         <li>
-            <time class="post-date" datetime="2023-02-02T00:00:00Z">2023-02-02</time>
+            <time class="post-date" datetime="2023-03-10T00:00:00Z">2023-03-10</time>
         </li>
         
     </ul>
 </aside>
 
-      <p>数据竞态是并发系统编程中最常见和最难调试的错误类型之一。当两个 goroutine 同时访问同一个变量并且至少有一个是写入操作时，就会发生数据竞态。</p>
+      <p></p>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_implements/" title="Go 如何实现 implements 功能">Go 如何实现 implements 功能</a></h1>
+      <h1><a href="https://dbwu.tech/posts/golang_delve/" title="Go Delve">Go Delve</a></h1>
       <aside>
     <ul>
         <li>
-            <time class="post-date" datetime="2023-01-31T00:00:00Z">2023-01-31</time>
+            <time class="post-date" datetime="2023-03-09T00:00:00Z">2023-03-09</time>
         </li>
         
     </ul>
 </aside>
 
-      <p>Go 语言中检测一个类型是否实现了某个接口，通常分为两类机制: 编译期间和运行期间。</p>
-    </li>
-    
-
-    <li >
-      <h1><a href="https://dbwu.tech/posts/golang_oop/" title="Go 的面向对象编程">Go 的面向对象编程</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-01-30T00:00:00Z">2023-01-30</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言如何实现封装、继承、多态等面向对象的特性？</p>
+      <p>Delve 用来调试 Go 语言开发的程序，该工具的目标是为 Go 语言提供一个简单、功能齐全的调试工具。</p>
     </li>
     
   </ul>
 </section>
 
 
+    <ul class="pagination pagination-default">
+      <li class="page-item disabled">
+        <a aria-disabled="true" aria-label="First" class="page-link" role="button" tabindex="-1"><span aria-hidden="true">&laquo;&laquo;</span></a>
+      </li>
+      <li class="page-item disabled">
+        <a aria-disabled="true" aria-label="Previous" class="page-link" role="button" tabindex="-1"><span aria-hidden="true">&laquo;</span></a>
+      </li>
+      <li class="page-item active">
+        <a aria-current="page" aria-label="Page 1" class="page-link" role="button">1</a>
+      </li>
+      <li class="page-item">
+        <a href="https://dbwu.tech/page/2/" aria-label="Page 2" class="page-link" role="button">2</a>
+      </li>
+      <li class="page-item">
+        <a href="https://dbwu.tech/page/2/" aria-label="Next" class="page-link" role="button"><span aria-hidden="true">&raquo;</span></a>
+      </li>
+      <li class="page-item">
+        <a href="https://dbwu.tech/page/2/" aria-label="Last" class="page-link" role="button"><span aria-hidden="true">&raquo;&raquo;</span></a>
+      </li>
+    </ul>
 
 
 

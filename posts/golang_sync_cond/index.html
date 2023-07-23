@@ -1,0 +1,511 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>sync.Cond Code Reading - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="sync.Cond 不是一个常用的同步机制，在条件变量长时间无法满足时，sync.Cond 能够让出处理器的使用权，和单纯使用 for {} 进行无限等待相比，可以提高 CPU 的利用率。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Cond Code Reading" />
+<meta property="og:description" content="sync.Cond 不是一个常用的同步机制，在条件变量长时间无法满足时，sync.Cond 能够让出处理器的使用权，和单纯使用 for {} 进行无限等待相比，可以提高 CPU 的利用率。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_sync_cond/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-26T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-26T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="sync.Cond Code Reading"/>
+<meta name="twitter:description" content="sync.Cond 不是一个常用的同步机制，在条件变量长时间无法满足时，sync.Cond 能够让出处理器的使用权，和单纯使用 for {} 进行无限等待相比，可以提高 CPU 的利用率。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>sync.Cond Code Reading</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>sync.Cond</code> 实现了一种条件变量同步原语，可以让一个 <code>goroutine</code> 集合在满足特定条件时被唤醒。</p>
+<p><code>sync.Cond</code> 典型的使用场景是 <code>生产-消费者模式</code>，多个 <code>goroutine</code> 等待某个事件发生， 单个 <code>goroutine</code> 通知某个事件已发生。
+比如电商中的用户下单事件发生时，会通知到订单、用户、积分、优惠券、仓储等服务，如果是单个生产者对单个消费者，直接使用 <code>互斥锁</code> 或 <code>channel</code> 就可以。</p>
+<p><strong>为什么多个消费者模式不使用互斥锁或 channel 呢？</strong></p>
+<p>可以想象一个非常简单的场景: 有一个 <code>goroutine</code> 在异步接收数据，剩下的多个 <code>goroutine</code> 必须等待该 <code>goroutine</code> 接收完才能读取。
+在这种情况下，如果单纯使用 <code>互斥锁</code> 或 <code>channel</code>，就只能有一个 <code>goroutine</code> 可以等待并读取到数据，其他的 <code>goroutine</code> 没办法读取。</p>
+<p>当然我们可以通过折衷的方案来解决，例如 <strong>可以创建一个全局变量</strong>，用来标志这个 <code>goroutine</code> 数据是否接收完成，剩下的 <code>goroutine</code> 反复检查该全局变量，直到满足条件。
+或者 <strong>可以创建多个 <code>channel</code>，每个 <code>goroutine</code> 阻塞在一个 <code>channel</code> 上面</strong>，接收数据的 <code>goroutine</code> 在数据接收完毕后，逐个通知。
+但是不论哪种方式，实现复杂度都大大增加了。</p>
+<p><code>sync.Cond</code> 提供了简洁优雅的方式来解决上述问题。</p>
+<h2 id="示例">示例</h2>
+<p>通过一个小例子展示 <code>sync.Cond</code> 的使用方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 条件变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> done = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 数据读取操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">read</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, c *sync.Cond) {
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> !done {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等待生产者写入通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		c.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(name, <span style="color:#ed9d13">&#34;starts reading&#34;</span>)
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 数据写入操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">write</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, c *sync.Cond) {
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(name, <span style="color:#ed9d13">&#34;starts writing&#34;</span>)
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 设置条件变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	done = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Println</span>(name, <span style="color:#ed9d13">&#34;wakes all&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通知所有消费者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.<span style="color:#447fcf">Broadcast</span>() 
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建对象时传入一个互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cond := sync.<span style="color:#447fcf">NewCond</span>(&amp;sync.Mutex{}) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 3 个消费者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">read</span>(<span style="color:#ed9d13">&#34;reader-1&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">read</span>(<span style="color:#ed9d13">&#34;reader-2&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">read</span>(<span style="color:#ed9d13">&#34;reader-3&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 1 个生产者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">write</span>(<span style="color:#ed9d13">&#34;writer-1&#34;</span>, cond)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Second)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>writer-1 starts writing
+</span></span><span style="display:flex;"><span>writer-1 wakes all
+</span></span><span style="display:flex;"><span>reader-2 starts reading
+</span></span><span style="display:flex;"><span>reader-1 starts reading
+</span></span><span style="display:flex;"><span>reader-3 starts reading
+</span></span></code></pre></div><p>从输出结果中可以看到，消费者刚开始时调用 <code>Wait</code> 方法阻塞，直到生产者 (write) 写入完成后调用 <code>Broadcast</code> 方法通知所有消费者 (read)，然后所有消费者依次输出。</p>
+<p><img src="https://dbwu.tech/images/synccond_demo.png" alt="调用关系图"></p>
+<h2 id="内部实现">内部实现</h2>
+<p>我们来探究一下 <code>sync.Cond</code> 的内部实现，文件路径为 <code>$GOROOT/src/sync/cond.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="cond-对象">Cond 对象</h2>
+<p><code>Cond</code> 对象表示同步条件变量，可以让 <code>goroutins</code> 等待或通知某个事件发生，Cond 对象一旦使用后，就不能再复制。</p>
+<p>每一个 <code>Cond</code> 对象都持有一个对应的 <code>Locker</code> 接口 (通常是一个互斥锁或读写锁)，当条件发生变化以及调用 <code>Wait</code> 方法时，必须持有对应的锁。</p>
+<p>在简单的应用场景中，更好的选择是使用 <code>channel</code> 完成同步操作 (Go 的标准库设计理念是上层应用尽量使用 <code>channel</code> 作为同步原语)，可以将两者的对应关系简单概况如下:</p>
+<ul>
+<li>关闭 channel 对应 Cond.Broadcast 方法</li>
+<li>向 channel 发送数据对应 Cond.Signal 方法</li>
+</ul>
+<p><img src="https://dbwu.tech/images/sync_cond_method.png" alt="Signal 和 Broadcast"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Cond <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 保证编译期间不会发生复制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	noCopy noCopy
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当访问或者修改条件时，必须持有 L
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	L Locker
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// goroutine 链表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	notify  notifyList
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 保证运行期间不会发生复制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	checker copyChecker 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="notifylist-对象">notifyList 对象</h2>
+<p><code>notifyList</code> 对象表示一个 <code>goroutine</code> 链表数据结构。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// runtime/sema.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> notifyList <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待的 goroutine 索引，可以在没有获取锁的情况下原子性递增
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wait <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 已经通知到的 goroutine 索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 可以在没有获取锁的情况下进行读取操作，但是必须在获得锁的情况下进行写入操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	notify <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	lock mutex
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待索引和已通知索引可以是环形队列结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 链表头指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	head *sudog
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 链表尾指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tail *sudog 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/sync_cond.png" alt="sync.Cond 对象结构"></p>
+<h2 id="newcond-方法">NewCond 方法</h2>
+<p><code>NewCond</code> 方法创建一个 <code>Cond</code> 对象，参数为一个 <code>Locker</code> 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewCond</span>(l Locker) *Cond {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;Cond{L: l}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="wait-方法">Wait 方法</h2>
+<p><code>Wait</code> 方法 (阻塞调用) 会解锁 <code>c.L</code> 字段并且休眠当前 <code>goroutine</code>，等到当前 <code>goroutine</code> 被唤醒后，<code>Wait</code> 方法在返回之前再对 <code>c.L</code> 字段加锁。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cond) <span style="color:#447fcf">Wait</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 复制检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.checker.<span style="color:#447fcf">check</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待索引 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	t := <span style="color:#447fcf">runtime_notifyListAdd</span>(&amp;c.notify)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// goroutine 休眠之前先解锁 (否则其他 goroutine 获取不到锁，会造成死锁问题)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.L.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 等待唤醒，并传递等待索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">runtime_notifyListWait</span>(&amp;c.notify, t)
+</span></span><span style="display:flex;"><span>	c.L.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="runtime_notifylistadd-方法">runtime_notifyListAdd 方法</h3>
+<p><code>runtime_notifyListAdd</code> 方法通过链接器链接到 <code>notifyListAdd</code> 方法，<code>notifyListAdd</code> 方法将当前调用方 <code>goroutine</code> 添加到通知链表中以便接收通知。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// runtime/sema.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:linkname notifyListAdd sync.runtime_notifyListAdd
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">notifyListAdd</span>(l *notifyList) <span style="color:#6ab825;font-weight:bold">uint32</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待索引计数 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">return</span> atomic.<span style="color:#447fcf">Xadd</span>(&amp;l.wait, <span style="color:#3677a9">1</span>) - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="runtime_notifylistwait-方法">runtime_notifyListWait 方法</h3>
+<p><code>runtime_notifyListWait</code> 方法通过链接器链接到 <code>notifyListWait</code> 方法，如果在调用 <code>notifyListAdd</code> 方法之后已经发送过通知，<code>notifyListWait</code> 就会立即返回，否则就陷入阻塞。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// runtime/sema.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:linkname notifyListWait sync.runtime_notifyListWait
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">notifyListWait</span>(l *notifyList, t <span style="color:#6ab825;font-weight:bold">uint32</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果之前已经发送过通知，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">less</span>(t, l.notify) {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">unlock</span>(&amp;l.lock)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取当前 goroutine 并追加到链表尾部
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s := <span style="color:#447fcf">acquireSudog</span>()
+</span></span><span style="display:flex;"><span>	s.g = <span style="color:#447fcf">getg</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取等待索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	s.ticket = t
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 goroutine 加入到链表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> l.tail == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		l.head = s
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		l.tail.next = s
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	l.tail = s
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 休眠当前 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">goparkunlock</span>(&amp;l.lock, waitReasonSyncCondWait, traceEvGoBlockCond, <span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 归还 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#447fcf">releaseSudog</span>(s)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="signal-方法">Signal 方法</h2>
+<p><code>Signal</code> 方法唤醒链表头部等待的 <code>goroutine</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cond) <span style="color:#447fcf">Signal</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 复制检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	c.checker.<span style="color:#447fcf">check</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">runtime_notifyListNotifyOne</span>(&amp;c.notify)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="runtime_notifylistnotifyone-方法">runtime_notifyListNotifyOne 方法</h3>
+<p><code>runtime_notifyListNotifyOne</code> 方法通过链接器链接到 <code>notifyListNotifyOne</code> 方法，唤醒链表头部的 <code>goroutine</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// runtime/sema.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:linkname notifyListNotifyOne sync.runtime_notifyListNotifyOne
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">notifyListNotifyOne</span>(l *notifyList) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果已通知索引和等待索引相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明没有等待的 goroutine, 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">Load</span>(&amp;l.wait) == atomic.<span style="color:#447fcf">Load</span>(&amp;l.notify) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取已通知索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    t := l.notify
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果已通知索引和等待索引相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明没有等待的 goroutine, 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 又是一个经典的双重检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> t == atomic.<span style="color:#447fcf">Load</span>(&amp;l.wait) {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">unlock</span>(&amp;l.lock)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 已通知索引 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    atomic.<span style="color:#447fcf">Store</span>(&amp;l.notify, t+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据已通知索引，找到对应的 goroutine 唤醒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> p, s := (*sudog)(<span style="color:#6ab825;font-weight:bold">nil</span>), l.head; s != <span style="color:#6ab825;font-weight:bold">nil</span>; p, s = s, s.next {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> s.ticket == t {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 唤醒满足条件的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">readyWithTime</span>(s, <span style="color:#3677a9">4</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>为什么不直接唤醒链表的头部元素呢</strong>？</p>
+<p>这就是 <strong>已通知索引</strong> <code>notify</code> 字段存在的意义，因为获取等待索引和加入到链表两个步骤不是原子操作，这意味着在并发场景下，会出现顺序不一致的情况。</p>
+<p>例如，<code>goroutine</code> 对应的等待索引为 2, 但是因为并发问题，加入到链表的时候，排到了第 3 个位置，如图所示:</p>
+<p><img src="https://dbwu.tech/images/sync_cond_notify.png" alt="乱序问题示例"></p>
+<p>不过不需要担心，我们可以根据 <strong>已通知索引</strong> <code>notify</code> 字段，保证在发送单个通知时保证顺序的一致性，避免乱序可能带来的 <code>先到的 goroutine 反而等待时间长</code> 这类问题。</p>
+<p>当前 <code>notify</code> 字段对应的 <code>goroutine</code> 通知后，会变更指针到下一个 <code>goroutine</code>，如图所示:</p>
+<p><img src="https://dbwu.tech/images/sync_cond_notify2.png" alt="乱序问题解决"></p>
+<p>从算法时间复杂度来分析，直接唤醒链表头部元素是 <code>O(1)</code>, 通过 <code>notify</code> 字段唤醒是 <code>O(N)</code>, 但是官方的注释中写道:</p>
+<blockquote>
+<p>This scan looks linear but essentially always stops quickly.</p>
+</blockquote>
+<p>所以即便出现乱序，<code>notify</code> 索引字段对应的 <code>goroutine</code> 也不会太靠后，所以不会产生太多的性能问题。</p>
+<h2 id="broadcast-方法">Broadcast 方法</h2>
+<p><code>Broadcast</code> 方法唤醒所有等待的 <code>goroutine</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Cond) <span style="color:#447fcf">Broadcast</span>() {
+</span></span><span style="display:flex;"><span>	c.checker.<span style="color:#447fcf">check</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">runtime_notifyListNotifyAll</span>(&amp;c.notify)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="runtime_notifylistnotifyall-方法">runtime_notifyListNotifyAll 方法</h3>
+<p><code>runtime_notifyListNotifyAll</code> 方法通过链接器链接到 <code>notifyListNotifyAll</code> 方法，唤醒所有等待的 <code>goroutine</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// runtime/sema.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:linkname notifyListNotifyAll sync.runtime_notifyListNotifyAll
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">notifyListNotifyAll</span>(l *notifyList) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 没有等待的 goroutine, 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">Load</span>(&amp;l.wait) == atomic.<span style="color:#447fcf">Load</span>(&amp;l.notify) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 既然是全部唤醒，也就不用担心上面提到的乱序问题了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接遍历 goroutine 链表，逐个唤醒 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> s != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		next := s.next
+</span></span><span style="display:flex;"><span>		s.next = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">readyWithTime</span>(s, <span style="color:#3677a9">4</span>)
+</span></span><span style="display:flex;"><span>		s = next
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="check-方法">check 方法</h2>
+<p><code>Cond.copyChecker</code> 字段持有指向自身的指针，用来检测是否被复制，当指针值和实际地址值不一致时，说明发生了复制。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> copyChecker <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *copyChecker) <span style="color:#447fcf">check</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uintptr</span>(*c) != <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(c)) &amp;&amp;
+</span></span><span style="display:flex;"><span>		!atomic.<span style="color:#447fcf">CompareAndSwapUintptr</span>((*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(c), <span style="color:#3677a9">0</span>, <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(c))) &amp;&amp;
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 临界区域重复检测，避免原子对比后的瞬间，值被复制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">uintptr</span>(*c) != <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(c)) {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">panic</span>(<span style="color:#ed9d13">&#34;sync.Cond is copied&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>check</code> 方法的实现很有意思，里面有 3 个判断条件:</p>
+<ol>
+<li>
+<p>uintptr(*c) != uintptr(unsafe.Pointer(c))</p>
+<p>比较 copyChecker 的指针值 (默认是 0)</p>
+</li>
+<li>
+<p>atomic.CompareAndSwapUintptr((*uintptr)(c), 0, uintptr(unsafe.Pointer(c)))</p>
+<p>CAS 操作 copyChecker 的指针值</p>
+</li>
+<li>
+<p>uintptr(*c) != uintptr(unsafe.Pointer(c))`</p>
+<p>比较 copyChecker 的指针值</p>
+</li>
+</ol>
+<p><strong>为什么 <code>CAS 操作</code> 之后又重复比较了一次呢？主要是针对临界区的检测，因为可能会出现一种极端情况: <code>CAS 操作</code> 之后的瞬间 copyChecker 被复制了</strong>。</p>
+<h3 id="nocopy-对象">noCopy 对象</h3>
+<p><code>noCopy</code> 对象可以添加到具体的结构体中，实现 &ldquo;首次使用之后，无法被复制&rdquo; 的功能 (由编译器实现)。</p>
+<p><code>noCopy.Lock</code> 方法是一个空操作，由 <code>go vet</code> 工具链中的 -copylocks checker 参数指令使用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> noCopy <span style="color:#6ab825;font-weight:bold">struct</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (*noCopy) <span style="color:#447fcf">Lock</span>()   {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (*noCopy) <span style="color:#447fcf">Unlock</span>() {}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p><code>sync.Cond</code> 不是一个常用的同步机制，在条件变量长时间无法满足时，<code>sync.Cond</code> 能够让出处理器的使用权，和单纯使用 <code>for {}</code> 进行无限等待相比，
+可以提高 CPU 的利用率。但是使用时我们也需要注意以下问题:</p>
+<ul>
+<li><code>Wait</code> 方法在调用之前一定要完成加锁操作，否则程序会 <code>panic</code> (因为方法内部会释放互斥锁)</li>
+<li><code>Signal</code> 方法会唤醒链表 (队列) 最前面、等待最久的 <code>goroutine</code> (通过等待索引字段保证顺序)</li>
+<li><code>Broadcast</code> 方法会按照链表的顺序 (并不是先进先出，因为可能存在乱序问题) 唤醒所有等待的 <code>goroutine</code></li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ol>
+<li><a href="https://geektutu.com/post/hpg-sync-cond.html">Go sync.Cond</a></li>
+<li><a href="https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-sync-primitives/#cond">Go 设计与实现</a></li>
+<li><a href="https://www.cyhone.com/articles/golang-sync-cond/">Golang sync.Cond 条件变量源码分析</a></li>
+</ol>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_waitgroup/"><i class="fa fa-chevron-circle-left"></i> sync.WaitGroup Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_map/">sync.Map Code Reading <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="sync.Cond Code Reading"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

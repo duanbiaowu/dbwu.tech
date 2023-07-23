@@ -1,0 +1,647 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>sync.Map Code Reading - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="从内部底层实现来说，sync.Map 通过 entry 类型将 map 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (read map 和 dirty map 指向同一个 entry)， read, dirty 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 sync.Map 根据读写比例动态变化和转换内部字段数据结构， 尤其是 read 和 dirty 两个字段保持&hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Map Code Reading" />
+<meta property="og:description" content="从内部底层实现来说，sync.Map 通过 entry 类型将 map 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (read map 和 dirty map 指向同一个 entry)， read, dirty 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 sync.Map 根据读写比例动态变化和转换内部字段数据结构， 尤其是 read 和 dirty 两个字段保持&hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_sync_map/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-27T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-27T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="sync.Map Code Reading"/>
+<meta name="twitter:description" content="从内部底层实现来说，sync.Map 通过 entry 类型将 map 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (read map 和 dirty map 指向同一个 entry)， read, dirty 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 sync.Map 根据读写比例动态变化和转换内部字段数据结构， 尤其是 read 和 dirty 两个字段保持&hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>sync.Map Code Reading</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><strong>sync.Map</strong> 提供了并发安全的 <code>map</code> 操作，数据结构语义类似 <code>map[any]any</code>，多个 <code>goroutine</code> 并发操作时无需加锁。</p>
+<p>官方的建议是大多数情况下，应该使用普通 <code>map</code> 类型，并完成对应的锁和并发控制以保证安全性，这样可以使类型拥有更好的安全性和可维护性。</p>
+<p><code>sync.Map</code> <strong>类型是针对两种特殊的场景进行优化的</strong>：</p>
+<ol>
+<li>当指定的 <code>key</code> 只被写入一次，但是被读取多次，例如不断增长的缓存类应用</li>
+<li>当多个 <code>goroutine</code> 同时读和写，但是每个 <code>goroutine</code> 覆盖到的是不同的 <code>key</code> (类似分段锁的概念)</li>
+</ol>
+<p>在这两种场景下，与使用 <code>map + 锁</code> 相比，使用 <code>sync.Map</code> 可以大大降低锁的竞争。</p>
+<p>本文来探究一下 <code>sync.Map</code> 的内部实现，文件路径为 <code>$GOROOT/src/sync/map.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="数据结构">数据结构</h2>
+<h3 id="map-对象">Map 对象</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Map 零值是空的并且可以使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Map 一旦使用后，便不能再复制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Loads, stores, and deletes 通过延迟操作来均摊成本，从而达到常数运行时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 在 Go 内存模型术语中，Map 确保写操作在任何观察其变动的读操作之前同步，其中读和写的定义如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     Load, LoadAndDelete 是读操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     Delete, LoadAndDelete, Store 是写操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//     当调用 LoadOrStore 方法返回值 loaded 为 false 时，LoadOrStore 是写操作，否则是读操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Map <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当写 read map 或者读写 dirty map 时，需要加互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mu Mutex
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// read 字段包含了一部分 map 内容，这部分内容并发访问安全（无论是否持有互斥锁）
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// read 字段本身对 load 而言永远是安全的，但执行 store 操作时，必须持有互斥锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// read 是只读的数据结构，访问无需加锁，sync.Map 优先访问 read 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// read 中存储的数据值可以在不持有互斥锁的情况下并发更新
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     但更新一个之前被标记为 expunged 的元素需要持有互斥锁，将该元素拷贝到 dirty map 并标记 unexpunged (expunged 逆操作)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read atomic.Value <span style="color:#999;font-style:italic">// readOnly
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// dirty map 包含了访问时需要持有互斥锁的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 为了确保 dirty map 中的元素能够快速地移动到 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 它也包含了那些 read map 中标记为 (non-expunged) 的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 新添加的元素会优先放入 dirty map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 被标记为 expunged 的元素不会存储在 dirty map 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 被标记为 expunged 的元素如果要存储新的值，需要先执行 unexpunged (expunged 逆操作) 添加到 dirty map, 然后再更新值 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 dirty map == nil, 下一个对 map 的写入将通过浅拷贝一个空 map 来初始化它，忽略过期的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dirty <span style="color:#6ab825;font-weight:bold">map</span>[any]*entry
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 一旦发生足够多的 misses 次数，超过拷贝 dirty map 的成本，dirty map 会被合并进 read map(unamended 状态下)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 并且下一次的存储操作会生成一个新的 dirty map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	misses <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="readonly-对象">readOnly 对象</h3>
+<p><code>readOnly</code> 对象表示 Map.read 字段中的只读数据 (注意: 这里的只读指的是逻辑只读，底层的数据还是可以修改的)，
+其中 m 字段用来表示具体的只读数据，<strong>如果某个 key 存在于 dirty 字段中，却不存在于 m 字段中，amended 字段等于 true</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> readOnly <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	m       <span style="color:#6ab825;font-weight:bold">map</span>[any]*entry
+</span></span><span style="display:flex;"><span>	amended <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="expunged-类型">expunged 类型</h3>
+<p><code>expunged</code> 类型表示一个任意类型数据的指针，<strong>主要作用是作为删除标志，标记从 dirty map 中删除的元素</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> expunged = unsafe.<span style="color:#447fcf">Pointer</span>(<span style="color:#24909d">new</span>(any))
+</span></span></code></pre></div><h3 id="entry-对象">entry 对象</h3>
+<p><code>entry</code> 对象表示任意 <code>key</code> 对应的数据，这里同样使用指针来表示。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> entry <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// p 指向 entry 对应的数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 p == nil, 说明对应的 entry 已经被删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     此时，m.dirty == nil 或 m.dirty[k] 指向该 entry
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 p == expunged, 说明对应的 entry 已经被删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     此时，m.dirty != nil 且 m.dirty 中不存在 entry
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 其他情况代表 entry 是合法的值并且存在于 m.read.m[key]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     如果 m.dirty != nil, entry 同时也会存在于 m.dirty[key] 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 删除 entry 时执行 CAS 操作替换为 nil (并不进行实际删除)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 当 m.dirty 后续创建时 (dirty 提升后第一次新建 entry)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 会对 entry 执行 CAS 操作，由 nil 替换为 expunged, 且不设置 m.dirty[key] 的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 一个 entry 对应的值可以用 CAS 操作来更新，前提是 p != expunged
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 p == expunged, entry 对应的值只能在首次赋值 m.dirty[key] = e 之后更新
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这样查找操作可以通过 dirty map 来找到这个 entry
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p unsafe.Pointer <span style="color:#999;font-style:italic">// *interface{}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newEntry</span>(i any) *entry {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> &amp;entry{p: unsafe.<span style="color:#447fcf">Pointer</span>(&amp;i)}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 从 entry 中原子性加载实际的数据值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#447fcf">load</span>() (value any, ok <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	p := atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> p == <span style="color:#6ab825;font-weight:bold">nil</span> || p == expunged {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> *(*any)(p), <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="获取操作">获取操作</h2>
+<h3 id="load-方法">Load 方法</h3>
+<p><code>Load</code> 方法会优先读取 <code>read map</code> (无需加锁)，如果没有找到对应的元素，会加锁尝试从 <code>dirty map</code> 中读取。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取 map 中 key 对应的值，如果不存在返回 nil, 第二个返回值表示 key 值是否存在于 map 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">Load</span>(key any) (value any, ok <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 优先从 read map 中读取 (无锁操作)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	e, ok := read.m[key]
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 read 没有对应的 key，并且 amended 字段标识 dirty map 存在 read map 中不存在的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 则加锁尝试从 dirty.map 中获取
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !ok &amp;&amp; read.amended {
+</span></span><span style="display:flex;"><span>		m.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// double check 是避免在加锁期间，dirty map 提升为 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果已经发生合并，可以避免报告一个不必要的 miss 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 因为足够多的 miss 数会将 dirty map 提升为 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		read, _ = m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>		e, ok = read.m[key]
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !ok &amp;&amp; read.amended {
+</span></span><span style="display:flex;"><span>			e, ok = m.dirty[key]
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 无论元素是否存在 dirty map 中，都记录 1 次 miss
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 在 dirty map 被提升到 read map 之前，这个 key 对应的值会一直从 dirty map 中获取
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 方法内部可能将 dirty map 提升到 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m.<span style="color:#447fcf">missLocked</span>()  
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		m.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 key 存在，加载对应的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> e.<span style="color:#447fcf">load</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="设置操作">设置操作</h2>
+<h3 id="store-方法">Store 方法</h3>
+<p><code>Store</code> 方法用于设置 key 和对应的值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">Store</span>(key, value any) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 key 对应的值存在于 read map 中，尝试直接修改
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> e, ok := read.m[key]; ok &amp;&amp; e.<span style="color:#447fcf">tryStore</span>(&amp;value) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	m.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// double check 是避免在加锁期间，dirty map 提升为 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read, _ = m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> e, ok := read.m[key]; ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> e.<span style="color:#447fcf">unexpungeLocked</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 key 对应的值存在于 read map 中，但 p == expunged, 说明 dirty != nil 并且 key 对应的值不存在于 dirty map 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    先将 p 的状态由 expunged 改为 nil 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    dirty map 新建 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    更新 entry.p = value (read map 和 dirty map 指向同一个entry)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m.dirty[key] = e
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果 key 对应的值存在于 read map 中，但 p != expunged, 直接更新 entry
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 此时 m.dirty == nil 或 m.dirty[key] == e
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		e.<span style="color:#447fcf">storeLocked</span>(&amp;value)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> e, ok := m.dirty[key]; ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 key 对应的值不存在于 read map 中，但存在于 dirty map 中，直接写入更新 entry (read map 中依然不存在)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		e.<span style="color:#447fcf">storeLocked</span>(&amp;value)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !read.amended {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 read map 和 dirty map 都不存在该值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     如果 dirty map == nil, 创建 dirty map, 并从 read map 中拷贝未删除的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     更新 amended 字段，标识 dirty map 中存在 read map 中不存在的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     将 K =&gt; V 写入 dirty map, read map 不变
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m.<span style="color:#447fcf">dirtyLocked</span>()
+</span></span><span style="display:flex;"><span>			m.read.<span style="color:#447fcf">Store</span>(readOnly{m: read.m, amended: <span style="color:#6ab825;font-weight:bold">true</span>})
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		m.dirty[key] = <span style="color:#447fcf">newEntry</span>(value)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Tips: hot path 不使用 defer 释放锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m.mu.<span style="color:#447fcf">Unlock</span>()   
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="trystore-方法">tryStore 方法</h3>
+<p><code>tryStore</code> 方法尝试直接更新 entry, 如果 entry == expunged, 返回 false。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#447fcf">tryStore</span>(i *any) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		p := atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> p == expunged {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;e.p, p, unsafe.<span style="color:#447fcf">Pointer</span>(i)) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="unexpungelocked-方法">unexpungeLocked 方法</h3>
+<p><code>unexpungeLocked</code> 方法用于取消 entry 的 expunged 标记。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#447fcf">unexpungeLocked</span>() (wasExpunged <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;e.p, expunged, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="storelocked-方法">storeLocked 方法</h3>
+<p><code>storeLocked</code> 方法用于直接将值存入 entry。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#447fcf">storeLocked</span>(i *any) {
+</span></span><span style="display:flex;"><span>	atomic.<span style="color:#447fcf">StorePointer</span>(&amp;e.p, unsafe.<span style="color:#447fcf">Pointer</span>(i))
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="loadorstore-方法">LoadOrStore 方法</h3>
+<p><code>LoadOrStore</code> 方法用于获取 key 对应的值，如果 key 对应的值存在，直接返回 (此时第二个返回值为 true)，否则就将 key 设置为参数值然后返回 (此时第二个返回值为 false)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">LoadOrStore</span>(key, value any) (actual any, loaded <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果命中就直接返回，避免锁操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> e, ok := read.m[key]; ok {
+</span></span><span style="display:flex;"><span>		actual, loaded, ok := e.<span style="color:#447fcf">tryLoadOrStore</span>(value)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> actual, loaded
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	m.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// double check 是避免在加锁期间，dirty map 提升为 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read, _ = m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> e, ok := read.m[key]; ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> e.<span style="color:#447fcf">unexpungeLocked</span>() {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果 key 对应的值存在于 read map 中，但 p == expunged,  说明 dirty != nil 并且 key 对应的值不存在于 dirty map 中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">//    先将 p 的状态由 expunged 改为 nil 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">//    dirty map 新建 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">//    更新 entry.p = value (read map 和 dirty map 指向同一个entry)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m.dirty[key] = e
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		actual, loaded, _ = e.<span style="color:#447fcf">tryLoadOrStore</span>(value)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> e, ok := m.dirty[key]; ok {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果 key 对应的值不存在于 read map 中，但存在于 dirty map 中，直接写入更新 entry (read map 中依然不存在)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		actual, loaded, _ = e.<span style="color:#447fcf">tryLoadOrStore</span>(value)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 记录 1 次 miss
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 方法内部可能将 dirty map 提升到 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		m.<span style="color:#447fcf">missLocked</span>()
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !read.amended {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 read map 和 dirty map 都不存在该值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     如果 dirty map == nil, 创建 dirty map, 并从 read map 中拷贝未删除的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     更新 amended 字段，标识 dirty map 中存在 read map 中不存在的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     将 K =&gt; V 写入 dirty map, read map 不变
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m.<span style="color:#447fcf">dirtyLocked</span>()
+</span></span><span style="display:flex;"><span>			m.read.<span style="color:#447fcf">Store</span>(readOnly{m: read.m, amended: <span style="color:#6ab825;font-weight:bold">true</span>})
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		m.dirty[key] = <span style="color:#447fcf">newEntry</span>(value)
+</span></span><span style="display:flex;"><span>		actual, loaded = value, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	m.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> actual, loaded
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="tryloadorstore-方法">tryLoadOrStore 方法</h3>
+<p><code>tryLoadOrStore</code> 方法用于原子性地加载或存储一个 entry 对应的值，前提是 entry 未被标记为 expunged, 如果 entry 被标记为 expunged, 函数不做任何修改，第二个返回值为 false。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#447fcf">tryLoadOrStore</span>(i any) (actual any, loaded, ok <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	p := atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> p == expunged {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> p != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> *(*any)(p), <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	ic := i
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;e.p, <span style="color:#6ab825;font-weight:bold">nil</span>, unsafe.<span style="color:#447fcf">Pointer</span>(&amp;ic)) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> i, <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		p = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> p == expunged {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> p != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> *(*any)(p), <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="删除操作">删除操作</h2>
+<h3 id="delete-方法">Delete 方法</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 删除 key 对应的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">Delete</span>(key any) {
+</span></span><span style="display:flex;"><span>	m.<span style="color:#447fcf">LoadAndDelete</span>(key)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="loadanddelete-方法">LoadAndDelete 方法</h3>
+<p><code>LoadAndDelete</code> 方法是 <code>Delete</code> 方法的具体实现，和 <code>Load</code> 方法的机制一样，优先从 <code>read map</code> 中删除 (无需加锁)，如果没有找到对应的元素，
+会加锁尝试从 <code>dirty map</code> 中删除，第二个返回值表示 key 对应的值是否存在。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">LoadAndDelete</span>(key any) (value any, loaded <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	e, ok := read.m[key]
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !ok &amp;&amp; read.amended {
+</span></span><span style="display:flex;"><span>		m.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// double check 是避免在加锁期间，dirty map 提升为 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		read, _ = m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>		e, ok = read.m[key]
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !ok &amp;&amp; read.amended {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果 key 对应的值不存在于 read map 中，但存在于 dirty map 中，直接删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			e, ok = m.dirty[key]
+</span></span><span style="display:flex;"><span>			<span style="color:#24909d">delete</span>(m.dirty, key)
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 记录 1 次 miss
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 在 dirty map 被提升到 read map 之前，这个 key 对应的值会一直从 dirty map 中获取
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m.<span style="color:#447fcf">missLocked</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		m.mu.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// key 对应的值存在于 read map 中，直接删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> e.<span style="color:#24909d">delete</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="delete-方法-1">delete 方法</h3>
+<p><code>delete</code> 方法负责 <code>entry</code> 的具体删除。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#24909d">delete</span>() (value any, ok <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		p := atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 p == nil, 说明对应的 entry 已经被删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果 p == expunged, 说明对应的 entry 已经被删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> p == <span style="color:#6ab825;font-weight:bold">nil</span> || p == expunged {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 这里是数据真正被删除的代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;e.p, p, <span style="color:#6ab825;font-weight:bold">nil</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> *(*any)(p), <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="遍历操作">遍历操作</h2>
+<h3 id="range-方法">Range 方法</h3>
+<p>如果全部的数据都在 <code>read map</code> 中，无需加锁，直接读取即可，否则会先加锁，将 <code>dirty map</code> 中的数据全部加载到 <code>read map</code>,
+然后重置 <code>dirty map</code> 和 <code>misses</code> 计数器，这样可以避免遍历过程中多次访问 <code>dirty map</code> 时导致的加锁和性能影响。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Range 方法按照每个 key 和 value 在 map 中出现的顺序依次调用参数函数 f
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果函数 f 返回 false, range 停止遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Range 方法是无序遍历，但是保证每个 key 只会被访问一次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果某个 key 对应的 value 被并发地更新或者删除了，Range 可能返回修改前或修改后的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Range 方法不阻塞接收者的其他方法，甚至回调函数 f 本身也可以调用 Map 的任何方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 不论 Map 中有多少元素，Range 时间复杂度都是 O(N)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 即使函数 f 在一定的调用次数之后返回 false 也一样
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">Range</span>(f <span style="color:#6ab825;font-weight:bold">func</span>(key, value any) <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 在调用 Range 时，能够遍历 map 里面所有的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 read.amended == false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  说明 dirty map 中没有元素，直接遍历 read map 就可以
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> read.amended {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// m.dirty 包含 read.m 中不存在的 key, 不过影响不大，毕竟 Range 时间复杂度为 O(N)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 假设调用方不会中断遍历过程，对于 Range 的调用必然会分阶段完整地拷贝整个 map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这时候可以将 dirty map 提升到 read map 就可以提升性能
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		m.mu.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// double check 是避免在加锁期间，dirty map 提升为 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		read, _ = m.read.<span style="color:#447fcf">Load</span>().(readOnly)  
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> read.amended {
+</span></span><span style="display:flex;"><span>			read = readOnly{m: m.dirty}
+</span></span><span style="display:flex;"><span>			m.read.<span style="color:#447fcf">Store</span>(read)
+</span></span><span style="display:flex;"><span>			m.dirty = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>			m.misses = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// Tips: hot path 不使用 defer 释放锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		m.mu.<span style="color:#447fcf">Unlock</span>()   
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 此时 dirty map 和 read map 已经合并
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 普通 map 遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> k, e := <span style="color:#6ab825;font-weight:bold">range</span> read.m {
+</span></span><span style="display:flex;"><span>		v, ok := e.<span style="color:#447fcf">load</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">f</span>(k, v) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="miss-计数">miss 计数</h2>
+<h3 id="misslocked-方法">missLocked 方法</h3>
+<p><code>missLocked</code> 方法用于增加 <code>Map</code> 操作过程中的 misses 计数，一旦发生足够多的 misses 次数，超过拷贝 dirty map 的成本，直接将 dirty map 赋值给 read map。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">missLocked</span>() {
+</span></span><span style="display:flex;"><span>	m.misses++
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 成本计算: miss 次数小于 dirty map 长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> m.misses &lt; <span style="color:#24909d">len</span>(m.dirty) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 提升过程很简单，直接将 dirty map 赋值给 read map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 提升完成之后，amended == false, m.dirty == nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m.read.<span style="color:#447fcf">Store</span>(readOnly{m: m.dirty})
+</span></span><span style="display:flex;"><span>	m.dirty = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	m.misses = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="数据拷贝">数据拷贝</h2>
+<h3 id="dirtylocked-方法">dirtyLocked 方法</h3>
+<p><code>dirtyLocked</code> 方法用于当 dirty map 等于 nil 时，将 read map 元素拷贝到 dirty map。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Map) <span style="color:#447fcf">dirtyLocked</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> m.dirty != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span><span style="display:flex;"><span>	m.dirty = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[any]*entry, <span style="color:#24909d">len</span>(read.m))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> k, e := <span style="color:#6ab825;font-weight:bold">range</span> read.m {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 1. 将所有为 nil 的元素标记为 expunged
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 2. 只拷贝没有标记为 expunged 的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !e.<span style="color:#447fcf">tryExpungeLocked</span>() {
+</span></span><span style="display:flex;"><span>			m.dirty[k] = e
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="tryexpungelocked-方法">tryExpungeLocked 方法</h3>
+<p><code>tryExpungeLocked</code> 方法用于将等于 nil 的 entry 标记为 expunged。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *entry) <span style="color:#447fcf">tryExpungeLocked</span>() (isExpunged <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	p := atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> p == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapPointer</span>(&amp;e.p, <span style="color:#6ab825;font-weight:bold">nil</span>, expunged) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		p = atomic.<span style="color:#447fcf">LoadPointer</span>(&amp;e.p)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> p == expunged
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="相关问题">相关问题</h2>
+<h3 id="expunged-的使用场景">expunged 的使用场景</h3>
+<p>调用 <code>Store</code>, <code>LoadOrStore</code> 方法存入新的元素时，如果 <code>read map</code> 和 <code>dirty map</code> 中都不存在该元素，会调用 <code>dirtyLocked</code> 方法将 <code>read map</code> 中所有未标记为 <code>expunged</code> 的元素复制到 <code>dirty map</code> 中。</p>
+<h3 id="expunged-标记可以去除吗">expunged 标记可以去除吗？</h3>
+<p>不行，<code>expunged</code> 作为一个 <code>过渡状态标识</code> 是必要的。</p>
+<ol>
+<li>如果没有 <code>expunged</code>, 删除元素时就没有办法实现 <code>软删除</code>，这就导致必须对 <code>read map</code> 加锁，性能直接退化到了 <code>普通 map + 互斥锁</code> 的方案</li>
+<li>实现不了 <code>软删除</code>, 只能将元素设置为 <code>nil</code>, 这就导致即使 <code>dirty map</code> 提升为 <code>read map</code>, 但是里面被删除的垃圾数据依然会保留 (这里的保留指的是 <code>key</code> 相关数据，元素删除时就被置为 <code>nil</code> 了)，最终导致内存占用过多</li>
+<li>调用 <code>Store</code> 方法存入新的元素时，没有办法区分元素是不存在还是已经被删除 (因为两者都是 <code>nil</code>)，造成 <code>read map</code> 和 <code>dirty map</code> 数据不同步 (<code>read map</code> 里面有 <code>dirty map</code> 不存在的数据), 那么在 <code>dirty map</code> 提升为 <code>read map</code> 时，就会导致数据丢失</li>
+</ol>
+<h3 id="为什么需要双重锁检测">为什么需要双重锁检测？</h3>
+<p>在 <code>Map</code> 操作相关方法中，可以看到下面这行代码往往会出现两次:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>read, _ := m.read.<span style="color:#447fcf">Load</span>().(readOnly)
+</span></span></code></pre></div><p>这是为了避免在加锁期间，<code>dirty map</code> 提升为 <code>read map</code>，所以获取锁操作后需要再次检查 <code>key</code> 是否存在于 <code>read map</code> 中。</p>
+<h3 id="为什么没有实现-len-方法">为什么没有实现 <code>Len</code> 方法？</h3>
+<ul>
+<li>实现 <code>Len</code> 方法需要统计 <code>readOnly</code> 和 <code>dirty</code> 两个字段的数据，这样就需要引入锁机制，导致性能下降，还会额外增加代码实现复杂度</li>
+<li>针对 <code>sync.Map</code> 的并发操作会导致其数据变化很快，<code>Len</code> 方法难以保证时效性</li>
+</ul>
+<h3 id="为什么适用的场景是读多写少">为什么适用的场景是读多写少?</h3>
+<p>参考 <code>Load</code> 方法和 <code>Store</code> 方法的注释。</p>
+<h2 id="小结">小结</h2>
+<p>从应用层面来说，针对读多写少的场景，<code>sync.Map</code> 提供了并发安全的 <code>map</code> 操作，包对外提供的方法非常简洁，同时可以避免 <code>普通 map + 互斥锁</code> 实现方案中，
+获取锁和释放锁等繁琐和容易出错的地方，有两个小的细节需要注意:</p>
+<ol>
+<li>包对外提供的方法参数类型都是 <code>any</code>, 在使用具体的数据类型时，需要转换</li>
+<li>包没有提供 <code>Len</code> 方法，如果需要获取元素个数，需要调用 <code>Range</code> 方法计算</li>
+</ol>
+<p>从内部底层实现来说，<code>sync.Map</code> 通过 <code>entry</code> 类型将 <code>map</code> 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (<code>read map</code> 和 <code>dirty map</code> 指向同一个 <code>entry</code>)，
+<code>read</code>, <code>dirty</code> 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 <code>sync.Map</code> 根据读写比例动态变化和转换内部字段数据结构，
+尤其是 <code>read</code> 和 <code>dirty</code> 两个字段保持部分内存结构布局一致并且通过指针直接转换，这些都是值得我们学习的编码技巧。</p>
+<p><img src="https://dbwu.tech/images/sync_map.png" alt="图片来源: http://russellluo.com/2017/06/go-sync-map-diagram.html"></p>
+<p>图片来源: <a href="http://russellluo.com/2017/06/go-sync-map-diagram.html">http://russellluo.com/2017/06/go-sync-map-diagram.html</a></p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_cond/"><i class="fa fa-chevron-circle-left"></i> sync.Cond Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_singleflight/">singleflight Code Reading <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="sync.Map Code Reading"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

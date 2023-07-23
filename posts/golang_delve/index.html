@@ -1,0 +1,668 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Go Delve - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Delve 用来调试 Go 语言开发的程序，该工具的目标是为 Go 语言提供一个简单、功能齐全的调试工具。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go Delve" />
+<meta property="og:description" content="Delve 用来调试 Go 语言开发的程序，该工具的目标是为 Go 语言提供一个简单、功能齐全的调试工具。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_delve/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-09T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-09T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go Delve"/>
+<meta name="twitter:description" content="Delve 用来调试 Go 语言开发的程序，该工具的目标是为 Go 语言提供一个简单、功能齐全的调试工具。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Go Delve</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/debug">debug</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="简介">简介</h2>
+<blockquote>
+<p><code>Delve</code> 用来调试 <code>Go</code> 语言开发的程序，该工具的目标是为 <code>Go</code> 语言提供一个简单、功能齐全的调试工具。</p>
+</blockquote>
+<h2 id="为什么不推荐-gdb">为什么不推荐 gdb</h2>
+<ul>
+<li>gdb 对 Go 的调试支持是通过一个 python 脚本文件 <code>src/runtime/runtime-gdb.py</code> 扩展的，功能有限</li>
+<li>gdb 只能做到最基本的变量打印，却理解不了 golang 的一些特殊类型，比如 channel，map，slice 等，gdb 原生是无法调适 goroutine 协程的，
+因为这是用户态的调度单位，gdb 只能理解线程，所以只能通过 python 脚本的扩展，把协程结构按照链表输出</li>
+</ul>
+<h2 id="安装">安装</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go install github.com/go-delve/delve/cmd/dlv@latest
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 安装完成后查看版本</span>
+</span></span><span style="display:flex;"><span>$ dlv verison
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Delve Debugger
+</span></span><span style="display:flex;"><span>Version: 1.20.1
+</span></span><span style="display:flex;"><span>Build: <span style="color:#40ffff">$Id</span>: 96e65b6c615845d42e0e31d903f6475b0e4ece6e 
+</span></span></code></pre></div><h2 id="常用命令">常用命令</h2>
+<ul>
+<li><code>dlv attach</code> - 调试进程</li>
+<li><code>dlv core</code> - 调试 core</li>
+<li><code>dlv debug</code> -  编译并调试当前目录的 <code>main</code> 包，也可以通过参数指定其他包</li>
+<li><code>dlv exec</code> - 调试二进制文件</li>
+<li><code>dlv test</code> - 编译并调试测试文件</li>
+</ul>
+<h2 id="快速开始">快速开始</h2>
+<p>我们首先从一个简单的示例程序开始，改程序打印字符串 <code>hello world</code>, 然后结束并退出。</p>
+<h3 id="源文件">源文件</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#ed9d13">&#34;hello world&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="调试源文件">调试源文件</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ dlv debug main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Type &#39;help&#39; for list of commands.</span>
+</span></span><span style="display:flex;"><span>(dlv) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输入 help 查看参数说明</span>
+</span></span><span style="display:flex;"><span>(dlv) <span style="color:#24909d">help</span>
+</span></span><span style="display:flex;"><span>The following commands are available:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Running the program:
+</span></span><span style="display:flex;"><span>    call ------------------------ Resumes process
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span> types ---------------------- Print list of types
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Type <span style="color:#24909d">help</span> followed by a <span style="color:#24909d">command</span> <span style="color:#6ab825;font-weight:bold">for</span> full documentation.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 运行程序</span>
+</span></span><span style="display:flex;"><span>(dlv) <span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>hello world
+</span></span><span style="display:flex;"><span>Process <span style="color:#3677a9">3637</span> has exited with status <span style="color:#3677a9">0</span>
+</span></span></code></pre></div><h3 id="调试编译后二进制文件">调试编译后二进制文件</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 编译源文件</span>
+</span></span><span style="display:flex;"><span>$ go build -o main main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ dlv <span style="color:#24909d">exec</span> ./main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Type <span style="color:#ed9d13">&#39;help&#39;</span> <span style="color:#6ab825;font-weight:bold">for</span> list of commands.
+</span></span><span style="display:flex;"><span>(dlv) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 接下来的步骤和调试源文件的一样，这里不再赘述</span>
+</span></span></code></pre></div><h3 id="调试进程">调试进程</h3>
+<p>为了让进程保持在运行状态，我们在程序中加一行休眠代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	time.<span style="color:#447fcf">Sleep</span>(time.Minute)
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#ed9d13">&#34;hello world&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>调试前先运行程序：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看进程 ID</span>
+</span></span><span style="display:flex;"><span>$ ps -ef | grep <span style="color:#ed9d13">&#34;go run main.go&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">7602</span> <span style="color:#3677a9">27666</span>  <span style="color:#3677a9">0</span> 21:30 pts/6    00:00:00 go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 调试进程</span>
+</span></span><span style="display:flex;"><span>$ dlv attach <span style="color:#3677a9">7602</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Type <span style="color:#ed9d13">&#39;help&#39;</span> <span style="color:#6ab825;font-weight:bold">for</span> list of commands.
+</span></span><span style="display:flex;"><span>(dlv) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 1 分钟之后，main.go 并未正常退出，因为当前正在调试</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输入 continue 继续运行</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>(dlv) <span style="color:#6ab825;font-weight:bold">continue</span> 
+</span></span><span style="display:flex;"><span>Process <span style="color:#3677a9">7602</span> has exited with status <span style="color:#3677a9">0</span>
+</span></span></code></pre></div><h2 id="常用调试命令">常用调试命令</h2>
+<p>下列命令是启动 <code>dlv</code> 调试后可用的命令 (也就是当前命令行变为 <code>(dlv)</code> 之后可用)。</p>
+<h3 id="运行程序">运行程序</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>call</td>
+<td>恢复进程，调用函数 (实验阶段)</td>
+</tr>
+<tr>
+<td>continue</td>
+<td>继续运行程序，直到遇到断点或程序结束</td>
+</tr>
+<tr>
+<td>next</td>
+<td>单步调试</td>
+</tr>
+<tr>
+<td>restart</td>
+<td>重新运行</td>
+</tr>
+<tr>
+<td>step</td>
+<td>单步调试某个函数</td>
+</tr>
+<tr>
+<td>step-instruction</td>
+<td>单步调试某个 CPU 指令</td>
+</tr>
+<tr>
+<td>stepout</td>
+<td>从当前函数跳出</td>
+</tr>
+</tbody>
+</table>
+<h3 id="操作断点">操作断点</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>break</td>
+<td>设置断点</td>
+</tr>
+<tr>
+<td>breakpoints</td>
+<td>打印所有断点</td>
+</tr>
+<tr>
+<td>clear</td>
+<td>删除断点</td>
+</tr>
+<tr>
+<td>clearall</td>
+<td>删除所有断点</td>
+</tr>
+<tr>
+<td>condition</td>
+<td>设置条件断点</td>
+</tr>
+<tr>
+<td>on</td>
+<td>设置一个断点触发时执行的命令</td>
+</tr>
+<tr>
+<td>toggle</td>
+<td>打开/关闭 断点</td>
+</tr>
+</tbody>
+</table>
+<h3 id="查看变量或内存">查看变量或内存</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>args</td>
+<td>打印函数参数</td>
+</tr>
+<tr>
+<td>display</td>
+<td>每次程序停止时打印表达式的值</td>
+</tr>
+<tr>
+<td>examinemem</td>
+<td>解析给定地址的内存</td>
+</tr>
+<tr>
+<td>locals</td>
+<td>打印本地变量</td>
+</tr>
+<tr>
+<td>print</td>
+<td>解析一个表达式</td>
+</tr>
+<tr>
+<td>regs</td>
+<td>打印寄存器信息</td>
+</tr>
+<tr>
+<td>set</td>
+<td>设置变量的值</td>
+</tr>
+<tr>
+<td>vars</td>
+<td>打印包内变量</td>
+</tr>
+<tr>
+<td>whatis</td>
+<td>打印类型信息</td>
+</tr>
+</tbody>
+</table>
+<h3 id="线程--goroutine-的展示与切换">线程 / goroutine 的展示与切换</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>goroutine</td>
+<td>打印或切换 goroutine</td>
+</tr>
+<tr>
+<td>goroutines</td>
+<td>打印所有 goroutine</td>
+</tr>
+<tr>
+<td>thread</td>
+<td>切换到指定的线程</td>
+</tr>
+<tr>
+<td>threads</td>
+<td>打印所有线程信息</td>
+</tr>
+</tbody>
+</table>
+<h3 id="调用堆栈">调用堆栈</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>deferred</td>
+<td>在 defer 上下文中执行命令</td>
+</tr>
+<tr>
+<td>frame</td>
+<td>设置当前帧，或在不同的帧上执行命令</td>
+</tr>
+<tr>
+<td>stack</td>
+<td>打印堆栈信息</td>
+</tr>
+</tbody>
+</table>
+<h3 id="其他命令">其他命令</h3>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>config</td>
+<td>更改配置参数</td>
+</tr>
+<tr>
+<td>disassemble</td>
+<td>反汇编</td>
+</tr>
+<tr>
+<td>dump</td>
+<td>dump core</td>
+</tr>
+<tr>
+<td>exit</td>
+<td>结束调试，也可以用 <code>quit</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="综合示例">综合示例</h2>
+<p>最后，我们使用一个的小例子，熟悉下常用的几个命令。</p>
+<p>示例程序代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// main.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	x = <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">println</span>(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 开始调试</span>
+</span></span><span style="display:flex;"><span>$ dlv debug main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Type <span style="color:#ed9d13">&#39;help&#39;</span> <span style="color:#6ab825;font-weight:bold">for</span> list of commands.
+</span></span><span style="display:flex;"><span>(dlv)
+</span></span><span style="display:flex;"><span> 
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 增加断点</span>
+</span></span><span style="display:flex;"><span>(dlv) b main.main
+</span></span><span style="display:flex;"><span>Breakpoint <span style="color:#3677a9">1</span> <span style="color:#24909d">set</span> at 0x45f0c6 <span style="color:#6ab825;font-weight:bold">for</span> main.main() ./main.go:7
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看断点</span>
+</span></span><span style="display:flex;"><span>(dlv) bp
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Breakpoint <span style="color:#3677a9">2</span> (enabled) at 0x45f0c6 <span style="color:#6ab825;font-weight:bold">for</span> main.main() ./main.go:7 (0)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 运行程序</span>
+</span></span><span style="display:flex;"><span>(dlv) <span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>&gt; main.main() ./main.go:7 (hits goroutine(1):1 total:1) (PC: 0x45f0c6)
+</span></span><span style="display:flex;"><span>     2:
+</span></span><span style="display:flex;"><span>     3: var (
+</span></span><span style="display:flex;"><span>     4:         <span style="color:#40ffff">x</span> = <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>     5: )
+</span></span><span style="display:flex;"><span>     6:
+</span></span><span style="display:flex;"><span>=&gt;   7: func main() {
+</span></span><span style="display:flex;"><span>     8:         <span style="color:#6ab825;font-weight:bold">for</span> i := 0; i &lt; 5; i++ {
+</span></span><span style="display:flex;"><span>     9:                 println(i)
+</span></span><span style="display:flex;"><span>    10:         }
+</span></span><span style="display:flex;"><span>    11: }
+</span></span><span style="display:flex;"><span>    12:
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 可以看到，程序停在了设置的断点上</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 打印包变量</span>
+</span></span><span style="display:flex;"><span>(dlv) vars vars main.x
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>main.x = <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 单步调试</span>
+</span></span><span style="display:flex;"><span>(dlv) next
+</span></span><span style="display:flex;"><span>&gt; main.main() ./main.go:8 (PC: 0x45f0d4)
+</span></span><span style="display:flex;"><span>     3: var (
+</span></span><span style="display:flex;"><span>     4:         <span style="color:#40ffff">x</span> = <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>     5: )
+</span></span><span style="display:flex;"><span>     6:
+</span></span><span style="display:flex;"><span>     7: func main() {
+</span></span><span style="display:flex;"><span>=&gt;   8:         <span style="color:#40ffff">x</span> = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>     9:         <span style="color:#6ab825;font-weight:bold">for</span> i := 0; i &lt; 5; i++ {
+</span></span><span style="display:flex;"><span>    10:                 println(i)
+</span></span><span style="display:flex;"><span>    11:         }
+</span></span><span style="display:flex;"><span>    12: }
+</span></span><span style="display:flex;"><span>    13:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 再次单步调试</span>
+</span></span><span style="display:flex;"><span>(dlv) next
+</span></span><span style="display:flex;"><span>&gt; main.main() ./main.go:9 (PC: 0x45f0df)
+</span></span><span style="display:flex;"><span>     4:         <span style="color:#40ffff">x</span> = <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>     5: )
+</span></span><span style="display:flex;"><span>     6:
+</span></span><span style="display:flex;"><span>     7: func main() {
+</span></span><span style="display:flex;"><span>     8:         <span style="color:#40ffff">x</span> = <span style="color:#40ffff">0</span>
+</span></span><span style="display:flex;"><span>=&gt;   9:         <span style="color:#6ab825;font-weight:bold">for</span> i := 0; i &lt; 5; i++ {
+</span></span><span style="display:flex;"><span>    10:                 println(i)
+</span></span><span style="display:flex;"><span>    11:         }
+</span></span><span style="display:flex;"><span>    12: }
+</span></span><span style="display:flex;"><span>    13:
+</span></span><span style="display:flex;"><span>    14: //timeout := time.After(time.Minute)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 可以看到，程序停在了循环语句</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 打印包变量</span>
+</span></span><span style="display:flex;"><span>(dlv) vars main.x
+</span></span><span style="display:flex;"><span>main.x = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 再次单步调试</span>
+</span></span><span style="display:flex;"><span>(dlv) next
+</span></span><span style="display:flex;"><span>&gt; main.main() ./main.go:10 (PC: 0x45f0f4)
+</span></span><span style="display:flex;"><span>     5: )
+</span></span><span style="display:flex;"><span>     6:
+</span></span><span style="display:flex;"><span>     7: func main() {
+</span></span><span style="display:flex;"><span>     8:         <span style="color:#40ffff">x</span> = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>     9:         <span style="color:#6ab825;font-weight:bold">for</span> i := 0; i &lt; 5; i++ {
+</span></span><span style="display:flex;"><span>=&gt;  10:                 println(i)
+</span></span><span style="display:flex;"><span>    11:         }
+</span></span><span style="display:flex;"><span>    12: }
+</span></span><span style="display:flex;"><span>    13:
+</span></span><span style="display:flex;"><span>    14: //timeout := time.After(time.Minute)
+</span></span><span style="display:flex;"><span>    15: //
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 打印本地变量</span>
+</span></span><span style="display:flex;"><span>(dlv) locals
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">i</span> = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看堆栈信息</span>
+</span></span><span style="display:flex;"><span>(dlv) stack
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span>  0x000000000045f0f4 in main.main
+</span></span><span style="display:flex;"><span>   at ./main.go:10
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>  0x00000000004358b8 in runtime.main
+</span></span><span style="display:flex;"><span>   at /usr/local/go/src/runtime/proc.go:250
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>  0x000000000045c0c1 in runtime.goexit
+</span></span><span style="display:flex;"><span>   at /usr/local/go/src/runtime/asm_amd64.s:1594
+</span></span><span style="display:flex;"><span>   
+</span></span><span style="display:flex;"><span>   
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 打印 goroutine 信息</span>
+</span></span><span style="display:flex;"><span>(dlv) goroutine
+</span></span><span style="display:flex;"><span>Thread <span style="color:#3677a9">27873</span> at ./main.go:10
+</span></span><span style="display:flex;"><span>Goroutine 1:
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 删除所有断点</span>
+</span></span><span style="display:flex;"><span>(dlv) clearall
+</span></span><span style="display:flex;"><span>Breakpoint <span style="color:#3677a9">1</span> cleared at 0x45f0c6 <span style="color:#6ab825;font-weight:bold">for</span> main.main() ./main.go:7
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 继续执行</span>
+</span></span><span style="display:flex;"><span>(dlv) <span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">4</span>
+</span></span><span style="display:flex;"><span>Process <span style="color:#3677a9">27873</span> has exited with status <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 退出调试</span>
+</span></span><span style="display:flex;"><span>(dlv) <span style="color:#24909d">exit</span>
+</span></span></code></pre></div><h2 id="与-ide-集成">与 IDE 集成</h2>
+<p><code>Delve</code> 支持以插件的形式集成到主流的 IDE 里面，具体的支持列表请看 <a href="https://github.com/go-delve/delve/blob/master/Documentation/EditorIntegration.md">这个页面</a>。</p>
+<h2 id="常见问题">常见问题</h2>
+<h3 id="单点调试总是执行非预期的代码">单点调试总是执行非预期的代码？</h3>
+<p><strong>一般是被编译器优化了，比如内联会导致 dlv 单步调试无法打印某些变量，解决方法是禁止编译优化。</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 禁用内联和优化 (细节可以阅读引用文章列表)</span>
+</span></span><span style="display:flex;"><span>go run -gcflags <span style="color:#ed9d13">&#34;-N -l&#34;</span> main.go
+</span></span></code></pre></div><h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/go-delve/delve">go-delve/delve</a></li>
+<li><a href="https://github.com/duanbiaowu/go-examples-for-beginners/blob/master/performance/stack_dump.md">高效获取堆栈调用信息</a></li>
+<li><a href="https://golang.dbwu.tech/performance/inline/">内联优化</a></li>
+<li><a href="https://dbwu.tech/posts/goland_escape/">逃逸分析</a></li>
+<li><a href="https://mp.weixin.qq.com/s/OXpWRiCHcxpFlylUk3RDEA">golang 调试分析的高阶技巧</a></li>
+<li><a href="https://xargin.com/how-to-locate-for-block-in-golang/">如何定位 golang 进程 hang 死的 bug</a></li>
+<li><a href="https://sourceware.org/gdb/current/onlinedocs/gdb.html/">Debugging with GDB</a></li>
+<li><a href="https://github.com/hellogcc/100-gdb-tips">100-gdb-tips</a></li>
+<li><a href="https://colobu.com/2016/07/04/dive-into-go-11/">深入 Go 语言 - 11</a></li>
+<li><a href="https://gist.github.com/abel0b/b1881e41b9e1c4b16d84e5e083c38a13">WSL2 安装 perf</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/what_is_cloudnative/"><i class="fa fa-chevron-circle-left"></i> 云原生和边缘计算简介</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_slice/">Go 切片扩容底层实现 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Go Delve"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

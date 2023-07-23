@@ -1,0 +1,972 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Go map 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="本文从源代码的角度分析 Go map 数据结构使用中的常见问题，例如: 为什么 map 未初始化写入时报错 ? map 是线程安全的吗 ? 为什么遍历 map 是无序的 ? &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go map 设计与实现" />
+<meta property="og:description" content="本文从源代码的角度分析 Go map 数据结构使用中的常见问题，例如: 为什么 map 未初始化写入时报错 ? map 是线程安全的吗 ? 为什么遍历 map 是无序的 ? &hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_map/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-11T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go map 设计与实现"/>
+<meta name="twitter:description" content="本文从源代码的角度分析 Go map 数据结构使用中的常见问题，例如: 为什么 map 未初始化写入时报错 ? map 是线程安全的吗 ? 为什么遍历 map 是无序的 ? &hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Go map 设计与实现</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>在计算机科学中，关联数组 (<code>Associative Array</code>)，又称映射 (<code>Map</code>)、字典 (<code>Dictionary</code>) 是一个抽象的数据结构，它包含着类似于（键，值）的有序对。</p>
+</blockquote>
+<p>从应用的角度来看，Go 语言的 <code>map</code> 数据结构主要有以下常见问题:</p>
+<ul>
+<li>未初始化写入时报错</li>
+<li>遍历时无序</li>
+<li>非并发安全</li>
+</ul>
+<p>本文通过分析标准库中 <code>map</code> 的内部实现，尝试解答上面的问题。</p>
+<h2 id="内部实现">内部实现</h2>
+<p><code>map</code> 的源代码文件路径为 <code>$GOROOT/src/runtime/map.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="相关常量">相关常量</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	bucketCntBits = <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 8: 一个 bucket 存放元素的数量上限
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bucketCnt     = <span style="color:#3677a9">1</span> &lt;&lt; bucketCntBits  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 触发扩容的负载因子: 6.5
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 官方的解释是这个值是根据测试结果统计出来的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 负载量超过负载因子时，发生扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 负载量 = 元素数量 / bucket 桶数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	loadFactorNum = <span style="color:#3677a9">13</span>
+</span></span><span style="display:flex;"><span>	loadFactorDen = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 保持内联的键值对大小上限, 超过这个大小，键和值会被转换为指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 必须在 uint8 所表示的范围内 [0 - 255]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxKeySize  = <span style="color:#3677a9">128</span>
+</span></span><span style="display:flex;"><span>	maxElemSize = <span style="color:#3677a9">128</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 数据偏移量根据 bmap 结构体的大小进行对齐
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dataOffset = unsafe.<span style="color:#447fcf">Offsetof</span>(<span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		b bmap
+</span></span><span style="display:flex;"><span>		v <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>	}{}.v)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// tophash 除了放正常的高 8 位的 hash 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 还会在空闲、迁移时存储一些自定义的状态值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	emptyRest      = <span style="color:#3677a9">0</span> <span style="color:#999;font-style:italic">// 槽未使用，且在较高的索引或溢出处不再有非空单元
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	emptyOne       = <span style="color:#3677a9">1</span> <span style="color:#999;font-style:italic">// 槽未使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	evacuatedX     = <span style="color:#3677a9">2</span> <span style="color:#999;font-style:italic">// 对应的键值存在，并且已经迁移到扩容后的 map 的前半部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	evacuatedY     = <span style="color:#3677a9">3</span> <span style="color:#999;font-style:italic">// 对应的键值存在，并且已经迁移到扩容后的 map 的后半部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	evacuatedEmpty = <span style="color:#3677a9">4</span> <span style="color:#999;font-style:italic">// 槽未使用, 桶迁移完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	minTopHash     = <span style="color:#3677a9">5</span> <span style="color:#999;font-style:italic">// 正常填充槽的最小 TopHash 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	iterator     = <span style="color:#3677a9">1</span> <span style="color:#999;font-style:italic">// 可能有一个使用 bucket 的迭代器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	oldIterator  = <span style="color:#3677a9">2</span> <span style="color:#999;font-style:italic">// 可能有一个使用 oldbuckets 的迭代器 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	hashWriting  = <span style="color:#3677a9">4</span> <span style="color:#999;font-style:italic">// 一个等待写入 map 的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sameSizeGrow = <span style="color:#3677a9">8</span> <span style="color:#999;font-style:italic">// 等量扩容: 当前的 map 增长是一个相同大小的新 map
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 用于迭代器检查的哨兵 bucket ID
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	noCheck = <span style="color:#3677a9">1</span>&lt;&lt;(<span style="color:#3677a9">8</span>*goarch.PtrSize) - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>我们暂时只需要关注两个常量数值:</p>
+<ol>
+<li>单个 <code>bucket</code> 最多可以放 8 个元素</li>
+<li><code>map</code> 负载因子上限为 6.5</li>
+</ol>
+<p><code>map</code> 负载量的计算方式为:</p>
+<blockquote>
+<p>负载量 = 元素数量 / bucket 桶数量</p>
+</blockquote>
+<h2 id="数据结构">数据结构</h2>
+<h3 id="bmap-对象">bmap 对象</h3>
+<p><code>bmap</code> 对象表示 <code>map</code> 中用于存储数据的 <code>bucket</code>, 也就是数据桶。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> bmap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// tophash 通常包含此 bucket 中每个 key 的 hash 值高位字节
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 tophash[0] &lt; minTopHash, 那么其表示 bucket 的迁移状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tophash [bucketCnt]<span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>编译器会将 <code>bmap</code> 结构体转换为下面的结构体:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> bmap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    tophash  [bucketCnt]<span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>    keys     [bucketCnt]keytype
+</span></span><span style="display:flex;"><span>    values   [bucketCnt]valuetype
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 溢出 bucket 的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    overflow <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>需要注意的是: <strong><code>key + value</code> 并不是配对存储的，而是分别存储在不同的数组中</strong>。把所有的 <code>key</code> 放在一起，然后把所有的 <code>value</code> 放在一起，
+<strong>可以消除为了内存对齐而导致的内存填充 (主要是为了节省内存)，如 <code>map[int64]int8</code> 这种较为极端的情况</strong>。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>配对存储</th>
+<th>独立存储</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>map[int64]int8</td>
+<td>128 字节</td>
+<td>72 字节</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>在配对存储时，需要内存对齐，所以单个 <code>key/value</code> 大小为 16 字节，8 个元素一共 128 字节</li>
+<li>在独立存储时，不需要内存对齐，8 个键 64 字节，8 个元素 8 字节，一共 72 字节</li>
+</ul>
+<p><img src="https://dbwu.tech/images/map_2.png" alt="bmap 对象"></p>
+<h3 id="mapextra-对象">mapextra 对象</h3>
+<p>如果 <code>map</code> 的键和值都不包含指针，并且可以被内联 (&lt;=128 bytes), 那么标记 <code>bucket</code> 桶不含指针，这样可以避免 <code>GC</code> 扫描。
+但是 <code>bmap.overflow</code> 字段是一个指针，为了保证溢出的 <code>bucket</code> 桶存活 (不被 GC)，在 <code>hmap.extra.overflow</code> 和 <code>hmap.extra.oldoverflow</code> 中存储了指向所有溢出桶的指针。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> mapextra <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// overflow 和 oldoverflow 仅在 key 和 elem 都不包含指针时使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// overflow 包含 hmap.buckets 的溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// oldoverflow 包含 hmap.oldbuckets 的溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	overflow    *[]*bmap
+</span></span><span style="display:flex;"><span>	oldoverflow *[]*bmap
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// nextOverflow 指向空闲的溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nextOverflow *bmap
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="hmap-对象">hmap 对象</h3>
+<p><code>hmap</code> 对象表示 <code>map</code> 数据类型的主体结构。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> hmap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// map 中的元素个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 必须放在 struct 的第一个位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为内置的 len 函数会从这里读取 (减少指令，提升性能，和 sync.Once 的 done 字段作用一样)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	count     <span style="color:#6ab825;font-weight:bold">int</span>     
+</span></span><span style="display:flex;"><span>	flags     <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// bucket 桶数量对应的指数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// bucket 桶数量 = 2^B 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 超过 6.5 * 2^B 个元素，就需要扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	B         <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 溢出 bucket 桶的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	noverflow <span style="color:#6ab825;font-weight:bold">uint16</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 哈希种子, 为哈希函数的结果引入随机性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	hash0     <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// bucket 桶存放数据的数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 count 字段等于 0，则为 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	buckets    unsafe.Pointer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 只有在扩容期间不为 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 扩容期间指向 buckets
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	oldbuckets unsafe.Pointer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 迁移进度计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 小于计数器的 bucket 桶表示已经迁移完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nevacuate  <span style="color:#6ab825;font-weight:bold">uintptr</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当键和值都可以内联的时，就会使用这个字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	extra *mapextra 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/map.png" alt="hmap 对象"></p>
+<h2 id="方法">方法</h2>
+<h3 id="makemap_small-方法">makemap_small 方法</h3>
+<p><code>makemap_small</code> 方法实现了两种 <code>map</code> 创建方式:</p>
+<ul>
+<li>零长度 <code>map</code>,  例如 make(map[k]v)</li>
+<li>长度较小的 <code>map</code>, 例如 make(map[k]v, hint), 前提是在编译时可以推断出参数 <code>hint</code> 最多为 8 并且分配到堆上</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">makemap_small</span>() *hmap {
+</span></span><span style="display:flex;"><span>	h := <span style="color:#24909d">new</span>(hmap)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 生成哈希种子
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.hash0 = <span style="color:#447fcf">fastrand</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> h
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="makemap-方法">makemap 方法</h3>
+<p>如果创建的 <code>map</code> 不符合 <code>makemap_small</code> 方法的条件, 会调用 <code>makemap</code> 方法来创建。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 h != nil, map 可以在 h 中创建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果 h.buckets != nil, 可以复用 h.buckets 数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">makemap</span>(t *maptype, hint <span style="color:#6ab825;font-weight:bold">int</span>, h *hmap) *hmap {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		h = <span style="color:#24909d">new</span>(hmap)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 生成哈希种子
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.hash0 = <span style="color:#447fcf">fastrand</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算需要的 bucket 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	B := <span style="color:#24909d">uint8</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> <span style="color:#447fcf">overLoadFactor</span>(hint, B) {   
+</span></span><span style="display:flex;"><span>		B++
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	h.B = B
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 bucket 桶用于保存数据的数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 B == 0, buckets 字段懒加载
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 map 长度较大，那么这部分内存初始化会花较长时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> h.B != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> nextOverflow *bmap
+</span></span><span style="display:flex;"><span>		h.buckets, nextOverflow = <span style="color:#447fcf">makeBucketArray</span>(t, h.B, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> nextOverflow != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			h.extra = <span style="color:#24909d">new</span>(mapextra)
+</span></span><span style="display:flex;"><span>			h.extra.nextOverflow = nextOverflow
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> h
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mapaccess2-方法">mapaccess2 方法</h3>
+<p><code>mapaccess1</code>，<code>mapaccess2</code>，<code>mapaccessK</code> 几个方法差不多，都可以用来访问 <code>map</code> 元素，这里以 <code>mapaccess2</code> 作为示例说明。</p>
+<p><code>mapaccess2</code> 不仅可以返回参数 key 对应的元素，还可以返回第二个参数用来表示 <code>key</code> 对应的元素是否存在。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mapaccess2</span>(t *maptype, h *hmap, key unsafe.Pointer) (unsafe.Pointer, <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h == <span style="color:#6ab825;font-weight:bold">nil</span> || h.count == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// map == nil 或元素数量为 0, 直接返回未找到
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> unsafe.<span style="color:#447fcf">Pointer</span>(&amp;zeroVal[<span style="color:#3677a9">0</span>]), <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.flags&amp;hashWriting != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 并发读写 map 错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;concurrent map read and map write&#34;</span>)  
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 不同类型的 key，所用的 hash 算法是不一样的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	hash := t.<span style="color:#447fcf">hasher</span>(key, <span style="color:#24909d">uintptr</span>(h.hash0))
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 找到对应的 bucket 桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m := <span style="color:#447fcf">bucketMask</span>(h.B)
+</span></span><span style="display:flex;"><span>	b := (*bmap)(<span style="color:#447fcf">add</span>(h.buckets, (hash&amp;m)*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 如果 map 正在扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> c := h.oldbuckets; c != <span style="color:#6ab825;font-weight:bold">nil</span> {    
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !h.<span style="color:#447fcf">sameSizeGrow</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前扩容机制是翻倍扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明之前的 buckets 只有现在的一半
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			m &gt;&gt;= <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		oldb := (*bmap)(<span style="color:#447fcf">add</span>(c, (hash&amp;m)*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">evacuated</span>(oldb) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果旧桶中的数据还未迁移完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明 key 对应的值可能存在于旧桶中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			b = oldb
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 取高 8 位的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	top := <span style="color:#447fcf">tophash</span>(hash)  
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>bucketloop:
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> ; b != <span style="color:#6ab825;font-weight:bold">nil</span>; b = b.<span style="color:#447fcf">overflow</span>(t) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 一个桶在满 8 个元素后，会创建新的桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 然后挂在原来的桶的 overflow 指针上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uintptr</span>(<span style="color:#3677a9">0</span>); i &lt; bucketCnt; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 循环对比桶中各个元素的哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> b.tophash[i] != top {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> b.tophash[i] == emptyRest {
+</span></span><span style="display:flex;"><span>                    <span style="color:#999;font-style:italic">// 如果当前元素后面的元素都是空的，说明没有更多的元素了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 直接跳转到下一个溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">break</span> bucketloop
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果找到了相等的哈希值，那说明 key 对应的值可能存在于当前桶中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 根据偏移量取出对应的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            k := <span style="color:#447fcf">add</span>(unsafe.<span style="color:#447fcf">Pointer</span>(b), dataOffset+i*<span style="color:#24909d">uintptr</span>(t.keysize))
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> t.key.<span style="color:#447fcf">equal</span>(key, k) {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 仅当当前 key 和参数 key 完全相同时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 才说明对应的元素找到了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> e, <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 没有找到 key 对应的值，返回零值和 false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> unsafe.<span style="color:#447fcf">Pointer</span>(&amp;zeroVal[<span style="color:#3677a9">0</span>]), <span style="color:#6ab825;font-weight:bold">false</span>   
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mapassign-方法">mapassign 方法</h3>
+<p><code>mapassign</code> 方法用于设置 <code>map</code> 的值 ，和 <code>mapaccess</code> 方法不同的地方在于: 如果 <code>key</code> 不存在于 <code>map</code> 中，则为它分配对应的槽，然后设置值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mapassign</span>(t *maptype, h *hmap, key unsafe.Pointer) unsafe.Pointer {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// map 未初始化时不能赋值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">panic</span>(<span style="color:#447fcf">plainError</span>(<span style="color:#ed9d13">&#34;assignment to entry in nil map&#34;</span>))
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.flags&amp;hashWriting != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 并发写错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;concurrent map writes&#34;</span>)  
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 调用对应类型的 hash 算法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	hash := t.<span style="color:#447fcf">hasher</span>(key, <span style="color:#24909d">uintptr</span>(h.hash0))  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 hash 算法后设置 hashWriting 状态标识
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为 t.hasher 可能发生 panic, 此时实际的设置操作还未完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.flags ^= hashWriting
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 初始化第一个桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> h.buckets == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		h.buckets = <span style="color:#447fcf">newobject</span>(t.bucket)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>again:
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算低 8 位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bucket := hash &amp; <span style="color:#447fcf">bucketMask</span>(h.B)    
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.<span style="color:#447fcf">growing</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 map 当前正在扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 顺便调用一次增量扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">growWork</span>(t, h, bucket)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算出存储的桶地址, 转换为 bucket 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b := (*bmap)(<span style="color:#447fcf">add</span>(h.buckets, bucket*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算高 8 位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	top := <span style="color:#447fcf">tophash</span>(hash)    
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>bucketloop:
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uintptr</span>(<span style="color:#3677a9">0</span>); i &lt; bucketCnt; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 循环对比桶中各个元素的哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> b.tophash[i] != top {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 在 b.tophash[i] != top 的情况下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 理论上有可能会是一个空槽位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 一般情况下 map 的槽位分布是这样的，e 表示 empty:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// [h1][h2][h3][h4][h5][e][e][e]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 但在执行过 delete 操作时，可能会变成这样:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// [h1][h2][e][e][h5][e][e][e]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 所以如果再插入的话，会尽量往前面的位置插入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// [h1][h2][e][e][h5][e][e][e]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//          ^
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//          ^
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//       这个位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 所以在循环的时候还要顺便把前面的空位置先记下来
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isEmpty</span>(b.tophash[i]) &amp;&amp; inserti == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果这个槽位没有被占，说明可以往这里放入 key 和 value 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                    ...
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> b.tophash[i] == emptyRest {
+</span></span><span style="display:flex;"><span>                    <span style="color:#999;font-style:italic">// 如果当前元素后面的元素都是空的，说明没有更多的元素了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>                    <span style="color:#999;font-style:italic">// 直接跳转到下一个溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">break</span> bucketloop
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果找到了相等的哈希值，那说明 key 对应的值可能存在于当前桶中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 根据偏移量取出对应的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			k := <span style="color:#447fcf">add</span>(unsafe.<span style="color:#447fcf">Pointer</span>(b), dataOffset+i*<span style="color:#24909d">uintptr</span>(t.keysize))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果两个 key 的首 8 位、最后 8 位 hash 值一样，会进行比较，和处理 hash 碰撞一样
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 如果相同的哈希位置的 key 和要插入的 key 不相等
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !t.key.<span style="color:#447fcf">equal</span>(key, k) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前 key 和参数 key 完全相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 但是对应的位置已经有值了，直接更新
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> t.<span style="color:#447fcf">needkeyupdate</span>() {
+</span></span><span style="display:flex;"><span>				<span style="color:#447fcf">typedmemmove</span>(t.key, k, key)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			elem = <span style="color:#447fcf">add</span>(unsafe.<span style="color:#447fcf">Pointer</span>(b), dataOffset+bucketCnt*<span style="color:#24909d">uintptr</span>(t.keysize)+i*<span style="color:#24909d">uintptr</span>(t.elemsize))
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 设置完成，直接跳转到 done 条件标签
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">goto</span> done
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 当前桶没有可用的位置，从溢出桶继续查找
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ovf := b.<span style="color:#447fcf">overflow</span>(t) 
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ovf == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		b = ovf
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 没有找到 key, 分配新的内存空间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果触发了负载因子上限或者已经有太多溢出 bucket，并且当前没有在进行扩容，那么开始扩容操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !h.<span style="color:#447fcf">growing</span>() &amp;&amp; (<span style="color:#447fcf">overLoadFactor</span>(h.count+<span style="color:#3677a9">1</span>, h.B) || <span style="color:#447fcf">tooManyOverflowBuckets</span>(h.noverflow, h.B)) {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">hashGrow</span>(t, h)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 扩容的时候会把当前的 bucket 桶放入 oldbucket
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果还没有分配新的 bucket 桶, 则跳转到 again 重试一次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 重试的时候在 growWork 方法里会把这个 key 对应的 bucket 桶提前分配好
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">goto</span> again
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> inserti == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 当前的桶和它挂载的溢出桶都满了，分配一个新的桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将键值存储到对应的位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// map 元素数量 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.count++  
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>done:
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.flags&amp;hashWriting == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 并发写错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;concurrent map writes&#34;</span>)  
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> elem
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="mapdelete-方法">mapdelete 方法</h3>
+<p><code>mapdelete</code> 方法用于删除 <code>map</code> 中指定的 <code>key</code>, 其内部逻辑和 <code>mapassign</code> 赋值方法大多数都是相同的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mapdelete</span>(t *maptype, h *hmap, key unsafe.Pointer) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 如果 map 还未初始化或元素数量为 0, 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> h == <span style="color:#6ab825;font-weight:bold">nil</span> || h.count == <span style="color:#3677a9">0</span> {   
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.flags&amp;hashWriting != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 并发写错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;concurrent map writes&#34;</span>)  
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 调用对应类型的 hash 算法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	hash := t.<span style="color:#447fcf">hasher</span>(key, <span style="color:#24909d">uintptr</span>(h.hash0))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 调用 hash 算法后设置 hashWriting 状态标识
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 因为 t.hasher 可能发生 panic, 此时实际的删除操作还未完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.flags ^= hashWriting
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算低 8 位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bucket := hash &amp; <span style="color:#447fcf">bucketMask</span>(h.B)     
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.<span style="color:#447fcf">growing</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">growWork</span>(t, h, bucket)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算出存储的桶地址, 转换为 bmap 结构
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	b := (*bmap)(<span style="color:#447fcf">add</span>(h.buckets, bucket*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>	bOrig := b
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算高 8 位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	top := <span style="color:#447fcf">tophash</span>(hash)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>search:
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> ; b != <span style="color:#6ab825;font-weight:bold">nil</span>; b = b.<span style="color:#447fcf">overflow</span>(t) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 循环对比桶中各个元素的哈希值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#24909d">uintptr</span>(<span style="color:#3677a9">0</span>); i &lt; bucketCnt; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> b.tophash[i] != top {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> b.tophash[i] == emptyRest { 
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果当前元素后面的元素都是空的，说明没有更多的元素了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 直接跳转到下一个溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">break</span> search
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 根据偏移量取出对应的 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			k := <span style="color:#447fcf">add</span>(unsafe.<span style="color:#447fcf">Pointer</span>(b), dataOffset+i*<span style="color:#24909d">uintptr</span>(t.keysize))
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 对应的槽标记为未使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            b.tophash[i] = emptyOne
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// map 元素数量 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			h.count--
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.flags&amp;hashWriting == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 并发写错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;concurrent map writes&#34;</span>)  
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="makebucketarray-方法">makeBucketArray 方法</h3>
+<p><code>makeBucketArray</code> 方法用于初始化 <code>bucket</code> 桶对应的底层数组。</p>
+<ul>
+<li>参数 <code>b</code> 表示 bucket 桶的数量对应的指数 (例如传入 3, 表示桶的数量为 2 ^ 3 = 8)</li>
+<li>参数 <code>dirtyalloc</code> 表示是否复用其他的数组，如果为 <code>nil</code> 会分配一个新数组，否则会清空参数 <code>dirtyalloc</code>，然后重用这部分内存作为新数组</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">makeBucketArray</span>(t *maptype, b <span style="color:#6ab825;font-weight:bold">uint8</span>, dirtyalloc unsafe.Pointer) (buckets unsafe.Pointer, nextOverflow *bmap) {
+</span></span><span style="display:flex;"><span>	base := <span style="color:#447fcf">bucketShift</span>(b)
+</span></span><span style="display:flex;"><span>	nbuckets := base
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当 bucket 数量小于 2^4 时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 由于数据较少、使用溢出桶的可能性较低，会省略创建的过程以减少额外开销
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当 bucket 桶的数量大于等于 2^4 时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 额外创建 2 ^ (b - 4) 个溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> b &gt;= <span style="color:#3677a9">4</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 加上溢出桶的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		nbuckets += <span style="color:#447fcf">bucketShift</span>(b - <span style="color:#3677a9">4</span>)
+</span></span><span style="display:flex;"><span>		sz := t.bucket.size * nbuckets
+</span></span><span style="display:flex;"><span>		up := <span style="color:#447fcf">roundupsize</span>(sz)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> up != sz {
+</span></span><span style="display:flex;"><span>			nbuckets = up / t.bucket.size
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> dirtyalloc == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 分配新的数组内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		buckets = <span style="color:#447fcf">newarray</span>(t.bucket, <span style="color:#24909d">int</span>(nbuckets))
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 复用参数数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		buckets = dirtyalloc
+</span></span><span style="display:flex;"><span>		size := t.bucket.size * nbuckets
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> t.bucket.ptrdata != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">memclrHasPointers</span>(buckets, size)
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">memclrNoHeapPointers</span>(buckets, size)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> base != nbuckets {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 预分配一些溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		nextOverflow = (*bmap)(<span style="color:#447fcf">add</span>(buckets, base*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>		last := (*bmap)(<span style="color:#447fcf">add</span>(buckets, (nbuckets-<span style="color:#3677a9">1</span>)*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>		last.<span style="color:#447fcf">setoverflow</span>(t, (*bmap)(buckets))
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> buckets, nextOverflow
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="扩容">扩容</h2>
+<p><code>map</code> 的性能会随着元素的增加而逐渐降低，此时需要扩容机制来保证性能，如果 <code>map</code> 当前不处于扩容状态，那么满足下列条件之一时会自动触发扩容:</p>
+<ol>
+<li>负载量超过负载因子 <code>6.5</code> (计算方式见 <code>overLoadFactor</code> 方法)</li>
+<li>存在过多溢出桶 (计算方式见 <code>tooManyOverflowBuckets</code> 方法)</li>
+</ol>
+<blockquote>
+<p>扩容主要有两种扩容机制: 翻倍扩容和等量扩容，数据复制和迁移并不是阻塞式的原子过程，而是动态增量完成的 (每次迁移一部分数据)。</p>
+</blockquote>
+<h3 id="翻倍扩容">翻倍扩容</h3>
+<p>示例: 原来的 <code>bucket</code> 桶数量为 4 个，翻倍之后为 8 个。</p>
+<p><img src="https://dbwu.tech/images/map_4.png" alt="翻倍扩容"></p>
+<h3 id="等量扩容">等量扩容</h3>
+<p>示例: 原来的 <code>bucket</code> 桶数量为 8 个，翻倍之后依然为 8 个，但是数据分布更加均匀了。</p>
+<p><img src="https://dbwu.tech/images/map_5.png" alt="等量扩容"></p>
+<h3 id="hashgrow-方法">hashGrow 方法</h3>
+<p>不论是 <code>翻倍扩容</code> 还是 <code>等量扩容</code>， 最终调用的都是 <code>hashGrow</code> 方法。</p>
+<blockquote>
+<p>如果 <code>map</code> 当前的负载量已经超过负载因子 (6.5), 进行翻倍扩容 (h.B += 1)，否则，说明存在过多的溢出桶，需要保持相同数量的桶并将数据横向填充 (等量扩容)。</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">hashGrow</span>(t *maptype, h *hmap) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 默认为翻倍扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bigger := <span style="color:#24909d">uint8</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">overLoadFactor</span>(h.count+<span style="color:#3677a9">1</span>, h.B) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等量扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		bigger = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		h.flags |= sameSizeGrow
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 扩容期间将 oldbuckets 也指向桶的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	oldbuckets := h.buckets
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 分配的新桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newbuckets, nextOverflow := <span style="color:#447fcf">makeBucketArray</span>(t, h.B+bigger, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新扩容的相关字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.B += bigger
+</span></span><span style="display:flex;"><span>	h.flags = flags
+</span></span><span style="display:flex;"><span>	h.oldbuckets = oldbuckets
+</span></span><span style="display:flex;"><span>	h.buckets = newbuckets
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 扩容导致的数据迁移计数器重置为 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.nevacuate = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 溢出桶的数量重置为 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.noverflow = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.extra != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; h.extra.overflow != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 把当前的溢出桶赋值给老的溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> h.extra.oldoverflow != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;oldoverflow is not nil&#34;</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		h.extra.oldoverflow = h.extra.overflow
+</span></span><span style="display:flex;"><span>		h.extra.overflow = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> nextOverflow != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> h.extra == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			h.extra = <span style="color:#24909d">new</span>(mapextra)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		h.extra.nextOverflow = nextOverflow
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="growwork-方法">growWork 方法</h3>
+<blockquote>
+<p>扩容过程中的数据复制迁移工作是由 <code>growWork</code> 方法和 <code>evacuate</code> 方法动态增量完成的**。</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">growWork</span>(t *maptype, h *hmap, bucket <span style="color:#6ab825;font-weight:bold">uintptr</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 确保迁移的 oldbucket 桶与将要使用的 bucket 桶对应
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">evacuate</span>(t, h, bucket&amp;h.<span style="color:#447fcf">oldbucketmask</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果正在扩容，多迁移一个 bucket 桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> h.<span style="color:#447fcf">growing</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">evacuate</span>(t, h, h.nevacuate)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="evacuate-方法">evacuate 方法</h3>
+<p><code>evacuate</code> 方法负责具体的数据迁移工作，它会将一个旧的 <code>bucket</code> 桶里面的数据分流到两个新的 <code>bucket</code> 桶。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">evacuate</span>(t *maptype, h *hmap, oldbucket <span style="color:#6ab825;font-weight:bold">uintptr</span>) {
+</span></span><span style="display:flex;"><span>	b := (*bmap)(<span style="color:#447fcf">add</span>(h.oldbuckets, oldbucket*<span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>	newbit := h.<span style="color:#447fcf">noldbuckets</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">evacuated</span>(b) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果是等量扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    x 表示同一个新 bucket 桶数组的前半部分 (用于存储当前桶的前半部分数据)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    y 表示同一个新 bucket 桶数组的后半部分 (用于存储当前桶的后半部分数据)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果是翻倍扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    x 表示一个新 bucket 桶数组 (用于存储当前桶的前半部分数据)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    y 表示另一个新 bucket 桶数组 (用于存储当前桶的后半部分数据)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">var</span> xy [<span style="color:#3677a9">2</span>]evacDst
+</span></span><span style="display:flex;"><span>		x := &amp;xy[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> !h.<span style="color:#447fcf">sameSizeGrow</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 map 是翻倍扩容，计算 y
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			y := &amp;xy[<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> ; b != <span style="color:#6ab825;font-weight:bold">nil</span>; b = b.<span style="color:#447fcf">overflow</span>(t) {
+</span></span><span style="display:flex;"><span>			k := <span style="color:#447fcf">add</span>(unsafe.<span style="color:#447fcf">Pointer</span>(b), dataOffset)
+</span></span><span style="display:flex;"><span>			e := <span style="color:#447fcf">add</span>(k, bucketCnt*<span style="color:#24909d">uintptr</span>(t.keysize))
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; bucketCnt; i, k, e = i+<span style="color:#3677a9">1</span>, <span style="color:#447fcf">add</span>(k, <span style="color:#24909d">uintptr</span>(t.keysize)), <span style="color:#447fcf">add</span>(e, <span style="color:#24909d">uintptr</span>(t.elemsize)) {
+</span></span><span style="display:flex;"><span>				top := b.tophash[i]
+</span></span><span style="display:flex;"><span>                
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">var</span> useY <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> !h.<span style="color:#447fcf">sameSizeGrow</span>() {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 计算 hash 以确认数据迁移的具体位置 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 也就是需要将当前这个键值对迁移到位置 x 还是位置 y
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                ...
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 分离溢出桶, 清理键值对, 为 GC 做准备
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> h.flags&amp;oldIterator == <span style="color:#3677a9">0</span> &amp;&amp; t.bucket.ptrdata != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> oldbucket == h.nevacuate {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">advanceEvacuationMark</span>(h, t, newbit)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="advanceevacuationmark-方法">advanceEvacuationMark 方法</h3>
+<p><code>advanceEvacuationMark</code> 方法用于增加迁移进度计数器，并在扩容结束后释放 <code>oldbuckets</code> 和 <code>extra.oldoverflow</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">advanceEvacuationMark</span>(h *hmap, t *maptype, newbit <span style="color:#6ab825;font-weight:bold">uintptr</span>) {
+</span></span><span style="display:flex;"><span>	h.nevacuate++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.nevacuate == newbit {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 扩容结束，释放 oldbuckets
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		h.oldbuckets = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 释放 oldoverflow
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> h.extra != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			h.extra.oldoverflow = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="newoverflow-方法">newoverflow 方法</h3>
+<p><code>newoverflow</code> 方法用于创建 <code>bucket</code> 桶，如果有预先分配的桶, 直接返回即可，如果没有的话，创建一个新的桶返回。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *hmap) <span style="color:#447fcf">newoverflow</span>(t *maptype, b *bmap) *bmap {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> ovf *bmap
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.extra != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; h.extra.nextOverflow != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 有可用的预先分配的溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 细节可以参考 makeBucketArray 方法的注释部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ovf = h.extra.nextOverflow
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ovf.<span style="color:#447fcf">overflow</span>(t) == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 还未到达最后一个预分配的溢出桶 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 让桶的溢出指针指向当前 bucket
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			h.extra.nextOverflow = (*bmap)(<span style="color:#447fcf">add</span>(unsafe.<span style="color:#447fcf">Pointer</span>(ovf), <span style="color:#24909d">uintptr</span>(t.bucketsize)))
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 这是最后一个预分配的溢出桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 重置这个桶的溢出指针，该指针被作为哨兵设置为非 nil 值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			ovf.<span style="color:#447fcf">setoverflow</span>(t, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>			h.extra.nextOverflow = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 没有可用的预先分配的溢出桶, 创建一个新桶
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ovf = (*bmap)(<span style="color:#447fcf">newobject</span>(t.bucket)) 
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 统计溢出桶的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	h.<span style="color:#447fcf">incrnoverflow</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ovf
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="createoverflow-方法">createOverflow 方法</h3>
+<p><code>createOverflow</code> 方法用于初始化溢出<code>bucket</code> 桶。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *hmap) <span style="color:#447fcf">createOverflow</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.extra == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		h.extra = <span style="color:#24909d">new</span>(mapextra)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h.extra.overflow == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		h.extra.overflow = <span style="color:#24909d">new</span>([]*bmap)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="incrnoverflow-方法">incrnoverflow 方法</h3>
+<p><code>incrnoverflow</code> 方法用于统计溢出 <code>bucket</code> 桶的数量。</p>
+<ul>
+<li>需要保持溢出桶数量不能太多 (最多为 65535)，因为 <code>noverflow</code> 字段的数据类型为 uint16</li>
+<li>当 <code>bucket</code> 桶数量很少时，<code>noverflow</code> 字段是一个精确的数值</li>
+<li>当 <code>bucket</code> 桶数量很多时，<code>noverflow</code> 字段是一个模糊 (大概) 的数值</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (h *hmap) <span style="color:#447fcf">incrnoverflow</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果溢出桶的数量与正常桶的数量一样，触发等量扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> h.B &lt; <span style="color:#3677a9">16</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 精确统计
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		h.noverflow++
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 模糊统计
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 增加概率 1/(1&lt;&lt;(h.B-15))
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 当达到 1&lt;&lt;15 - 1 时，溢出桶的数量与正常桶的数量大致相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mask := <span style="color:#24909d">uint32</span>(<span style="color:#3677a9">1</span>)&lt;&lt;(h.B-<span style="color:#3677a9">15</span>) - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 例如: 如果 h.B 等于 18, mask 就等于 7
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以 fastrand() &amp; mask == 0 的概率就是 1/8
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">fastrand</span>()&amp;mask == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		h.noverflow++
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="overloadfactor-方法">overLoadFactor 方法</h3>
+<p><code>overLoadFactor</code> 方法返回负载量是否大于负载因子 <strong>(6.5)</strong>。</p>
+<blockquote>
+<p>元素数量 &gt; 桶数量 &amp;&amp; 元素数量 &gt; 桶数量 * 6.5</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">overLoadFactor</span>(count <span style="color:#6ab825;font-weight:bold">int</span>, B <span style="color:#6ab825;font-weight:bold">uint8</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> count &gt; bucketCnt &amp;&amp; <span style="color:#24909d">uintptr</span>(count) &gt; loadFactorNum*(<span style="color:#447fcf">bucketShift</span>(B)/loadFactorDen)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="toomanyoverflowbuckets-方法">tooManyOverflowBuckets 方法</h3>
+<p><code>tooManyOverflowBuckets</code> 方法返回 <strong>溢出桶</strong> 的数量是否多于 <strong>正常桶</strong> 的数量，参数 <code>B</code> 表示桶数量对应的指数，具体的判定条件为:</p>
+<ul>
+<li>当 B &lt; 15, 正常 bucket 桶数量小于 2^15, 溢出 bucket 桶数量大于 2^B</li>
+<li>当 B &gt;= 15, 正常 bucket 桶数量大于等于 2^15, 溢出 bucket 桶数量大于 2^15</li>
+</ul>
+<p>方法名称中的 <code>too many</code> 语义表示 <strong>溢出桶</strong> 的数量和 <strong>正常桶</strong> 的数量大致相同，<strong>如果阈值太低，扩不扩容都差不多 (因为扩容后不久又会触发扩容)，
+如果阈值太高，扩容和缩容会引发大量未使用的内存 (很多不经常访问的数据占用着内存)</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 注意，溢出 bucket 桶大多数应该访问次数很少
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 如果访问很频繁，应该已经触发了翻倍扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">tooManyOverflowBuckets</span>(noverflow <span style="color:#6ab825;font-weight:bold">uint16</span>, B <span style="color:#6ab825;font-weight:bold">uint8</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> B &gt; <span style="color:#3677a9">15</span> {
+</span></span><span style="display:flex;"><span>		B = <span style="color:#3677a9">15</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> noverflow &gt;= <span style="color:#24909d">uint16</span>(<span style="color:#3677a9">1</span>)&lt;&lt;(B&amp;<span style="color:#3677a9">15</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p>从应用层面来说，<code>map</code> 在使用前一定要进行初始化，如果对于存储数据的数量有大概的了解，可以在初始化时 <code>预分配</code> 一定的容量，可以有效提高性能。</p>
+<p>从内部实现来说，<code>map</code> 通过编译器和运行时实现了常规操作，通过 <code>拉链法</code> 来解决哈希碰撞问题 (每个 <code>bmap</code> 对象都有一个 <code>overflow</code> 指针)，
+此外，通过将每个 <code>bucket</code> 中元素的前 8 位哈希值存入 <code>tophash</code>, 以空间换时间，可以加速遍历 <code>bucket</code> 中元素。</p>
+<p>flag: <code>map</code> 代码较多且抽象，有时间将常见操作用图画出来，毕竟，一图胜千言 :-)</p>
+<h2 id="faq">FAQ</h2>
+<h3 id="为什么-map-未初始化写入时报错">为什么 map 未初始化写入时报错</h3>
+<p>因为 <code>mapassign</code> 方法限定了写入条件:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">mapassign</span>(t *maptype, h *hmap, key unsafe.Pointer) unsafe.Pointer {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> h == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">panic</span>(<span style="color:#447fcf">plainError</span>(<span style="color:#ed9d13">&#34;assignment to entry in nil map&#34;</span>))
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="如何判断两个-map-是否相等">如何判断两个 map 是否相等</h3>
+<p><code>map</code>  和 <code>slice</code> 一样不可比较，只能和 <code>nil</code> 比较。</p>
+<p>如果需要比较 <code>map</code>, 可以通过自定义方法实现，例如:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 示例：判断两个 map 是否相等
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">equal</span>(x ,y <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(x) != <span style="color:#24909d">len</span>(y) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>	
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> k, xv := <span style="color:#6ab825;font-weight:bold">range</span> x {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> yv, ok := y[k]; !ok || yv != xv {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>或者直接调用标准库提供的 <code>reflect.DeepEqual</code> 方法。</p>
+<h3 id="map-是线程安全的吗">map 是线程安全的吗</h3>
+<p>通过源代码中的 <code>throw(&quot;concurrent map writes&quot;)</code> 代码可以看到，<code>map</code> 只支持多个线程读，不支持多个线程读写或写入。</p>
+<h3 id="为什么遍历-map-是无序的">为什么遍历 map 是无序的</h3>
+<p><code>map</code> 发生扩容后，大部分 <code>key</code> 对应的 <code>bucket</code> 都会发生变化，即使按照 <code>bucket</code> 顺序遍历，也不能保证每一次的顺序都是一样的。</p>
+<p>官方不希望开发者想当然地认为 <code>map</code> 是有序的，所以每次都是从一个随机的 <code>bucket</code> 开始遍历 (每次遍历时下一个元素都是随机的)。</p>
+<h3 id="元素-slot-定位方式">元素 slot 定位方式</h3>
+<ol>
+<li>计算出 <code>key</code> 的哈希值 (不同类型的 <code>key</code> 使用的 <code>hash 算法</code> 是不一样的)</li>
+<li>通过哈希值最后的 <code>hmap.B</code> 个 <code>bit</code>, 计算出 <code>bucket</code> 桶的索引值</li>
+<li>通过索引值的高 8 位计算出 <code>bucket</code> 桶里面的具体的 <code>slot</code></li>
+<li>通过使用 <code>slot</code> 对应的完整 <code>key</code> 和参数 <code>key</code> 进行对比，如果两者一致，说明参数 <code>key</code> 对应的元素已经找到</li>
+<li>如果没有找到对应的元素，并且 <code>bucket</code> 桶的 <code>overflow</code> 溢出桶不为 <code>nil</code>, 那么接着去溢出桶中查找</li>
+</ol>
+<p><img src="https://dbwu.tech/images/map_3.png" alt="元素定位流程"></p>
+<h3 id="map-的扩容过程">map 的扩容过程</h3>
+<p>扩容发生在分配元素时，具体条件请参照 <code>hashGrow</code> 方法和 <code>tooManyOverflowBuckets</code> 方法的注释。</p>
+<p>扩容主要分为 <code>容量翻倍</code> 和 <code>横向填充</code> 两种方式，前者主要针对 <code>元素过多</code> 的情况，后者主要针对 <code>元素分布稀疏</code> 的情况，
+扩容过程并不是原子性的，而是在调用 <code>元素分配</code>, <code>元素删除</code> 等写入方式操作时动态增量进行的，这样可以 <strong>避免原子操作时造成的瞬时抖动性能问题</strong>。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://golang.dbwu.tech/performance/map_pre_alloc/">map 优化 1</a></li>
+<li><a href="https://golang.dbwu.tech/performance/map_key_type/">map 优化 2</a></li>
+<li><a href="https://golang.dbwu.tech/performance/map_free/">map 优化 3</a></li>
+<li><a href="https://mp.weixin.qq.com/s/E5R09RHPhnTy59iuLZJoaw">Go 高性能代码 30 个 Tips</a></li>
+<li><a href="https://zh.wikipedia.org/wiki/%E5%85%B3%E8%81%94%E6%95%B0%E7%BB%84">map - 维基百科</a></li>
+<li><a href="https://draveness.me/golang/docs/part2-foundation/ch03-datastructure/golang-hashmap/">Go 设计与实现</a></li>
+<li><a href="https://github.com/cch123/golang-notes/blob/master/map.md">cch123 - golang-notes</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_slice/"><i class="fa fa-chevron-circle-left"></i> Go 切片扩容底层实现</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_defer/">为什么 defer 的执行顺序和注册顺序不同？ <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Go map 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

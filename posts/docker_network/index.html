@@ -1,0 +1,591 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Docker 网络原理概览 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Docker 原生网络是基于 Linux 的 网络命名空间（net namespace） 和 虚拟网络设备（veth pair）实现的。当 Docker 进程启动时，会在宿主机上创建一个名称为 docker0 的 虚拟网桥，在该宿主机上启动的 Docker 容器会连接到这个虚拟网桥上 &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Docker 网络原理概览" />
+<meta property="og:description" content="Docker 原生网络是基于 Linux 的 网络命名空间（net namespace） 和 虚拟网络设备（veth pair）实现的。当 Docker 进程启动时，会在宿主机上创建一个名称为 docker0 的 虚拟网桥，在该宿主机上启动的 Docker 容器会连接到这个虚拟网桥上 &hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/docker_network/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-03T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-03T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Docker 网络原理概览"/>
+<meta name="twitter:description" content="Docker 原生网络是基于 Linux 的 网络命名空间（net namespace） 和 虚拟网络设备（veth pair）实现的。当 Docker 进程启动时，会在宿主机上创建一个名称为 docker0 的 虚拟网桥，在该宿主机上启动的 Docker 容器会连接到这个虚拟网桥上 &hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Docker 网络原理概览</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+    
+    <a href="https://dbwu.tech/tags/docker">Docker</a>
+    
+    
+    <a href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>Docker</code> 原生网络是基于 Linux 的 <code>网络命名空间</code>（net namespace） 和 <code>虚拟网络设备</code>（veth pair）实现的。
+当 <code>Docker</code> 进程启动时，会在宿主机上创建一个名称为 <code>docker0</code> 的 <strong>虚拟网桥</strong>，在该宿主机上启动的 <code>Docker</code> 容器会连接到这个虚拟网桥上。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ifconfig
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>docker0: ... mtu <span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>inet 172.17.0.1  netmask 255.255.0.0  broadcast 172.17.255.255
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p><strong>虚拟网桥的工作方式和物理交换机类似，宿主机上所有的容器通过虚拟网桥连接在一个二层网络中</strong>。</p>
+<p>从 <code>docker0</code> 子网中分配一个 IP 给容器使用，并设置 <code>docker0</code> 的 IP 地址为容器的默认网关。在宿主机上创建一对虚拟网卡 <code>veth pair</code> 设备，
+<code>Docker</code> 将 <code>veth pair</code> 设备的一端放在新创建的容器中，并命名为 <code>eth0</code>（容器的网卡）， 另一端放在宿主机中，以 <code>vethxxx</code> 类似的名字命名，
+并将这个网络设备连接到 <code>docker0</code> 网桥中。</p>
+<p>Docker 会自动配置 iptables 规则和配置 NAT，便于连通宿主机上的 <code>docker0</code> 网桥，完成这些操作之后，容器就可以使用它的 <code>eth0</code> 虚拟网卡，来连接其他容器和访问外部网络。</p>
+<p><code>Docker</code> 中的网络接口默认都是虚拟的接口，Linux 在内核中通过 <code>数据复制</code> 实现接口之间的数据传输，可以充分发挥数据在不同 <code>Docker</code> 容器或容器与宿主机之间的转发效率，
+发送接口发送缓存中的数据包，将直接复制到接收接口的缓存中，<strong>无需通过物理网络设备进行交换</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查询主机上 veth 设备</span>
+</span></span><span style="display:flex;"><span>$ ifconfig | grep veth*
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>veth06f40aa: 
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>vethfdfd27a:
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/docker0.png" alt="图片来源: https://www.suse.com/c/rancher_blog/introduction-to-container-networking/"></p>
+<p><strong>虚拟网桥 <code>docker0</code> 通过 iptables 配置与宿主机器上的网卡相连，符合条件的请求都会通过 iptables 转发到 <code>docker0</code>, 然后分发给对应的容器</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 docker 的 iptables 配置</span>
+</span></span><span style="display:flex;"><span>$ iptables -t nat -L
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Chain PREROUTING (policy ACCEPT)
+</span></span><span style="display:flex;"><span>target     prot opt <span style="color:#24909d">source</span>               destination
+</span></span><span style="display:flex;"><span>DOCKER     all  --  anywhere             anywhere             ADDRTYPE match dst-type LOCAL
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Chain DOCKER (<span style="color:#3677a9">2</span> references)
+</span></span><span style="display:flex;"><span>target     prot opt <span style="color:#24909d">source</span>               destination
+</span></span><span style="display:flex;"><span>RETURN     all  --  anywhere             anywhere
+</span></span></code></pre></div><h2 id="网络驱动">网络驱动</h2>
+<p><code>Docker</code> 的网络子系统支持插拔式的驱动程序，默认存在多个驱动程序，并提供核心网络功能。</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bridge</td>
+<td>默认的网络设备，当应用程序所在的容器需要通信时使用</td>
+</tr>
+<tr>
+<td>host</td>
+<td>移除容器与宿主机之间的网络隔离，直接使用宿主机的网络</td>
+</tr>
+<tr>
+<td>overlay</td>
+<td>将多个容器连接，并使集群服务能够相互通信</td>
+</tr>
+<tr>
+<td>ipvlan</td>
+<td>使用户可以完全控制 IPv4 和 IPv6 寻址</td>
+</tr>
+<tr>
+<td>macvlan</td>
+<td>可以为容器分配 MAC 地址</td>
+</tr>
+<tr>
+<td>none</td>
+<td>禁用所有网络</td>
+</tr>
+<tr>
+<td>Network plugins</td>
+<td>通过 Docker 安装和使用第三方网络插件</td>
+</tr>
+</tbody>
+</table>
+<p><img src="https://dbwu.tech/images/docker_netwokr_driver.png" alt="图片来源: Docker——容器与容器云"></p>
+<blockquote>
+<p>Docker daemon 通过调用 libnetwork 提供的 API 完成网络的创建和管理等功能。libnetwork 中使用了 CNM 来完成网络功能，
+CNM 中主要有沙盒（sandbox）、端点（endpoint）和网络（network）3 种组件。</p>
+</blockquote>
+<ul>
+<li><strong>沙盒</strong>：一个沙盒包含了一个容器网络栈的信息。一个沙盒可以有多个端点和多个网络，沙盒可以对容器的接口、路由和 DNS 设置等进行管理，沙盒的实现可以是 Linux network namespace、FreeBSD Jail或者类似的机制</li>
+<li><strong>端点</strong>：一个端点可以加入一个沙盒和一个网络。一个端点只属于一个网络和一个沙盒，端点的实现可以是 veth pair、Open vSwitch 内部端口或者相似的设备</li>
+<li><strong>网络</strong>：一个网络是一组可以直接互相联通的端点。一个网络可以包含多个端点，网络的实现可以是Linux bridge、VLAN 等</li>
+</ul>
+<h3 id="bridge-模式">bridge 模式</h3>
+<p><code>bridge</code> 是默认的网络模式，<strong>为容器创建独立的网络命名空间，容器具有独立的网卡等所有的网络栈</strong>。使用该模式的所有容器都是连接到 <code>docker0 </code>这个网桥，
+作为 <code>虚拟交换机</code> 使容器可以相互通信，但是由于宿主机的 IP 地址与容器 veth pair 的 IP 地址不在同一个网段，所以为了和宿主机以外的网络通信，
+Docker 采用了端口绑定的方式，也就是通过 iptables 的 NAT，将宿主机上的端口流量转发到容器。</p>
+<p><strong><code>bridge</code> 模式已经可以满足 Docker 容器最基本的使用需求了，但是其与外界通信时使用 NAT，增加了通信的复杂性，在复杂场景下使用会有限制</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker network inspect bridge
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (节选部分信息)</span>
+</span></span><span style="display:flex;"><span>[
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Name&#34;</span>: <span style="color:#ed9d13">&#34;bridge&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Scope&#34;</span>: <span style="color:#ed9d13">&#34;local&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Driver&#34;</span>: <span style="color:#ed9d13">&#34;bridge&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;EnableIPv6&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;IPAM&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Driver&#34;</span>: <span style="color:#ed9d13">&#34;default&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Options&#34;</span>: null,
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Config&#34;</span>: [
+</span></span><span style="display:flex;"><span>                {
+</span></span><span style="display:flex;"><span>                    <span style="color:#ed9d13">&#34;Subnet&#34;</span>: <span style="color:#ed9d13">&#34;172.17.0.0/16&#34;</span>,
+</span></span><span style="display:flex;"><span>                    <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;172.17.0.1&#34;</span>
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>            ]
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Containers&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic"># 使用 bridge 网络的容器列表</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>通过上面的输出可以看到，<strong>虚拟网桥 的 IP 地址就是 <code>bridge</code> 网络类型的网关地址</strong>。</p>
+<p>我们可以从输出的 <code>Containers</code> 容器列表中找一个容器，查看其网络类型和配置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker inspect 容器ID
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (节选部分信息)</span>
+</span></span><span style="display:flex;"><span>[
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  <span style="color:#ed9d13">&#34;NetworkSettings&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Bridge&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;172.17.0.1&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;IPAddress&#34;</span>: <span style="color:#ed9d13">&#34;172.17.0.4&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Networks&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;bridge&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;172.17.0.1&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;IPAddress&#34;</span>: <span style="color:#ed9d13">&#34;172.17.0.4&#34;</span>,
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>通过上面的输出可以看到，<strong>虚拟网桥 的 IP 地址就是 <code>bridge</code> 网络类型的容器的网关地址</strong>。</p>
+<h4 id="实现机制">实现机制</h4>
+<p>在 iptables 做了 DNAT 规则，实现端口转发功能:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># iptables 配置查看</span>
+</span></span><span style="display:flex;"><span>$ iptables -t nat -vnL
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Chain PREROUTING (policy ACCEPT 37M packets, 2210M bytes)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span>     <span style="color:#3677a9">0</span> DNAT       tcp  --  !docker0 *       0.0.0.0/0            0.0.0.0/0            tcp dpt:8080 to:172.17.0.4:80
+</span></span></code></pre></div><p><strong>当容器需要将端口映射到宿主机时，<code>Docker</code> 会自动为该容器分配一个 IP 地址，同时新增一个 iptables 规则</strong>。</p>
+<h3 id="host-模式">host 模式</h3>
+<p><strong>容器不会获得一个独立的网络命名空间，而是和宿主机共用一个</strong>。 容器不会虚拟出自己的网卡，配置自己的IP等，而是直接使用宿宿主机的。
+但是容器的其他方面，如文件系统、进程列表等还是和宿宿主机隔离的，容器对外界是完全开放的，能够访问到宿主机，就能访问到容器。</p>
+<p><strong><code>host</code> 模式降低了容器与容器之间、容器与宿主机之间网络层面的隔离性，虽然有性能上的优势，但是引发了网络资源的竞争与冲突，因此适用于容器集群规模较小的场景</strong>。</p>
+<p>启动一个网络类型为 <code>host</code> 的 <code>Nginx</code> 容器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run -d --net host nginx
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Unable to find image <span style="color:#ed9d13">&#39;nginx:latest&#39;</span> locally
+</span></span><span style="display:flex;"><span>latest: Pulling from library/nginx
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>f202870092fc40bc08a607dddbb2770df9bb4534475b066f45ea35252d6e76e2
+</span></span></code></pre></div><p>查看网络类型为 <code>host</code> 的容器列表：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker network inspect host
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (节选部分信息)</span>
+</span></span><span style="display:flex;"><span>[
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Name&#34;</span>: <span style="color:#ed9d13">&#34;host&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Scope&#34;</span>: <span style="color:#ed9d13">&#34;local&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Driver&#34;</span>: <span style="color:#ed9d13">&#34;host&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Internal&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Attachable&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Ingress&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;ConfigFrom&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Network&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Containers&#34;</span>: {
+</span></span><span style="display:flex;"><span>           <span style="color:#999;font-style:italic"># 使用 host 网络的容器列表  </span>
+</span></span><span style="display:flex;"><span>           <span style="color:#ed9d13">&#34;f202870092fc40bc08a607dddbb2770df9bb4534475b066f45ea35252d6e76e2&#34;</span>: {
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;Name&#34;</span>: <span style="color:#ed9d13">&#34;frosty_napier&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;EndpointID&#34;</span>: <span style="color:#ed9d13">&#34;7306a8e4103faf4edd081182f015fa9aa985baf3560f4a49b9045c00dc603190&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;MacAddress&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;IPv4Address&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;IPv6Address&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>            }        
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>查看 <code>Nginx</code> 容器网络类型和配置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker inspect f202870092fc4
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (节选部分信息)</span>
+</span></span><span style="display:flex;"><span>[
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  <span style="color:#ed9d13">&#34;NetworkSettings&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Bridge&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;IPAddress&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Networks&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;host&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;IPAddress&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>通过上面的输出可以看到，<code>Nginx</code> 容器使用的网络类型是 <code>host</code>，没有独立的 IP。</p>
+<p>查看 <code>Nginx</code> 容器 IP 地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 进入容器内部 shell</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ docker <span style="color:#24909d">exec</span> -it f202870092fc4 /bin/bash
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 安装 ip 命令</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ apt update &amp;&amp; apt install -y iproute2
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 IP 地址</span>
+</span></span><span style="display:flex;"><span>$ ip a
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu <span style="color:#3677a9">65536</span> qdisc noqueue state UNKNOWN group default qlen <span style="color:#3677a9">1000</span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>2: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu <span style="color:#3677a9">1500</span> qdisc noqueue state DOWN group default
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>10: eth0@if11: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu <span style="color:#3677a9">1500</span> qdisc noqueue state UP group default
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 退出容器，查看宿主机 IP 地址</span>
+</span></span><span style="display:flex;"><span>$ <span style="color:#24909d">exit</span>
+</span></span><span style="display:flex;"><span>$ ip a
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu <span style="color:#3677a9">65536</span> qdisc noqueue state UNKNOWN group default qlen <span style="color:#3677a9">1000</span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>2: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu <span style="color:#3677a9">1500</span> qdisc noqueue state DOWN group default
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>10: eth0@if11: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu <span style="color:#3677a9">1500</span> qdisc noqueue state UP group default
+</span></span><span style="display:flex;"><span>    ...
+</span></span></code></pre></div><p>通过上面的输出可以看到，<code>Nginx</code> 容器内部并没有独立的 IP，而是使用了宿主机的 IP。</p>
+<p>查看宿主机的端口监听状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ sudo netstat -ntpl
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:80              0.0.0.0:*               LISTEN      1378/nginx: master
+</span></span><span style="display:flex;"><span>tcp6       <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> :::80                   :::*                    LISTEN      1378/nginx: master
+</span></span></code></pre></div><p>通过上面的输出可以看到，监听 <code>80</code> 端口的进程为 <code>nginx</code>, 而非 <code>docker-proxy</code>。</p>
+<h3 id="none-模式">none 模式</h3>
+<p>容器拥有自己的 Network Namespace，但是并不进行任何网络配置。也就意味着该容器没有网卡、IP、路由等信息，需要手动为容器添加网卡、配置 IP 等，
+<strong><code>none</code> 模式下的容器会完全隔离</strong>，容器中只有 lo 这个 loopback（回环网络）网卡用于进程通信。</p>
+<p><code>none</code> 模式为容器做了最少的网络设置，在没有网络配置的情况下，通过自定义配置容器的网络，提供了最高的灵活性。</p>
+<p>启动一个网络类型为 <code>host</code> 的 <code>Nginx</code> 容器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker run -d --net none nginx
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Unable to find image <span style="color:#ed9d13">&#39;nginx:latest&#39;</span> locally
+</span></span><span style="display:flex;"><span>latest: Pulling from library/nginx
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>d2d0606b7d2429c224e61e06c348019b74cd47f0b8c85347a7cdb8f1e30dcf86
+</span></span></code></pre></div><p>查看网络类型为 <code>none</code> 的容器列表：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker network inspect none
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (节选部分信息)</span>
+</span></span><span style="display:flex;"><span>[
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Name&#34;</span>: <span style="color:#ed9d13">&#34;none&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Scope&#34;</span>: <span style="color:#ed9d13">&#34;local&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Driver&#34;</span>: <span style="color:#ed9d13">&#34;null&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Internal&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Attachable&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Ingress&#34;</span>: false,
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;ConfigFrom&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Network&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;Containers&#34;</span>: {
+</span></span><span style="display:flex;"><span>           <span style="color:#999;font-style:italic"># 使用 none 网络的容器列表  </span>
+</span></span><span style="display:flex;"><span>           <span style="color:#ed9d13">&#34;d2d0606b7d2429c224e61e06c348019b74cd47f0b8c85347a7cdb8f1e30dcf86&#34;</span>: {
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;Name&#34;</span>: <span style="color:#ed9d13">&#34;hardcore_chebyshev&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;EndpointID&#34;</span>: <span style="color:#ed9d13">&#34;b8ff645671518e608f403818a31b1db34d7fce66af60373346ea3ab673a4c6b2&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;MacAddress&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;IPv4Address&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#ed9d13">&#34;IPv6Address&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>            }        
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>查看 <code>Nginx</code> 容器网络类型和配置：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker inspect d2d0606b7d242
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (节选部分信息)</span>
+</span></span><span style="display:flex;"><span>[
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  <span style="color:#ed9d13">&#34;NetworkSettings&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Bridge&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;IPAddress&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;Networks&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#ed9d13">&#34;none&#34;</span>: {
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;Gateway&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#ed9d13">&#34;IPAddress&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>通过上面的输出可以看到，<code>Nginx</code> 容器使用的网络类型是 <code>none</code>，没有独立的 IP。</p>
+<p>查看 <code>Nginx</code> 容器 IP 地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 进入容器内部 shell</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ docker <span style="color:#24909d">exec</span> -it d2d0606b7d242 /bin/bash
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 访问公网链接</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ curl -I <span style="color:#ed9d13">&#34;https://www.docker.com&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>curl: (6) Could not resolve host: www.docker.com
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 为什么会报错呢？ 这是因为当前容器没有网卡、IP、路由等信息，是完全独立的运行环境，所以没有办法访问公网链接。</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 IP 地址</span>
+</span></span><span style="display:flex;"><span>$ hostname -I
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 没有任何输出，该容器没有 IP 地址</span>
+</span></span></code></pre></div><p>查看宿主机的端口监听状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ docker port d2d0606b7d242
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>或者
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ sudo netstat -ntpl | grep :80
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 没有任何输出，Nginx 进程运行在容器中，端口没有映射到宿主机</span>
+</span></span></code></pre></div><h3 id="container-模式">container 模式</h3>
+<p>与 <code>host</code> 模式类似，容器与指定的容器共享网络命名空间。这两个容器之间不存在网络隔离，但它们与宿主机以及其他的容器存在网络隔离。
+该模式下的容器可以通过 localhost 来访问同一网络命名空间下的其他容器，传输效率较高，且节约了一定的网络资源。在一些特殊的场景中非常有用，例如 k8s 的 Pod。</p>
+<h3 id="其他模式">其他模式</h3>
+<p>出于篇幅考虑，这里不再赘述其他网络模式，感兴趣的读者可以根据文章末尾的引用连接自行阅读。</p>
+<h2 id="网络驱动概述">网络驱动概述</h2>
+<ul>
+<li>当需要多个容器在同一台宿主机上进行通信时，使用 <code>bridge</code></li>
+<li>当网络栈不应该与宿主机隔离，但是希望容器的其他方面被隔离时，使用 <code>host</code></li>
+<li>当需要在不同宿主机上运行的容器进行通信时，使用 <code>overlay</code></li>
+<li>当从虚拟机迁移或需要使容器看起来像物理宿主机时，使用 <code>Macvlan</code>, 每个容器都有一个唯一的 MAC 地址</li>
+<li>当需要将 Docker 与专门的网络栈集成，使用 <code>Third-party</code></li>
+</ul>
+<h2 id="docker-和-iptables">Docker 和 iptables</h2>
+<p>如果在公网可以访问的服务器运行 <code>Docker</code>，需要对应的 <code>iptables</code> 规则来限制访问主机上的容器或其他服务。</p>
+<h3 id="在-docker-规则之前添加-iptables-规则">在 Docker 规则之前添加 iptables 规则</h3>
+<p>Docker 安装了两个名为 <code>DOCKER-USER</code> 和 <code>DOCKER</code> 的自定义 <code>iptables</code> 链，确保传入的数据包始终先由这两个链进行检查。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 可以通过该命令查看</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ iptables -L -n -v | grep -i docker
+</span></span></code></pre></div><p><code>Docker</code> 的所有 <code>iptables</code> 规则都被添加到 <code>Docker</code> 链中，不要手动修改此链 (可能会引发问题)。
+如果需要添加在一些在 <code>Docker</code> 之前加载的规则，将它们添加到 <code>DOCKER-USER</code> 链中，这些规则应用于 <code>Docker</code> 自动创建的所有规则之前。</p>
+<p>添加到 <code>FORWARD</code> 链中的规则在这些链之后进行检测，这意味着如果通过 <code>Docker</code> 公开一个端口，那么无论防火墙配置了什么规则，该端口都会被公开。
+如果想让这些规则在通过 <code>Docker</code> 暴露端口时仍然适用，必须将这些规则添加到 <code>DOCKER-USER</code> 链中。</p>
+<h3 id="限制到-docker-主机的连接">限制到 Docker 主机的连接</h3>
+<p>默认情况下，允许所有 <code>外部 IP</code> 连接 <code>Docker</code> 主机，为了只允许特定的 IP 或网络访问容器，在 <code>DOCKER-USER</code> 过滤器链的顶部插入一个规则。</p>
+<p>例如，只允许 192.168.1.1 访问:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 假设输入接口为 eth0</span>
+</span></span><span style="display:flex;"><span>$ iptables -I DOCKER-USER -i eth0 ! -s 192.168.1.1 -j DROP
+</span></span></code></pre></div><p>也可以允许来自源子网的连接，例如，允许 192.168.1.0/24 子网的用户访问:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 假设输入接口为 eth0</span>
+</span></span><span style="display:flex;"><span>$ iptables -I DOCKER-USER -i eth0 ! -s 192.168.1.0/24 -j DROP
+</span></span></code></pre></div><h3 id="阻止-docker-操作-iptables">阻止 Docker 操作 iptables</h3>
+<p>在 <code>Docker</code> 引擎的配置文件 <code>/etc/docker/daemon.json</code> 设置 <code>iptables</code> 的值为 <code>false</code>，但是最好不要修改，因为这很可能破坏 <code>Docker</code> 引擎的容器网络。</p>
+<h3 id="为容器设置默认绑定地址">为容器设置默认绑定地址</h3>
+<p>默认情况下，<code>Docker</code> 守护进程将公开 <code>0.0.0.0</code> 地址上的端口，即主机上的任何地址。如果希望将该行为更改为仅公开内部 IP 地址上的端口，则可以使用 <code>--ip </code> 选项指定不同的IP地址。</p>
+<h3 id="集成到防火墙">集成到防火墙</h3>
+<p>如果运行的是 <code>Docker 20.10.0</code> 或更高版本，在系统上启用了 <code>iptables</code>, <code>Docker</code> 会自动创建一个名为 <code>docker</code> 的防火墙区域，
+并将它创建的所有网络接口 (例如 docker0 ) 加入到 <code>docker</code> 区域，以允许无缝组网。</p>
+<p>运行命令将 <code>docker</code> 接口从防火墙区域中移除:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>firewall-cmd --zone=trusted --remove-interface=docker0 --permanent
+</span></span><span style="display:flex;"><span>firewall-cmd --reload
+</span></span></code></pre></div><h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://docs.docker.com/network/">Networking overview</a></li>
+<li><a href="https://docs.docker.com/network/network-tutorial-standalone/">Networking tutorials</a></li>
+<li><a href="https://docs.docker.com/network/iptables/">Docker and iptables</a></li>
+<li><a href="https://juejin.cn/post/6844903766601236487">容器Docker详解</a></li>
+<li><a href="https://www.suse.com/c/rancher_blog/introduction-to-container-networking/">Introduction to Container Networking</a></li>
+<li><a href="https://cizixs.com/2017/10/19/docker-calico-network/">docker 容器网络方案：calico 网络模型</a></li>
+<li><a href="https://book.douban.com/subject/26894736/">Docker——容器与容器云</a></li>
+<li><a href="https://towardsdatascience.com/docker-networking-919461b7f498">Docker Networking</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/iptables/"><i class="fa fa-chevron-circle-left"></i> iptables 概述</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/chatgpt/">ChatGPT 初体验 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Docker 网络原理概览"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

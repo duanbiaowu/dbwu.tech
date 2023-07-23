@@ -1,0 +1,385 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>为什么 recover 必须在 defer 中调用？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="为什么 recover 必须在 defer 中调用？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_panic_recover/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-13T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-13T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="为什么 recover 必须在 defer 中调用？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>为什么 recover 必须在 defer 中调用？</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="前言">前言</h2>
+<p>开始正文之前，先来看看几个有趣的小问题:</p>
+<ol>
+<li>为什么 <code>panic</code> 可以让程序崩溃？</li>
+<li>为什么 <code>recover</code> 可以捕获 <code>panic</code> 的消息并终止程序崩溃？</li>
+<li>为什么 <code>recover</code> 必须在 <code>defer</code> 中调用？</li>
+<li>为什么 <code>recover</code> 必须在 <code>defer</code> 中直接调用 (不能嵌套)？</li>
+</ol>
+<h2 id="内部实现">内部实现</h2>
+<p>带着上面的几个小问题，我们从源代码的角度来探究一下， <code>panic</code> 和 <code>recover</code>  的实现相关文件目录为 <code>$GOROOT/src/runtime</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="_panic-对象">_panic 对象</h2>
+<p><code>_panic</code> 对象表示 <code>panic 语句</code> 语句的运行时。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// runtime2.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> _panic <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	argp      unsafe.Pointer <span style="color:#999;font-style:italic">// 指向调用 defer 时参数的指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	arg       any            <span style="color:#999;font-style:italic">// 指向调用 panic 时传入的参数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	link      *_panic        <span style="color:#999;font-style:italic">// _panic 链表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pc        <span style="color:#6ab825;font-weight:bold">uintptr</span>        <span style="color:#999;font-style:italic">// panic 被捕获后，继续执行的程序 sp (栈底) 寄存器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sp        unsafe.Pointer <span style="color:#999;font-style:italic">// panic 被捕获后，继续执行的程序 pc (程序计数器) 寄存器 (下一条汇编指令的地址)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	recovered <span style="color:#6ab825;font-weight:bold">bool</span>           <span style="color:#999;font-style:italic">// 当前 panic 是否被捕获 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	aborted   <span style="color:#6ab825;font-weight:bold">bool</span>           <span style="color:#999;font-style:italic">// 当前 panic 是否被终止
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// pc、sp 和 goexit 三个字段都是为了修复 runtime.Goexit 带来的问题引入的 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// runtime.Goexit 能够只结束调用该函数的 goroutine 而不影响其他的 goroutine 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  但是该函数会被 defer 中的 panic 和 recover 取消
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 引入这三个字段就是为了保证 runtime.Goexit 函数一定会执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	goexit    <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/panic.png" alt="_panic 对象"></p>
+<hr>
+<h2 id="gopanic-方法">gopanic 方法</h2>
+<p><code>gopanic</code> 方法对应 <code>panic</code> 函数，编译器会将 <code>panic 语句</code> 转换为 <code>gopanic</code> 函数调用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// panic.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">gopanic</span>(e any) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取当前 G
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp := <span style="color:#447fcf">getg</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 生成一个新的 _panic 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> p _panic        
+</span></span><span style="display:flex;"><span>	p.arg = e
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 _panic 对象放在链表头部
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	p.link = gp._panic  
+</span></span><span style="display:flex;"><span>	gp._panic = (*_panic)(<span style="color:#447fcf">noescape</span>(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;p)))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取 _defer 链表头节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		d := gp._defer
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 没有 _defer 对象, 自然也就没有 recover，直接跳出循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 意味着程序没有捕获 panic, 然后崩溃
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> d == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// defer 语句已经执行过了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果 defer 是由之前的 panic 或 runtime.Goexit 执行的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 并且触发了新的 panic, 也就是 defer 函数里再次 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将 defer 从列表中删除，之前的 panic 不会继续运行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 但需要确保之前的 runtime.Goexit 继续运行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> d.started {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> d._panic != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				d._panic.aborted = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			d._panic = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> !d.openDefer {
+</span></span><span style="display:flex;"><span>				d.fn = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 从 defer 链表中删除当前 defer 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				gp._defer = d.link 
+</span></span><span style="display:flex;"><span>				<span style="color:#447fcf">freedefer</span>(d)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 标记 defer 已经执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		d.started = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果在 defer 调用期间发生了新的 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 新的 panic 将在链表中找到当前 _defer
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 标记 d._panic (指向当前的 panic) 终止
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		d._panic = (*_panic)(<span style="color:#447fcf">noescape</span>(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;p)))
+</span></span><span style="display:flex;"><span>		d._panic = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取 pc, sp 寄存器的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		pc := d.pc
+</span></span><span style="display:flex;"><span>		sp := unsafe.<span style="color:#447fcf">Pointer</span>(d.sp)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> p.recovered {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// p.recovered 字段已经在 gorecover 函数中被修改为 true
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 说明当前 panic 被捕获了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">// 从 panic 链表中删除当前 panic 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			gp._panic = p.link  
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> gp._panic != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; gp._panic.goexit &amp;&amp; gp._panic.aborted {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 正常的恢复将绕过 Goexit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 非正常的情况交给 Goexit 处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			gp._panic = p.link
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果链表的当前节点后面还有 _panic 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 并且被标记为终止了，将它们从链表中删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">for</span> gp._panic != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; gp._panic.aborted {
+</span></span><span style="display:flex;"><span>				gp._panic = gp._panic.link
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 将捕获到的 panic 消息传递给 recover 函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			gp.sigcode0 = <span style="color:#24909d">uintptr</span>(sp)
+</span></span><span style="display:flex;"><span>			gp.sigcode1 = pc
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 恢复的时候 panic 函数将从此处跳出 (编译器实现)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// gopanic 调用结束，下面的两行代码不会执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">mcall</span>(recovery)            
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;recovery failed&#34;</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">fatalpanic</span>(gp._panic)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="fatalpanic-方法">fatalpanic 方法</h2>
+<p><code>fatalpanic</code> 方法表示当 <code>panic</code> 没有被捕获时要执行的操作 (也就是结束程序)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:nosplit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fatalpanic</span>(msgs *_panic) {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">systemstack</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 程序结束错误码为 2 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">exit</span>(<span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="gorecover-方法">gorecover 方法</h2>
+<p><code>gorecover</code> 方法对应 <code>recover</code> 函数，编译器会将 <code>recover</code> 语句转换为 <code>gorecover</code> 函数调用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:nosplit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">gorecover</span>(argp <span style="color:#6ab825;font-weight:bold">uintptr</span>) any {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// recover 函数必须在 defer 函数中调用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// recover 函数必须从最顶层函数 (直接在 defer 语句或函数体中) 调用，也就是说不能出现 defer 嵌套
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// p.argp 是最顶层的 defer 函数调用的参数指针，与 panic 函数的调用方的参数进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果匹配，调用方就可以 recover
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp := <span style="color:#447fcf">getg</span>()
+</span></span><span style="display:flex;"><span>	p := gp._panic
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 只处理一个 _panic, 标记完就返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 具体的捕获恢复处理逻辑在 gopanic 函数实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> p != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; !p.goexit &amp;&amp; !p.recovered &amp;&amp; argp == <span style="color:#24909d">uintptr</span>(p.argp) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将 panic 标记为已捕获
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p.recovered = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 返回 panic 的参数 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> p.arg
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="recovery-方法">recovery 方法</h2>
+<p><code>recovery</code> 方法用于恢复 <code>goroutine</code> 的继续执行，通过重置寄存器并将 <code>goroutine</code> 重新加入调度队列。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">recovery</span>(gp *g) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 恢复之前传入的 sp 和 pc 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sp := gp.sigcode0   <span style="color:#999;font-style:italic">// 取出栈 sp
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pc := gp.sigcode1   <span style="color:#999;font-style:italic">// 取出栈 pc
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	gp.sched.sp = sp    <span style="color:#999;font-style:italic">// 重置栈 sp
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp.sched.pc = pc    <span style="color:#999;font-style:italic">// 重置栈 pc
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp.sched.lr = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	gp.sched.ret = <span style="color:#3677a9">1</span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#447fcf">gogo</span>(&amp;gp.sched)     <span style="color:#999;font-style:italic">// 加入调度队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>函数中的这句代码可以简单解释下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>gp.sched.ret = <span style="color:#3677a9">1</span>
+</span></span></code></pre></div><p>这里并没有调用 <code>deferproc</code> 函数，但是直接修改了返回值，所以调度再次执行时会跳转到 <code>deferproc</code> 函数的下一条指令位置，设置为 1 是模拟 <code>deferproc</code> 函数返回值。</p>
+<p>在上一篇分析 <code>defer</code> 源代码的时候，我们提到过:</p>
+<blockquote>
+<p>如果 deferproc 返回值不等于 0, 说明 panic 被捕获到了</p>
+<p>如果 deferproc 返回值等于 0, 说明 panic 没有被捕获</p>
+</blockquote>
+<h2 id="小结">小结</h2>
+<p><code>panic + recover</code> 的实现由编译器和运行时共同完成，通过对内部实现源代码的学习，我们可以更加深入理解 <code>defer + panic+ recover</code> 的内部实现，
+现在来回答本文开头提到的几个小问题。</p>
+<ol>
+<li><code>panic</code> 如果没有被捕获，最终会调用 <code>exit(2)</code> 终止程序运行 (也就是程序崩溃)</li>
+<li><code>recover</code> 最终会调用 <code>recovery</code> 方法恢复程序的继续执行</li>
+<li><code>gorecover</code> 会进行参数校验，只有在 <code>defer</code> 语句中调用 <code>recover</code>, 才能通过参数校验 (详情见 <code>gorecover</code> 函数代码注释)</li>
+<li>同上</li>
+</ol>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_defer/"><i class="fa fa-chevron-circle-left"></i> 为什么 defer 的执行顺序和注册顺序不同？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_design_patterns/">Go 语言内置的设计模式 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="为什么 recover 必须在 defer 中调用？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

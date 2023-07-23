@@ -1,0 +1,413 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>为什么 defer 的执行顺序和注册顺序不同？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="为什么 defer 的执行顺序和注册顺序不同？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_defer/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-12T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="为什么 defer 的执行顺序和注册顺序不同？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>为什么 defer 的执行顺序和注册顺序不同？</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>defer</code> 语句的执行顺序是 <code>后进先出</code>，和数据结构中的 <code>Stack (栈)</code> 一样。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span> () {
+</span></span><span style="display:flex;"><span>        <span style="color:#24909d">println</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>    }()
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span> () {
+</span></span><span style="display:flex;"><span>        <span style="color:#24909d">println</span>(<span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>    }()
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span> () {
+</span></span><span style="display:flex;"><span>        <span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span>)
+</span></span><span style="display:flex;"><span>    }()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>defer</code> 函数的注册顺序为 1, 2, 3。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出结果如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span>
+</span></span></code></pre></div><p><code>defer</code> 函数的执行顺序为 3, 2, 1。</p>
+<h2 id="内部实现">内部实现</h2>
+<p>为什么最后的执行顺序和最初的注册顺序不一样呢？我们从源代码的角度来探究一下，<code>defer</code> 的实现相关文件目录为 <code>$GOROOT/src/runtime</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="_defer-对象">_defer 对象</h2>
+<p><code>_defer</code> 对象表示 <code>defer 语句</code> 的运行时。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> _defer <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	started   <span style="color:#6ab825;font-weight:bold">bool</span>    <span style="color:#999;font-style:italic">// defer 语句是否已经执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	heap      <span style="color:#6ab825;font-weight:bold">bool</span>    <span style="color:#999;font-style:italic">// defer 区分对象是在堆上分配还是栈上分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sp        <span style="color:#6ab825;font-weight:bold">uintptr</span> <span style="color:#999;font-style:italic">// 调用方（调用 defer 函数）的 sp (栈底) 寄存器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pc        <span style="color:#6ab825;font-weight:bold">uintptr</span> <span style="color:#999;font-style:italic">// 调用方（调用 defer 函数）的 pc (程序计数器) 寄存器，下一条汇编指令的地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fn        <span style="color:#6ab825;font-weight:bold">func</span>()  <span style="color:#999;font-style:italic">// 传入 defer 的函数，包括函数地址及参数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	_panic    *_panic <span style="color:#999;font-style:italic">// 正在执行 defer 的 panic 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	link      *_defer <span style="color:#999;font-style:italic">// next defer, 链表指针，可以指向栈或者堆
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><code>_defer</code> 对象链表如下所示:</p>
+<p><img src="https://dbwu.tech/images/defer.png" alt="_defer 对象"></p>
+<hr>
+<h2 id="deferproc-方法">deferproc 方法</h2>
+<p><code>deferproc</code> 方法用于创建新的 <code>defer</code> 调用，<strong>编译器将 <code>defer</code> 语句转换为调用 <code>deferproc</code> 函数，生成对应函数及其参数对应的 <code>_defer</code> 对象，然后将其挂载到当前 G (goroutine) 的 _defer 链表上</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">deferproc</span>(fn <span style="color:#6ab825;font-weight:bold">func</span>()) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取当前 G
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp := <span style="color:#447fcf">getg</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	d := <span style="color:#447fcf">newdefer</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> d._panic != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 新分配的 _defer 不应该产生 panic, 属于异常情况 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;deferproc: d.panic != nil after newdefer&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 新分配的 _defer 放在链表头部，达到 &#34;后进先出&#34; 的执行顺序 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.link = gp._defer      
+</span></span><span style="display:flex;"><span>	gp._defer = d
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 将函数赋值到 _defer 的 fn 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.fn = fn
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 调用方（调用 defer 函数）的 pc (程序计数器) 寄存器，下一条汇编指令的地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.pc = <span style="color:#447fcf">getcallerpc</span>()    
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 不能在调用 getcallersp 函数和将返回值存储到 d.sp 期间被抢占
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为 getcallersp 函数的返回值是一个 uintptr 栈指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.sp = <span style="color:#447fcf">getcallersp</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// return0 函数由汇编实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 正常情况下返回 0 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果有捕获 panic 的 defer 函数, 返回 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 编译器生成的代码总是检查返回值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 deferproc 返回值不等于 0 (说明 panic 被捕获到了)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 deferproc 返回值等于 0 (说明 panic 没有被捕获)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">return0</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="newdefer-方法">newdefer 方法</h2>
+<p><code>newdefer</code> 方法用于创建一个新的 <code>_defer</code> 对象，并返回指向该对象的指针。</p>
+<p><strong><code>newdefer</code> 会尽可能复用已有的 <code>_defer</code> 对象，优先从当前处理器 <code>P</code> 的 <code>defer pool</code> 对象池中获取，其次是调度器的 <code>defer pool</code> 对象池,
+如果这两个地方都没有获取到，就创建一个新的 <code>_defer</code> 对象</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newdefer</span>() *_defer {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> d *_defer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取当前 M
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mp := <span style="color:#447fcf">acquirem</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取当前 P
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pp := mp.p.<span style="color:#447fcf">ptr</span>()    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 P 的对象池为空，并且调度器的对象池不为空
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 从调度器取 N 个 对象放入 P 的对象池，完成数据局部性缓存 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// (其中 N 等于 P 的对象池容量的一半)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(pp.deferpool) == <span style="color:#3677a9">0</span> &amp;&amp; sched.deferpool != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">lock</span>(&amp;sched.deferlock)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将调度器对象池中一半的对象放入 P 的对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> <span style="color:#24909d">len</span>(pp.deferpool) &lt; <span style="color:#24909d">cap</span>(pp.deferpool)/<span style="color:#3677a9">2</span> &amp;&amp; sched.deferpool != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			d := sched.deferpool
+</span></span><span style="display:flex;"><span>			sched.deferpool = d.link
+</span></span><span style="display:flex;"><span>			d.link = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>			pp.deferpool = <span style="color:#24909d">append</span>(pp.deferpool, d)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">unlock</span>(&amp;sched.deferlock)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 P 的对象池中有元素，那么取出池中最后一个元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> n := <span style="color:#24909d">len</span>(pp.deferpool); n &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		d = pp.deferpool[n-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>		pp.deferpool[n-<span style="color:#3677a9">1</span>] = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		pp.deferpool = pp.deferpool[:n-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 消除当前 M 和 P 的引用 (优化 GC)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	mp, pp = <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 P 的对象池和调度器的对象池都没有获取到对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那就创建一个新的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> d == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		d = <span style="color:#24909d">new</span>(_defer)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 标记对象分配到了堆上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 和 deferprocStack 函数正好相反 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.heap = <span style="color:#6ab825;font-weight:bold">true</span>   
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> d
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/defernew.png" alt="newdefer 方法执行流程"></p>
+<h2 id="deferprocstack-方法">deferprocStack 方法</h2>
+<p><code>deferprocStack</code> 方法用于将栈上的 <code>_defer</code> 对象挂载到当前 <code>G</code> 的 <code>_defer</code> 链表上，参数必须初始化它的 <code>fn</code> 字段，其他字段都可以不设置。
+由于栈上的指针未初始化, 所以进入函数之前，就已经在栈上分配好了内存结构 (编译器分配的，rsp 往下伸展即可)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:nosplit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">deferprocStack</span>(d *_defer) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取当前 G
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp := <span style="color:#447fcf">getg</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// fn 字段已经初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 其他字段刚开始是未初始化的，现在进行初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.started = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 分配到了栈上, 和 newdefer 函数正好相反
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.heap = <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取到调用方函数的 rsp 寄存器值，并赋值到 _defer 结构的 sp 字段中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.sp = <span style="color:#447fcf">getcallersp</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取到调用方函数的 pc 寄存器值，并赋值到 _defer 结构的 pc 字段中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d.pc = <span style="color:#447fcf">getcallerpc</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 下面的代码可以翻译为:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   d.panic = nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   d.fd = nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   d.link = gp._defer
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   gp._defer = d
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 将参数 _defer 对象挂载到当前 G 的 _defer 链表上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	*(*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;d._panic)) = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	*(*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;d.fd)) = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	*(*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;d.link)) = <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(gp._defer))
+</span></span><span style="display:flex;"><span>	*(*<span style="color:#6ab825;font-weight:bold">uintptr</span>)(unsafe.<span style="color:#447fcf">Pointer</span>(&amp;gp._defer)) = <span style="color:#24909d">uintptr</span>(unsafe.<span style="color:#447fcf">Pointer</span>(d))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">return0</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="deferreturn-方法">deferreturn 方法</h2>
+<p><code>deferreturn</code> 方法用于运行 <code>defer</code> 语句函数，编译器在调用 <code>defer</code> 语句的函数末尾插入调用 <code>deferreturn</code> 函数代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">deferreturn</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取当前 G
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	gp := <span style="color:#447fcf">getg</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取链表头节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		d := gp._defer
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 链表已没有元素，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> d == <span style="color:#6ab825;font-weight:bold">nil</span> { 
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 获取到调用方函数的 rsp 寄存器值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		sp := <span style="color:#447fcf">getcallersp</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果调用方函数的 sp 和 _defer 对象的 sp 字段不同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明 _defer 对象不是在调用方函数注册的 (一般是由于跨 goroutine 造成的)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> d.sp != sp {     
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 获取 _defer 对象的 fn 函数地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		fn := d.fn
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 释放 _defer 对象的 fn 字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		d.fn = <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 从链表中删除当前节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		gp._defer = d.link
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 释放 _defer 对象内存 (归还到 P 的对象池或者调度器的对象池)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">freedefer</span>(d)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 执行 defer 语句函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">fn</span>()                
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/deferreturn.png" alt="deferreturn 方法执行流程"></p>
+<h2 id="小结">小结</h2>
+<p>两个小问题:</p>
+<ol>
+<li>为什么 <code>defer</code> 的执行顺序和注册顺序不同？</li>
+<li>为什么 <code>defer</code> 无法跨 <code>goroutine</code> 捕获 <code>panic</code>？</li>
+</ol>
+<p><code>defer</code> 的实现由编译器和运行时共同完成，通过对内部实现源代码的学习，我们现在可以回答上面的两个小问题了。</p>
+<ol>
+<li>新分配的 <code>_defer</code> 结构体对象会挂载到链表头部，达到 <code>后进先出</code> 的执行顺序。</li>
+<li><code>_defer</code> 结构体对象会挂载到当前的 <code>G (goroutine)</code> 上面，形成关联绑定，所以无法跨越 <code>goroutine</code> 的作用域去捕获 <code>panic</code>。</li>
+</ol>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://golang.dbwu.tech/performance/defer/">Go 高性能 - defer 优化</a></li>
+<li><a href="https://dbwu.tech/posts/golang_hacking/">Hacking.md</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_map/"><i class="fa fa-chevron-circle-left"></i> Go map 设计与实现</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_panic_recover/">为什么 recover 必须在 defer 中调用？ <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="为什么 defer 的执行顺序和注册顺序不同？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -1,0 +1,511 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>sync.Mutex Code Reading - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 goroutine 可以连续多次获得互斥锁，即使存在阻塞的 goroutine, 与此同时，饥饿模式是防止尾部的 goroutine 被饿死的重要机制 (高尾延时)。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="sync.Mutex Code Reading" />
+<meta property="og:description" content="互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 goroutine 可以连续多次获得互斥锁，即使存在阻塞的 goroutine, 与此同时，饥饿模式是防止尾部的 goroutine 被饿死的重要机制 (高尾延时)。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_sync_mutex/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-04-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-04-23T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="sync.Mutex Code Reading"/>
+<meta name="twitter:description" content="互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 goroutine 可以连续多次获得互斥锁，即使存在阻塞的 goroutine, 与此同时，饥饿模式是防止尾部的 goroutine 被饿死的重要机制 (高尾延时)。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>sync.Mutex Code Reading</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B">并发编程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><code>sync.Mutex</code> 实现了互斥锁同步原语。</p>
+<h2 id="内部实现">内部实现</h2>
+<p>我们来探究一下 <code>sync.Mutex</code> 的内部实现，文件路径为 <code>$GOROOT/src/sync/mutex.go</code>，笔者的 Go 版本为 <code>go1.19 linux/amd64</code>。</p>
+<h2 id="状态标识变量">状态标识变量</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>    mutexLocked = <span style="color:#3677a9">1</span> &lt;&lt; <span style="color:#6ab825;font-weight:bold">iota</span>     <span style="color:#999;font-style:italic">// 1, 互斥锁已锁定
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    mutexWoken                  <span style="color:#999;font-style:italic">// 2, 互斥锁被唤醒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    mutexStarving               <span style="color:#999;font-style:italic">// 4, 互斥锁饥饿模式标识
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>    mutexWaiterShift = <span style="color:#6ab825;font-weight:bold">iota</span>     <span style="color:#999;font-style:italic">// 3, 互斥锁上等待的 goroutine 数量值的计算偏移量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>    starvationThresholdNs = <span style="color:#3677a9">1e6</span> <span style="color:#999;font-style:italic">// 进入饥饿模式的等待阈值，1 ms
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>)
+</span></span></code></pre></div><h2 id="两种工作模式">两种工作模式</h2>
+<p>互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 <code>goroutine</code> 可以连续多次获得互斥锁，即使存在阻塞的 <code>goroutine</code>,
+与此同时，饥饿模式是防止尾部的 <code>goroutine</code> 被饿死的重要机制 (高尾延时)。</p>
+<h3 id="正常模式">正常模式</h3>
+<p>正常模式下，锁的等待者采用 <code>FIFO</code> 先进先出队列，但是一个刚被唤醒的 <code>goroutine</code> 并不会直接获得锁，而是要与新到达的 <code>goroutine</code> 竞争锁的使用，
+然而 <strong>新到达的 <code>goroutine</code> 有一个优势：它们已经在 CPU 上运行，并且数量可能有很多</strong>，结果就是刚被唤醒的 <code>goroutine</code> 大概率会竞争失败，
+所以在这种情况下，失败的 <code>goroutine</code> 被排在等待队列最前面，<strong>如果等待的 <code>goroutine</code> 超过 1ms 无法获得锁，互斥锁会切换到饥饿模式</strong>。</p>
+<h3 id="饥饿模式">饥饿模式</h3>
+<p>饥饿模式下，<strong>互斥锁的所有权直接从解锁的 <code>goroutine</code> 转移到队列最前面的 <code>goroutine</code> (优先级发生变化)，
+新到达的 <code>goroutines</code> 不会尝试获得锁 (不参与竞争)，也不会尝试自旋等待，它们会自动排在队列尾部</strong>，这样可以避免已经等待了太久的 <code>goroutine</code> 被饿死。</p>
+<p>如果一个 <code>goroutine</code> 获得了锁，并且满足以下两个条件任意一个时，互斥锁会切换到正常模式:</p>
+<ol>
+<li>它是队列的最后一个 goroutine</li>
+<li>它等待时间不超过 1 ms</li>
+</ol>
+<h3 id="mutex对象">Mutex对象</h3>
+<p><code>Mutex</code> 对象表示互斥锁，零值状态下表示未加锁，Mutex 对象一旦使用后，就不能再复制 (因为拷贝时无法复制 state, sema 字段的数据，会引起问题)。</p>
+<p><code>state</code> 字段表示锁的状态，低 3 位表示 3 种状态:</p>
+<table>
+<thead>
+<tr>
+<th>变量</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mutexLocked</td>
+<td>互斥锁已锁定</td>
+</tr>
+<tr>
+<td>mutexWoken</td>
+<td>互斥锁被唤醒</td>
+</tr>
+<tr>
+<td>mutexStarving</td>
+<td>互斥锁处于饥饿模式</td>
+</tr>
+</tbody>
+</table>
+<p><code>sema</code> 字段表示用于控制锁状态的信号量。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 根据 Go 内存模型的约束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 第 n 次调用 Unlock 方法在第 m 次调用 Lock 方法之前同步，其中 n &lt; m
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 调用 TryLock 方法成功，就相当于调用了 Lock 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 调用 TryLock 方法失败，不会建立任何同步原语约束关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Mutex <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	state <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>	sema  <span style="color:#6ab825;font-weight:bold">uint32</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/mutex_state.png" alt="state 字段"></p>
+<h2 id="locker-接口">Locker 接口</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Locker <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="trylock-方法">TryLock 方法</h2>
+<p><code>TryLock</code> 方法尝试获取锁并且返回是否成功 (调用非阻塞)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Mutex) <span style="color:#447fcf">TryLock</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	old := m.state
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> old&amp;(mutexLocked|mutexStarving) != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 这里可能有 1 个 goroutine 在等待锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 但是可以尝试在 goroutine 唤醒之前获得锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !atomic.<span style="color:#447fcf">CompareAndSwapInt32</span>(&amp;m.state, old, old|mutexLocked) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>在标准库中的注释中有这样一段话：</p>
+<blockquote>
+<p>注意，TryLock 真实的使用场景很少，使用 TryLock 通常说明在互斥锁的使用场景中，存在更深层次的问题。</p>
+</blockquote>
+<p><del>官方的言外之意貌似并不鼓励使用该方法</del>？<code>TryLock</code> 方法添加是社区的强烈意愿，官方一开始似乎并不感冒。笔者搜索了一下，发现目前标准库中几乎没有使用到 <code>TryLock</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ grep -nr <span style="color:#ed9d13">&#34;TryLock&#34;</span> <span style="color:#ed9d13">&#34;</span><span style="color:#6ab825;font-weight:bold">$(</span>dirname <span style="color:#6ab825;font-weight:bold">$(</span>which go<span style="color:#6ab825;font-weight:bold">))</span><span style="color:#ed9d13">/../src&#34;</span> | grep -v <span style="color:#ed9d13">&#34;\/\/&#34;</span> | grep -v <span style="color:#ed9d13">&#34;test&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 只有 2 个声明和 1 个调用</span>
+</span></span><span style="display:flex;"><span>.../src/sync/mutex.go:98:func (m *Mutex) TryLock() bool 
+</span></span><span style="display:flex;"><span>.../src/sync/rwmutex.go:166:func (rw *RWMutex) TryLock() bool 
+</span></span><span style="display:flex;"><span>.../src/sync/rwmutex.go:171:   <span style="color:#6ab825;font-weight:bold">if</span> !rw.w.TryLock() 
+</span></span></code></pre></div><h2 id="lock-方法">Lock 方法</h2>
+<p><code>Lock</code> 方法表示加锁操作，如果锁已经被使用，调用方 <code>goroutine</code> 会陷入阻塞，直到锁可用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Mutex) <span style="color:#447fcf">Lock</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 锁当前状态是未锁定 (正好可以完成加锁，然后直接返回)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapInt32</span>(&amp;m.state, <span style="color:#3677a9">0</span>, mutexLocked) {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> 
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// slow path 可以代码内联
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m.<span style="color:#447fcf">lockSlow</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="lockslow-方法">lockSlow 方法</h2>
+<p><code>lockSlow</code> 方法表示调用 <code>Lock</code> 方法时没有直接获取到锁时，接下来的处理工作 (进入阻塞调用)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Mutex) <span style="color:#447fcf">lockSlow</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> waitStartTime <span style="color:#6ab825;font-weight:bold">int64</span> <span style="color:#999;font-style:italic">// 等待时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	starving := <span style="color:#6ab825;font-weight:bold">false</span>       <span style="color:#999;font-style:italic">// 是否处于饥饿模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	awoke := <span style="color:#6ab825;font-weight:bold">false</span>          <span style="color:#999;font-style:italic">// 是否处于唤醒状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	iter := <span style="color:#3677a9">0</span>               <span style="color:#999;font-style:italic">// 自旋迭代次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	old := m.state          <span style="color:#999;font-style:italic">// 锁当前状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 饥饿模式下不能自旋，因为所有权转移到了队列前面的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 新到达的 goroutine 不参与竞争并且不会尝试自旋
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> old&amp;(mutexLocked|mutexStarving) == mutexLocked &amp;&amp; <span style="color:#447fcf">runtime_canSpin</span>(iter) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果锁没有处于饥饿模式并且符合自旋条件，goroutine 开始自旋
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 尝试设置 mutexWoken 标识 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 这样 Unlock 释放锁时就不用唤醒其他阻塞的 goroutine (直接让当前 goroutine 获得锁)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !awoke &amp;&amp; old&amp;mutexWoken == <span style="color:#3677a9">0</span> &amp;&amp; old&gt;&gt;mutexWaiterShift != <span style="color:#3677a9">0</span> &amp;&amp;
+</span></span><span style="display:flex;"><span>				atomic.<span style="color:#447fcf">CompareAndSwapInt32</span>(&amp;m.state, old, old|mutexWoken) {
+</span></span><span style="display:flex;"><span>				awoke = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">runtime_doSpin</span>() <span style="color:#999;font-style:italic">// goroutine 自旋
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			iter++          <span style="color:#999;font-style:italic">// 增加自旋次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			old = m.state   <span style="color:#999;font-style:italic">// 更新锁状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		new := old
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 互斥锁处于饥饿模式时，新到达的 goroutine 不要试图获得锁，应该去排队
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> old&amp;mutexStarving == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 锁处于非饥饿模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			new |= mutexLocked
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> old&amp;(mutexLocked|mutexStarving) != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 锁处于饥饿模式或者已加锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 增加等待的 goroutine 数量 (注意偏移量使用方法)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			new += <span style="color:#3677a9">1</span> &lt;&lt; mutexWaiterShift 
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 当前 goroutine 将锁切换到饥饿模式 (前提是锁没有被释放，调用了 Unlock 方法)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 调用 Unlock 时，处于饥饿模式的锁期望有等待的 goroutine, 但实际情况不一定有
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> starving &amp;&amp; old&amp;mutexLocked != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			new |= mutexStarving
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> awoke {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 当前 goroutine 处于唤醒状态，但是锁的状态里并没有 mutexWoken 标识
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 抛出一个 BUG: 互斥锁状态不一致
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> new&amp;mutexWoken == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;sync: inconsistent mutex state&#34;</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// goroutine 被唤醒，重置 mutexWoken 标识
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			new &amp;^= mutexWoken
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapInt32</span>(&amp;m.state, old, new) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> old&amp;(mutexLocked|mutexStarving) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#999;font-style:italic">// 当前 goroutine 通过 CAS 操作获得了锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">break</span> 
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果已经处于等待状态，那么直接排在队列最前面
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			queueLifo := waitStartTime != <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> waitStartTime == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				waitStartTime = <span style="color:#447fcf">runtime_nanotime</span>()
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 通过信号量保证锁只能被 1 个 goroutine 获取到
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">runtime_SemacquireMutex</span>(&amp;m.sema, queueLifo, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果等待时间超过了阈值，那么就进入饥饿模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            starving = starving || <span style="color:#447fcf">runtime_nanotime</span>()-waitStartTime &gt; starvationThresholdNs
+</span></span><span style="display:flex;"><span>			old = m.state
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> old&amp;mutexStarving != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果当前 goroutine 被唤醒并且锁处于饥饿模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 控制权转交给了当前 goroutine，但是互斥锁处于某种不一致的状态：
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//      mutexLocked 标识未设置，仍然认为当前 goroutine 正在等待锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">//      抛出一个 BUG: mutex 状态不一致
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> old&amp;(mutexLocked|mutexWoken) != <span style="color:#3677a9">0</span> || old&gt;&gt;mutexWaiterShift == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;sync: inconsistent mutex state&#34;</span>)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 减少等待的 goroutine 数量 (注意偏移量使用方法)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				delta := <span style="color:#24909d">int32</span>(mutexLocked - <span style="color:#3677a9">1</span>&lt;&lt;mutexWaiterShift)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> !starving || old&gt;&gt;mutexWaiterShift == <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 退出饥饿模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 必须要在这里退出并且考虑等待时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 饥饿模式效率很低，一旦 2 个 goroutine 同时将互斥锁切换到饥饿模式，可能会陷入无限循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					delta -= mutexStarving
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				atomic.<span style="color:#447fcf">AddInt32</span>(&amp;m.state, delta)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			awoke = <span style="color:#6ab825;font-weight:bold">true</span> <span style="color:#999;font-style:italic">// 当前 goroutine 唤醒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			iter = <span style="color:#3677a9">0</span>     <span style="color:#999;font-style:italic">// 当前 goroutine 重置自旋次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			old = m.state
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="runtime_canspin-方法">runtime_canSpin 方法</h2>
+<p><code>runtime_canSpin</code> 方法检测当前 <code>goroutine</code> 是否可以进行自旋操作，通过链接器链接到 <code>sync_runtime_canSpin</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// sync/runtime.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">runtime_canSpin</span>(i <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span></code></pre></div><p>运行自旋操作的条件比较苛刻，需要满足:</p>
+<ol>
+<li>程序运行在多核机器上且 GOMAXPROCS &gt; 1</li>
+<li>至少有一个正在运行的 P, 且本地运行队列为空</li>
+<li>自旋次数不超过 4 次</li>
+</ol>
+<p><strong>自旋与互斥锁相反，不做被动等待 (直接主动原地旋转等待)，因为其可以在全局运行队列或者其他处理器的运行队列上面运行</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:linkname sync_runtime_canSpin sync.runtime_canSpin
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//go:nosplit
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sync_runtime_canSpin</span>(i <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> i &gt;= active_spin || ncpu &lt;= <span style="color:#3677a9">1</span> || gomaxprocs &lt;= <span style="color:#24909d">int32</span>(sched.npidle+sched.nmspinning)+<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> p := <span style="color:#447fcf">getg</span>().m.p.<span style="color:#447fcf">ptr</span>(); !<span style="color:#447fcf">runqempty</span>(p) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><blockquote>
+<p>Go 调度器的设计者考虑了 操作的资源利用率 和 频繁的线程抢占给操作系统带来的负载 之后，提出了 <code>自旋线程</code> 的概念。
+当 <code>自旋线程</code> 没有找到可供其调度执行的 goroutine 时，并不会销毁该线程，而是采取 <code>自旋</code> 的操作保存起来。
+虽然直观上看起来浪费了一些资源，但是考虑一下 <code>syscall (系统调用)</code> 相关的情景就可以发现，相比 <code>自旋</code> 来说，线程间频繁的抢占、创建、销毁等操作带来的负载会更高。</p>
+</blockquote>
+<h2 id="unlock-方法">Unlock 方法</h2>
+<p><code>Unlock</code> 方法表示锁的释放操作，对未加锁的互斥锁执行解锁操作会引发运行时错误。</p>
+<p><strong>互斥锁并不是和某个具体的 goroutine 关联的，完全可以在一个 goroutine 加锁，在其他的 goroutine 中释放锁 (前提是两者持有的是同一个锁)</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Mutex) <span style="color:#447fcf">Unlock</span>() {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果去除 mutexLocked 标识之后正好是 0, 说明当前 goroutine 成功解锁，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	new := atomic.<span style="color:#447fcf">AddInt32</span>(&amp;m.state, -mutexLocked)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> new != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// slow path 可以代码内联
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		m.<span style="color:#447fcf">unlockSlow</span>(new)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="unlockslow-方法">unlockSlow 方法</h3>
+<p><code>unlockSlow</code> 方法表示调用 <code>Unlock</code> 方法时没有直接释放锁时，接下来的处理工作 (进入阻塞调用)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *Mutex) <span style="color:#447fcf">unlockSlow</span>(new <span style="color:#6ab825;font-weight:bold">int32</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对未加锁的互斥锁执行解锁操作会引发运行时错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> (new+mutexLocked)&amp;mutexLocked == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">throw</span>(<span style="color:#ed9d13">&#34;sync: unlock of unlocked mutex&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> new&amp;mutexStarving == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		old := new
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果锁处于正常模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//    如果没有等待 goroutine 或者已经有 goroutine 被唤醒或抢到了锁，就不用唤醒其他 goroutine 了，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果锁处于饥饿模式，所有权会直接从唤醒的 goroutine 转移到队列最前面的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 如果当前 goroutine 不在这个调用链中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//      可能是因为在 unlock 互斥锁时，没有观察到 mutexStarving 标识，所以直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> old&gt;&gt;mutexWaiterShift == <span style="color:#3677a9">0</span> || old&amp;(mutexLocked|mutexWoken|mutexStarving) != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 锁有正在等待的 goroutine, 那么被唤醒的 goroutine 得到锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			new = (old - <span style="color:#3677a9">1</span>&lt;&lt;mutexWaiterShift) | mutexWoken
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">CompareAndSwapInt32</span>(&amp;m.state, old, new) {
+</span></span><span style="display:flex;"><span>				<span style="color:#447fcf">runtime_Semrelease</span>(&amp;m.sema, <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			old = m.state
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果锁处于处于饥饿模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将锁的所有权转移到下一个等待的 goroutine, 并让其开始运行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意：mutexLocked 标识不需要被设置，因为等待的 goroutine 被唤醒后会进行设置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//      如果此时设置了 mutexStarving 标识，锁仍然被认为当前处于加锁状态，新到达的 goroutine 就无法获取到锁了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#447fcf">runtime_Semrelease</span>(&amp;m.sema, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p>互斥锁内部实现中将状态分成了两种: <strong>正常模式和饥饿模式</strong>。在正常模式下，锁的分配采用竞争机制，在刚被唤醒的和新来的 <code>goroutine</code> 之间，
+倾向于将锁分配给新来的 <code>goroutine</code>, 竞争失败的 <code>goroutine</code> 会被放到队列首部，如果等待的 <code>goroutine</code> 超过 1ms 无法获得锁，互斥锁会切换到饥饿模式。
+在饥饿模式下，从队列首部的 <code>goroutine</code> 开始依次获得锁，新来的 <code>goroutine</code> 会自动排在队列尾部，这样就避免尾部 <code>goroutine</code> 饿死。
+此外，互斥锁的加锁和解锁过程实现中还涉及到了信号、以及 GMP 调度等概念，本文暂时忽略掉了这些细节，后面有时间了再专门写一篇。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/memory_model/">Go 内存模型</a></li>
+<li><a href="https://dbwu.tech/posts/golang_hacking/">Hacking.md</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_once/"><i class="fa fa-chevron-circle-left"></i> sync.Once Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_sync_rwmutex/">sync.RWMutex Code Reading <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="sync.Mutex Code Reading"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
