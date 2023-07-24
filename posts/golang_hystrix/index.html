@@ -1,0 +1,693 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>微服务中的熔断算法 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="熔断机制是微服务调用链路中的的自我保护机制，当链路中某个服务响应时间过长甚至不可用时，会进行服务熔断，快速返回错误响应，停止级联故障，避免雪崩效应。" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="微服务中的熔断算法" />
+<meta property="og:description" content="熔断机制是微服务调用链路中的的自我保护机制，当链路中某个服务响应时间过长甚至不可用时，会进行服务熔断，快速返回错误响应，停止级联故障，避免雪崩效应。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_hystrix/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-24T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-24T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="微服务中的熔断算法"/>
+<meta name="twitter:description" content="熔断机制是微服务调用链路中的的自我保护机制，当链路中某个服务响应时间过长甚至不可用时，会进行服务熔断，快速返回错误响应，停止级联故障，避免雪崩效应。"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>微服务中的熔断算法</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1">微服务</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="雪崩效应">雪崩效应</h2>
+<p>在微服务系统中，整个系统是以一系列功能独立的微服务组成，如果某一个服务，因为流量异常或者内部其他原因，导致响应异常，那么该服务会影响到其下游服务，
+从而发生一系列连锁反应，最终导致整个系统崩溃，这就是微服务中的 <code>雪崩效应</code>。</p>
+<p>例如：当前系统中有 <code>A</code>，<code>B</code>，<code>C</code> 三个服务，服务 <code>A</code> 是上游，服务 <code>B</code> 是中游，服务 <code>C</code> 是下游。
+一旦下游服务 <code>C</code> 变得不可用，积压了大量请求，服务 <code>B</code> 的请求也随之阻塞，资源逐渐耗尽，使得服务 <code>B</code> 也变得不可用。
+最后，服务 <code>A</code> 也变为不可用，整个系统链路崩溃。</p>
+<p><img src="https://dbwu.tech/images/microservices_cascading_failure.png" alt="图片来源: https://klotzandrew.com/blog/api-health-checks-for-graceful-or-cascading-failure"></p>
+<h2 id="熔断">熔断</h2>
+<p><code>熔断</code> 机制是微服务调用链路中的的自我保护机制，当链路中某个服务响应时间过长甚至不可用时，会进行服务 <code>熔断</code>，快速返回错误响应，停止 <code>级联故障</code>，避免 <code>雪崩效应</code>。</p>
+<h3 id="熔断限流降级区别">熔断、限流、降级区别</h3>
+<p><code>限流</code> 是针对服务请求数量的一种自我保护机制，当请求数量超出服务负载时，自动丢弃新的请求，是系统高可用架构的第一步。
+服务有了 <code>限流</code> 之后，为什么还需要 <code>熔断</code> 呢？ <code>限流</code> 面向的是上游的服务，而 <code>熔断</code> 面向的是下游的服务。</p>
+<p><code>降级</code> 通过将不重要的服务暂停，提高系统负载能力。例如电商的 <code>秒杀</code> 场景中，可以暂停 <code>用户好友关系</code>, <code>用户信息</code> 等服务。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>触发条件</th>
+<th>面向目标</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>熔断</td>
+<td>下游服务不可用</td>
+<td>下游</td>
+</tr>
+<tr>
+<td>降级</td>
+<td>服务自身负载高</td>
+<td>自身</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>上游服务请求多</td>
+<td>上游</td>
+</tr>
+</tbody>
+</table>
+<h2 id="hystrix-go">hystrix-go</h2>
+<p><a href="https://github.com/Netflix/Hystrix">Hystrix</a> 是 <code>Netflix</code> 开源的由 <code>Java</code> 开发的 <code>熔断器</code> 组件，对应的 <code>Go</code> 版本为 <a href="https://github.com/afex/hystrix-go">afex/hystrix-go</a>,
+笔者选择该组件作为研究 <code>熔断</code> 算法代码实现。</p>
+<h2 id="三个状态">三个状态</h2>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>关闭</td>
+<td>熔断关闭时所有的请求都会被接收</td>
+</tr>
+<tr>
+<td>开启</td>
+<td>熔断开启时所有的请求都会被拒绝</td>
+</tr>
+<tr>
+<td>半打开         </td>
+<td>熔断开启时一段时间之后，尝试接收一个请求，确定下游服务是否已恢复，如果这个请求正常返回，熔断自动关闭状态，否则熔断回退到开启状态</td>
+</tr>
+</tbody>
+</table>
+<p><img src="https://dbwu.tech/images/circuit_breaker_states.png" alt="图片来源: https://medium.com/@narengowda/what-is-circuitbreaking-in-microservices-2053f4f66882"></p>
+<p><strong>这里需要注意的是</strong>: <a href="https://github.com/afex/hystrix-go">afex/hystrix-go</a> 的实现中并没有 <code>半打开</code> 的状态，也就是说，一旦 <code>熔断</code> 开启后，
+只能等待配置的时间之后，才能去主动判定下游服务是否已经恢复，继而恢复请求。笔者认为这个不是重要的部分，如果读者比较介意的话，
+可以参考 <a href="#reference">引用部分</a> 的另外两个 <code>熔断</code> 开源组件。</p>
+<h2 id="示例代码">示例代码</h2>
+<h3 id="主流程代码">主流程代码</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> hystrix
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;net/http&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;sync/atomic&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;testing&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/afex/hystrix-go/hystrix&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/gin-gonic/gin&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/go-resty/resty/v2&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">server</span>() {
+</span></span><span style="display:flex;"><span>	r := gin.<span style="color:#447fcf">Default</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 服务请求计数器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> count <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	r.<span style="color:#447fcf">GET</span>(<span style="color:#ed9d13">&#34;/ping&#34;</span>, <span style="color:#6ab825;font-weight:bold">func</span>(ctx *gin.Context) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 模拟服务故障，前两次请求返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> atomic.<span style="color:#447fcf">AddInt64</span>(&amp;count, <span style="color:#3677a9">1</span>) &lt; <span style="color:#3677a9">3</span> {
+</span></span><span style="display:flex;"><span>			ctx.<span style="color:#447fcf">String</span>(http.StatusInternalServerError, <span style="color:#ed9d13">&#34;pong&#34;</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 后面的请求正常返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ctx.<span style="color:#447fcf">String</span>(http.StatusOK, <span style="color:#ed9d13">&#34;pong&#34;</span>)
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 http://localhost:8080/ping 访问
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	_ = r.<span style="color:#447fcf">Run</span>(<span style="color:#ed9d13">&#34;:8080&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TestQuickStart</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动服务
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">server</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	hystrix.<span style="color:#447fcf">ConfigureCommand</span>(<span style="color:#ed9d13">&#34;test-api-ping&#34;</span>, hystrix.CommandConfig{
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 执行命令超时时间, 默认值 1 秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		Timeout: <span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 最大并发请求量, 默认值 10
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		MaxConcurrentRequests: <span style="color:#3677a9">100</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 熔断开启前需要达到的最小请求数量, 默认值 20
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		RequestVolumeThreshold: <span style="color:#3677a9">5</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 熔断器开启后，重试服务是否恢复的等待时间，默认值 5 秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里修改为 0.5 秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		SleepWindow: <span style="color:#3677a9">500</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 请求错误百分比阈值，超过阈值后熔断开启
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ErrorPercentThreshold: <span style="color:#3677a9">20</span>,
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">20</span>; i++ {
+</span></span><span style="display:flex;"><span>		_ = hystrix.<span style="color:#447fcf">Do</span>(<span style="color:#ed9d13">&#34;test-api-ping&#34;</span>, <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>			resp, _ := resty.<span style="color:#447fcf">New</span>().<span style="color:#447fcf">R</span>().<span style="color:#447fcf">Get</span>(<span style="color:#ed9d13">&#34;http://localhost:8080/ping&#34;</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> resp.<span style="color:#447fcf">IsError</span>() {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> fmt.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;err code: %s&#34;</span>, resp.<span style="color:#447fcf">Status</span>())
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}, <span style="color:#6ab825;font-weight:bold">func</span>(err <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>			fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;fallback err: &#34;</span>, err)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 每次请求之间休眠 0.1 秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		time.<span style="color:#447fcf">Sleep</span>(<span style="color:#3677a9">100</span> * time.Millisecond)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="主流程代码逻辑描述">主流程代码逻辑描述</h3>
+<p>我们通过修改 <code>hystrix</code> 的默认配置，期望达到以下的熔断效果:</p>
+<ul>
+<li>前两个请求直接返回错误</li>
+<li>此时错误百分比达到 <code>100%</code>, 但是还未达到开启 <code>熔断</code> 的最小请求数量 (5)</li>
+<li>继续发出请求，接下来的 <code>3</code> 个请求全部成功，此时请求数量达到开启 <code>熔断</code> 的最小请求数量</li>
+<li>开启 <code>熔断</code></li>
+<li>继续发出请求，接下来的 <code>5</code> 个请求全部返回 <code>fallback error</code>, 同时每次请求之间间隔 <code>0.1 秒</code></li>
+<li>此时达到开启 <code>熔断</code> 后，重试服务是否恢复的等待时间 (0.5 秒)</li>
+<li>继续发出请求，接下来的 <code>5</code> 个请求全部成功</li>
+</ul>
+<h3 id="运行测试">运行测试</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -v -count=<span style="color:#3677a9">1</span> .
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>=== RUN   TestQuickStart
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>[GIN-debug] Listening and serving HTTP on :8080
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 前两个请求错误</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:03 | <span style="color:#3677a9">500</span> |        16.7µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>fallback err:  err code: <span style="color:#3677a9">500</span> Internal Server Error
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:03 | <span style="color:#3677a9">500</span> |        22.6µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>fallback err:  err code: <span style="color:#3677a9">500</span> Internal Server Error
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:04 | <span style="color:#3677a9">200</span> |        33.9µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:04 | <span style="color:#3677a9">200</span> |        20.9µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:04 | <span style="color:#3677a9">200</span> |        22.6µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 熔断开启</span>
+</span></span><span style="display:flex;"><span>fallback err:  hystrix: circuit open
+</span></span><span style="display:flex;"><span>fallback err:  hystrix: circuit open
+</span></span><span style="display:flex;"><span>fallback err:  hystrix: circuit open
+</span></span><span style="display:flex;"><span>fallback err:  hystrix: circuit open
+</span></span><span style="display:flex;"><span>fallback err:  hystrix: circuit open
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 熔断重试</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:04 | <span style="color:#3677a9">200</span> |        22.6µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:04 | <span style="color:#3677a9">200</span> |        22.3µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:05 | <span style="color:#3677a9">200</span> |        16.3µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:05 | <span style="color:#3677a9">200</span> |        18.9µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>[GIN] 2023/03/03 - 12:02:05 | <span style="color:#3677a9">200</span> |        26.5µs |       127.0.0.1 | GET      <span style="color:#ed9d13">&#34;/ping&#34;</span>
+</span></span><span style="display:flex;"><span>--- PASS: TestQuickStart (1.52s)
+</span></span><span style="display:flex;"><span>PASS
+</span></span><span style="display:flex;"><span>ok      Golang-Patterns/hystrix 1.532s
+</span></span></code></pre></div><p>通过测试的数据结果，我们可以看到，<code>熔断</code> 执行流程和上面描述的逻辑一致，接下来，我们研究一下 <code>hystrix-go</code> 的内部实现。</p>
+<h2 id="算法实现">算法实现</h2>
+<h3 id="熔断配置对象">熔断配置对象</h3>
+<p>各字段代表的含义，请参照刚才示例代码中的注释。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CommandConfig <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Timeout                <span style="color:#6ab825;font-weight:bold">int</span> <span style="color:#ed9d13">`json:&#34;timeout&#34;`</span>
+</span></span><span style="display:flex;"><span>	MaxConcurrentRequests  <span style="color:#6ab825;font-weight:bold">int</span> <span style="color:#ed9d13">`json:&#34;max_concurrent_requests&#34;`</span>
+</span></span><span style="display:flex;"><span>	RequestVolumeThreshold <span style="color:#6ab825;font-weight:bold">int</span> <span style="color:#ed9d13">`json:&#34;request_volume_threshold&#34;`</span>
+</span></span><span style="display:flex;"><span>	SleepWindow            <span style="color:#6ab825;font-weight:bold">int</span> <span style="color:#ed9d13">`json:&#34;sleep_window&#34;`</span>
+</span></span><span style="display:flex;"><span>	ErrorPercentThreshold  <span style="color:#6ab825;font-weight:bold">int</span> <span style="color:#ed9d13">`json:&#34;error_percent_threshold&#34;`</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="创建熔断配置">创建熔断配置</h3>
+<p><code>ConfigureCommand</code> 方法根据参数创建一个 <code>熔断</code> 配置对象，如果对象中的某些字段参数未提供，则适用默认值替代。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">ConfigureCommand</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, config CommandConfig) {
+</span></span><span style="display:flex;"><span>    settingsMutex.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">defer</span> settingsMutex.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	timeout := DefaultTimeout
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> config.Timeout != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		timeout = config.Timeout
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	max := DefaultMaxConcurrent
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	volume := DefaultVolumeThreshold
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	sleep := DefaultSleepWindow
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	errorPercent := DefaultErrorPercentThreshold
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	circuitSettings[name] = &amp;Settings{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="熔断器对象">熔断器对象</h3>
+<p><code>CircuitBreaker</code> 表示单个请求对应的 <code>熔断器</code> 对象，对象可以验证请求是否触发了 <code>熔断</code> 机制，以及是否应该拒绝该请求继续访问。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CircuitBreaker <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Name                   <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	open                   <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	forceOpen              <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	mutex                  *sync.RWMutex
+</span></span><span style="display:flex;"><span>	openedOrLastTestedTime <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	executorPool *executorPool
+</span></span><span style="display:flex;"><span>	metrics      *metricExchange
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="getcircuit-函数">GetCircuit 函数</h3>
+<p><code>GetCircuit</code> 函数根据名称返回对应的 <code>熔断器</code> 对象以及该名称函数调用是否触发了 <code>熔断</code> 机制。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">GetCircuit</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) (*CircuitBreaker, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	circuitBreakersMutex.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	_, ok := circuitBreakers[name]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !ok {
+</span></span><span style="display:flex;"><span>		circuitBreakersMutex.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从读写锁切换到写锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		circuitBreakersMutex.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> circuitBreakersMutex.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 双重检测，防止在加锁期间其他 goroutine 更新了对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> cb, ok := circuitBreakers[name]; ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 代码执行到这里，说明在加锁期间其他 goroutine 触发了熔断机制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 所以第二个返回值返回 false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> cb, <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		circuitBreakers[name] = <span style="color:#447fcf">newCircuitBreaker</span>(name)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> circuitBreakersMutex.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> circuitBreakers[name], !ok, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="do-函数">Do 函数</h3>
+<p><code>Do</code> 函数以阻塞的方式运行参数函数，直到函数返回成功或者错误 (包括触发了熔断)，具体的执行工作是由 <code>DoC</code> 函数和 <code>GoC</code> 函数完成的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Do</span>(name <span style="color:#6ab825;font-weight:bold">string</span>, run runFunc, fallback fallbackFunc) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 包装 run 参数函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	runC := <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">run</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> fallbackC fallbackFuncC
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> fallback != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 包装 fallback 参数函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		fallbackC = <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context, err <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">fallback</span>(err)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">DoC</span>(context.<span style="color:#447fcf">Background</span>(), name, runC, fallbackC)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="doc-函数">DoC 函数</h3>
+<p><code>DoC</code> 函数负责参数的执行前封装工作，<code>Goc</code> 函数负责参数的具体执行工作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">DoC</span>(ctx context.Context, name <span style="color:#6ab825;font-weight:bold">string</span>, run runFuncC, fallback fallbackFuncC) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 接收通道缓冲为 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 函数的执行结果只可能是下面一种: 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  返回成功
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  返回错误 (包括触发了熔断)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	done := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 run 参数函数的执行过程包装一下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果函数返回成功，就发送信号给通道，否则返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r := <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>		err := <span style="color:#447fcf">run</span>(ctx)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		done &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 将 fallback 参数函数的执行过程包装一下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 如果函数返回错误，就发送信号给通道
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	f := <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context, e <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>		err := <span style="color:#447fcf">fallback</span>(ctx, e)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		done &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 执行参数函数，委托给 GoC 函数执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> errChan <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> fallback == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		errChan = <span style="color:#447fcf">GoC</span>(ctx, name, r, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		errChan = <span style="color:#447fcf">GoC</span>(ctx, name, r, f)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> &lt;-done:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 代码执行到这里，说明函数返回成功
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> err := &lt;-errChan:
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 代码执行到这里，说明函数返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="goc-函数">GoC 函数</h3>
+<p><code>GoC</code> 运行参数函数，同时跟踪该函数历史运行情况。如果参数函数触发了 <code>熔断</code> 开启，则必须等待服务恢复。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">GoC</span>(ctx context.Context, name <span style="color:#6ab825;font-weight:bold">string</span>, run runFuncC, fallback fallbackFuncC) <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	cmd := &amp;command{
+</span></span><span style="display:flex;"><span>		run:      run,
+</span></span><span style="display:flex;"><span>		fallback: fallback,
+</span></span><span style="display:flex;"><span>		start:    time.<span style="color:#447fcf">Now</span>(),
+</span></span><span style="display:flex;"><span>		errChan:  <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>, <span style="color:#3677a9">1</span>),
+</span></span><span style="display:flex;"><span>		finished: <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#3677a9">1</span>),
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	circuit, _, err := <span style="color:#447fcf">GetCircuit</span>(name)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取该请求对应的熔断器对象发生错误时，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		cmd.errChan &lt;- err
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> cmd.errChan
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当请求返回时，归还请求 ticket 到池中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	returnTicket := <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		cmd.circuit.executorPool.<span style="color:#447fcf">Return</span>(cmd.ticket)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 该对象由两个 goroutine 共享
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 两个 goroutine : 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  一个负责具体的函数执行 (熔断有可能已经开启了)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  一个负责监听函数执行结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 不管哪个先执行完成，报告熔断器相关 metric
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	returnOnce := &amp;sync.Once{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() { cmd.finished &lt;- <span style="color:#6ab825;font-weight:bold">true</span> }()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 熔断已经开启了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 拒绝当前请求，等待服务恢复
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !cmd.circuit.<span style="color:#447fcf">AllowRequest</span>() {
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			returnOnce.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>				cmd.<span style="color:#447fcf">errorWithFallback</span>(ctx, ErrCircuitOpen)
+</span></span><span style="display:flex;"><span>			})
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 当后端 (被请求方，一般指上游服务) 服务不稳定时，请求会花费更多时间，但不一定每次都会失败
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 当请求变慢但 QPS 不变时，需要限制并发数量，降低后端服务的负载
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		cmd.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> cmd.ticket = &lt;-circuit.executorPool.Tickets:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 请求量没有超过并发限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			...
+</span></span><span style="display:flex;"><span>			cmd.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 请求量超过了并发限制，返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			...
+</span></span><span style="display:flex;"><span>			returnOnce.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>				cmd.<span style="color:#447fcf">errorWithFallback</span>(ctx, ErrMaxConcurrency)
+</span></span><span style="display:flex;"><span>			})
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		runErr := <span style="color:#447fcf">run</span>(ctx)  <span style="color:#999;font-style:italic">// 执行参数函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		returnOnce.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> runErr != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				cmd.<span style="color:#447fcf">errorWithFallback</span>(ctx, runErr)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			cmd.<span style="color:#447fcf">reportEvent</span>(<span style="color:#ed9d13">&#34;success&#34;</span>)
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		timer := time.<span style="color:#447fcf">NewTimer</span>(<span style="color:#447fcf">getSettings</span>(name).Timeout)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> timer.<span style="color:#447fcf">Stop</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-cmd.finished:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 上面的 goroutine 已经上报数据，这里无需再上报
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-ctx.<span style="color:#447fcf">Done</span>():
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 上下文错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			returnOnce.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>				cmd.<span style="color:#447fcf">errorWithFallback</span>(ctx, ctx.<span style="color:#447fcf">Err</span>())
+</span></span><span style="display:flex;"><span>			})
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-timer.C:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 执行超时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			returnOnce.<span style="color:#447fcf">Do</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>				cmd.<span style="color:#447fcf">errorWithFallback</span>(ctx, ErrTimeout)
+</span></span><span style="display:flex;"><span>			})
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> cmd.errChan
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="do-函数调用链路">Do 函数调用链路</h3>
+<p><img src="https://dbwu.tech/images/hystrix-go_do_call.png" alt="Do 函数调用链路"></p>
+<hr>
+<p>最后，我们来看一下 <code>熔断</code> 开启与状态判断机制的内部实现。</p>
+<hr>
+<h3 id="allowrequest-方法">AllowRequest 方法</h3>
+<p><code>AllowRequest</code> 方法在具体的请求执行之前，先判断 <code>熔断</code> 是否已经开启，当 <code>熔断</code> 开启时，<code>熔断</code> 时间超过等待外部服务恢复时间时返回 <code>ture</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (circuit *CircuitBreaker) <span style="color:#447fcf">AllowRequest</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> !circuit.<span style="color:#447fcf">IsOpen</span>() || circuit.<span style="color:#447fcf">allowSingleTest</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="isopen-方法">IsOpen 方法</h3>
+<p><code>IsOpen</code> 方法在具体的请求执行之前，根据 <code>熔断</code> 是否以开启确定是否已经拒绝请求执行。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (circuit *CircuitBreaker) <span style="color:#447fcf">IsOpen</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	circuit.mutex.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	o := circuit.forceOpen || circuit.open
+</span></span><span style="display:flex;"><span>	circuit.mutex.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> o {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 熔断已开启
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">uint64</span>(circuit.metrics.<span style="color:#447fcf">Requests</span>().<span style="color:#447fcf">Sum</span>(time.<span style="color:#447fcf">Now</span>())) &lt; <span style="color:#447fcf">getSettings</span>(circuit.Name).RequestVolumeThreshold {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 未达到开启熔断需要的最小请求数量 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !circuit.metrics.<span style="color:#447fcf">IsHealthy</span>(time.<span style="color:#447fcf">Now</span>()) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 请求失败百分比超过阈值，开启熔断
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		circuit.<span style="color:#447fcf">setOpen</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="allowsingletest-方法">allowSingleTest 方法</h3>
+<p><code>allowSingleTest</code> 方法判断 <code>熔断</code> 时间是否已经超过重试服务是否恢复的等待时间。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (circuit *CircuitBreaker) <span style="color:#447fcf">allowSingleTest</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	now := time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>()
+</span></span><span style="display:flex;"><span>	openedOrLastTestedTime := atomic.<span style="color:#447fcf">LoadInt64</span>(&amp;circuit.openedOrLastTestedTime)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> circuit.open &amp;&amp; now &gt; openedOrLastTestedTime+<span style="color:#447fcf">getSettings</span>(circuit.Name).SleepWindow.<span style="color:#447fcf">Nanoseconds</span>() {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过上面三个方法实现代码可以看到: <code>熔断</code> 开启与状态判断是每次请求到来时实时判断的。</p>
+<p><img src="https://dbwu.tech/images/hystrix-go_allow_request_call.png" alt="AllowRequest 方法调用链路"></p>
+<h2 id="小结">小结</h2>
+<p>本文描述了 <code>熔断</code> 的基本概念以及 <code>熔断</code> 和 <code>限流</code>、<code>降级</code> 之间的区别，同时借助开源的 <a href="https://github.com/afex/hystrix-go">afex/hystrix-go</a> 组件源代码，
+研究了如何使用 <code>Go</code> 语言实现一个 <code>熔断器</code> 组件，感兴趣的读者可以阅读下列文章，了解下其他开源 <code>熔断器</code> 组件是如何实现的。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/afex/hystrix-go">afex/hystrix-go</a></li>
+<li><a href="https://github.com/sony/gobreaker">sony/gobreaker</a></li>
+<li><a href="https://github.com/alibaba/sentinel-golang">alibaba/sentinel-golang</a></li>
+<li><a href="https://learn.microsoft.com/en-us/previous-versions/msp-n-p/dn589784(v=pandp.10)">Circuit Breaker Pattern</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_ratelimit/"><i class="fa fa-chevron-circle-left"></i> 漏桶算法和令牌桶算法</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="微服务中的熔断算法"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

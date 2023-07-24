@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Thu, 20 Jul 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 24 Jul 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>微服务中的熔断算法</title>
+       <link>https://dbwu.tech/posts/golang_hystrix/</link>
+       <pubDate>Mon, 24 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_hystrix/</guid>
+       <description>熔断机制是微服务调用链路中的的自我保护机制，当链路中某个服务响应时间过长甚至不可用时，会进行服务熔断，快速返回错误响应，停止级联故障，避免雪崩效应。</description>
+     </item>
    
      <item>
        <title>漏桶算法和令牌桶算法</title>
