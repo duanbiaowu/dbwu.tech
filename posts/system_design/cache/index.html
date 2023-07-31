@@ -1,0 +1,390 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>缓存策略和模式 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="缓存策略和模式" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/system_design/cache/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-25T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="缓存策略和模式"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>缓存策略和模式</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B">软件工程</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1">微服务</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>缓存的目的是通过将经常访问的数据或计算结果存储在高速存储介质 (一般是内存) 中，以便在下次访问时可以更快地获取到数据，主要目的是提升性能和响应速度。</p>
+</blockquote>
+<h2 id="缓存常见问题">缓存常见问题</h2>
+<blockquote>
+<p>缓存击穿针对某一个 key，缓存雪崩针对很多 key。</p>
+</blockquote>
+<h3 id="缓存击穿">缓存击穿</h3>
+<p><strong>缓存击穿是指某个热点数据在缓存过期或被删除后，恰好有大量请求到来，请求无法命中缓存就会尝试从后端数据库加载，导致数据库等底层存储系统负载骤增，甚至出现宕机</strong>。</p>
+<h4 id="常见的解决方案">常见的解决方案:</h4>
+<ul>
+<li><strong>加锁</strong>: 缓存未命中时，保证同时只有一个线程去后端数据库加载，并在查询到结果后更新缓存以便使其他线程共享，例如 Go 语言开源的 <a href="https://golang.dbwu.tech/performance/singleflight/">singleflight 组件</a></li>
+<li><strong>设置热点数据永不过期</strong>: 保证缓存数据永远可用，不足之处是需要牺牲一些内存占用 (尤其是自带 GC 语言要避免数据被 GC)，不过系统的热点数据一般不会太多，所以一般情况下这个方案是首选。
+例如笔者之前开发的一个活动模块，服务启动时通过 K8S API 将 Pod 自动扩容到指定数量，然后将热点数据加载到 Pod 本地缓存并且设置为永不过期，最后根据结束时间通过 K8S API 设置定时自动缩容</li>
+<li><strong>提前加载数据到缓存</strong>: 服务启动时就将热点数据加载到缓存中，可以设置数据永不过期，也可以同步异步任务定时刷新热点数据到缓存 (例如和时间段相关的 key, 可以在不同时间段使用不同的 key 名称)</li>
+<li><strong>异步线程定时更新</strong> : 服务启动时注册异步任务，然后在缓存数据过期之前完成定时刷新，不足之处是需要编写额外的定时任务代码，而且很多缓存数据是通过各种参数组合生成的，
+定时任务无法提前得知具体的参数组合，如果将所有参数组合都生成缓存，内存占用方面也是一个问题</li>
+</ul>
+<h3 id="缓存穿透">缓存穿透</h3>
+<p><strong>缓存穿透是指对某个不存在的数据进行请求 (一般是攻击者伪造的请求参数)，请求会因未命中缓存而到达后端的数据库</strong>。</p>
+<h4 id="常见的解决方案-1">常见的解决方案:</h4>
+<ul>
+<li><strong>缓存空数据</strong>: 针对不存在的数据，设置一个专用的 “空缓存”，例如设置为 NULL, 这样请求会直接返回 NULL, 而不会穿透到后端数据库</li>
+<li><a href="https://dbwu.tech/posts/bloom_filter/">布隆过滤器</a>, 使用过滤器确认数据是否一定不存在，如果不存在直接返回空数据或者 404 即可</li>
+</ul>
+<h3 id="缓存雪崩">缓存雪崩</h3>
+<p><strong>缓存雪崩是指大量缓存数据在同一时间全部失效或者过期 (包括缓存服务器宕机)，请求会因未命中缓存而到达后端的数据库，如果缓存承接了系统中相当比例的流量，那么缓存雪崩发生时数据库基本会宕机</strong>。</p>
+<h4 id="常见的解决方案-2">常见的解决方案：</h4>
+<ul>
+<li><strong>缓存过期时间打散</strong>: 合理设置缓存数据的过期时间，并将过期时间进行分散，避免大量缓存同时失效。可以在设置缓存时随机添加一个时间间隔，使缓存失效时间分布在一个较大的范围内</li>
+<li><strong>设置热点数据永不过期</strong>: 同上</li>
+<li><strong>分布式锁</strong>: 同一时刻，保证同时只有一个线程去后端数据库加载，这样即使发生缓存雪崩，也不会造成严重后果</li>
+<li><a href="https://dbwu.tech/posts/golang_ratelimit/">接口限流</a></li>
+<li>通过监控和自动化告警设置，超过一定比例缓存数量后 <a href="https://dbwu.tech/posts/golang_hystrix/">触发熔断</a></li>
+</ul>
+<h3 id="缓存无底洞">缓存无底洞</h3>
+<p><strong>缓存无底洞是指在添加了大量缓存节点之后，服务性能不但没有提升反而下降</strong>。</p>
+<p><strong>产生问题的原因是</strong>: 缓存系统通常采用 hash 函数将键值 key 映射到对应的节点，但是随着缓存节点的添加，键值 key 会被分布到更多的节点上，
+客户端每次获取数据时都需要访问多个缓存节点，这会造成多次网络 IO, 网络连接数量也会增多，对缓存节点性能造成一定影响。</p>
+<p>常见的解决方案:</p>
+<ul>
+<li>缓存键值 key 的优化，例如可以将同一用户的所有缓存数据放在同一节点 (类似 Redis 中的 key 前缀绑定)</li>
+<li>客户端与缓存节点之间使用连接池等网络连接优化技术</li>
+<li>如果缓存键值 key 对应的数据不可避免地分布在多个节点上面，使用批量获取操作 (类似 Redis 中的 Pipe Line)</li>
+</ul>
+<h2 id="分布式一致性哈希">分布式一致性哈希</h2>
+<p>传统哈希算法在服务节点数量发生变化时，因为节点编号经过计算后的哈值发生变化，可能会导致大量的数据需要进行迁移。
+例如原本存储在节点 A 上面的数据，在新加入节点后，需要将数据迁移到 B C D 三个节点，这会造成大量的数据迁移工作，
+如果缓存节点涉及到多个数据中心，这个工作量就很可观了。</p>
+<p>分布式一致性哈希（Distributed Consistent Hashing）是一种用于解决分布式系统中数据分片和负载均衡的算法，通过将数据和节点映射到一个环形空间中，
+使节点和数据在环上均匀分布，从而实现了高效的数据查找和负载均衡，主要目的是为了解决传统哈希中的问题。</p>
+<h3 id="基本原理">基本原理</h3>
+<p>一致性哈希算法也使用取模运算，但与传统哈希算法不同的是:</p>
+<ul>
+<li>传统哈希算法是对节点的数量进行取模运算</li>
+<li>一致性哈希算法是固定对 2^32 进行取模运算</li>
+</ul>
+<p>具体的规则如下:</p>
+<ol>
+<li>将哈希算法对 2^32 的取模运算结果连接起来，形成一个哈希环</li>
+<li>对所有服务节点 ID 进行哈希计算，然后和 2^32 进行取模运算并放入环中对应的节点上</li>
+<li>每个键值 key 通过计算值后得到哈希值，然后找到该哈希值在环中的位置，按照顺时针方向查找，直到找到第一个服务节点 X</li>
+<li>最后将数据放入 X 节点</li>
+</ol>
+<p>例如图中的数据 Object B 经过计算得到哈希值，然后将数据存放在顺时针方向的下一个节点 NodeB 上。</p>
+<p><img src="https://dbwu.tech/images/system_design/dht_1.png" alt="哈希空间示例"></p>
+<p><strong>一致性哈希在增加或者删除节点时，只会影响到哈希环中相邻的节点</strong>。</p>
+<p>例如下图中新增节点 X，只需要将它前一个节点 C 上的所有数据重新计算并进行划分即可，其他三个节点 A、B、D 没有任何影响。</p>
+<p><img src="https://dbwu.tech/images/system_design/dht_2.png" alt="新增节点示例"></p>
+<h3 id="虚拟节点">虚拟节点</h3>
+<p>前文描述到一致性哈希存存在数据分布不均匀的问题，每个节点存储到数据量可能差异很大，例如大部分数据只落在少数到几个节点上面。
+造成这个问题的主要原因是就节点在哈希环上分布不均匀，尤其是在节点数量很少的情况下，例如下面的示例图中，大部分数据都存放到来节点 A 上面。</p>
+<p><img src="https://dbwu.tech/images/system_design/dht_3.png" alt="数据分布不均匀"></p>
+<p><strong>解决方案是增加虚拟节点，然后将虚拟节点映射到真实节点上</strong>。</p>
+<p>因为虚拟节点的数量比真实节点要多，那么虚拟节点就会比真实节点在哈希环上有更好的分布均匀性，从而使数据分布也更加均匀。</p>
+<p>如图所示，分别为每个真实服务节点设置三个虚拟节点，形成下列映射关系:</p>
+<table>
+<thead>
+<tr>
+<th>虚拟节点</th>
+<th>真实节点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A#1</td>
+<td>A</td>
+</tr>
+<tr>
+<td>A#2</td>
+<td>A</td>
+</tr>
+<tr>
+<td>A#3</td>
+<td>A</td>
+</tr>
+<tr>
+<td>B#1</td>
+<td>B</td>
+</tr>
+<tr>
+<td>B#2</td>
+<td>B</td>
+</tr>
+<tr>
+<td>B#3</td>
+<td>B</td>
+</tr>
+</tbody>
+</table>
+<p>例如当键值 key 对应的哈希值定位到 A#1 A#2 A#3 中的任意一个虚拟节点时，实际数据都是存放在真实节点 A 上面，在实际项目中，
+通常会将虚拟节点数量设置得非常大，以便数据分布的更加均匀，此外当真实节点数量发生变化时，会将数据迁移工作分摊到更多节点，提升系统的稳定性。</p>
+<p><img src="https://dbwu.tech/images/system_design/dht_4.png" alt="虚拟节点"></p>
+<h2 id="缓存淘汰策略">缓存淘汰策略</h2>
+<p>限于篇幅，下面几个算法的具体实现本文就不展开了。</p>
+<h3 id="fifo">FIFO</h3>
+<p>先进先出 (First In First Out) 策略，缓存数据按照添加的顺序进行删除，不考虑数据已经被访问的次数和频率。</p>
+<h3 id="lru">LRU</h3>
+<p>最近最久未使用 (Least Recently Used) 策略，优先淘汰最久未使用的数据，关注的是数据最后访问时间。</p>
+<h3 id="lfu">LFU</h3>
+<p>最不经常使用 (Least Frequently Used) 策略，优先淘汰最近时间段内使用次数最少的数据，关注的是数据最近使用频率，使用该策略可以保证没有被淘汰的都是热点数据，提高了缓存命中率。</p>
+<h2 id="缓存更新策略">缓存更新策略</h2>
+<h3 id="cache-aside-pattern">Cache Aside Pattern</h3>
+<p><img src="https://dbwu.tech/images/system_design/cache-aside-diagram.png" alt="图片来源: https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside"></p>
+<p>模式的核心思想是将数据的读写操作进行分离，来提升数据的访问效率和一致性。</p>
+<p>具体的规则如下:</p>
+<ol>
+<li>
+<p>读取数据时，先尝试从缓存中获取数据</p>
+<ul>
+<li>如果缓存命中，直接返回数据</li>
+<li>如果缓存未命中，从底层的存储层 (如数据库) 读取，并将读取到的数据更新到缓存中</li>
+</ul>
+</li>
+<li>
+<p>写入数据时，先写入底层的存储层，然后将缓存设置为失效或者删除缓存，这样下次再读取时就可以读到最新数据了</p>
+</li>
+</ol>
+<p><strong>为什么要先写入存储层，然后再删除缓存</strong>？</p>
+<p>因为如果先删除缓存，在存在并发请求的情况下，可能出现数据不一致性的问题。</p>
+<p>例如下面的一个业务场景：</p>
+<ol>
+<li>请求 1 读取数据，发现缓存未命中，然后去存储层读取并且读取到了数据 A，此时 请求 2 到了</li>
+<li>请求 2 写入数据 B 到存储层，然后删除缓存 (下次应该存入缓存的值应该是 B)</li>
+<li>此时请求 1 将读取到的旧数据 A 更新到缓存中，覆盖了请求 2 的写入操作 (本来应该是 B, 现在变成了 A)</li>
+<li>后续请求读取到的全部是旧数据 A</li>
+</ol>
+<p>当然了，即使先写入存储层，上面提到的这个业务场景的问题依然存在，读者可以思考一下什么条件下会触发？</p>
+<h3 id="write-behind-caching-pattern">Write Behind Caching Pattern</h3>
+<p><img src="https://dbwu.tech/images/system_design/cache_write_behind.png" alt="图片来源: https://en.wikipedia.org/wiki/Cache_(computing)"></p>
+<p>模式的核心思想是通过后台线程异步写入数据，避免高并发场景下写入延迟造成的性能问题，具体的流程如下:</p>
+<ol>
+<li>写入数据请求到达时，现将数据写入到缓存</li>
+<li>同时将写入的数据添加到异步队列</li>
+<li>后台线程定时将异步队列中的数据写入到数据库</li>
+</ol>
+<p>如果你对 MySQL 数据库的写入缓冲区底层实现有所了解的话，应该对这种模式有似曾相识的感觉 :-)</p>
+<p>从功能使用的角度来看，因为只需要将数据写入缓存即可，而且异步队列的实现一般是内存或者顺序写磁盘，所以响应速度很快。同时，异步队列中的数据写入数据库时，一般是批量操作，
+可以提升系统的吞吐量。最后，可以减少数据一致性问题，如果异步队列不出现数据堆积现象，甚至可以说完全消除了数据一致性问题 (<strong>非强一致性，断电数据会丢失</strong>，这里不考虑单点故障等问题)。</p>
+<p>从功能实现的角度来看，该模式的实现较为复杂，除了数据相关操作外，还有实现一个异步队列或引用第三方的开源组件。</p>
+<h3 id="cache-as-sor-pattern">Cache-As-SoR Pattern</h3>
+<p><img src="https://dbwu.tech/images/system_design/cache_as_sor.png" alt="图片来源: https://en.wikipedia.org/wiki/Cache_(computing)"></p>
+<p>模式的核心思想把数据库 + 缓存作为一个存储整体，调用方无需关心数据是来自于缓存还是数据库，模式内部只需要暴露<strong>两个语义操作</strong>: Read/Write。</p>
+<h4 id="read-through">Read-Through</h4>
+<p>调用方使用 Read 方法读取数据，SoR 内部负责读取缓存，如果没有命中缓存就直接返回，否则从数据库读取，然后设置缓存数据并将数据返回给调用方。
+这里需要注意的是: 因为存在并发请求同一个数据并且该数据正好缓存失效，所以从数据库读取数据时需要做好<strong>并发控制</strong>。</p>
+<h4 id="write-through">Write-Through</h4>
+<p>调用方使用 Write 方法写入数据，SoR 内部负责具体的写入动作，可以使用 Cache Aside Pattern, 也可以使用 Write Behind Caching Pattern。</p>
+<h2 id="缓存强一致性">缓存强一致性</h2>
+<p>缓存强一致性要求数据库更新的同时，缓存也能够实时更新。要同时实现这两点，需要付出很大的代价，可以通过 2PC 协议或者 Paxos 协议来保证，
+但是 2PC 协议太慢、 Paxos 协议太复杂，而且缓存数据本来就是实时性和一致性要求不高的数据，所以可以容忍也必须容忍不一致性带来的问题。</p>
+<h2 id="题外话">题外话</h2>
+<p>网上看到很多文章提到 <strong>通过消息队列或数据库订阅机制</strong> 来解决写入数据时的一致性问题，暂且不说额外的基础组件运维和代码维护带来的工作量，
+这种解决方案的本质就是把业务层的功能下沉到了中间件层，而且大多数情况下只会增加系统的复杂度。试想一下，用户使用手机转账完成后，难道要等消息队列或数据库订阅更新到缓存吗？
+如果这个过程中，中间件出了任何问题，怎么向用户解释？所以针对数据一致性要求高的场景，最直观的方案就是直接丢掉数据缓存层，保证强一致性就好了。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside">Cache-Aside pattern</a></li>
+<li><a href="https://docs.oracle.com/cd/E13924_01/coh.340/e13819/readthrough.htm">Read-Through, Write-Through, Write-Behind Caching and Refresh-Ahead</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Cache_replacement_policies">Cache replacement policies</a></li>
+<li><a href="https://redisson.org/glossary/write-through-and-write-behind-caching.html#:~:text=Write%2Dbehind%20caching%20is%20a,to%20perform%20many%20cache%20updates.">What are write-through and write-behind caching?</a></li>
+<li><a href="https://github.com/serialx/hashring">Go 一致性哈希开源实现</a></li>
+<li><a href="https://coolshell.cn/articles/17416.html#Write_Behind_Caching_Pattern">缓存更新的套路</a></li>
+<li><a href="https://juejin.cn/post/7068092219344814093">16张图解带你掌握一致性哈希算法</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/memory_model/"><i class="fa fa-chevron-circle-left"></i> Go 内存模型</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/cdn/">CDN 原理 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="缓存策略和模式"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
