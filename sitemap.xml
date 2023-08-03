@@ -260,6 +260,9 @@
     <loc>https://dbwu.tech/posts/dns/</loc>
     <lastmod>2023-02-18T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/posts/golang_pprof/</loc>
+    <lastmod>2023-02-16T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/go1.20/</loc>
     <lastmod>2023-02-11T00:00:00+00:00</lastmod>
   </url><url>
