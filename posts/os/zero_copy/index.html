@@ -125,7 +125,7 @@
     
 
     <h2 id="传统读写模式">传统读写模式</h2>
-<p><img src="../../images/os/zero_copy1.png" alt="传统读写模式流程图"></p>
+<p><img src="https://dbwu.tech/images/os/zero_copy1.png" alt="传统读写模式流程图"></p>
 <ol>
 <li><strong>第一次数据拷贝</strong>: 用户进程发起 read() 系统调用，当前上下文从用户态切换至内核态，DMA(Direct Memory Access) 引擎从文件中读取数据，并存储到内核态缓冲区 (DMA 拷贝)</li>
 <li><strong>第二次数据拷贝</strong>: 将数据从内核态缓冲区拷贝到用户态缓冲区 (CPU 拷贝)，然后返回给用户进程，拷贝数据时会发生一次上下文切换 (从内核态切换到用户态)</li>
@@ -135,7 +135,7 @@
 <h2 id="transferto">transferTo</h2>
 <p>transferTo() 和 send() 类似，也是一个系统调用，用于在文件之间高效地传输数据。</p>
 <p>transferTo 在操作系统层面实现了零拷贝技术，允许将数据直接从一个文件传输到另一个文件，而无需通过用户空间进行中转。</p>
-<p><img src="../../images/os/zero_copy4.png" alt="transferTo 流程图"></p>
+<p><img src="https://dbwu.tech/images/os/zero_copy4.png" alt="transferTo 流程图"></p>
 <ol>
 <li><strong>第一次数据拷贝</strong>: 用户进程发起 transferTo() 调用，将文件数据拷贝到一个 Read buffer（内核态）中，当前上下文从用户态切换至内核态</li>
 <li><strong>第二次数据拷贝</strong>: 内核将 Read buffer 中的数据拷贝到 Socket 缓冲区</li>
@@ -150,13 +150,13 @@
 <h3 id="sendfile--dma">sendfile + DMA</h3>
 <p>sendfile() 是作用于两个文件描述符之间的数据拷贝的系统调用，这个拷贝操作是直接在内核中进行的，没有用户态到内核态的数据拷贝和上下文切换带来的开销，所以称为零拷贝技术。</p>
 <p>Linux2.4 内核对 sendfile 系统调用做了改进:</p>
-<p><img src="../../images/os/zero_copy3.png" alt="sendfile 改进"></p>
+<p><img src="https://dbwu.tech/images/os/zero_copy3.png" alt="sendfile 改进"></p>
 <ol>
 <li>用户进程发起 sendfile() 系统调用，当前上下文从用户态切换至内核态，DMA 将数据拷贝到内核缓冲区</li>
 <li>向 Socket 缓冲区中发送当前数据在内核缓冲区的地址和偏移量两个值</li>
 <li>根据 Socket 缓冲区的地址和偏移量，直接将内核缓冲区的数据拷贝到网卡，当前上下文从内核态切换至用户态</li>
 </ol>
-<p><img src="../../images/os/zero_copy5.png" alt="零拷贝流程图"></p>
+<p><img src="https://dbwu.tech/images/os/zero_copy5.png" alt="零拷贝流程图"></p>
 <p>相比较于传统的读写模式, sendfile + DMA 把上下文的切换次数从 4 次减少到 2 次，同时把数据拷贝的次数从 4 次降低到了 2 次 (2 次均为 DMA 拷贝)，完全消除了数据从用户态和内核态之间拷贝数据带来的开销。</p>
 <p>sendfile + DMA 虽然已经足够高效，但是依然存在两个不足之处:</p>
 <ol>
