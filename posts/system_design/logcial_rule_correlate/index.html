@@ -113,7 +113,7 @@
     <a href="https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B">软件工程</a>
     
     
-    <a href="https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1">微服务</a>
+    <a href="https://dbwu.tech/tags/%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91">业务逻辑</a>
     
 </li>
 
@@ -145,7 +145,7 @@
 <li>&hellip;</li>
 </ul>
 <h2 id="演变过程">演变过程</h2>
-<p>下面简答概括下常规的规则引擎的演变过程，以及过程中开发人员和运营人员的不同分工。</p>
+<p>下面简单概括下常规的规则引擎的演变过程，以及过程中开发人员和运营人员的不同分工。</p>
 <h3 id="代码">代码</h3>
 <p>在这个阶段，业务规则全部由开发人员完成，运营有任何变更，都需要找到开发经历开发 -&gt; 测试 -&gt; 生产的过程，沟通加具体的工作量要花掉可观的时间，
 而且系统的业务规则没有任何灵活性，今天应该没有公司这么干了，不过作为上古的工作模式，这里简单提一下。</p>
@@ -182,7 +182,7 @@
 <h3 id="dsl">DSL</h3>
 <p>针对特定领域的语言，也就是专门解决某个特定领域的问题，分为内部 DSL 和外部 DSL，规则引擎中用到的都是外部 DSL，主要是给开发人员和经过培训的其他岗位人员。</p>
 <p><img src="https://dbwu.tech/images/system_design/logcial_rule_correlate_3.png" alt="图片来源: https://g.alicdn.com/aic/aep-docs/1.6.1/ze9s2o.html"></p>
-<p>这方面的例子太多了，我们 <strong>日常使用的编程语言和数据库 SQL 语句本质上都是高度抽象的 DSL</strong> :-)</p>
+<p>这方面的例子太多了，我们日常使用的编程语言和数据库 SQL 语句本质上都是高度抽象的 DSL :-)</p>
 <h4 id="elasticsearch-全文搜索">ElasticSearch 全文搜索</h4>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 全文搜索 hello world</span>
 </span></span><span style="display:flex;"><span>

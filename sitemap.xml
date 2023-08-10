@@ -11,7 +11,7 @@
     <loc>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</loc>
     <lastmod>2023-08-07T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1/</loc>
+    <loc>https://dbwu.tech/tags/%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91/</loc>
     <lastmod>2023-08-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/</loc>
@@ -24,6 +24,9 @@
     <lastmod>2023-07-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/golang/</loc>
+    <lastmod>2023-07-24T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1/</loc>
     <lastmod>2023-07-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/golang_hystrix/</loc>
@@ -234,6 +237,9 @@
     <lastmod>2023-03-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/golang_slice/</loc>
+    <lastmod>2023-03-10T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/os/zero_copy/</loc>
     <lastmod>2023-03-10T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/golang_delve/</loc>

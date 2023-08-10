@@ -7,7 +7,7 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Mon, 07 Aug 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 24 Jul 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1/index.xml" rel="self" type="application/rss+xml" />
    
@@ -477,6 +477,15 @@
        <pubDate>Fri, 10 Mar 2023 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/golang_slice/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Go 语言中的零拷贝</title>
+       <link>https://dbwu.tech/posts/os/zero_copy/</link>
+       <pubDate>Fri, 10 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/os/zero_copy/</guid>
        <description></description>
      </item>
    
