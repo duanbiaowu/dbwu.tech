@@ -49,6 +49,15 @@
      </item>
    
      <item>
+       <title>zap 高性能设计与实现</title>
+       <link>https://dbwu.tech/posts/golang_zap/</link>
+       <pubDate>Sun, 16 Jul 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang_zap/</guid>
+       <description>zap 是 Uber 开源的 Go 高性能日志库，性能远超于标准库和其他开源日志库。zap 使用简单，支持多种格式结构化日志、可以设置不同的日志级别，并且能够记录堆栈信息和 &amp;hellip;</description>
+     </item>
+   
+     <item>
        <title>HTTP Router 算法演进</title>
        <link>https://dbwu.tech/posts/http_router/</link>
        <pubDate>Thu, 13 Jul 2023 00:00:00 +0000</pubDate>

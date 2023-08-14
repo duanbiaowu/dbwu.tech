@@ -1,0 +1,1309 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>zap 高性能设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="zap 是 Uber 开源的 Go 高性能日志库，性能远超于标准库和其他开源日志库。zap 使用简单，支持多种格式结构化日志、可以设置不同的日志级别，并且能够记录堆栈信息和 &hellip;" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="zap 高性能设计与实现" />
+<meta property="og:description" content="zap 是 Uber 开源的 Go 高性能日志库，性能远超于标准库和其他开源日志库。zap 使用简单，支持多种格式结构化日志、可以设置不同的日志级别，并且能够记录堆栈信息和 &hellip;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang_zap/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-07-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-07-16T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="zap 高性能设计与实现"/>
+<meta name="twitter:description" content="zap 是 Uber 开源的 Go 高性能日志库，性能远超于标准库和其他开源日志库。zap 使用简单，支持多种格式结构化日志、可以设置不同的日志级别，并且能够记录堆栈信息和 &hellip;"/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>zap 高性能设计与实现</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/golang">Golang</a>
+    
+    
+    <a href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>zap 是 Uber 开源的 Go 高性能日志库，性能远超于标准库和其他开源日志库。zap 使用简单，支持多种格式结构化日志、可以设置不同的日志级别，并且能够在堆栈跟踪中记录调用者信息。</p>
+</blockquote>
+<h3 id="为什么要使用-zap">为什么要使用 zap</h3>
+<table>
+<thead>
+<tr>
+<th>功能/库</th>
+<th>标准库 log</th>
+<th>zap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>日志级别</td>
+<td>只有 Print 在生产可用，因为 Fatal 级别会终止进程，Panic 级别会抛出 panic</td>
+<td>支持多种日志级别</td>
+</tr>
+<tr>
+<td>日志结构化       </td>
+<td>仅支持简单本文</td>
+<td>支持 JSON, 并且支持自定义结构</td>
+</tr>
+<tr>
+<td>日志切割</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="基准测试">基准测试</h2>
+<p>官方给出了 <code>3</code> 种数据复杂度类型的基准测试结果，从测试结果表格中可以看到，除了 <code>zerolog</code> 库之外，<code>zap</code> 的性能远超其他开源库。</p>
+<p>为什么我们不直接分析 <code>zerolog</code> 库的实现呢？根本的原因在于 <code>zerolog</code> 是专门为 <code>JSON</code> 日志格式设计 (也就是只支持 JSON 日志格式)，
+在某些需要其他格式日志信息的场景下，无法兼容或者需要二次开发，相比之下，<code>zap</code> 在功能易用性和性能方面有更强的优势。</p>
+<h3 id="1-条消息和-10-个字段">1 条消息和 10 个字段</h3>
+<p><img src="https://dbwu.tech/images/zap_bench_test1.png" alt="图片来源: https://github.com/uber-go/zap"></p>
+<h3 id="包含-10-个字段的消息">包含 10 个字段的消息</h3>
+<p><img src="https://dbwu.tech/images/zap_bench_test2.png" alt="图片来源: https://github.com/uber-go/zap"></p>
+<h3 id="只记录-1-条消息">只记录 1 条消息</h3>
+<p><img src="https://dbwu.tech/images/zap_bench_test3.png" alt="图片来源: https://github.com/uber-go/zap"></p>
+<h2 id="示例">示例</h2>
+<h3 id="sugaredlogger">SugaredLogger</h3>
+<p>当性能不是第一考虑要素时，可以使用 <code>SugaredLogger</code>, 支持键值对形式的日志信息，需要注意的是，这里说的 <code>键值对形式</code> 并不是指类似 <code>map[any]any</code> 这种数据结构，
+而是可以根据业务场景，直接将自定义的多个参数以 <code>键,值</code> 的形式传入 <code>SugaredLogger</code> 的相关日志方法，这极大提高了 API 的灵活性，比如同一类型的日志消息，
+我们可以使用固定的 <code>键</code>，但是使用不同数据结构中的 <code>值</code>，这样形成两两组合，达到 <strong>不同的业务场景通过相同的结构最后写入不同的日志数据 (多态性)</strong>。</p>
+<table>
+<thead>
+<tr>
+<th>键 - 值 (的数据结构)</th>
+<th style="text-align:center">struct</th>
+<th style="text-align:center">map</th>
+<th style="text-align:center">string</th>
+<th style="text-align:center">any</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>url</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+</tr>
+<tr>
+<td>attempt</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+</tr>
+<tr>
+<td>backoff</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+<td style="text-align:center">✅</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/zap&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	logger, _ := zap.<span style="color:#447fcf">NewProduction</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> logger.<span style="color:#447fcf">Sync</span>() <span style="color:#999;font-style:italic">// 刷回缓冲区
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sugar := logger.<span style="color:#447fcf">Sugar</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	url := <span style="color:#ed9d13">&#34;https://www.example.com&#34;</span>
+</span></span><span style="display:flex;"><span>	sugar.<span style="color:#447fcf">Infow</span>(<span style="color:#ed9d13">&#34;failed to fetch URL&#34;</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#ed9d13">&#34;url&#34;</span>, url,
+</span></span><span style="display:flex;"><span>		<span style="color:#ed9d13">&#34;attempt&#34;</span>, <span style="color:#3677a9">3</span>,
+</span></span><span style="display:flex;"><span>		<span style="color:#ed9d13">&#34;backoff&#34;</span>, time.Second,
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>	sugar.<span style="color:#447fcf">Infof</span>(<span style="color:#ed9d13">&#34;Failed to fetch URL: %s&#34;</span>, url)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>{<span style="color:#ed9d13">&#34;level&#34;</span>:<span style="color:#ed9d13">&#34;info&#34;</span>,<span style="color:#ed9d13">&#34;ts&#34;</span>:1680601481.089163,<span style="color:#ed9d13">&#34;caller&#34;</span>:<span style="color:#ed9d13">&#34;go-high-performance/main.go:14&#34;</span>,<span style="color:#ed9d13">&#34;msg&#34;</span>:<span style="color:#ed9d13">&#34;failed to fetch URL&#34;</span>,<span style="color:#ed9d13">&#34;url&#34;</span>:<span style="color:#ed9d13">&#34;https://www.example.com&#34;</span>,<span style="color:#ed9d13">&#34;attempt&#34;</span>:3,<span style="color:#ed9d13">&#34;backoff&#34;</span>:1}
+</span></span><span style="display:flex;"><span>{<span style="color:#ed9d13">&#34;level&#34;</span>:<span style="color:#ed9d13">&#34;info&#34;</span>,<span style="color:#ed9d13">&#34;ts&#34;</span>:1680601481.0892165,<span style="color:#ed9d13">&#34;caller&#34;</span>:<span style="color:#ed9d13">&#34;go-high-performance/main.go:20&#34;</span>,<span style="color:#ed9d13">&#34;msg&#34;</span>:<span style="color:#ed9d13">&#34;Failed to fetch URL: https://www.example.com&#34;</span>}
+</span></span></code></pre></div><p>将输出 JSON 字符串格式化:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;level&#34;</span>: <span style="color:#ed9d13">&#34;info&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;ts&#34;</span>: <span style="color:#3677a9">1680601481.089163</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;caller&#34;</span>: <span style="color:#ed9d13">&#34;go-high-performance/main.go:14&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;msg&#34;</span>: <span style="color:#ed9d13">&#34;failed to fetch URL&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;url&#34;</span>: <span style="color:#ed9d13">&#34;https://www.example.com&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;attempt&#34;</span>: <span style="color:#3677a9">3</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;backoff&#34;</span>: <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;level&#34;</span>: <span style="color:#ed9d13">&#34;info&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;ts&#34;</span>: <span style="color:#3677a9">1680601481.0892165</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;caller&#34;</span>: <span style="color:#ed9d13">&#34;go-high-performance/main.go:20&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;msg&#34;</span>: <span style="color:#ed9d13">&#34;Failed to fetch URL: https://www.example.com&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>默认情况下， <code>SugaredLogger</code> 的日志信息结构除了开发者定义的键值外，还会附带 <code>3</code> 个键值对，分别是:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">  键</th>
+<th style="text-align:left">  值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">level</td>
+<td style="text-align:left">日志级别</td>
+</tr>
+<tr>
+<td style="text-align:left">ts</td>
+<td style="text-align:left">时间戳</td>
+</tr>
+<tr>
+<td style="text-align:left">caller</td>
+<td style="text-align:left">调用方</td>
+</tr>
+</tbody>
+</table>
+<h3 id="logger">Logger</h3>
+<p>当性能是第一考虑要素时，请使用 <code>Logger</code>, 它比 <code>SugaredLogger</code> 性能更高且内分配更少，作为性能代价，<strong>Logger 只支持结构化日志记录</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/zap&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	logger, _ := zap.<span style="color:#447fcf">NewProduction</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> logger.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	url := <span style="color:#ed9d13">&#34;https://www.example.com&#34;</span>
+</span></span><span style="display:flex;"><span>	logger.<span style="color:#447fcf">Info</span>(<span style="color:#ed9d13">&#34;failed to fetch URL&#34;</span>,
+</span></span><span style="display:flex;"><span>		zap.<span style="color:#447fcf">String</span>(<span style="color:#ed9d13">&#34;url&#34;</span>, url),
+</span></span><span style="display:flex;"><span>		zap.<span style="color:#447fcf">Int</span>(<span style="color:#ed9d13">&#34;attempt&#34;</span>, <span style="color:#3677a9">3</span>),
+</span></span><span style="display:flex;"><span>		zap.<span style="color:#447fcf">Duration</span>(<span style="color:#ed9d13">&#34;backoff&#34;</span>, time.Second),
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>输出日志除了 <code>时间戳</code> 字段外，其他字段和刚才的日志没有任何区别。通过代码我们可以看到: <code>Logger</code> 比 <code>SugaredLogger</code> 在应用层面多了一层约束，
+每个日志字段必须调用 <code>zap</code> 中的类型方法来声明其类型，例如上面例子中的 <code>zap.String</code>, <code>zap.Int</code>, <code>zap.Duration</code>。</p>
+<h2 id="代码分析">代码分析</h2>
+<p>我们来分析下 <code>zap</code> 的源代码，着重研究其高性能背后的技术实现，笔者选择的版本为 <code>v1.24.0</code>。</p>
+<h2 id="对象复用">对象复用</h2>
+<blockquote>
+<p><code>zap</code> 组件内部对位于 <code>hot path</code> 上面的对象使用对象池管理进行复用。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/zap_sync_pool.png" alt="zap 对象复用机制"></p>
+<p>下面以 <code>Buffer 缓冲区</code> 对象复用为例，分析一下内部代码，其他几个对象实现都是类似的，具体到后面用到时再分析。</p>
+<h3 id="缓冲区对象池">缓冲区对象池</h3>
+<p>日志库很重要的一部分就是处理输入的日志字符串，<code>zap</code> 在内部采用了 <code>[]byte 缓冲区 + 对象池</code> 的管理模式，对象池沿用了标准库中的 <code>sync.Pool</code>,
+但是 <code>[]byte 缓冲区</code> 并没有使用标准库中的 <code>bytes.Buffer</code>, 而是自己独立实现了一套，主要原因有两个:</p>
+<ul>
+<li><code>bytes.Buffer</code> 仅支持 { <code>byte</code>, <code>[]byte</code>, <code>rune</code>, <code>string</code> } 4 种数据类型的直接写入，不满足 <code>zap</code> 日志信息多种数据类型的写入场景</li>
+<li>独立实现的支持多种数据类型的 <code>缓冲区</code> 可以配合 <code>zap</code> 内置的 <code>编码器</code> 进一步提升性能</li>
+</ul>
+<p><img src="https://dbwu.tech/images/zap_byte_buffer.png" alt="缓冲区对象池"></p>
+<h4 id="核心代码">核心代码</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 默认的缓冲区大小为 1 KB
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">const</span> _size = <span style="color:#3677a9">1024</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 缓冲区对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Buffer <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 底层切片
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	bs   []<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对象池的引用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这个字段主要是为了 Free 方法的语义化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 缓冲区的归还操作可以直接调用 buf.Free，而不需要间接调用 pool.Put(buf)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pool Pool
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 重置缓冲区
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 直接复用了原有的数据区域，实现零分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (b *Buffer) <span style="color:#447fcf">Reset</span>() {
+</span></span><span style="display:flex;"><span>    b.bs = b.bs[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 归还缓冲区到对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (b *Buffer) <span style="color:#447fcf">Free</span>() {
+</span></span><span style="display:flex;"><span>    b.pool.<span style="color:#447fcf">put</span>(b)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 获取对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewPool</span>() Pool {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> Pool{p: &amp;sync.Pool{
+</span></span><span style="display:flex;"><span>		New: <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 初始化缓冲区时预分配容量，提升性能
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> &amp;Buffer{bs: <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>, <span style="color:#3677a9">0</span>, _size)}
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	}}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><blockquote>
+<p><code>缓冲区</code> 的默认大小为 <code>1KB</code>, 这也提醒我们要合理控制单条日志的数据量大小，避免缓冲区底层的 <code>[]byte</code> 数据结构发生扩容带来的性能损耗。</p>
+</blockquote>
+<h2 id="自定义数据类型">自定义数据类型</h2>
+<p><code>zap</code> 将数据类型全部映射为自定义常量:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> FieldType <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	UnknownType FieldType = <span style="color:#6ab825;font-weight:bold">iota</span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	BoolType
+</span></span><span style="display:flex;"><span>	Float64Type
+</span></span><span style="display:flex;"><span>	Int64Type
+</span></span><span style="display:flex;"><span>	StringType
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><h3 id="字段对象">字段对象</h3>
+<p><code>Field</code> 对象表示日志信息中的单个字段，<code>字段包装</code> 方法通过 <code>Type</code> 字段将具体的数据包装为 <code>Field</code> 对象，<code>编码器</code>可以通过 <code>Type</code> 字段得出该对象所表示的具体类型，然后在对应的数据字段取值。</p>
+<p>例如 <code>Type</code> 是 <code>Int64Type</code>, <code>编码器</code> 就会获取 <code>Integer</code> 字段的值，<code>Type</code> 是 <code>StringType</code>, <code>编码器</code> 就会获取 <code>String</code> 字段的值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Field <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 字段名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Key       <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 字段类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Type      FieldType
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存储所有数值类型数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Integer   <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存储字符串类型数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	String    <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存储所有除 数值/字符串 之外的其他类型数据  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Interface <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><blockquote>
+<p>Field 通过 1 个类型字段加 3 个数据字段的组合，使编码器对象巧妙地实现了多态性 (根据不同的类型获取不同的值)，最重要的是，完全规避了反射。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/zap_field.png" alt="Field 对象"></p>
+<h3 id="字段对象包装">字段对象包装</h3>
+<p>调用 <code>zap.Int64</code>, <code>zap.String</code> 等方法时，会根据参数的数据类型，返回一个包装好的 <code>Field</code> 对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 将类型为 int64 的参数包装为 Field 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Int64</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val <span style="color:#6ab825;font-weight:bold">int64</span>) Field {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> Field{Key: key, Type: zapcore.Int64Type, Integer: val}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 将类型为 string 的参数包装为 Field 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">String</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val <span style="color:#6ab825;font-weight:bold">string</span>) Field {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> Field{Key: key, Type: zapcore.StringType, String: val}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>当然了，为了提升开发效率 (<del>摸鱼</del>)，我们可以直接调用 <code>zap.Any</code> 方法自动转换数据类型:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Any</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, value <span style="color:#6ab825;font-weight:bold">interface</span>{}) Field {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> val := value.(<span style="color:#6ab825;font-weight:bold">type</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#6ab825;font-weight:bold">bool</span>:
+</span></span><span style="display:flex;"><span>	    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">Bool</span>(key, val)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#6ab825;font-weight:bold">float64</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">Float64</span>(key, val)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#6ab825;font-weight:bold">int64</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">Int64</span>(key, val)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> <span style="color:#6ab825;font-weight:bold">string</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">String</span>(key, val)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="自定义编码器">自定义编码器</h2>
+<p>标准库中的 <code>json.Marshal</code> 方法内部是基于 <code>反射</code> 实现的，极大地降低了效率。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Marshal</span>(v any) ([]<span style="color:#6ab825;font-weight:bold">byte</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	e := <span style="color:#447fcf">newEncodeState</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	err := e.<span style="color:#447fcf">marshal</span>(v, encOpts{escapeHTML: <span style="color:#6ab825;font-weight:bold">true</span>})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *encodeState) <span style="color:#447fcf">marshal</span>(v any, opts encOpts) (err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	e.<span style="color:#447fcf">reflectValue</span>(reflect.<span style="color:#447fcf">ValueOf</span>(v), opts)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>zap</code> 没有调用标准库的方法，而是实现了一套自定义的 <code>编码器</code>，完全避免了使用 <code>反射</code> 带来的性能损耗。</p>
+<h3 id="编码器接口">编码器接口</h3>
+<p><img src="https://dbwu.tech/images/zap_encoder_interface.png" alt="编码器接口"></p>
+<p><code>ObjectEncoder</code> 接口表示基础数据和复合数据的编码器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ObjectEncoder <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 复合数据格式化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">AddArray</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, marshaler ArrayMarshaler) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">AddObject</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, marshaler ObjectMarshaler) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 基础数据格式化方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">AddBool</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, value <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">AddInt64</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, value <span style="color:#6ab825;font-weight:bold">int64</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">AddString</span>(key, value <span style="color:#6ab825;font-weight:bold">string</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Encoder</code> 接口表示不同类型的日志格式编码，其中内嵌了一个 <code>ObjectEncoder</code> 接口用于格式化基础数据和复合数据 (主要是数组和对象)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Encoder <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	ObjectEncoder
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回当前对象的深拷贝
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Clone</span>() Encoder
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 编码日志消息，将格式化后的日志数据直接写入缓冲区中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">EncodeEntry</span>(Entry, []Field) (*buffer.Buffer, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="编码器接口实现">编码器接口实现</h3>
+<p><code>zap</code> 内置了两种编码器实现: <code>JSON</code> 和 <code>Console (文本)</code> 编码器，下面分析下 <code>JSON</code> 编码器的具体实现。</p>
+<h3 id="json-编码器结构体">JSON 编码器结构体</h3>
+<p><code>jsonEncoder</code> 表示 JSON 编码器，实现了 <code>Encoder</code> 编码器接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> jsonEncoder <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 编码器配置对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	*EncoderConfig
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 编码后的 JSON 字符存储缓冲区
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	buf            *buffer.Buffer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 编码后的 JSON 字符存是否在冒号和逗号后面加空格 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	spaced         <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对象嵌套层数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    openNamespaces <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过反射编码基础数据类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	reflectBuf *buffer.Buffer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 反射编码器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	reflectEnc ReflectedEncoder
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="json-编码器结对象池">JSON 编码器结对象池</h3>
+<p><code>zap</code> 采用了对象池来管理编码器对象，因为其位于 <code>hot path</code>, 对象池可以避免对象创建和回收带来的性能损耗，提升性能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// JSON 编码器对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> _jsonPool = sync.Pool{New: <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;jsonEncoder{}
+</span></span><span style="display:flex;"><span>}}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 申请对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getJSONEncoder</span>() *jsonEncoder {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> _jsonPool.<span style="color:#447fcf">Get</span>().(*jsonEncoder)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 归还对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">putJSONEncoder</span>(enc *jsonEncoder) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	_jsonPool.<span style="color:#447fcf">Put</span>(enc)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="json-编码器深拷贝">JSON 编码器深拷贝</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (enc *jsonEncoder) <span style="color:#447fcf">Clone</span>() Encoder {
+</span></span><span style="display:flex;"><span>	clone := enc.<span style="color:#447fcf">clone</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 复制缓冲区内容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	clone.buf.<span style="color:#447fcf">Write</span>(enc.buf.<span style="color:#447fcf">Bytes</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> clone
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 深拷贝内部实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (enc *jsonEncoder) <span style="color:#447fcf">clone</span>() *jsonEncoder {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从对象池中获取一个编码器对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	clone := <span style="color:#447fcf">getJSONEncoder</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从对象池中获取一个 buffer 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	clone.buf = bufferpool.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> clone
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="json-编码日志">JSON 编码日志</h3>
+<p><code>EncodeEntry</code> 方法将日志信息编码为 JSON 后写入字符串缓冲对象然后返回 (字符串缓冲对象也是通过对象池管理的，<strong>规避了内存分配</strong>)，
+方法内部实现中，编码器根据不同的字段类型和数据信息，调用对应的的编码方法生成字段编码，最后采用最朴素的 <code>字符串拼接</code> 生成日志编码字符串，<strong>规避了反射</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (enc *jsonEncoder) <span style="color:#447fcf">EncodeEntry</span>(ent Entry, fields []Field) (*buffer.Buffer, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 深拷贝一个当前的对象，这样对拷贝对象的操作不会影响当前对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	final := enc.<span style="color:#447fcf">clone</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 开始写入字符串到缓冲区，第一个为字符为 {
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	final.buf.<span style="color:#447fcf">AppendByte</span>(<span style="color:#ed9d13">&#39;{&#39;</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 首先写入日志的基本字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> final.LevelKey != <span style="color:#ed9d13">&#34;&#34;</span> &amp;&amp; final.EncodeLevel != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 写入日志级别
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> final.TimeKey != <span style="color:#ed9d13">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 写入时间戳
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> ent.LoggerName != <span style="color:#ed9d13">&#34;&#34;</span> &amp;&amp; final.NameKey != <span style="color:#ed9d13">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 写入日志名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> final.MessageKey != <span style="color:#ed9d13">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 写入日志 msg
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 然后写入日志的自定义字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">addFields</span>(final, fields)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据字段对象的嵌套层数补充对应的 } 字符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	final.<span style="color:#447fcf">closeOpenNamespaces</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> ent.Stack != <span style="color:#ed9d13">&#34;&#34;</span> &amp;&amp; final.StacktraceKey != <span style="color:#ed9d13">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 写入堆栈信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		final.<span style="color:#447fcf">AddString</span>(final.StacktraceKey, ent.Stack)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 补充和第一个 { 字符对应的 } 字符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	final.buf.<span style="color:#447fcf">AppendByte</span>(<span style="color:#ed9d13">&#39;}&#39;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志结尾写入换行符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	final.buf.<span style="color:#447fcf">AppendString</span>(final.LineEnding)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将字符串缓冲区数据赋值给返回值变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ret := final.buf
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将拷贝的编码器对象归还到对象池中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">putJSONEncoder</span>(final)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ret, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="字段编码">字段编码</h4>
+<p><code>addFields</code> 函数将参数 <code>编码器</code> 作用于具体的字段 (日志调用方自定义的数据字段)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">addFields</span>(enc ObjectEncoder, fields []Field) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> fields {
+</span></span><span style="display:flex;"><span>		fields[i].<span style="color:#447fcf">AddTo</span>(enc)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>AddTo</code> 方法调用 <code>编码器</code> 对应的方法格式化字段。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f Field) <span style="color:#447fcf">AddTo</span>(enc ObjectEncoder) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> err <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> f.Type {
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> BoolType:
+</span></span><span style="display:flex;"><span>		enc.<span style="color:#447fcf">AddBool</span>(f.Key, f.Integer == <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> Int64Type:
+</span></span><span style="display:flex;"><span>		enc.<span style="color:#447fcf">AddInt64</span>(f.Key, f.Integer)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> StringType:
+</span></span><span style="display:flex;"><span>		enc.<span style="color:#447fcf">AddString</span>(f.Key, f.String)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>下面以 <code>AddBool</code> 方法调用来说明调用过程，其他方法流程是类似的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (enc *jsonEncoder) <span style="color:#447fcf">AddBool</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, val <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	enc.<span style="color:#447fcf">addKey</span>(key)
+</span></span><span style="display:flex;"><span>	enc.<span style="color:#447fcf">AppendBool</span>(val)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (enc *jsonEncoder) <span style="color:#447fcf">AppendBool</span>(val <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>    enc.<span style="color:#447fcf">addElementSeparator</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 写入缓冲区
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    enc.buf.<span style="color:#447fcf">AppendBool</span>(val)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (b *Buffer) <span style="color:#447fcf">AppendBool</span>(v <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用标准库方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    b.bs = strconv.<span style="color:#447fcf">AppendBool</span>(b.bs, v)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">AppendBool</span>(dst []<span style="color:#6ab825;font-weight:bold">byte</span>, b <span style="color:#6ab825;font-weight:bold">bool</span>) []<span style="color:#6ab825;font-weight:bold">byte</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> b {
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">append</span>(dst, <span style="color:#ed9d13">&#34;true&#34;</span>...)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">append</span>(dst, <span style="color:#ed9d13">&#34;false&#34;</span>...)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="接口">接口</h2>
+<p><img src="https://dbwu.tech/images/zap_core_interface.png" alt="Core 接口和 WriteSyncer 接口"></p>
+<h3 id="日志接口">日志接口</h3>
+<p><code>Core</code> 表示基础日志接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Core <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志等级检测接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	LevelEnabler
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 写入日志自定义字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">With</span>([]Field) Core
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测日志是否应该被记录
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果日志需要记录，就将参数 Entry 添加到返回值 CheckedEntry
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 该方法可以理解为中间件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   支持单个检测模式, 例如 ioCore.Check
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   也支持多个检测模式, 例如 multiCore.Check
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Check</span>(Entry, *CheckedEntry) *CheckedEntry
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 写入日志 (先写入缓冲区，然后刷出)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Write</span>(Entry, []Field) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 刷出缓冲区的日志信息 (Stdout, File, Memory, MessageQueue ...)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Sync</span>() <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="日志写入接口">日志写入接口</h3>
+<p><code>WriteSyncer</code> 接口在标准库的 <code>io.Writer</code> 接口的基础上包装了一层，增加了一个 <code>Sync</code> 方法表示将缓冲区数据刷出并写入，标准库中的 <code>Stderr</code>, <code>Stdout</code>, <code>File</code> 都已经实现了该接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> WriteSyncer <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	io.Writer
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Sync</span>() <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>调用方可以使用 <code>zapcore.AddSync</code> 方法设置写入接口，例如:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>zapcore.<span style="color:#447fcf">AddSync</span>(os.Stdout)
+</span></span></code></pre></div><p><code>multiWriteSyncer</code> 对象是一个 <code>WriteSyncer</code> 接口切片，表示将缓冲区数据刷出并写入到多个接口，同时它自身也实现了 <code>WriteSyncer</code> 接口 (非常巧妙的设计)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> multiWriteSyncer []WriteSyncer
+</span></span></code></pre></div><p>调用方可以使用 <code>zapcore.NewMultiWriteSyncer</code> 方法设置多个输出接口，例如:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>zapcore.<span style="color:#447fcf">NewMultiWriteSyncer</span>(os.Stdout, os.Stderr)
+</span></span></code></pre></div><p>在创建方法的内部实现中，如果参数只有一个元素，直接返回，如果参数切片有多个元素，返回包装后的 <code>multiWriteSyncer</code> 对象 (再一次体现了接口设计的扩展性和生命力) 。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewMultiWriteSyncer</span>(ws ...WriteSyncer) WriteSyncer {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(ws) == <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> ws[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">multiWriteSyncer</span>(ws)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>multiWriteSyncer</code> 对象的 <code>Write</code> 方法和 <code>Sync</code> 方法实现机制类似 (相当于装饰器模式)，直接遍历切片中的 <code>WriteSyncer</code> 接口元素，然后调用对应的方法即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (ws multiWriteSyncer) <span style="color:#447fcf">Write</span>(p []<span style="color:#6ab825;font-weight:bold">byte</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, w := <span style="color:#6ab825;font-weight:bold">range</span> ws {
+</span></span><span style="display:flex;"><span>        n, err := w.<span style="color:#447fcf">Write</span>(p)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (ws multiWriteSyncer) <span style="color:#447fcf">Sync</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, w := <span style="color:#6ab825;font-weight:bold">range</span> ws {
+</span></span><span style="display:flex;"><span>		err = multierr.<span style="color:#447fcf">Append</span>(err, w.<span style="color:#447fcf">Sync</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="日志等级检测">日志等级检测</h3>
+<p><code>LevelEnabler</code> 表示日志等级检测接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> LevelEnabler <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Enabled</span>(Level) <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>常规的实现是直接比较日志等级大小，例如 WarnLevel &gt; DebugLevel, InfoLevel &lt; ErrorLevel。</p>
+<h3 id="日志事件钩子">日志事件钩子</h3>
+<p><code>CheckWriteHook</code> 表示日志写入完成后要执行的钩子函数接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CheckWriteHook <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当日志信息完成后调用函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">OnWrite</span>(*CheckedEntry, []Field)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="4-种类型事件钩子">4 种类型事件钩子</h4>
+<p><code>CheckWriteAction</code> 表示自定义的事件类型，按照事件的严重程度从低到高排序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CheckWriteAction <span style="color:#6ab825;font-weight:bold">uint8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 不执行任何操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WriteThenNoop CheckWriteAction = <span style="color:#6ab825;font-weight:bold">iota</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 runtime.Goexit 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WriteThenGoexit
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 抛出一个 panic
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WriteThenPanic
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 致命错误，调用 os.Exit(1) 结束程序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WriteThenFatal
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (a CheckWriteAction) <span style="color:#447fcf">OnWrite</span>(ce *CheckedEntry, _ []Field) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> a {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> WriteThenGoexit:
+</span></span><span style="display:flex;"><span>		runtime.<span style="color:#447fcf">Goexit</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> WriteThenPanic:
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">panic</span>(ce.Message)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> WriteThenFatal:
+</span></span><span style="display:flex;"><span>		exit.<span style="color:#447fcf">With</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="日志相关对象">日志相关对象</h2>
+<h3 id="日志对象">日志对象</h3>
+<p><code>Logger</code> 表示基础日志对象，<code>SugaredLogger</code> 对象就是在这个基础上面封装了一层。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Logger <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内嵌一个最小化日志 Core 接口  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	core zapcore.Core
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否为开发模式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	development <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否输出调用方堆栈
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	addCaller   <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 写入日志错误事件钩子函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 默认为 WriteThenFatal
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	onFatal     zapcore.CheckWriteHook 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	name        <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志写入接口实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	errorOutput zapcore.WriteSyncer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 输出堆栈信息的日志等级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	addStack zapcore.LevelEnabler
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 跳过堆栈信息的层数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	callerSkip <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 时间接口，主要用于获取时间戳和设置定时器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	clock zapcore.Clock
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="属性设置">属性设置</h4>
+<p><code>Logger</code> 对象的字段属性通过 <code>FUNCTIONAL OPTIONS</code> 模式设置，可以在创建对象时通过传递可变参数设置，也可以在对象创建完成后调用 <code>Logger.WithOptions</code> 方法修改。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Option <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">apply</span>(*Logger)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> optionFunc <span style="color:#6ab825;font-weight:bold">func</span>(*Logger)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f optionFunc) <span style="color:#447fcf">apply</span>(log *Logger) {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">f</span>(log)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Logger.WithOptions</code> 方法会拷贝当前的日志对象，并将可变参数选项作用到拷贝的新对象上面，<strong>实现写时复制机制</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (log *Logger) <span style="color:#447fcf">WithOptions</span>(opts ...Option) *Logger {
+</span></span><span style="display:flex;"><span>	c := log.<span style="color:#447fcf">clone</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, opt := <span style="color:#6ab825;font-weight:bold">range</span> opts {
+</span></span><span style="display:flex;"><span>		opt.<span style="color:#447fcf">apply</span>(c)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> c
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="日志等级">日志等级</h3>
+<p><code>Level</code> 表示自定义的日志等级类型，从低到高排序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Level <span style="color:#6ab825;font-weight:bold">int8</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	DebugLevel Level = <span style="color:#6ab825;font-weight:bold">iota</span> - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	InfoLevel   <span style="color:#999;font-style:italic">// 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WarnLevel   <span style="color:#999;font-style:italic">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ErrorLevel  <span style="color:#999;font-style:italic">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	DPanicLevel <span style="color:#999;font-style:italic">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	PanicLevel  <span style="color:#999;font-style:italic">// 4
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	FatalLevel  <span style="color:#999;font-style:italic">// 5
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>)
+</span></span></code></pre></div><p><code>Level</code> 实现了 <code>LevelEnabler</code> 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (l Level) <span style="color:#447fcf">Enabled</span>(lvl Level) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 直接比较两个日志等级的大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> lvl &gt;= l
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="各种日志级别写入方法">各种日志级别写入方法</h4>
+<p><code>Logger</code> 对象将可用的日志等级封装为对应的方法，方便应用层直接调用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (log *Logger) <span style="color:#447fcf">Debug</span>(msg <span style="color:#6ab825;font-weight:bold">string</span>, fields ...Field) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (log *Logger) <span style="color:#447fcf">Info</span>(msg <span style="color:#6ab825;font-weight:bold">string</span>, fields ...Field) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (log *Logger) <span style="color:#447fcf">Warn</span>(msg <span style="color:#6ab825;font-weight:bold">string</span>, fields ...Field) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="日志元数据对象">日志元数据对象</h3>
+<p><code>Entry</code> 对象表示日志的元数据，对象只有日志级别、时间戳、消息等几个基础字段，不包含调用方自定义的数据字段。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Entry <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志等级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Level      Level
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志时间戳
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Time       time.Time
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	LoggerName <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志消息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Message    <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用方信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Caller     EntryCaller
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 堆栈信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Stack      <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><blockquote>
+<p><code>Entry</code> 对象并没有使用对象池模式管理，如果使用了对象池的话，性能还能提升一些，当然，官方的考虑可能是几乎不存在重复的日志元数据对象，
+对象的每个字段也不存在复用的场景，对象池带来的性能提升不如代码可读性重要 (毕竟，每次从对象池申请对象或归还对象时要重置每个字段)。</p>
+</blockquote>
+<h3 id="通过检测的日志数据对象">通过检测的日志数据对象</h3>
+<p><code>CheckedEntry</code> 对象表示通过日志等级检测的日志数据对象，其中内嵌了一个 <code>Entry</code> 对象，在日志写入完成后，应该及时将对象归还到对象池中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CheckedEntry <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志元数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Entry
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志写入接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ErrorOutput WriteSyncer
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标识日志是否已经输出写入，避免多次写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dirty       <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// {日志写入后事件} 钩子函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	after       CheckWriteHook
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cores       []Core
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="日志对象池">日志对象池</h3>
+<p><code>zap</code> 采用了对象池来管理 <code>CheckedEntry</code> 对象，和 <code>编码器</code> 对象一样位于 <code>hot path</code>, 对象池可以避免对象创建和回收带来的性能损耗，提升性能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	_cePool = sync.Pool{New: <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}}
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getCheckedEntry</span>() *CheckedEntry {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">putCheckedEntry</span>(ce *CheckedEntry) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="日志写入流程">日志写入流程</h2>
+<p>当调用写入日志方法时 (例如 <code>logger.Info</code>)，会经过如下流程:</p>
+<ol>
+<li>检测写入日志等级和配置等级的匹配度 (例如配置等级为 <code>WarnLevel</code>, 那么 <code>DebugLevel</code> 和 <code>InfoLevel</code> 两个等级的日志就不需要写入)</li>
+<li>如果写入日志通过等级检测，将日志数据封装成一个 <code>Entry</code> 对象</li>
+<li>通过 <code>Core.Check</code> 中间件方法检测 <code>Entry</code> 对象，通过检测后生成 <code>CheckedEntry</code> 对象</li>
+<li>根据日志等级给 <code>CheckedEntry</code> 对象设置对应的钩子函数</li>
+<li>获取调用堆栈相关信息写入 <code>CheckedEntry.Stack</code> 字段</li>
+<li>获取调用方相关信息写入 <code>CheckedEntry.Caller</code> 字段</li>
+<li>调用 <code>CheckedEntry</code> 对象的 <code>Write</code> 方法写入日志数据</li>
+<li>日志重复写入检测</li>
+<li>调用注册的所有 <code>zapcore.Core</code> 接口，完成 <strong>日志的写入工作</strong> (编码、写入、缓冲区刷出)</li>
+<li>如果 <strong>日志的写入工作</strong> 过程中出现错误，附加记录一条错误日志</li>
+<li>调用钩子函数</li>
+<li>将 <code>CheckedEntry</code> 对象归还到对象池中，日志写入结束</li>
+</ol>
+<p><img src="https://dbwu.tech/images/zap_write.png" alt="日志写入流程"></p>
+<p>这里以 <code>logger.Info</code> 方法为例，分析一下日志的写入流程。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (log *Logger) <span style="color:#447fcf">Info</span>(msg <span style="color:#6ab825;font-weight:bold">string</span>, fields ...Field) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> ce := log.<span style="color:#447fcf">check</span>(InfoLevel, msg); ce != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		ce.<span style="color:#447fcf">Write</span>(fields...)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="loggercheck-方法">Logger.check 方法</h4>
+<p><code>check</code> 方法会根据日志等级检测日志是否需要写入，如果需要写入，返回通过检测的日志数据对象 <code>CheckedEntry</code> 。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (log *Logger) <span style="color:#447fcf">check</span>(lvl zapcore.Level, msg <span style="color:#6ab825;font-weight:bold">string</span>) *zapcore.CheckedEntry {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 跳过 2 个调用堆栈: 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   1. Logger.check (也就是当前方法)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   2. 当前方法的调用方: (Logger.Info, Logger.Fatal 等)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">const</span> callerSkipOffset = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测写入日志等级和配置等级的匹配度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 当前日志等级低于配置等级，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> lvl &lt; zapcore.DPanicLevel &amp;&amp; !log.core.<span style="color:#447fcf">Enabled</span>(lvl) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建一个日志元数据对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ent := zapcore.Entry{
+</span></span><span style="display:flex;"><span>		LoggerName: log.name,
+</span></span><span style="display:flex;"><span>		Time:       log.clock.<span style="color:#447fcf">Now</span>(),
+</span></span><span style="display:flex;"><span>		Level:      lvl,
+</span></span><span style="display:flex;"><span>		Message:    msg,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 Core 接口方法检测日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ce := log.core.<span style="color:#447fcf">Check</span>(ent, <span style="color:#6ab825;font-weight:bold">nil</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果返回值不为 nil, 说明当前的日志需要写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	willWrite := ce != <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 设置 {日志写入后事件} 钩子函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">switch</span> ent.Level {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> zapcore.PanicLevel:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 添加 panic 钩子
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ce = ce.<span style="color:#447fcf">After</span>(ent, zapcore.WriteThenPanic)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> zapcore.FatalLevel:
+</span></span><span style="display:flex;"><span>		onFatal := log.onFatal
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将 onFatal 默认值设置为 WriteThenFatal (避免调用运行时错误)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> onFatal == <span style="color:#6ab825;font-weight:bold">nil</span> || onFatal == zapcore.WriteThenNoop {
+</span></span><span style="display:flex;"><span>			onFatal = zapcore.WriteThenFatal
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 添加 Fatal 钩子 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ce = ce.<span style="color:#447fcf">After</span>(ent, onFatal)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> zapcore.DPanicLevel:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> log.development {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果是开发模式，添加 panic 钩子
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			ce = ce.<span style="color:#447fcf">After</span>(ent, zapcore.WriteThenPanic)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志不需要写入，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !willWrite {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> ce
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将负责写入的对象赋值到通过检测的日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    PS: ErrorOutput 这个命名感觉不太合理 ? 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ce.ErrorOutput = log.errorOutput
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	addStack := log.addStack.<span style="color:#447fcf">Enabled</span>(ce.Level)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !log.addCaller &amp;&amp; !addStack {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 如果日志配置为不输出调用方堆栈
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 并且
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 当前日志级别无法匹配启用堆栈的级别
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">//    默认启用堆栈级别为 FatalLevel+1, 也就是不启用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">//    可以创建日志对象时通过 zap.AddStacktrace 方法修改默认级别
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 直接返回当前通过检测的日志对象即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> ce
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 开始获取调用堆栈信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	stackDepth := stacktraceFirst   <span style="color:#999;font-style:italic">// 默认仅输出调用堆栈的第一层
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> addStack {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 输出调用堆栈的所有层
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		stackDepth = stacktraceFull
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取调用堆栈信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	stack := <span style="color:#447fcf">captureStacktrace</span>(log.callerSkip+callerSkipOffset, stackDepth)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> stack.<span style="color:#447fcf">Free</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> stack.<span style="color:#447fcf">Count</span>() == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 没有获取到任何堆栈信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    出现这个问题是因为日志初始化设置了过高的 {跳过堆栈层数} 参数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//    可以检查 zap.AddCallerSkip 方法的参数值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> log.addCaller {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果日志配置为输出调用方堆栈
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 显然应用层的配置冲突了，写入一条错误日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Fprintf</span>(log.errorOutput, <span style="color:#ed9d13">&#34;%v Logger.check error: failed to get caller\n&#34;</span>, ent.Time.<span style="color:#447fcf">UTC</span>())
+</span></span><span style="display:flex;"><span>			log.errorOutput.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> ce
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 跳过调用当前方法的栈帧 (第一层)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	frame, more := stack.<span style="color:#447fcf">Next</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> log.addCaller {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果日志配置为输出调用方堆栈
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 初始化调用方堆栈对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ce.Caller = zapcore.EntryCaller{
+</span></span><span style="display:flex;"><span>			Defined:  frame.PC != <span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>			PC:       frame.PC,
+</span></span><span style="display:flex;"><span>			File:     frame.File,
+</span></span><span style="display:flex;"><span>			Line:     frame.Line,
+</span></span><span style="display:flex;"><span>			Function: frame.Function,
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> addStack {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果当前日志级别匹配启用堆栈的级别
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 申请一个 buffer 缓冲区用于写入调用堆栈数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		buffer := bufferpool.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">defer</span> buffer.<span style="color:#447fcf">Free</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		stackfmt := <span style="color:#447fcf">newStackFormatter</span>(buffer)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将第一层堆栈信息格式化写入缓冲区
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		stackfmt.<span style="color:#447fcf">FormatFrame</span>(frame)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> more {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 将第一层外剩余堆栈信息格式化写入缓冲区
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			stackfmt.<span style="color:#447fcf">FormatStack</span>(stack)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将缓冲区堆栈数据赋值到日志的堆栈数据字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ce.Stack = buffer.<span style="color:#447fcf">String</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ce
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="checkedentrywrite-方法">CheckedEntry.Write 方法</h4>
+<p><code>CheckedEntry.Write</code> 方法负责日志的具体写入工作，需要注意的一点是，方法内部会执行日志写入脏检测 (也就是同一条日志多次写入)，
+什么场景下会触发这种情况呢？例如调用方执行了类似下面的代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> ce := logger.<span style="color:#447fcf">Check</span>(zap.DebugLevel, <span style="color:#ed9d13">&#34;debugging&#34;</span>); ce != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>    ce.<span style="color:#447fcf">Write</span>(...)	<span style="color:#999;font-style:italic">// 正常写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ce.<span style="color:#447fcf">Write</span>(...)	<span style="color:#999;font-style:italic">// 不会写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ce.<span style="color:#447fcf">Write</span>(...)	<span style="color:#999;font-style:italic">// 不会写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><p>当然实际场景中，都是直接调用包装好的 <code>Logger</code> 对象的写入方法，可以完全避免这个问题。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (ce *CheckedEntry) <span style="color:#447fcf">Write</span>(fields ...Field) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志重复写入检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> ce.dirty {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> ce.ErrorOutput != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果日志已经写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 写一条错误日志，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			fmt.<span style="color:#447fcf">Fprintf</span>(ce.ErrorOutput, <span style="color:#ed9d13">&#34;%v Unsafe CheckedEntry re-use near Entry %+v.\n&#34;</span>, ce.Time, ce.Entry)
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 日志缓冲区刷出并写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			ce.ErrorOutput.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标识日志已经写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ce.dirty = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> err <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 因为日志可能有多个写入接口 (Stdout, File, Memory, MessageQueue ...)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 遍历, 逐个接口写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 每个实现了写入接口的对象，需要在 Write 方法写入前完成日志数据的编码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如: ioCore.Write 方法在写入前将日志编码为内置的 `buffer.Buffer` 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这里顺便提一下, multierr 也是 uber 开源的一个库，主要用于包装 error，类似 errorGroup 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> ce.cores {
+</span></span><span style="display:flex;"><span>		err = multierr.<span style="color:#447fcf">Append</span>(err, ce.cores[i].<span style="color:#447fcf">Write</span>(ce.Entry, fields))
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; ce.ErrorOutput != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果有接口写入时发生错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 写一条错误日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		fmt.<span style="color:#447fcf">Fprintf</span>(ce.ErrorOutput, <span style="color:#ed9d13">&#34;%v write error: %v\n&#34;</span>, ce.Time, err)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 日志缓冲区刷出并写入
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ce.ErrorOutput.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	hook := ce.after
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> hook != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果设置了日志事件钩子
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 则执行对应的钩子函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		hook.<span style="color:#447fcf">OnWrite</span>(ce, fields)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 日志写入完成后，将 CheckedEntry 归还到对象池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">putCheckedEntry</span>(ce)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="调用堆栈对象池">调用堆栈对象池</h4>
+<p><code>zap</code> 采用了对象池来管理调用堆栈对象，因为其位于 <code>hot path</code>, 对象池可以避免对象创建和回收带来的性能损耗，提升性能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> stacktrace <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> _stacktracePool = sync.Pool{
+</span></span><span style="display:flex;"><span>	New: <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">interface</span>{} {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> &amp;stacktrace{
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	},
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>captureStacktrace</code> 函数获取调用的堆栈信息，可以通过参数指定需要跳过的堆栈层数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">captureStacktrace</span>(skip <span style="color:#6ab825;font-weight:bold">int</span>, depth stacktraceDepth) *stacktrace {
+</span></span><span style="display:flex;"><span>	stack := _stacktracePool.<span style="color:#447fcf">Get</span>().(*stacktrace)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 在参数基础上再跳过 2 层:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    1. 当前函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    2. runtime.Callers
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 注意这里调用的是 runtime.Callers 方法，而非 runtime.Stack (之前的文章讲到过: 两者的性能差距很大)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    因为后者会触发 STW, 这也是一个高性能的技巧
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	numFrames := runtime.<span style="color:#447fcf">Callers</span>(
+</span></span><span style="display:flex;"><span>		skip+<span style="color:#3677a9">2</span>,
+</span></span><span style="display:flex;"><span>		stack.pcs,
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> depth == stacktraceFull {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取调用堆栈的所有层
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		...
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 仅获取调用堆栈的第一层
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	stack.frames = runtime.<span style="color:#447fcf">CallersFrames</span>(stack.pcs)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> stack
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="zap-组件结构">zap 组件结构</h2>
+<p><img src="https://dbwu.tech/images/zap_architecture.png" alt="组件结构图"></p>
+<h2 id="zap-高性能实现细节">zap 高性能实现细节</h2>
+<ul>
+<li>通过内建的数据类型 <code>zapcore.Field</code> 和内建的日志编码器 (<code>Encoder</code> 接口)，避免标准库的序列化方法使用反射带来的性能损耗</li>
+<li>通过内建的数据类型 <code>zapcore.Field</code>, 避免使用 <code>interface{}</code> 带来的开销 (拆装箱、对象逃逸到堆上)</li>
+<li>通过内建的 <code>[]byte</code> 缓冲池配合 <code>zapcore.Field</code> 进一步提升日志数据的写入性能</li>
+<li>获取调用堆栈方法优化 (使用 <code>runtime.Callers</code> 而非 <code>runtime.Stack</code>)</li>
+<li>写时复制机制 (多个日志共享一个 <code>Logger</code> 对象，在属性变更时复制一个新的对象，详情见 <code>Logger.clone</code> 方法及其调用方)</li>
+<li>按需分配机制 (<code>Check</code> 方法检查可写后，再通过 <code>CheckedEntry.Write</code> 方法写入日志数据，可以保证 <code>zapcore.Field</code> 日志对象内存按需分配)</li>
+<li>对象复用避免 <code>GC</code> (位于 <code>hot path</code> 上面的对象全部使用对象池管理模式进行复用)</li>
+<li>避免数据竞态，虽然有对象池管理复用，但是对象的获取都需要经过各种条件过滤，有效缓解了底层 <code>sync.Pool</code> 内部的数据竞态问题</li>
+<li>重复检测，每个日志保证只写入一次，提升性能并且避免应用层的错误使用导致的 Bug</li>
+</ul>
+<h2 id="小结">小结</h2>
+<p>本文着重分析了 <code>zap</code> 日志库高性能背后的实现原理，其中大部分优化技术点细节都在 <a href="https://dbwu.tech/posts/golang_performance_tips/">高性能 Tips</a>  一文中提到过。
+作为开发者最重要的是，有了基础的优化理论之后，可以像 Uber 的工程师一样，根据不同的业务场景开发出匹配的高性能组件。</p>
+<p>从开发者的角度看，大多数高性能组件背后的技术本质除了代码优化之外，开发效率的降低往往同样是不可避免的代价 (<del>这似乎又回到了静态语言和动态语言的感觉</del>)。</p>
+<p>BTW, Uber 这家公司为 Go 生态贡献了不少高质量的组件库，感兴趣的读者可以查看 <a href="https://github.com/uber-go">Uber-Go Github 官方页面</a>。</p>
+<h2 id="附录">附录</h2>
+<h3 id="zap-与标准库相互切换">zap 与标准库相互切换</h3>
+<p>如果项目之前使用的是标准库 <code>log</code>，现在想改为 <code>zap</code>, 那么不需要修改已有的代码，直接调用 <code>zap.NewStdLog()</code> 即可将标准库中 <code>log</code> 的输出格式和方式改为当前 <code>zap</code> 对象的配置，
+调用方式保持不变，但是输出行为已经发生变化。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/zap&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	logger, _ := zap.<span style="color:#447fcf">NewProduction</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> logger.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标准库日志输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	log.<span style="color:#447fcf">Print</span>(<span style="color:#ed9d13">&#34;standard log&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// zap 替换了标准库日志的配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	undo := zap.<span style="color:#447fcf">RedirectStdLog</span>(logger)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标准库再次输出时，内部其实是 zap 在输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	log.<span style="color:#447fcf">Print</span>(<span style="color:#ed9d13">&#34;standard log&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 撤销 zap 的替换
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">undo</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 标准库日志输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	log.<span style="color:#447fcf">Print</span>(<span style="color:#ed9d13">&#34;standard log&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>2023/04/05 15:16:49 standard log
+</span></span><span style="display:flex;"><span>{<span style="color:#ed9d13">&#34;level&#34;</span>:<span style="color:#ed9d13">&#34;info&#34;</span>,<span style="color:#ed9d13">&#34;ts&#34;</span>:1680765409.5444076,<span style="color:#ed9d13">&#34;caller&#34;</span>:<span style="color:#ed9d13">&#34;go-high-performance/main.go:18&#34;</span>,<span style="color:#ed9d13">&#34;msg&#34;</span>:<span style="color:#ed9d13">&#34;standard log&#34;</span>}
+</span></span><span style="display:flex;"><span>2023/04/05 15:16:49 standard log
+</span></span></code></pre></div><h3 id="全局-logger">全局 Logger</h3>
+<p><code>zap</code> 提供了两个全局的 <code>Logger</code>，调用 <code>zap.L()</code> 返回 <code>zap.Logger</code>, 调用 <code>zap.S()</code> 返回 <code>zap.SugaredLogger</code>,
+默认情况下，这两个全局的 <code>Logger</code> 不会记录日志，需要调用 <code>zap.ReplaceGlobals()</code> 方法进行设置。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/zap&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 下面两行代码不会有任何输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	zap.<span style="color:#447fcf">L</span>().<span style="color:#447fcf">Info</span>(<span style="color:#ed9d13">&#34;before global log settings&#34;</span>)
+</span></span><span style="display:flex;"><span>	zap.<span style="color:#447fcf">S</span>().<span style="color:#447fcf">Infow</span>(<span style="color:#ed9d13">&#34;before global log settings&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	logger := zap.<span style="color:#447fcf">NewExample</span>()
+</span></span><span style="display:flex;"><span>	logger.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 设置全局日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	zap.<span style="color:#447fcf">ReplaceGlobals</span>(logger)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 下面两行代码正常输出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	zap.<span style="color:#447fcf">L</span>().<span style="color:#447fcf">Info</span>(<span style="color:#ed9d13">&#34;after global log settings&#34;</span>)
+</span></span><span style="display:flex;"><span>	zap.<span style="color:#447fcf">S</span>().<span style="color:#447fcf">Infow</span>(<span style="color:#ed9d13">&#34;after global log settings&#34;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>为什么默认情况下全局日志没有输出呢？</strong></p>
+<p>因为调用 <code>zap.L()</code> 和 <code>zap.S()</code> 两个方法返回的是 <code>nopCore</code> 对象，顾名思义，该对象被调用时什么也不做，具体的代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">var</span> (
+</span></span><span style="display:flex;"><span>	_globalMu sync.RWMutex
+</span></span><span style="display:flex;"><span>	_globalL  = <span style="color:#447fcf">NewNop</span>()
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewNop</span>() *Logger {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;Logger{
+</span></span><span style="display:flex;"><span>		core:        zapcore.<span style="color:#447fcf">NewNopCore</span>(),
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewNopCore</span>() Core                                        { <span style="color:#6ab825;font-weight:bold">return</span> nopCore{} }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (nopCore) <span style="color:#447fcf">Write</span>(Entry, []Field) <span style="color:#6ab825;font-weight:bold">error</span>                    { <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span> }
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (nopCore) <span style="color:#447fcf">Sync</span>() <span style="color:#6ab825;font-weight:bold">error</span>                                   { <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span> }
+</span></span></code></pre></div><h3 id="日志切割">日志切割</h3>
+<p><code>zap</code> 组件库本身不支持轮转 (rotating) 日志文件，官方认为这不是 <code>日志库</code> 的核心功能，所以作为接口 (WriteSyncer) 留给了开发者自己实现。</p>
+<p>例如，我们可以使用 <code>lumberjack</code> 组件库来完成日志的自动化切割备份等功能。</p>
+<blockquote>
+<p>lumberjack 可以和任何实现了 io.Writer 接口的组件库配合使用，主要功能是日志文件相关操作。</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/zap&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;go.uber.org/zap/zapcore&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;gopkg.in/natefinch/lumberjack.v2&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	ljLogger := &amp;lumberjack.Logger{
+</span></span><span style="display:flex;"><span>		Filename:   <span style="color:#ed9d13">&#34;zap_test.log&#34;</span>,
+</span></span><span style="display:flex;"><span>		MaxSize:    <span style="color:#3677a9">1</span>, <span style="color:#999;font-style:italic">// 单个文件最大 1 MB
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		MaxBackups: <span style="color:#3677a9">3</span>, <span style="color:#999;font-style:italic">// 多于 3 个日志文件，清理较旧的日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		Compress:   <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	syncer := zapcore.<span style="color:#447fcf">AddSync</span>(ljLogger)
+</span></span><span style="display:flex;"><span>	encoder := zapcore.<span style="color:#447fcf">NewJSONEncoder</span>(zap.<span style="color:#447fcf">NewProductionEncoderConfig</span>())
+</span></span><span style="display:flex;"><span>	core := zapcore.<span style="color:#447fcf">NewCore</span>(encoder, syncer, zapcore.DebugLevel)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	logger := zap.<span style="color:#447fcf">New</span>(core)
+</span></span><span style="display:flex;"><span>	logger.<span style="color:#447fcf">Sync</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// {&#34;level&#34;: ... ,&#34;ts&#34; ... ,&#34;msg&#34;:&#34;hello world&#34;}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 一行日志大约 60B，写入 100000 次，总大小为 6 MB+
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">100000</span>; i++ {
+</span></span><span style="display:flex;"><span>		logger.<span style="color:#447fcf">Info</span>(<span style="color:#ed9d13">&#34;hello world&#34;</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span> ...  57K zap_test-2023-04-06T09-36-29.816.log.gz
+</span></span><span style="display:flex;"><span> ...  57K zap_test-2023-04-06T09-36-29.870.log.gz
+</span></span><span style="display:flex;"><span> ...  57K zap_test-2023-04-06T09-36-29.930.log.gz
+</span></span><span style="display:flex;"><span> ... 812K zap_test.log
+</span></span></code></pre></div><p>从输出的结果中可以看到: 虽然测试输出的日志数据总大小超过了 6MB，理论上应该是 7 个日志文件，但是历史的日志文件只保留了 3 个，其他的都被删除了，
+并且这 3 个日志文件已经自动压缩为 <code>.gz</code> 格式，节省了很多空间，完全符合我们的配置项输出预期。</p>
+<h3 id="日志中的重复字段">日志中的重复字段</h3>
+<p><code>zap</code> 不会对日志数据中的字段自动去重，多个重复的字段会原样输出:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>logger.<span style="color:#447fcf">Info</span>(<span style="color:#ed9d13">&#34;hello world&#34;</span>, zap.<span style="color:#447fcf">String</span>(<span style="color:#ed9d13">&#34;name&#34;</span>, <span style="color:#ed9d13">&#34;Tom&#34;</span>), zap.<span style="color:#447fcf">String</span>(<span style="color:#ed9d13">&#34;name&#34;</span>, <span style="color:#ed9d13">&#34;Tom&#34;</span>))
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下, name 字段输出了两次</span>
+</span></span><span style="display:flex;"><span> {<span style="color:#ed9d13">&#34;level&#34;</span>:<span style="color:#ed9d13">&#34;info&#34;</span>,<span style="color:#ed9d13">&#34;ts&#34;</span>:1680765409.2753036,<span style="color:#ed9d13">&#34;msg&#34;</span>:<span style="color:#ed9d13">&#34;hello world&#34;</span>,<span style="color:#ed9d13">&#34;name&#34;</span>:<span style="color:#ed9d13">&#34;Tom&#34;</span>,<span style="color:#ed9d13">&#34;name&#34;</span>:<span style="color:#ed9d13">&#34;Tom&#34;</span>}
+</span></span></code></pre></div><h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/uber-go/zap">uber-go/zap</a></li>
+<li><a href="https://github.com/uber-go/zap/blob/master/FAQ.md">zap FAQ</a></li>
+<li><a href="https://github.com/rs/zerolog">rs/zerolog</a></li>
+<li><a href="https://github.com/natefinch/lumberjack">natefinch/lumberjack</a></li>
+<li><a href="https://mp.weixin.qq.com/s/i0bMh_gLLrdnhAEWlF-xDw">深度 | 从Go高性能日志库zap看如何实现高性能Go组件</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/http_router/"><i class="fa fa-chevron-circle-left"></i> HTTP Router 算法演进</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_jsonparser/">jsonparser 为什么比标准库的 encoding/json 快 10 倍 ? <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="zap 高性能设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
