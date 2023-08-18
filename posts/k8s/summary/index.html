@@ -1,0 +1,472 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 核心概念 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 核心概念" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/summary/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-24T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-24T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 核心概念"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 核心概念</h1>
+
+    
+      
+<li>
+    
+    
+    <a href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a href="https://dbwu.tech/tags/%E4%BA%91%E5%8E%9F%E7%94%9F">云原生</a>
+    
+</li>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><strong>Kubernetes</strong> 本质上是硬件基础设施的一种资源抽象，开发者不再需要关注应用的部署和运行时细节，以及每个服务所需要的具体资源，通过将所有工作节点加入到集群中，
+开发者只需要将应用列表提交到 Kubernetes 主节点，然后 Kubernetes 会根据应用声明的所需资源自动选择合适的服务器部署并运行应用，并在部署之后保证应用之间实现通信，
+它依赖于容器的特性来运行异构引用，而无需了解应用的具体环境和内部细节。</p>
+<blockquote>
+<p>Kubernetes 是云原生时代的操作系统。</p>
+</blockquote>
+<h3 id="从-devops-到-noops">从 DevOps 到 NoOps</h3>
+<p>在 DevOps 阶段，开发人员和运维人员需要通力合作，不断开发和升级应用并服务于用户，但是两者的职责有明显划分。
+开发人员负责创建新的功能、提升用户体验，但是一般不需要考虑服务器的底层操作系统和网络管理、安全补丁等问题。
+运维人员负责硬件基础设施，并且需要制定应用部署流程以及应用运行的具体环境，但是一般不会考虑各个应用之间的依赖关系，
+也不想考虑底层操作系统或者基础设施的变化是否会影响到应用运行，但这是他们不得不关注的。</p>
+<p>在 NoOps 阶段，开发人员通过声明文件来指定应用的运行环境，独立完成应用的部署，无需和运维人员交涉，也不需要了解硬件基础设施的内部结构。
+但是 NoOps 并不是说不需要运维人员了，而是说运维人员可以专注于基础设施的建设。那么如何真正能实现 NoOps 呢？ <strong>Kubernetes</strong>。</p>
+<p><strong>Kubernetes</strong> 通过将基础设施抽象为一个资源池，并将自身暴露为一个平台，以基础设施为中心，分别连接位于上游的开发人员和位于下游的运维人员，
+这样开发人员可以独立配置和部署应用，而不需要运维人员的配合，运维人员可以专注于保持基础设施的正常运行和自动化维护，而不需要关注上面运行的具体应用。</p>
+<h3 id="kubernetes-带来的好处">Kubernetes 带来的好处</h3>
+<ul>
+<li>抽象基础设施</li>
+<li>简化应用部署</li>
+<li>提高资源利用率</li>
+<li>自动扩容、检测故障、自动修复</li>
+</ul>
+<h2 id="声明式配置">声明式配置</h2>
+<p>Kubernetes 中的使用声明式配置来定义应用的运行环境和期望状态，而不是手动编写过程式的命令来实现目标状态。也就是说，Kubernetes 将根据声明式配置负责将系统调整到目标状态，
+在这个流程生命周期中，Kubernetes 控制器会自动处理资源的创建、更新和删除，确保系统始终保持在运行应用所需的状态。</p>
+<p>在传统模式中，开发人员需要通过工单平台告知运维人员应用的运行环境和配置，在声明式配置模式中，开发人员只需要将应用的运行环境和配置写入符合 Kubernetes 语义规范的声明文件即可。
+这也是 Kubernetes 的基础原则之一: “不要告诉 Kubernetes 应该执行什么操作，告诉 Kubernetes 期望的应用状态是什么”。</p>
+<p>声明式配置的优势:</p>
+<ul>
+<li><strong>可读性和可维护性</strong>: 声明式配置一般采用 yaml, json 文件，可读性高，易于理解和维护</li>
+<li><strong>自愈性和正确性</strong>: Kubernetes 控制器会不断检查系统资源状态，自动修复或调整资源，确保它们与声明式配置保持一致</li>
+<li><strong>版本控制</strong>: 由于配置以文件形式存储，可以轻松将其加入版本控制系统，追踪更改历史</li>
+<li><strong>伸缩性</strong>: 声明式配置使应用的扩展更轻松，增加副本数量或调整资源配置，无需手动操作</li>
+</ul>
+<h2 id="oci-cri-cni">OCI, CRI, CNI</h2>
+<p>OCI (Open Container Initiative) 标准定义了容器镜像格式和容器运行时规范，这使得不同的 CRI 能够遵循相同的标准，确保容器在不同平台上运行的一致性和可移植性。</p>
+<p>CRI (Container Runtime Interface) 表示容器运行时接口，是 Kubernetes 与底层 OCI 之间的接口标准，主要用于容器编排和管理。</p>
+<p><img src="https://dbwu.tech/images/k8s/oci_with_cri.png" alt="OCI 和 CRI 的关系"></p>
+<p>CNI (Container Network Interface) 表示容器网络接口，用于定义容器运行时如何与底层网络解耦。</p>
+<p>CNI 允许不同的网络插件与 CRI 集成，从而实现容器间和容器与外部网络之间的通信，主要目标是提供一个统一的方式来管理容器网络，
+使不同的容器网络解决方案能够在 Kubernetes 集群中共存。CNI 插件负责在容器创建、删除或重新启动时，配置和管理容器的网络连接，
+包括 IP 地址分配、网络隔离、路由等。当 Kubernetes 创建一个 Pod 时，CNI 插件会被调用来为该 Pod 中的容器配置网络。</p>
+<h2 id="核心架构">核心架构</h2>
+<p>Kubernetes 集群会包含很多节点 (一般指单个虚拟机或者物理机)，这些节点被分成两种类型:</p>
+<ul>
+<li><strong>master</strong>: Master (主节点)，承载的核心是 Kubernetes 控制和管理整个集群系统的控制面板</li>
+<li><strong>worker</strong>: Node (工作节点)，运行具体的应用 (负责具体干活的)</li>
+</ul>
+<h3 id="控制面板">控制面板</h3>
+<p>控制面板用于控制集群并使其正常工作，包含多个组件，组件可以运行在单个主节点或者多个主节点 (为了保证高可用)，下面是组件列表:</p>
+<p><img src="https://dbwu.tech/images/k8s/control_panel.png" alt="控制面板组件"></p>
+<ul>
+<li>Kubernetes API 服务器: 负责各组件之间的通信</li>
+<li>Scheduler: 负责应用的具体调度</li>
+<li>Controller Manager: 负责执行集群级别的功能，如复制组件、持续跟踪工作节点、处理失败节点等</li>
+<li>etcd: 持久化存储集群配置信息</li>
+</ul>
+<p>控制面板通过上面的组件检查并控制集群的状态，但是不会运行具体的应用。</p>
+<h3 id="工作节点">工作节点</h3>
+<p>工作节点的组件列表:</p>
+<ul>
+<li>实现了 OCI 标准的容器类型，如果 Docker, rtk 等</li>
+<li>kubelet: 通过和主节点上面的 API 服务器进行通信，管理所在节点上面的容器，核心是管理 Pod 的状态和生命周期</li>
+<li>Kubernetes Service Proxy: 对组件之间的流量进行负载均衡</li>
+</ul>
+<h2 id="kubernetes-运行应用流程">Kubernetes 运行应用流程</h2>
+<ol>
+<li>为了在 Kubernetes 中部署和运行应用，需要将应用打包到一个或多个容器镜像，然后将镜像推送到镜像仓库，再将应用的运行环境通过声明式配置发送到 Kubernetes API 服务器</li>
+<li>Kubernetes API 服务器读取应用配置后，通过 Scheduler 开始调度</li>
+<li>Scheduler 基于应用所需的资源和集群中各工作节点的闲置资源，计算出应用部署的具体工作节点</li>
+<li>接收到部署信息的工作节点，首先去镜像仓库拉取应用对应的镜像，然后运行应用容器</li>
+<li>应用运行过程中，Kubernetes 会不断确认应用当前的运行状态，并保证应用始终符合声明式配置中的预期状态 (例如 如果应用在运行中发生异常，Kubernetes 会重启应用，如果应用所在工作节点发生异常，Kubernetes 会将应用部署到其他工作节点)</li>
+<li>应用运行过程中，可以动态调整应用的声明式配置</li>
+</ol>
+<p><img src="https://dbwu.tech/images/k8s/run_app.png" alt="图片来源: https://www.amazon.com/Kubernetes-Action-Marko-Luksa/dp/1617293725"></p>
+<h2 id="node">Node</h2>
+<p>Kubernetes 集群中的工作节点，可以是一个虚拟机或者物理机。</p>
+<h2 id="pod">Pod</h2>
+<p>Pod 是 Kubernetes 中应用运行的最小单位 (同时也是顶级资源)，也称为容器组，单个 Pod 可以看作是一个逻辑独立的主机，拥有自己的 IP、主机名称、进程等。</p>
+<p>Kubernetes 并不直接操作单个容器，而是使用多个容器共存的理念，多个相关的容器可以作为一个组，这个组就称为 Pod。</p>
+<p>应用运行的典型配置:</p>
+<ul>
+<li>单个进程运行在单个容器中</li>
+<li>多个进程运行在单个容器中</li>
+<li>多个进程运行在多个容器中</li>
+</ul>
+<p>Pod 的典型配置:</p>
+<ul>
+<li>单个容器运行在单个 Pod 中</li>
+<li>多个容器运行在单个 Pod 中</li>
+</ul>
+<p>Kubernetes 通过配置容器运行时 (例如 Docker) 让单个 Pod 内的所有容器共享相同的命名空间，而不是单个容器拥有独立的命名空间，
+单个 Pod 中的所有容器总是运行在同一个工作节点上，多个 Pod 可能运行在同一节点上，也可能分散在不同的节点上。</p>
+<p><img src="https://dbwu.tech/images/k8s/pod.png" alt="图片来源: https://www.amazon.com/Kubernetes-Action-Marko-Luksa/dp/1617293725"></p>
+<h3 id="pod-和资源">Pod 和资源</h3>
+<p><img src="https://dbwu.tech/images/k8s/pod_resources.png" alt="Pod 和资源关系图"></p>
+<p>Kubernetes 中的资源类型分成了三类：</p>
+<ul>
+<li><strong>部署</strong>：Deployment、ReplicaSet、StatefulSet、DaemonSet、Job、CronJob</li>
+<li><strong>服务</strong>：Service、Ingress</li>
+<li><strong>存储</strong>：PV、PVC、ConfigMap、Secret</li>
+</ul>
+<h3 id="水平伸缩">水平伸缩</h3>
+<p>kubernetes 能够根据监测到的指标 (例如 CPU 利用率, 内存利用率)，自动扩容和缩容 Pod 的数量。
+水平伸缩意味着多个 Pod 可以提供相同的服务，每个 Pod 都有自己的 IP 地址，客户端无需关心提供服务的 Pod 的具体数量以及每个 Pod 的 IP 地址，
+只需要通过由 Service 提供的单一地址访问服务即可。</p>
+<blockquote>
+<p>Kubernetes 并不会让你的应用变得可扩展，它只是让应用的扩容和缩容变得简单，所以开发者修炼好自身架构能力依然很重要。</p>
+</blockquote>
+<h2 id="service">Service</h2>
+<p>Pod 的生命周期被定义为短暂且随时可以发生变化，单个 Pod 可能会在任何时候停止 (也许 Pod 其运行的应用容器内部发生故障或所在节点发生故障时被驱逐，也许是人为手动删除)，
+Pod 停止后 Kubernetes 会创建新的 Pod, 此时就会出现一个问题: 新的 Pod 和停止的 Pod 拥有不同的 IP 地址，如果多个应用 Pod 之间的通信将会异常。</p>
+<p>是否可以给单个 Pod 绑定一个静态 IP 地址呢？从技术实现的角度来看，完全可以，但是这就违背了 Kubernetes 对 Pod 概念的设计初衷，而且无法保证应用的高可用性，
+试想: 给单个 Pod 绑定静态 IP 后，该 Pod 所在工作节点发生故障了，那么此时 Pod 中的应用就完全不可用了！</p>
+<p>针对上面的问题，可以使用 <strong>Service (服务)</strong> 来解决，<strong>Service 主要用于解决 Pod IP 地址不断变化的问题，通过在一个固定的 IP + 端口对外暴露多个 Pod</strong>。
+Service 被抽象为一组或多组提供相同服务的 Pod 的静态 IP 地址 (也可以将 Service 看作是一个代理)，任何到达 Service 的请求都会被转发到属于该服务背后的某个 Pod 中的应用。</p>
+<p>Service 被创建时会得到一个静态 IP 地址，在服务的整个生命周期中，该 IP 地址都不会发生变化，客户端在访问具体的应用时，应该连接到服务，而不是某个运行应用的 Pod,
+Service 保证客户端可以连接到其中一个 Pod, 客户端不需要关注 Pod 的 IP 地址、运行工作节点等信息，不同的 Pod 可以通过 Service 通信。</p>
+<h3 id="headless">Headless</h3>
+<p>Headless 是一种服务类型，通常用于在集群内部的服务发现和网络通信。Headless 服务是一种没有 Cluster IP 的服务，它允许直接访问 Pod 的网络地址，而不会通过服务代理进行负载均衡。
+这对于某些特定的应用场景非常有用，比如数据库集群、分布式存储系统等，因为它可以绕过负载均衡层，直接与特定的 Pod 进行通信。 使用场景: 不需要或不想要负载均衡，以及单独的 Service IP。</p>
+<h3 id="endpoint">EndPoint</h3>
+<p>Endpoint 对象是一种用来表示与服务相关联的网络端点的资源类型，主要作用是将服务的逻辑名称与实际的网络终点（Pod IP 地址和端口）进行映射。每个服务对应一个或多个 Endpoint 对象，这些对象定义了该服务所指向的具体 Pod 的网络位置。</p>
+<p><img src="https://dbwu.tech/images/k8s/endpoint.png" alt="nginx-EndPoint 示例"></p>
+<h2 id="replicationcontroller">ReplicationController</h2>
+<p>ReplicationController 的概念做个简单的了解即可，无需深入，因为在官方的设计中，它最终会被 ReplicaSet 完全替换，而在实际应用中，直接使用 ReplicaSet 即可。</p>
+<p>Replication Controller 用于确保 Pod 的数量始终和它的标签选择器匹配, 它会持续监控 Pod 的运行状态，如果某个 Pod 发生故障或被删除，RC 将自动创建新的 Pod 来替代它。
+如果 Pod 的数量比期望的数量少，就创建新的 Pod 直到达到期望数量，如果 Pod 的数量比期望的数量多，就删除超出数量的 Pod。</p>
+<h2 id="replicaset">ReplicaSet</h2>
+<p>ReplicaSet 是 ReplicationController 的增强版本，它支持更灵活且更具表达力的标签选择器，并且可以使用更多的策略来控制 Pod 副本的数量。</p>
+<h2 id="deployment">Deployment</h2>
+<p>Deployment 可以使 Pod 中的应用以声明的方式进行滚动升级和回顾等功能，相较于 ReplicaSet, Deployment 作为更高层级的资源，创建时会自动创建对应的 ReplicaSet, 实际项目中使用到的也是 Deployment。</p>
+<p>Deployment 无法直接管理 Pod, 而是通过创建 ReplicaSet 来管理 Pod, 三者之间关系如下:</p>
+<p><img src="https://dbwu.tech/images/k8s/deployment_replicaset_pod.png" alt="图片来源: https://thenewstack.io/kubernetes-deployments-work/"></p>
+<h3 id="手动滚动升级步骤">手动滚动升级步骤</h3>
+<ol>
+<li><strong>创建新版本</strong>: 首先创建应用的新版本容器镜像</li>
+<li><strong>启动新版本</strong>: 逐步启动应用新容器，可以指定每次启动的新容器的数量</li>
+<li><strong>健康检测</strong>: 引入新版本的同时，通过就绪探针和存活探针作为健康检测方式确认新版本的容器是否正常运行</li>
+<li><strong>删除旧版本</strong>: 获取新版本运行正常的数量，同时根据配置值决定是否减少对应数量的旧版本 (例如可以每启动一个新版本容器同时删除一个旧版本容器，也可以在新版本容器达到指定数量后再统一删除旧版本容器)</li>
+<li><strong>根据情况决定是否回滚</strong>: 如果新版本运行异常，自动回滚新版本即可，旧版本不做任何改变</li>
+</ol>
+<p>整个升级过程中，应用一直处于可用状态，客户端的请求可能访问到新版本，也可能访问到旧版本。</p>
+<p>通过上述描述可以看到，如果手动执行滚动升级，过程会非常繁琐而且容易出错，如果应用的实例数量过多的话，升级过程会比较漫长而且需要过多的资源消耗。
+为了解决这一问题，Kubernetes 引入了 Deployment 资源，简单的概括就是，<strong>Deployment 将上述滚动升级过程自动化了</strong>。</p>
+<h2 id="label">Label</h2>
+<p>Label (标签) 是一种简单却功能强大的 Kubernetes 特性，不仅可以组织 Pod, 也可以组织其他的 Kubernetes 资源，主要用于 Pod 和资源进行匹配。</p>
+<p>标签是可以附加到资源的任意键值对，然后通过标签选择器来选择具有对应标签的资源，单个资源可以拥有多个标签，只要标签的 key 在这个资源是唯一的，
+资源上的标签可以在创建资源时添加，也可以在创建资源之后再进行追加、更新、删除等操作。</p>
+<h3 id="标签选择器">标签选择器</h3>
+<p>标签选择器用于对资源进行批量选择、过滤、管理等操作。</p>
+<p><img src="https://dbwu.tech/images/k8s/labels_nginx.png" alt="图片来源: https://theithollow.com/2019/01/31/kubernetes-services-and-labels/"></p>
+<h2 id="namespace">Namespace</h2>
+<p>Namespace 用于将集群划分为多个虚拟集群，通过 Namespace 可以将资源进行逻辑上的隔离，确保不同组织或项目之间的资源不会互相干扰，
+这样就可以在不同的 Namespace 中使用相同的资源名称 (例如单个服务可以根据 Namespace 分为测试环境、灰度环境、生产环境)。
+除了隔离资源，命名空间还可用于仅允许某些用户访问某些特定资源，或者限制单个用户可用的计算资源数量。</p>
+<h2 id="volume">Volume</h2>
+<p>Volume 是 Pod 中存储数据的抽象层，它可以将数据挂载到 Pod 中，主要用来保证 Pod 运行期间的数据持久性。
+<strong>Pod 在启动时创建 Volume 并在删除时销毁 Volume, Pod 内部的容器在重启后，Volume 的内容保持不变，重启的的容器可以直接使用已经删除的老的容器的 Volume,
+如果一个 Pod 中包含多个容器，那么所有容器都可以使用同一个 Volume</strong>。</p>
+<h2 id="persistentvolume">PersistentVolume</h2>
+<p>由系统管理员搭建和设置底层存储，然后向 Kubernetes API 服务器创建持久卷 (PersistentVolume, 简称 PV) 并注册。创建持久卷时，系统管理员可以设置卷的容量大小和访问模式 (可读可写、只读、只写等等)。
+通过声明式的间接工作方式，系统管理员可以针对不同的存储场景需求设置和优化不同的底层存储技术，开发者无需关心存储技术细节。</p>
+<blockquote>
+<p>需要注意的是，持久卷不属于任何命名空间，它和工作节点一样属于集群层级的资源，也就是说，可以被集群中的所有 Pod 读写 (Pod 的持久卷声明拥有访问权限的前提下)。</p>
+</blockquote>
+<h2 id="persistentvolumeclaim">PersistentVolumeClaim</h2>
+<p>当需要在 Pod 中使用数据持久化存储时 (也就是 Pod 被删除后数据依然存在)，首先创建持久卷声明 (PersistentVolumeClaim, 简称 PVC) 清单，
+指定所需要的最低容量要求和访问模式，然后开发者将持久卷声明文件提交到 Kubernetes API 服务器，Kubernetes 将找到可匹配的待久卷并将其绑定到持久卷声明。</p>
+<blockquote>
+<p>需要注意的是，持久卷声明必须在特定的命名空间创建，因此持久卷声明只能被单个命名空间内的 Pod 使用。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/k8s/pvc.png" alt="持久卷和持久卷声明"></p>
+<h2 id="storageclass">StorageClass</h2>
+<p>虽然通过持久卷声明可以自动获取到匹配的持久卷，但是前提是系统管理员已经搭建完成了底层存储技术，StorageClass 可以把这个过程自动化。</p>
+<p>StorageClass 是用于动态配置持久化存储的对象，它定义了如何提供和配置持久卷以及如何动态修改持久卷，通过 StorageClass，系统管理员可以定义不同类型的底层存储设备（如云存储、网络存储、本地存储等），
+开发者可以在持久卷声明中引用 StorageClass, 剩下的自动创建持久卷、匹配和绑定持久卷声明等工作交给 Kubernetes 完成。</p>
+<p><img src="https://dbwu.tech/images/k8s/stroageclass.png" alt="StorageClass 和持久卷声明"></p>
+<h2 id="liveness">Liveness</h2>
+<p>一个崩溃的容器会自动重启， 所以也许你会想到，可以在应用中捕获这类错误，并在错误发生时退出该进程。当然可以这样做，但这仍然不能解决所有的问题。
+例如，你的应用因为无限循环或死锁而停止响应，为确保应用程序在这种情况下可以被成功重启，必须从外部检查应用程序的运行状况，而不是依赖于应用的内部检测。</p>
+<p>Kubernetes 中通过 <strong>Liveness (存活探针)</strong> 来检测容器内部应用是否在运行，可以为单个 Pod 中的所有容器单独设置，Kubernetes 会定时进行探测，如果探测失败，Kubernetes 重启对应的容器。</p>
+<p>Kubernetes 支持三种类型的存活探针:</p>
+<ol>
+<li><strong>HTTP GET</strong>: 针对容器指定 URL 执行 HTTP 请求，如果响应码 Status Code 是 2xx 或者 3xx, 表示探测成功，其他情况表示探测失败</li>
+<li><strong>TCP</strong>: 针对容器指定端口号发起 TCP 连接，如果连接成功，表示探测成功，其他情况表示探测失败</li>
+<li><strong>Exec</strong>: 在容器内执行任意命令 (例如文件检查、网络检查)，并检查命令的退出状态码，如果状态码为 0，表示探测成功，其他情况表示探测失败</li>
+</ol>
+<p>除了探针的类型外，还可以设置探针的失败阈值、检测频率等。</p>
+<h2 id="readiness">Readiness</h2>
+<p>存活探针的检测工作应该建立在容器内应用已经正常运行的前提下，如果应用还未完全初始化完成，存活探针就开始检测工作，大多数情况下这会导致探测失败，
+因为应用还没准备好开始接收请求并处理。如果探测失败的次数超过阈值，应用在正确响应存活探针的检测之前，就已经被重启了 (接着进入上述死循环)。</p>
+<p>此时就需要 <strong>Readiness (就绪探针)</strong> 来标识应用是否已经完成初始化工作，就绪探针会在 Pod 返回就绪之前定时调用，确定 Pod 是否可以开始接收请求，
+启动 Pod 时可以配置探针检测等待时间，经过等待时间后才可以执行就绪检测，如果就绪检测失败，Pod 就会从服务中删除。</p>
+<p><strong>就绪探针和存活探针支持的三种探针类型一致</strong>。</p>
+<p>就绪状态应该由应用本身来决定，常见的就绪探针状态:</p>
+<ul>
+<li>对应用最大化启动时间设置一个固定值 (比如 10 秒, 通过 initialDelaySeconds 字段设置)</li>
+<li>进程已启动的标识</li>
+<li>全局状态变量已初始化</li>
+<li>各类连接池已经初始化</li>
+<li>热数据已完成加载</li>
+<li>特定的业务类状态判定</li>
+</ul>
+<h2 id="statefulset">StatefulSet</h2>
+<p><strong>StatefulSet 用于管理有状态应用程序的部署，它确保每个 Pod 都有一个唯一的标识符和独立的数据卷，并按照固定的顺序进行部署和更新，并且保证 Pod 在重新调度之后保留标识和状态</strong>。</p>
+<p>StatefulSet 应用场景:</p>
+<ul>
+<li>持久化数据存储，Pod 重新调度后仍然可以访问到已有的数据</li>
+<li>稳定的网络标志，Pod 重新调度后名称和主机名称不变，这类需求在有状态的分布式应用中很常见</li>
+<li>有序部署和扩容</li>
+<li>有序缩容和删除</li>
+</ul>
+<p><strong>StatefulSet 和 Deployment 一样也支持滚动升级</strong>。</p>
+<p><img src="https://dbwu.tech/images/k8s/stateful_replica.png" alt="图片来源: https://www.golinuxcloud.com/kubernetes-statefulsets/"></p>
+<p>如图所示，StatefulSet 创建的每个 Pod 都有一个从 0 开始的顺序索引，这个会体现在 Pod 的名称和主机名称以及对应的数据卷上面。</p>
+<p>单个 StatefulSet 通常要求创建一个 Headless Service 用来记录每个 Pod 的网络标记，通过这个 Service, 每个 Pod 拥有独立的 DNS 记录，
+集群里的其他工作节点和其他 Pod 就可以通过主机名方便地找到该 Pod。</p>
+<p><img src="https://dbwu.tech/images/k8s/stateful_headless.png" alt="图片来源: https://loft.sh/blog/kubernetes-statefulset-examples-and-best-practices/"></p>
+<p>当 StatefulSet 扩容之后，名称中的索引值会递增，当 StatefulSet 缩容之后，名称中的索引值会从高到低递减，和数组的操作逻辑是一致的。</p>
+<p><img src="https://dbwu.tech/images/k8s/stateful_scale.png" alt="图片来源: https://medium.com/@marko.luksa/graceful-scaledown-of-stateful-apps-in-kubernetes-2205fc556ba9"></p>
+<h2 id="configmap">ConfigMap</h2>
+<p>ConfigMap 是专门存储配置数据的资源，将配置数据从 Pod 中提取出来，并以容器环境变量、命令行参数或者配置文件的形式注入到 Pod 中，本质上来说就是一个运行时配置文件，一般用于存储非敏感数据。</p>
+<h2 id="secret">Secret</h2>
+<p>Secret 用于存储敏感数据，例如密码、API 密钥等，它可以安全地传递给 Pod 中的容器，<strong>Kubernetes 只会将 Secret 传递到需要访问 Secret 的 Pod 所在的工作节点来保障其安全性，而且只会存储在内存中</strong>。</p>
+<h2 id="daemonset">DaemonSet</h2>
+<p>DaemonSet 用于确保集群中的每个节点都运行一个指定的 Pod，通常用于在每个节点上运行一些系统级别的任务 (例如在每个节点上运行一个日志收集组件)，
+典型的就是 Kubernetes 自带的 kube-proxy 进程，它需要运行在所有节点上面才能保证服务正常运行。</p>
+<p>DaemonSet 除了必须在每个节点执行的任务外，还可以结合标签选择来指定一部分节点运行一个指定的 Pod。</p>
+<h2 id="job">Job</h2>
+<p>Job 用于运行一次性任务，运行一个 Pod, 当 Pod 中的应用执行结束时，停止 Pod 并标记状态为完成。</p>
+<h2 id="cronjob">CronJob</h2>
+<p>CronJob 用于运行周期性定时任务。</p>
+<h2 id="ingress">Ingress</h2>
+<p><img src="https://dbwu.tech/images/k8s/ingress.png" alt="图片来源: https://banzaicloud.com/blog/k8s-ingress/"></p>
+<p>Ingress 是从 Kubernetes 集群外部访问集群内部服务的入口，通过一个公网 IP 地址可以访问多个服务，Ingress 控制器会根据客户端的请求来决定转发到具体的服务，
+Ingress 工作在网络七层，可以提供网络四层无法提供的功能 (例如根据客户端的请求 Header, Cookie 来完成会话亲和性)。
+但是有一点需要注意的是: <strong>Ingress 控制器不会将客户端请求直接转发到服务，而是会转发到服务背后的 Pod</strong>。</p>
+<p>这里以 HTTP 请求为例，有了 Ingress 控制器之后，客户端和服务端的 HTTP 通信过程如下:</p>
+<ol>
+<li>客户端对服务端的应用域名 (例如 service1.example.com) 进行解析，查询到 Ingress 控制器的 IP 地址</li>
+<li>客户端向 Ingress 控制器发起 HTTP 请求，并在 HTTP Header 中指定 Host 为 service1.example.com</li>
+<li>Ingress 控制器通过 Header 中的 Host 字段确认客户端请求的具体服务</li>
+<li>通过服务查看对应的 Pod IP 列表，并将客户端请求转发到其中一个 Pod</li>
+</ol>
+<h2 id="node-affinity-taint-toleration">Node Affinity, Taint, Toleration</h2>
+<p>Node Affinity (节点亲和性) 机制用于指定某个 Pod 应该或尽可能在哪些 Node 上运行。</p>
+<p>Taint（污点）机制和 Node affinity (节点亲和性) 机制正好相反，指定某个 Pod 不要哪些 Node 上运行，针对 Node 设置。</p>
+<p>Toleration（容忍度）机制用于指定 Pod 在具有特定 Taint（污点）的 Node 上被调度和运行 (也就是 Pod 可以容忍目标 Node 的某些 “不足”)，针对 Pod 设置。</p>
+<h2 id="cluster-federation">Cluster Federation</h2>
+<p>Cluster Federation (集群联邦) 将多个独立的 Kubernetes 集群组合成一个跨地理位置、云服务厂商或数据中心的超大逻辑集群，以集中化的方式管理多个集群之间的资源调度。</p>
+<h2 id="kubernetes-应用哲学">Kubernetes 应用哲学</h2>
+<blockquote>
+<p>定义期望状态，剩下的交给 Kubernetes 来完成。</p>
+</blockquote>
+<h2 id="好玩的">好玩的</h2>
+<p><a href="https://developer.aliyun.com/mission/Perfect_match_with_ACK?spm=5176.181001.J_6302206100.4.16424e264YQbgd">测测 K8s 与您的匹配度</a></p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://www.amazon.com/Kubernetes-Action-Marko-Luksa/dp/1617293725">Kubernetes in Action</a></li>
+<li><a href="https://lib.jimmysong.io/kubernetes-handbook/">Kubernetes 基础教程</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/ramitsurana/awesome-kubernetes">awesome-kubernetes</a></li>
+<li><a href="https://github.com/rootsongjc/awesome-cloud-native/">awesome-cloud-native</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/version_semantics/"><i class="fa fa-chevron-circle-left"></i> 软件版本语义化</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/memory_model/">Go 内存模型 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 核心概念"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

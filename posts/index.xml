@@ -544,6 +544,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 核心概念</title>
+       <link>https://dbwu.tech/posts/k8s/summary/</link>
+       <pubDate>Fri, 24 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/summary/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>软件版本语义化</title>
        <link>https://dbwu.tech/posts/version_semantics/</link>
        <pubDate>Fri, 24 Feb 2023 00:00:00 +0000</pubDate>
