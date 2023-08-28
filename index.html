@@ -106,752 +106,352 @@
     
 
     <li class="first" >
-      <h1><a href="https://dbwu.tech/posts/system_design/logcial_rule_correlate/" title="业务规则引擎演变过程简述">业务规则引擎演变过程简述</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-08-07T00:00:00Z">2023-08-07</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/system_design/logcial_rule_correlate/" title="业务规则引擎演变过程简述">业务规则引擎演变过程简述</a>
+      <time class="article-date" datetime="2023-08-07T00:00:00Z">2023-08-07</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_hystrix/" title="微服务中的熔断算法">微服务中的熔断算法</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-24T00:00:00Z">2023-07-24</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>熔断机制是微服务调用链路中的的自我保护机制，当链路中某个服务响应时间过长甚至不可用时，会进行服务熔断，快速返回错误响应，停止级联故障，避免雪崩效应。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_hystrix/" title="微服务中的熔断算法">微服务中的熔断算法</a>
+      <time class="article-date" datetime="2023-07-24T00:00:00Z">2023-07-24</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_ratelimit/" title="漏桶算法和令牌桶算法">漏桶算法和令牌桶算法</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-20T00:00:00Z">2023-07-20</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>漏桶算法和令牌桶算法是接口限流设计中常用的两种算法，本文通过 Go 语言中两个常用的开源组件，研究下两种算法的区别和具体代码实现。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_ratelimit/" title="漏桶算法和令牌桶算法">漏桶算法和令牌桶算法</a>
+      <time class="article-date" datetime="2023-07-20T00:00:00Z">2023-07-20</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_jsonparser/" title="jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?">jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-17T00:00:00Z">2023-07-17</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/golang_jsonparser/" title="jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?">jsonparser 为什么比标准库的 encoding/json 快 10 倍 ?</a>
+      <time class="article-date" datetime="2023-07-17T00:00:00Z">2023-07-17</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_zap/" title="zap 高性能设计与实现">zap 高性能设计与实现</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-16T00:00:00Z">2023-07-16</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>zap 是 Uber 开源的 Go 高性能日志库，性能远超于标准库和其他开源日志库。zap 使用简单，支持多种格式结构化日志、可以设置不同的日志级别，并且能够记录堆栈信息和 &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_zap/" title="zap 高性能设计与实现">zap 高性能设计与实现</a>
+      <time class="article-date" datetime="2023-07-16T00:00:00Z">2023-07-16</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/http_router/" title="HTTP Router 算法演进">HTTP Router 算法演进</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-13T00:00:00Z">2023-07-13</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/http_router/" title="HTTP Router 算法演进">HTTP Router 算法演进</a>
+      <time class="article-date" datetime="2023-07-13T00:00:00Z">2023-07-13</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/cuckoo_filter/" title="布谷鸟过滤器">布谷鸟过滤器</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-10T00:00:00Z">2023-07-10</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回结果语义是“元素一定不存在”或“有较大可能存在”。</p>
+      <h1><a href="https://dbwu.tech/posts/cuckoo_filter/" title="布谷鸟过滤器">布谷鸟过滤器</a>
+      <time class="article-date" datetime="2023-07-10T00:00:00Z">2023-07-10</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_fastcache/" title="fastcache 高性能设计与实现">fastcache 高性能设计与实现</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-06T00:00:00Z">2023-07-06</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/golang_fastcache/" title="fastcache 高性能设计与实现">fastcache 高性能设计与实现</a>
+      <time class="article-date" datetime="2023-07-06T00:00:00Z">2023-07-06</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/web_security/" title="Web 常见的三个安全问题">Web 常见的三个安全问题</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-07-05T00:00:00Z">2023-07-05</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/web_security/" title="Web 常见的三个安全问题">Web 常见的三个安全问题</a>
+      <time class="article-date" datetime="2023-07-05T00:00:00Z">2023-07-05</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_ants/" title="ants Code Reading">ants Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-30T00:00:00Z">2023-06-30</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>ants 是一个高性能且低损耗的 goroutine 池，组件内部会创建一个固定容量的 goroutine 池，并且管理和回收池中的 goroutine，主要应用场景是允许开发者限制并发程序中的 goroutine 数量，更多的特性 &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_ants/" title="ants Code Reading">ants Code Reading</a>
+      <time class="article-date" datetime="2023-06-30T00:00:00Z">2023-06-30</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/cuckoofilter/" title="布谷鸟过滤器">布谷鸟过滤器</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-30T00:00:00Z">2023-06-30</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>布谷鸟过滤器是一种节省内存空间的概率数据结构，基于布谷鸟哈希算法实现的过滤器，和布隆过滤器一样，用于检测指定元素是否存在于某个集合中，返回 “元素一定不存在” 或 “有较大可能存在” 两种语义之一。</p>
+      <h1><a href="https://dbwu.tech/posts/cuckoofilter/" title="布谷鸟过滤器">布谷鸟过滤器</a>
+      <time class="article-date" datetime="2023-06-30T00:00:00Z">2023-06-30</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_thread_safe_map/" title="Go 线程安全 map 方案选型">Go 线程安全 map 方案选型</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-25T00:00:00Z">2023-06-25</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言标准库中的 map 数据类型并不是线程安全的，多个 goroutine 可以并发读取同一个 map, 但是不能并发写入同一个 map, 否则会引发 panic, 为了解决这个问题 &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_thread_safe_map/" title="Go 线程安全 map 方案选型">Go 线程安全 map 方案选型</a>
+      <time class="article-date" datetime="2023-06-25T00:00:00Z">2023-06-25</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/bloom_filter/" title="布隆过滤器">布隆过滤器</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-20T00:00:00Z">2023-06-20</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>布隆过滤器（英语：Bloom Filter）是 1970 年由布隆提出的，是一个很长的二进制向量和一系列随机映射函数。布隆过滤器可以用于检索一个元素是否在一个集合中。它的优点是空间效率和查询时间都远远超过一般的算法，缺点是有一定的误识别率和删除困难。</p>
+      <h1><a href="https://dbwu.tech/posts/bloom_filter/" title="布隆过滤器">布隆过滤器</a>
+      <time class="article-date" datetime="2023-06-20T00:00:00Z">2023-06-20</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/os_lock/" title="死锁、活锁、饥饿、自旋锁">死锁、活锁、饥饿、自旋锁</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-19T00:00:00Z">2023-06-19</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/os_lock/" title="死锁、活锁、饥饿、自旋锁">死锁、活锁、饥饿、自旋锁</a>
+      <time class="article-date" datetime="2023-06-19T00:00:00Z">2023-06-19</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_pool/" title="sync.Pool Code Reading">sync.Pool Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-15T00:00:00Z">2023-06-15</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>sync.Pool 是 Go 语言标准库中的一个并发安全的对象池，可以用来缓存那些需要重复创建和销毁的对象，从而避免频繁地进行内存分配和回收，降低内存和 GC 压力。本文通过底层源代码来分析 sync.Pool 高性能背后的设计与实现&hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_pool/" title="sync.Pool Code Reading">sync.Pool Code Reading</a>
+      <time class="article-date" datetime="2023-06-15T00:00:00Z">2023-06-15</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_memory/" title="Go 内存管理概述">Go 内存管理概述</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-13T00:00:00Z">2023-06-13</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言的底层内存分配实现方案参考了 TCMalloc, 通过多级缓存机制、 内存对象大小分类来完成不同的分配策略以提升性能。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_memory/" title="Go 内存管理概述">Go 内存管理概述</a>
+      <time class="article-date" datetime="2023-06-13T00:00:00Z">2023-06-13</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_netpoll/" title="Go netpoll Code Reading">Go netpoll Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-12T00:00:00Z">2023-06-12</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/golang_netpoll/" title="Go netpoll Code Reading">Go netpoll Code Reading</a>
+      <time class="article-date" datetime="2023-06-12T00:00:00Z">2023-06-12</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_goroutine_leak/" title="goroutine 泄漏与检测">goroutine 泄漏与检测</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-11T00:00:00Z">2023-06-11</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言内置 GC，因此一般不会内存泄漏，但是 goroutine 可能会发生泄漏，泄漏的 goroutine 引用的内存同样无法被 GC 正常回收 &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_goroutine_leak/" title="goroutine 泄漏与检测">goroutine 泄漏与检测</a>
+      <time class="article-date" datetime="2023-06-11T00:00:00Z">2023-06-11</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_timer/" title="time/Timer Code Reading">time/Timer Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-10T00:00:00Z">2023-06-10</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言中的计时器常用于定期执行某个操作或者在指定时间内执行某个操作，例如实现超时、周期性执行任务等场景，主要通过标准库的 time 包中的相关方法来实现，如 time.After(), time.Tick() 等。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_timer/" title="time/Timer Code Reading">time/Timer Code Reading</a>
+      <time class="article-date" datetime="2023-06-10T00:00:00Z">2023-06-10</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_gmp/" title="GMP Scheduler Code Reading">GMP Scheduler Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-09T00:00:00Z">2023-06-09</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言中的 GMP 是指用于管理 goroutine 的调度器，其内部使用了一种称为 M:N 的调度模型，其中 M 个用户级 goroutine 被分配到 N 个内核级线程上执行。调度器负责将 goroutine 分配给处理器 P, 并在需要时将 goroutine 从一个处理器 P 转移到另一个处理器 P &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_gmp/" title="GMP Scheduler Code Reading">GMP Scheduler Code Reading</a>
+      <time class="article-date" datetime="2023-06-09T00:00:00Z">2023-06-09</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_channel/" title="Go channel 的 15 条规则和底层实现">Go channel 的 15 条规则和底层实现</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-06-08T00:00:00Z">2023-06-08</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言中 channel 发送、接收、关闭规则都有哪些？底层又是如何实现的呢？</p>
+      <h1><a href="https://dbwu.tech/posts/golang_channel/" title="Go channel 的 15 条规则和底层实现">Go channel 的 15 条规则和底层实现</a>
+      <time class="article-date" datetime="2023-06-08T00:00:00Z">2023-06-08</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/linux_everything_is_a_file/" title="为什么 Linux “一切皆文件”">为什么 Linux “一切皆文件”</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-05-19T00:00:00Z">2023-05-19</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>在 Linux 中，包括硬件设备、目录、文本文件、二进制文件、输入输出流、套接字、管道、TTY 终端等各种资源都被抽象成文件，并且它们之间没有太大的区别。每个文件都有一个唯一的路径进行标识，因此可以通过文件系统中的路径来访问和管理这些资源 &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/linux_everything_is_a_file/" title="为什么 Linux “一切皆文件”">为什么 Linux “一切皆文件”</a>
+      <time class="article-date" datetime="2023-05-19T00:00:00Z">2023-05-19</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_context/" title="context.Context Code Reading">context.Context Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-05-12T00:00:00Z">2023-05-12</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>context.Context 类型表示上下文信息，作用是在 API 通信、进程通信、函数调用之间传递超时时间、取消信号和其他数据值。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_context/" title="context.Context Code Reading">context.Context Code Reading</a>
+      <time class="article-date" datetime="2023-05-12T00:00:00Z">2023-05-12</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_hacking/" title="runtime/HACKING.md">runtime/HACKING.md</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-05-11T00:00:00Z">2023-05-11</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>最近阅读标准库源代码时，偶然间发现 runtime 包下面的一个 markdown 文件，大致读了一下，感觉对理解 GMP 调度的基础概念和标准库中的各类注解指令非常有帮助，决定翻译出来，正好提高一下自己的英文水平。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_hacking/" title="runtime/HACKING.md">runtime/HACKING.md</a>
+      <time class="article-date" datetime="2023-05-11T00:00:00Z">2023-05-11</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/goland_best_practice/" title="Goland 最佳实践">Goland 最佳实践</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-05-10T00:00:00Z">2023-05-10</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/goland_best_practice/" title="Goland 最佳实践">Goland 最佳实践</a>
+      <time class="article-date" datetime="2023-05-10T00:00:00Z">2023-05-10</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_automaxprocs/" title="容器中如何正确配置 GOMAXPROCS ?">容器中如何正确配置 GOMAXPROCS ?</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-30T00:00:00Z">2023-04-30</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/golang_automaxprocs/" title="容器中如何正确配置 GOMAXPROCS ?">容器中如何正确配置 GOMAXPROCS ?</a>
+      <time class="article-date" datetime="2023-04-30T00:00:00Z">2023-04-30</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_singleflight/" title="singleflight Code Reading">singleflight Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-28T00:00:00Z">2023-04-28</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>singleflight 是将 多个请求的返回结果相同 + 计算过程次数限制 这一过程抽象出来，将所有细节隐藏在内部实现中，只提供 GET 和 DELETE 两种类型 API, 简化了调用方法。一个比较常见的场景是使用 singleflight 来限制同一个缓存 key 的重复请求，避免发生 缓存击穿 时，避免请求全部落到数据库，减少性能影响和宕机风险。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_singleflight/" title="singleflight Code Reading">singleflight Code Reading</a>
+      <time class="article-date" datetime="2023-04-28T00:00:00Z">2023-04-28</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_map/" title="sync.Map Code Reading">sync.Map Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-27T00:00:00Z">2023-04-27</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>从内部底层实现来说，sync.Map 通过 entry 类型将 map 的变化和元素的变化进行隔离的同时, 还保证了底层数据的复用 (read map 和 dirty map 指向同一个 entry)， read, dirty 2 个字段加原子操作的紧密配合，非常简洁优雅地实现了 sync.Map 根据读写比例动态变化和转换内部字段数据结构， 尤其是 read 和 dirty 两个字段保持&hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_map/" title="sync.Map Code Reading">sync.Map Code Reading</a>
+      <time class="article-date" datetime="2023-04-27T00:00:00Z">2023-04-27</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_cond/" title="sync.Cond Code Reading">sync.Cond Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-26T00:00:00Z">2023-04-26</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>sync.Cond 不是一个常用的同步机制，在条件变量长时间无法满足时，sync.Cond 能够让出处理器的使用权，和单纯使用 for {} 进行无限等待相比，可以提高 CPU 的利用率。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_cond/" title="sync.Cond Code Reading">sync.Cond Code Reading</a>
+      <time class="article-date" datetime="2023-04-26T00:00:00Z">2023-04-26</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_waitgroup/" title="sync.WaitGroup Code Reading">sync.WaitGroup Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-25T00:00:00Z">2023-04-25</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_waitgroup/" title="sync.WaitGroup Code Reading">sync.WaitGroup Code Reading</a>
+      <time class="article-date" datetime="2023-04-25T00:00:00Z">2023-04-25</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_rwmutex/" title="sync.RWMutex Code Reading">sync.RWMutex Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-24T00:00:00Z">2023-04-24</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>如果一个 goroutine 持有了读锁进行操作，此时其他的 goroutine 可能尝试获取写锁 (参与竞争)，那么在读锁被释放之前，不会有其他 goroutine 获取到读锁 (避免竞争写锁的 goroutine 被饿死)， 一个 goroutine 在阻塞获取写锁的过程中，会阻止其他 goroutine 获得读锁。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_rwmutex/" title="sync.RWMutex Code Reading">sync.RWMutex Code Reading</a>
+      <time class="article-date" datetime="2023-04-24T00:00:00Z">2023-04-24</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_mutex/" title="sync.Mutex Code Reading">sync.Mutex Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-23T00:00:00Z">2023-04-23</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>互斥锁可以在两种模式下操作：正常模式和饥饿模式，正常模式的性能要好很多，因为 goroutine 可以连续多次获得互斥锁，即使存在阻塞的 goroutine, 与此同时，饥饿模式是防止尾部的 goroutine 被饿死的重要机制 (高尾延时)。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_mutex/" title="sync.Mutex Code Reading">sync.Mutex Code Reading</a>
+      <time class="article-date" datetime="2023-04-23T00:00:00Z">2023-04-23</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_sync_once/" title="sync.Once Code Reading">sync.Once Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-23T00:00:00Z">2023-04-23</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>sync.Once 可以保证某段程序在运行期间的只执行一次，典型的使用场景有初始化配置, 数据库连接等，那么它的内部是如何实现的呢？</p>
+      <h1><a href="https://dbwu.tech/posts/golang_sync_once/" title="sync.Once Code Reading">sync.Once Code Reading</a>
+      <time class="article-date" datetime="2023-04-23T00:00:00Z">2023-04-23</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_lockfree/" title="Go 无锁编程">Go 无锁编程</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-22T00:00:00Z">2023-04-22</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>锁是一种常见的同步机制，用来解决多个线程同时访问共享资源导致的数据竞争问题。在高并发场景下，锁的使用可能会成为性能瓶颈，因为线程需要频繁地加锁和释放锁，这会增加上下文切换开销并降低程序的吞吐量。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_lockfree/" title="Go 无锁编程">Go 无锁编程</a>
+      <time class="article-date" datetime="2023-04-22T00:00:00Z">2023-04-22</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_atomic/" title="sync/atomic Code Reading">sync/atomic Code Reading</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-21T00:00:00Z">2023-04-21</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>sync/atomic 包提供了原子同步操作原语，整个操作过程无需加锁，也不会产生 goroutine 上下文切换。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_atomic/" title="sync/atomic Code Reading">sync/atomic Code Reading</a>
+      <time class="article-date" datetime="2023-04-21T00:00:00Z">2023-04-21</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/goroutine_alternate_print/" title="goroutine 交替打印奇偶数">goroutine 交替打印奇偶数</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-20T00:00:00Z">2023-04-20</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>使用两个 <code>goroutine</code> 交替并且顺序地打印数字 1&hellip;10, 要求其中一个 <code>goroutine</code> 打印奇数，另一个 <code>goroutine</code> 打印偶数。</p>
+      <h1><a href="https://dbwu.tech/posts/goroutine_alternate_print/" title="goroutine 交替打印奇偶数">goroutine 交替打印奇偶数</a>
+      <time class="article-date" datetime="2023-04-20T00:00:00Z">2023-04-20</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_godebug/" title="GODEBUG">GODEBUG</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-19T00:00:00Z">2023-04-19</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>GODEBUG 环境变量可以控制程序运行时的调度信息输出，方便开发者了解程序运行内部细节。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_godebug/" title="GODEBUG">GODEBUG</a>
+      <time class="article-date" datetime="2023-04-19T00:00:00Z">2023-04-19</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_concurrency_patterns/" title="Go 并发模式">Go 并发模式</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-18T00:00:00Z">2023-04-18</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>Go 语言常用的并发模式代码模板，已更新。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_concurrency_patterns/" title="Go 并发模式">Go 并发模式</a>
+      <time class="article-date" datetime="2023-04-18T00:00:00Z">2023-04-18</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_asm/" title="Go 汇编">Go 汇编</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-17T00:00:00Z">2023-04-17</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>为什么要学习汇编语言？更加接近硬件底层，性能极致优化，可以降维打击所有高级编程语言。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_asm/" title="Go 汇编">Go 汇编</a>
+      <time class="article-date" datetime="2023-04-17T00:00:00Z">2023-04-17</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/uuid/" title="UUID 通用技术选型">UUID 通用技术选型</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-17T00:00:00Z">2023-04-17</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>分布式唯一 ID 是指在分布式系统中生成的全局唯一标识符。在分布式系统中，由于多个节点同时操作数据可能会导致数据冲突或者重复，因此需要为每个数据对象赋予一个唯一的标识符，以便在系统范围内进行区分。</p>
+      <h1><a href="https://dbwu.tech/posts/uuid/" title="UUID 通用技术选型">UUID 通用技术选型</a>
+      <time class="article-date" datetime="2023-04-17T00:00:00Z">2023-04-17</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_performance_tips/" title="Go 高性能 Tips">Go 高性能 Tips</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-10T00:00:00Z">2023-04-10</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>阅读 Go 标准库和开源框架代码时，经常会发现这些 Tips 的踪迹。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_performance_tips/" title="Go 高性能 Tips">Go 高性能 Tips</a>
+      <time class="article-date" datetime="2023-04-10T00:00:00Z">2023-04-10</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_fasthttp/" title="fasthttp 为什么比标准库 net/http 快 10 倍 ?">fasthttp 为什么比标准库 net/http 快 10 倍 ?</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-07T00:00:00Z">2023-04-07</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/golang_fasthttp/" title="fasthttp 为什么比标准库 net/http 快 10 倍 ?">fasthttp 为什么比标准库 net/http 快 10 倍 ?</a>
+      <time class="article-date" datetime="2023-04-07T00:00:00Z">2023-04-07</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/image_tool/" title="技术文章配图指南">技术文章配图指南</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-04T00:00:00Z">2023-04-04</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>为什么技术文章需要配图？一图胜千言。</p>
+      <h1><a href="https://dbwu.tech/posts/image_tool/" title="技术文章配图指南">技术文章配图指南</a>
+      <time class="article-date" datetime="2023-04-04T00:00:00Z">2023-04-04</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/chatgpt/" title="ChatGPT 初体验">ChatGPT 初体验</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>概述 ChatGPT 从 2 月份热度一直持续到现在，并且在接下来的一段时间内，热度还会持续下去。笔者从 3 月初开始慢慢接触，从最初的在 搜索引擎 和 ChatGPT 之间来回切换并验证， 到目前的简单搜索场景 80% 的时间都是直接用 ChatGPT 的，本文总结下这一个月的时间，笔者用到的最多的 4 个功能。</p>
+      <h1><a href="https://dbwu.tech/posts/chatgpt/" title="ChatGPT 初体验">ChatGPT 初体验</a>
+      <time class="article-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/docker_network/" title="Docker 网络原理概览">Docker 网络原理概览</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p><code>Docker</code> 原生网络是基于 Linux 的 <code>网络命名空间</code>（net namespace） 和 <code>虚拟网络设备</code>（veth pair）实现的。当 <code>Docker</code> 进程启动时，会在宿主机上创建一个名称为 <code>docker0</code> 的 <strong>虚拟网桥</strong>，在该宿主机上启动的 <code>Docker</code> 容器会连接到这个虚拟网桥上 &hellip;</p>
+      <h1><a href="https://dbwu.tech/posts/docker_network/" title="Docker 网络原理概览">Docker 网络原理概览</a>
+      <time class="article-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/iptables/" title="iptables 概述">iptables 概述</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>iptables 是一个配置 Linux 内核防火墙的命令行工具，它基于内核的包过滤框架（packet filtering framework） netfilter, 主要用于管理数据包过滤和 NAT 规则。</p>
+      <h1><a href="https://dbwu.tech/posts/iptables/" title="iptables 概述">iptables 概述</a>
+      <time class="article-date" datetime="2023-04-03T00:00:00Z">2023-04-03</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_reflect/" title="Go 的反射与三大定律">Go 的反射与三大定律</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-03-30T00:00:00Z">2023-03-30</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>1.反射可以通过 interface{} 得到反射对象; 2.反射可以通过反射对象得到 interface{}; 3.修改反射对象的前提是值必须可以被修改; 反射三大定律背后的实现原理是什么？</p>
+      <h1><a href="https://dbwu.tech/posts/golang_reflect/" title="Go 的反射与三大定律">Go 的反射与三大定律</a>
+      <time class="article-date" datetime="2023-03-30T00:00:00Z">2023-03-30</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/docker_best_practices/" title="Docker 官方提供的最佳实践">Docker 官方提供的最佳实践</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-03-29T00:00:00Z">2023-03-29</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/docker_best_practices/" title="Docker 官方提供的最佳实践">Docker 官方提供的最佳实践</a>
+      <time class="article-date" datetime="2023-03-29T00:00:00Z">2023-03-29</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/golang_design_patterns/" title="Go 语言内置的设计模式">Go 语言内置的设计模式</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-03-22T00:00:00Z">2023-03-22</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p>和传统的 GOF, Java, C# 教科书式的设计模式不同，Go 语言设计从一开始就力求简洁，已经有其他编程语言基础的读者在学习和使用 Go 语言时，万万不可按图索骥、生搬硬套，简单的事情复杂化。</p>
+      <h1><a href="https://dbwu.tech/posts/golang_design_patterns/" title="Go 语言内置的设计模式">Go 语言内置的设计模式</a>
+      <time class="article-date" datetime="2023-03-22T00:00:00Z">2023-03-22</time>
+      </h1>
     </li>
     
 
     <li >
-      <h1><a href="https://dbwu.tech/posts/http_evolution/" title="HTTP1 到 HTTP3 的工程优化">HTTP1 到 HTTP3 的工程优化</a></h1>
-      <aside>
-    <ul>
-        <li>
-            <time class="post-date" datetime="2023-03-18T00:00:00Z">2023-03-18</time>
-        </li>
-        
-    </ul>
-</aside>
-
-      <p></p>
+      <h1><a href="https://dbwu.tech/posts/http_evolution/" title="HTTP1 到 HTTP3 的工程优化">HTTP1 到 HTTP3 的工程优化</a>
+      <time class="article-date" datetime="2023-03-18T00:00:00Z">2023-03-18</time>
+      </h1>
     </li>
     
   </ul>

@@ -116,7 +116,7 @@ time {
 }
 
 #container main section#home ul li h1 {
-  font-size: 1.5em;
+  font-size: 1.2em;
 }
 
 #container main section#home ul li h2 {
@@ -283,6 +283,7 @@ width: 100%;
   font-family: "Ruda", sans-serif;
   color: #909090;
   font-size: 0.8em;
+  text-align: right;
 }
 
 .meta-aside ul, #container main section#home ul li aside ul, #container main article aside ul {
@@ -297,7 +298,7 @@ width: 100%;
 }
 
 a {
-  color: #666666;
+  color: #222;
   /*text-decoration: none;*/
 }
 
@@ -465,3 +466,34 @@ ul.pagination {
 ul.pagination li {
   padding: 0 1em;
 }
+
+.article-date{
+  font-size: 16px;
+  color: #666;
+  display: block;
+  text-align: right;
+  margin-top: -2rem;
+}
+
+.article-tag {
+  padding: 3px 10px;
+  color: white;
+  font-family: "Ruda", sans-serif;
+  text-decoration: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  color: #9EABB3;
+  border: #E3E9ED 1px solid;
+  transition: color 0.3s ease;
+}
+
+@media screen and (max-width: 600px) {
+  .article-date{
+    min-width: 100%;
+    text-align: left;
+    display: inline-block;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
