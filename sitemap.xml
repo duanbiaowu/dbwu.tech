@@ -257,13 +257,16 @@
     <loc>https://dbwu.tech/posts/cdn/</loc>
     <lastmod>2023-02-28T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/tags/kubernetes/</loc>
+    <lastmod>2023-02-27T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/k8s/best_practice/base/</loc>
+    <lastmod>2023-02-27T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/system_design/cache/</loc>
     <lastmod>2023-02-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/memory_model/</loc>
-    <lastmod>2023-02-24T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://dbwu.tech/tags/kubernetes/</loc>
     <lastmod>2023-02-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/k8s/summary/</loc>

@@ -7,7 +7,7 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Fri, 24 Feb 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 27 Feb 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/kubernetes/index.xml" rel="self" type="application/rss+xml" />
    
@@ -532,6 +532,15 @@
        
        <guid>https://dbwu.tech/posts/cdn/</guid>
        <description>CDN 的基本原理为反向代理，反向代理（Reverse Proxy）方式是指以代理服务器来接受 Internet 上的连接请求，然后将请求转发给内部网络上的服务器， 并将从服务器上得到的结果返回给 Internet 上请求连接的客户端，此时代理服务器对外就表现为一个节点服务器 &amp;hellip;</description>
+     </item>
+   
+     <item>
+       <title>Kubernetes 应用最佳实践 - 开篇</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/base/</link>
+       <pubDate>Mon, 27 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/base/</guid>
+       <description></description>
      </item>
    
      <item>

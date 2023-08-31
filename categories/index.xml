@@ -534,6 +534,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - 开篇</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/base/</link>
+       <pubDate>Mon, 27 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/base/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>缓存策略和模式</title>
        <link>https://dbwu.tech/posts/system_design/cache/</link>
        <pubDate>Sat, 25 Feb 2023 00:00:00 +0000</pubDate>
