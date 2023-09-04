@@ -1,0 +1,390 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 应用最佳实践 - 资源请求和限制 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - 资源请求和限制" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/requests_and_limits/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-01T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-01T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - 资源请求和限制"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 应用最佳实践 - 资源请求和限制</h1>
+
+    
+      
+<p>
+    <span>2023-03-01</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>通过定义 Pod 中容器的资源限制和请求，确保资源的公平分配并防止资源争用。<strong>资源限制指定 Pod 可以使用的最大资源量，而资源请求指定 Pod 运行所需的资源量，正确设置资源限制和请求，有助于防止资源耗尽并确保应用程序的最佳性能</strong>。</p>
+<p><strong>资源请求和限制并不在 Pod 的声明中指定，而是针对 Pod 中的每个容器单独指定</strong>，单个 Pod 内部所有容器的资源请求量和限制量之和，等于该 Pod 的资源请求量和限制量。</p>
+<ul>
+<li><strong>requests</strong>: 表示资源请求量</li>
+<li><strong>limits</strong>: 表示资源限制量</li>
+</ul>
+<p>两者的关系如下:</p>
+<blockquote>
+<p>requests &lt;= limits</p>
+</blockquote>
+<p>下面的 yaml 声明代码表示，对于 Pod 中的容器 my-container:</p>
+<ul>
+<li>资源请求量为 0.5 个 CPU，128 MB 内存</li>
+<li>资源限制量为 1 个 CPU，256 MB 内存</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Pod<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>my-pod<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>my-container<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>my-image:tag<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">ports</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span>- <span style="color:#6ab825;font-weight:bold">containerPort</span>:<span style="color:#666"> </span><span style="color:#3677a9">80</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">limits</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">1</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>256Mi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">0.5</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>128Mi<span style="color:#666">
+</span></span></span></code></pre></div><p>Kubernetes 会将资源请求量 requests 和资源限制量 limits 区分对待:</p>
+<ul>
+<li>容器的 CPU 请求量为 0.5 个 CPU，但是可以超出使用，并且最多可以使用 1 个 CPU (limits 硬性规定)</li>
+<li>容器的 CPU 请求量为 128 MB 内存，但是可以超出使用，并且最多可以使用 256 MB 内存 (limits 硬性规定)</li>
+</ul>
+<p><img src="https://dbwu.tech/images/k8s/requests_limits.png" alt="资源请求量和资源限制量"></p>
+<h3 id="单位">单位</h3>
+<p><strong>CPU 资源的基本位置是 m (milli cpu)</strong>, 精度最小为 1m，举例来说:</p>
+<ul>
+<li>1 个 CPU 资源表示为 1000m, 也可以使用数字 1</li>
+<li>0.5 个 CPU 资源表示为 500m, 也可以使用数字 0.5</li>
+</ul>
+<p><strong>CPU 资源请求量要使用绝对数量</strong>，而非相对数量，0.1 的 CPU 请求量在单核、双核、64 核的机器中表达的语义是相同的，常见使用单位为 <code>XXX m</code>。</p>
+<p><strong>内存资源的基本单位是字节 (byte)</strong>, 可以使用这些后缀之一，将内存表示为整数 (表示 byte) 或定点整数 (附带单位): E、P、T、G、M、K、Ei、Pi、Ti、Gi、Mi、Ki,
+常见使用单位为 <code>XXX Mi</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>128974848, 129e6, 128M, 128Mi
+</span></span></code></pre></div><h3 id="默认情况">默认情况</h3>
+<p>如果不指定 CPU limits 数值，表示系统并不关注容器的资源请求量，也就是说: 在极端场景下，容器内的进程可能会跑满 CPU, 或者根本分配不到 CPU 时间 (因为其他进程把 CPU 跑满了)。
+对于内存 limits 数值来说，也会有类似极端场景下的问题。</p>
+<h2 id="cpu">CPU</h2>
+<blockquote>
+<p>CPU 是一种可压缩资源，因为它在多任务处理和资源分配方面具有一定的弹性，也就是说，Pod 中的所有容器都会尽可能抢占未使用的 CPU 资源。</p>
+</blockquote>
+<p>CPU requests 数值不仅在调度时起作用，还决定着未使用的 CPU 时间如何在容器之间分配。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>extensions/v1beta1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>redis<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>redis:5.0.3-alpine<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">0.8</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>busybox<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>busybox:1.28<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">0.2</span><span style="color:#666">
+</span></span></span></code></pre></div><p>以上面的 yaml 声明代码为例子，在一个 Pod 中存在两个容器 (redis 和 busybox)，redis 的 CPU 资源请求量为 0.8 (800m), busybox 的 CPU 资源请求量为 0.2 (200m)，
+那么 Pod 中未使用的 CPU 资源将按照 1:4 的比例分配给这两个容器，这里假设该节点只要 1 个 CPU，那么可能会产生下面几种情况:</p>
+<p><img src="https://dbwu.tech/images/k8s/requests_limits_2.png" alt="资源请求量和资源限制量"></p>
+<ol>
+<li>redis 和 busybox 都在尽全力使用 CPU, redis 获得 80% 的 CPU 时间，busybox 获得 20% 的 CPU 时间</li>
+<li>redis 和 busybox 都处于闲置状态，此时 CPU 使用为 0</li>
+<li>redis 处于闲置状态，此时 busybox 获得 100% 的 CPU 时间</li>
+<li>busybox 处于闲置状态，此时 redis 获得 100% 的 CPU 时间</li>
+</ol>
+<p>通过第三种情况和第四种情况可以看到，当两个容器中的其中一个闲置时，另外一个容器通过占用整个 CPU 而显著提高 CPU 资源的利用率，
+如果此时闲置的容器恢复了运行，依然可以直接获取到 requests 字段定义的 CPU 请求资源量，与此同时另外一个容器的 CPU 资源就会被限制到其 limits 字段定义的 CPU 请求资源量。
+此消彼长间，<strong>实现了 “CPU 资源超售”</strong>。</p>
+<h2 id="内存">内存</h2>
+<p>和 CPU 资源不同，内存是无法压缩的资源，一旦系统为进程分配了内存，那么这块内存在进程主动释放之前将无法被回收 (高级语言中的 GC 也属于主动释放内存)。
+因此当内存耗尽时需要移除并重新调度 Pod，为了避免这种情况发生，<strong>必须设置内存的资源限制量</strong>。</p>
+<hr>
+<h2 id="超出资源限制">超出资源限制</h2>
+<p>当 Pod 中的容器内尝试使用比资源限制 limits 更多的资源时，会发生什么呢?</p>
+<p><strong>对于 CPU 来说</strong>，因为是可压缩资源，所以当容器超出 CPU 资源限制时，容器内的进程也仅仅只是分配不到更多的 CPU 资源而已。</p>
+<p><strong>对于内存来说</strong>，情况则完全不一样，当容器超出内存资源限制时，<strong>容器内的进程会因为 OOM 被 Kill</strong>。
+如果 Pod 的重启策略为 Always 或 OnFailure，进程将会立即重启，重启之后如果进程内存依然超出请求限制量而被 Kill,
+Kubernetes 会增加下次重启的间隔时间。这种情况下 Pod 处于 <strong>CrashLoopBackoff</strong> 状态。</p>
+<h3 id="crashloopbackoff-状态">CrashLoopBackoff 状态</h3>
+<p>CrashLoopBackoff 状态表示 Kubelet 还没有放弃该 Pod, 在每次崩溃之后 Kubelet 就会增加下次重启之前的间隔时间。</p>
+<ul>
+<li>第一次崩溃之后，Kubelet 立即重启 Pod</li>
+<li>第二次崩溃之后，Kubelet 会等待 10 秒钟后再重启 Pod</li>
+<li>随着不断崩溃，延迟时间也会按照 20、40、80、160 秒以几何倍数增长并最终收敛在 300 秒</li>
+<li>此后 Kubelet 将以 300 秒为间隔对 Pod 进行无限重启，直到 Pod 恢复正常或者被删除</li>
+</ul>
+<h2 id="limitrange">LimitRange</h2>
+<p>LimitRange 用于 Pod 的资源限制和默认值设置, 不仅可以对单个命名空间中的 Pod 和容器的最小和最大资源量进行限制，还可以设置资源请求量和限制量的默认值，
+并且在运行时自动注入到容器中。</p>
+<p><strong>如果不想为命名空间中的每个容器单独设置资源请求量和限制量，可以通过创建 LimitRange 资源来简化流程</strong>。</p>
+<p>下面是一个针对容器定义的 LimitRange 资源:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>LimitRange<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>cpu-resource-constraint<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">limits</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span>- <span style="color:#6ab825;font-weight:bold">default</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 资源默认限制值</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">0.5</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">defaultRequest</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 资源默认请求值</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">0.5</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">max</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 最大使用量</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">1</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">min</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 最小使用量</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span><span style="color:#3677a9">0.1</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">type</span>:<span style="color:#666"> </span>Container<span style="color:#666">
+</span></span></span></code></pre></div><p><strong>注意</strong>: LimitRange 不会校验默认值的一致性，Pod 和容器设置的资源限制量 (limits) 数值可能要远远大于 LimitRange 资源设置的 limits 默认值，
+这时 Pod 无法被调度。也就是说，LimitRange 中配置的 limits 数值只能应用于单个 Pod 或容器，用户依旧可能因为误操作而创建大量的 Pod 和容器，消耗掉集群的所有可用资源，
+如果要解决这个问题，需要使用 ResourceQuota 资源。</p>
+<h2 id="resourcequota">ResourceQuota</h2>
+<blockquote>
+<p>LimitRange 应用于单独的 Pod, ResourceQuota 应用于命名空间中所有的 Pod。</p>
+</blockquote>
+<p>ResourceQuota 用于对单个命名空间的资源消耗总量进行限制，可以限制命名空间中特定资源使用 (例如 CPU, 内存) 的总上限。</p>
+<p><strong>注意</strong>: 当使用 ResourceQuota 为特定资源配置了资源请求量 requests 或 资源限制量 limits 时，在 Pod 中必须为资源指定 requests 和 limits,
+否则 API 服务器将拒绝 Pod 的创建。</p>
+<h2 id="调度相关">调度相关</h2>
+<p><strong>调度器在调度时只考虑节点上面未分配资源量是否可以满足 Pod 的资源请求量</strong>。</p>
+<p>如果节点的未分配资源量小于 Pod 请求量，调度器不会将 pod 调度到这个节点。</p>
+<p><strong>调度器并不关注节点上面资源在当前时间的实际使用量，而只关心节点上面部署的所有 Pod 的声明式资源请求量之和</strong>，
+即使已部署的 Pod 资源实际使用量远远小于请求量，也不会使用基于实际使用量作为调度算法的计算指标参数，
+因为这样会破坏 Kubernetes 为已部署的 Pod 提供足够资源的声明式保证。</p>
+<hr>
+<h2 id="最佳实践">最佳实践</h2>
+<blockquote>
+<p>单独为每个容器设置 requests 和 limits。</p>
+</blockquote>
+<p>通过容器在监控中的各项指标，结合业务场景估算出 CPU 和内存的 <strong>最小使用量 (min)</strong> 和 <strong>最大使用量 (max)</strong>, 最小使用量指标的意义在于，
+<strong>避免实际资源使用量远远高于资源请求量，导致 Pod 更有可能从节点被驱逐</strong>。</p>
+<p><a href="https://github.com/robusta-dev/krr">这里有个工具</a>，可以根据历史 Prometheus 的监控数据给出 CPU 和内存资源请求量的建议。</p>
+<h3 id="cpu-密集型">CPU 密集型</h3>
+<ul>
+<li>requests: 直接使用 CPU 和内存的最小使用量 (min)，避免资源不足时导致的性能下降、或者引发 Pod 数量的自动扩容</li>
+<li>limits: 直接使用 CPU 和内存的最大使用量 (max)</li>
+</ul>
+<h3 id="io-密集型">IO 密集型</h3>
+<p>大多数互联网应用都属于 IO 密集型场景。</p>
+<h4 id="requests">requests</h4>
+<ul>
+<li>CPU : 保持在较低水平 ( &lt;= 1 )</li>
+<li>内存 : 直接使用内存的最小使用量 (min)</li>
+</ul>
+<p>这样可以使 Pod 有更多机会被调度，同时，面对突发性的负载，容器可以使用限制之内的所有闲置 CPU 资源。</p>
+<h4 id="limits">limits</h4>
+<ul>
+<li>CPU : 直接使用 CPU 和内存的最大使用量 (max)</li>
+<li>内存 : 直接使用内存的最大使用量 (max)</li>
+</ul>
+<p>这样即使出现突发性的负载，CPU 和内存也不会超出限制使用。</p>
+<h3 id="不同的观点">不同的观点</h3>
+<p><a href="https://home.robusta.dev/blog/stop-using-cpu-limits">这里有篇文章</a> 和笔者的观点不同，感兴趣的读者可以看看。</p>
+<h2 id="潜在问题">潜在问题</h2>
+<p>将 CPU 的资源限制量 limits 设置为 1, 并不是说主机只会暴露 1 个固定的 CPU 给容器使用, 也就是说容器可以访问宿主机的所有 CPU, 并且使用它们来执行任务，
+容器本身并不会对 CPU 进行虚拟化。以 Docker 为例来说，Docker 使用 cgroups 来管理和限制 CPU 使用，确保单个容器使用 CPU 资源量不超过对应的限制 (通过 &ndash;cpus, &ndash;cpu-shares 参数指定的)。</p>
+<p><strong>CPU limits 限制的只是容器使用 CPU 的时间片</strong>，假设一个 limits = 1 的容器运行在一个 64 核的节点上，容器进行并不是运行在一个固定的 CPU 核上面，
+不同的时间点，容器依然会运行在不同的 CPU 核上面，但是使用的 CPU 总时间最多不会超过总的 CPU 资源 (64 核) 的 1/64, 也就是 1 个 CPU 核。</p>
+<blockquote>
+<p>64 核 *  1/64 = 1 核</p>
+</blockquote>
+<p>单纯从资源利用的角度来看，CPU 的这种使用方式非常高效，也满足资源的声明式保证，但是如果应用本身强依赖具体的运行环境，可能就可能产生很多问题，例如之前的文章中提到的 <a href="https://dbwu.tech/posts/golang_automaxprocs/">Go 线程数量问题</a>。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-resource-requests-and-limits?hl=en">Kubernetes best practices: Resource requests and limits</a></li>
+<li><a href="https://github.com/kubernetes/design-proposals-archive/tree/main/resource-management">kubernetes/design-proposals-archive/resource-management</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/policy/resource-quotas/">kubernetes 资源配额</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/configuration/manage-resources-containers/">为 Pod 和容器管理资源</a></li>
+<li><a href="https://cloud.google.com/architecture/best-practices-for-running-cost-effective-kubernetes-applications-on-gke?hl=zh-cn#use_container-native_load_balancing_through_ingress">在 GKE 上运行费用经过优化的 Kubernetes 应用的最佳做法</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/cdn/"><i class="fa fa-chevron-circle-left"></i> CDN 原理</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/what_is_cloudnative/">云原生和边缘计算简介 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 应用最佳实践 - 资源请求和限制"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -526,6 +526,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - 资源请求和限制</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/requests_and_limits/</link>
+       <pubDate>Wed, 01 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/requests_and_limits/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>CDN 原理</title>
        <link>https://dbwu.tech/posts/cdn/</link>
        <pubDate>Tue, 28 Feb 2023 00:00:00 +0000</pubDate>
