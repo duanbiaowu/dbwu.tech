@@ -135,7 +135,7 @@
 <blockquote>
 <p>无脑定需求 + 不断改需求 + 疯狂赶进度 + 开发人员长期被动当工具人 = ? ? ?</p>
 </blockquote>
-<p><img src="../../images/optimize/redis_0.png" alt="人生可真够操蛋的"></p>
+<p><img src="https://dbwu.tech/images/optimize/redis_0.png" alt="人生可真够操蛋的"></p>
 <p>吐槽归吐槽，这些代码唯一的技术价值就是给优化工作让出了很大的空间，笔者在匆忙间给自己定下了九月份的 OKR: <strong>接手的维护阶段的项目总体资源优化 30%</strong>。</p>
 <h2 id="概述">概述</h2>
 <p>因为要优化的项目都属于 IO 密集型，所以主要的工作重心还是在存储、IO 的相关优化上面，本文主要讲解一下优化过程中和 Redis 相关的部分，
@@ -149,10 +149,10 @@
 <h2 id="确定目标">确定目标</h2>
 <p>可以根据监控系统的各项指标，来确定具体的优化接口和代码，笔者通常会查看 Redis Server 总体的监控和负载情况，然后再分析具体的性能瓶颈和原因，
 这里贴几张常用的性能排查指标图。</p>
-<p><img src="../../images/optimize/redis_1.png" alt="Redis 性能指标概览"></p>
-<p><img src="../../images/optimize/redis_2.png" alt="Redis 慢请求"></p>
-<p><img src="../../images/optimize/redis_3.png" alt="Redis key 命中率"></p>
-<p><img src="../../images/optimize/redis_4.png" alt="Redis 热 key 大 key"></p>
+<p><img src="https://dbwu.tech/images/optimize/redis_1.png" alt="Redis 性能指标概览"></p>
+<p><img src="https://dbwu.tech/images/optimize/redis_2.png" alt="Redis 慢请求"></p>
+<p><img src="https://dbwu.tech/images/optimize/redis_3.png" alt="Redis key 命中率"></p>
+<p><img src="https://dbwu.tech/images/optimize/redis_4.png" alt="Redis 热 key 大 key"></p>
 <p>有了上述相关指标数据，我们可以根据 ROI 原则来计算接口的 “优化收益比”，确定要优化的具体接口，然后进行任务拆分、优先级排序、日程确定，
 最后通过在线项目管理工具同步到产品和业务方。</p>
 <p>为了简洁和统一，下文中提到到 <strong>客户端</strong> 包括 APP 客户端和 Web 前端。</p>
@@ -178,7 +178,7 @@
 <p>这类应用场景的典型特征是每个用户只需要一个 bit 的标识位，也就是典型的 bitmap 类问题，解决方案也很简单，使用 Redis 内置的 bitmaps 数据结构即可。</p>
 <p><strong>注意</strong>: Redis 中的 bitmaps 最大支持数值为 <code>2^32</code>, 这里假设以用户 ID 作为标识字段，如果用户 ID 大于这个 <code>2^32</code>, 就无法存储了，如何解决这个问题呢？
 只需要稍微变通一下，使用 <code>ID / (2 ^ 32)</code> 的值作为 bucket 桶编号, 然后拼接具体的业务 key 就可以了。</p>
-<p><img src="../../images/optimize/redis_5.png" alt="bucket 对应关系"></p>
+<p><img src="https://dbwu.tech/images/optimize/redis_5.png" alt="bucket 对应关系"></p>
 <p>笔者主要优化了以下几个简单的场景:</p>
 <ul>
 <li>用户是否点赞过、收藏过、分享过某个视频/文章</li>
