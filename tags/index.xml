@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Mon, 07 Aug 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Thu, 07 Sep 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>降本增效 - 应用优化 (一)</title>
+       <link>https://dbwu.tech/posts/optimize/redis_application_scenarios/</link>
+       <pubDate>Thu, 07 Sep 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/optimize/redis_application_scenarios/</guid>
+       <description></description>
+     </item>
    
      <item>
        <title>业务规则引擎演变过程简述</title>

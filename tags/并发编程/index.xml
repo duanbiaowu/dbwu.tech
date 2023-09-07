@@ -13,6 +13,15 @@
    
    
      <item>
+       <title>降本增效 - 应用优化 (一)</title>
+       <link>https://dbwu.tech/posts/optimize/redis_application_scenarios/</link>
+       <pubDate>Thu, 07 Sep 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/optimize/redis_application_scenarios/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>业务规则引擎演变过程简述</title>
        <link>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</link>
        <pubDate>Mon, 07 Aug 2023 00:00:00 +0000</pubDate>

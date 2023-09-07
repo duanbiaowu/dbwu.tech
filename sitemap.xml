@@ -3,18 +3,27 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2023-08-07T00:00:00+00:00</lastmod>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2023-08-07T00:00:00+00:00</lastmod>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</loc>
-    <lastmod>2023-08-07T00:00:00+00:00</lastmod>
+    <loc>https://dbwu.tech/tags/redis/</loc>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91/</loc>
-    <lastmod>2023-08-07T00:00:00+00:00</lastmod>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/%E5%BA%94%E7%94%A8%E4%BC%98%E5%8C%96/</loc>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/</loc>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/optimize/redis_application_scenarios/</loc>
+    <lastmod>2023-09-07T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</loc>
     <lastmod>2023-08-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>

@@ -1,0 +1,317 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>降本增效 - 应用优化 (一) - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="降本增效 - 应用优化 (一)" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/optimize/redis_application_scenarios/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-09-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-09-07T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="降本增效 - 应用优化 (一)"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>降本增效 - 应用优化 (一)</h1>
+
+    
+      
+<p>
+    <span>2023-09-07</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/redis">Redis</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91">业务逻辑</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E5%BA%94%E7%94%A8%E4%BC%98%E5%8C%96">应用优化</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="背景">背景</h2>
+<p>笔者所在公司八月初拥抱了变化，作为 “幸存者”，自然需要接手一大波前人留下的项目，降本增效的大前提下，为了保住 “狗命”，需要尽可能去多做一些能直接产生价值和收益的工作，
+(<del>毕竟在 优化代码 和 “被优化” 之间只能选一项</del>)。</p>
+<p>最近两周集中优化了一批应用接口，期间被各种 “奇 (shi) 葩 (shan)” 代码刷新了认知，很难想象这是每天一起吃饭吹水的同事写出来的，果然:</p>
+<blockquote>
+<p>无脑定需求 + 不断改需求 + 疯狂赶进度 + 开发人员长期被动当工具人 = ? ? ?</p>
+</blockquote>
+<p><img src="../../images/optimize/redis_0.png" alt="人生可真够操蛋的"></p>
+<p>吐槽归吐槽，这些代码唯一的技术价值就是给优化工作让出了很大的空间，笔者在匆忙间给自己定下了九月份的 OKR: <strong>接手的维护阶段的项目总体资源优化 30%</strong>。</p>
+<h2 id="概述">概述</h2>
+<p>因为要优化的项目都属于 IO 密集型，所以主要的工作重心还是在存储、IO 的相关优化上面，本文主要讲解一下优化过程中和 Redis 相关的部分，
+笔者将业务问题场景进行了问题分类和对应的优化方案，算是对这两周的工作进行一个简单的回顾。</p>
+<h2 id="原则">原则</h2>
+<blockquote>
+<p>优化工作的本质是面向收益编程。</p>
+</blockquote>
+<p>优化越靠近业务应用层，效果越明显，映射到现实中，同样如此，越靠近业务层，绩效越好。千万不要直接闷头开始优化，要知道大多数代码都没有优化的必要，
+牢记 2/8 原则，主要针对 hot path 代码和和明显有性能问题的代码进行优化。</p>
+<h2 id="确定目标">确定目标</h2>
+<p>可以根据监控系统的各项指标，来确定具体的优化接口和代码，笔者通常会查看 Redis Server 总体的监控和负载情况，然后再分析具体的性能瓶颈和原因，
+这里贴几张常用的性能排查指标图。</p>
+<p><img src="../../images/optimize/redis_1.png" alt="Redis 性能指标概览"></p>
+<p><img src="../../images/optimize/redis_2.png" alt="Redis 慢请求"></p>
+<p><img src="../../images/optimize/redis_3.png" alt="Redis key 命中率"></p>
+<p><img src="../../images/optimize/redis_4.png" alt="Redis 热 key 大 key"></p>
+<p>有了上述相关指标数据，我们可以根据 ROI 原则来计算接口的 “优化收益比”，确定要优化的具体接口，然后进行任务拆分、优先级排序、日程确定，
+最后通过在线项目管理工具同步到产品和业务方。</p>
+<p>为了简洁和统一，下文中提到到 <strong>客户端</strong> 包括 APP 客户端和 Web 前端。</p>
+<hr>
+<h2 id="零请求">零请求</h2>
+<p>优化的最高级形式就是客户端在本地进行数据处理，不发出任何请求到服务端，这种业务场景下，服务端的资源消耗为 0, 所以能在客户端处理的数据，就不要请求到服务端，
+下面是笔者总结的四种可以直接在客户端处理的数据场景。</p>
+<h3 id="本地缓存">本地缓存</h3>
+<p>客户端直接将实时性要求不高的数据缓存到本地，用户查看时直接取出数据渲染，同时异步去接口加载。</p>
+<h3 id="数据聚合和排序">数据聚合和排序</h3>
+<ul>
+<li>如果对已有的数据按照不同条件排序时，接口数据量不会发生变化，直接在本地排序即可</li>
+<li>同理，对于聚合类数据操作，只要数量不会发生变化，也可以直接在本地进行</li>
+</ul>
+<h3 id="数据搜索和过滤">数据搜索和过滤</h3>
+<p>接口数据量较少的情况下，可以一次性全部返回所有数据，然后直接在客户端本地进行数据搜索和过滤功能，而不是通过请求 + 参数的方式让服务端处理。</p>
+<h3 id="数据格式化">数据格式化</h3>
+<ul>
+<li>后台配置的字典数据一次性全部返回，客户端可以根据具体的 key 进行区分，然后填充选项卡、下拉列表等 UI 视图</li>
+<li>日期数据直接返回到客户端，由客户端做具体格式化处理，服务端返回携带时区的标准数据即可，例如 <code>2022-03-29T16:05:14.000</code></li>
+</ul>
+<h2 id="单个状态值">单个状态值</h2>
+<p>这类应用场景的典型特征是每个用户只需要一个 bit 的标识位，也就是典型的 bitmap 类问题，解决方案也很简单，使用 Redis 内置的 bitmaps 数据结构即可。</p>
+<p><strong>注意</strong>: Redis 中的 bitmaps 最大支持数值为 <code>2^32</code>, 这里假设以用户 ID 作为标识字段，如果用户 ID 大于这个 <code>2^32</code>, 就无法存储了，如何解决这个问题呢？
+只需要稍微变通一下，使用 <code>ID / (2 ^ 32)</code> 的值作为 bucket 桶编号, 然后拼接具体的业务 key 就可以了。</p>
+<p><img src="../../images/optimize/redis_5.png" alt="bucket 对应关系"></p>
+<p>笔者主要优化了以下几个简单的场景:</p>
+<ul>
+<li>用户是否点赞过、收藏过、分享过某个视频/文章</li>
+<li>每日签到</li>
+<li>青少年每日防沉迷提醒</li>
+</ul>
+<hr>
+<h2 id="数据组合">数据组合</h2>
+<p>这类应用场景的典型特征是单个接口内部需要跨多个服务进行调用，最后组装数据统一返回，笔者的优化方法为:</p>
+<ol>
+<li>按照业务最小维度缓存单条数据，Redis 缓存一份，对于热点数据，本地 (容器) 也缓存一份</li>
+<li>查询时分别从本地查询单条缓存数据，从 Redis 批量查询数据 (使用 pipeline)</li>
+<li>根据目标结果集和缓存数据集进行差异比较，计算出未命中的数据</li>
+<li>从存储 (一般指数据库) 查询未命中的数据，并且回填到缓存中</li>
+</ol>
+<p>笔者主要优化了个性化推荐信息流场景:</p>
+<ol>
+<li>根据当前用户信息从推荐服务获取到具体的内容 ID 列表(内容可能是视频/文章等)</li>
+<li>根据内容 ID 列表依次从缓存和存储中获取各项业务数据</li>
+<li>最后将数据组装后返回到接口</li>
+</ol>
+<h2 id="编码解码">编码/解码</h2>
+<p>如果缓存数据是字符串类型，将数据存储到 Redis 之前，需要进行编码操作，常规的做法是编码为 JSON 字符串，这样从 Redis 读取到缓存的字符串数据后，
+如果数据不需要被读取并且不需要被修改，那么就可以直接将数据输出接口，这样可以节省 2 次 CPU 开销:</p>
+<ol>
+<li>将缓存的字符串数据解码为具体对象</li>
+<li>将具体对象再编码为字符串后输出接口</li>
+</ol>
+<h2 id="缓存-key-的命名">缓存 key 的命名</h2>
+<p>在保证辨识度的前提下，key 的长度越短越好，不仅可以节省存储，还可以提升查询速度。</p>
+<p>作为用户资料数据的缓存 key，<code>user_123456_profile</code> 明显由于 <code>user_profile_123456</code>，因为前者的辨识度更高，查询速度更快，
+在这个基础上可以对 key 的长度再次优化，例如优化为 <code>u_123456_prof</code>。</p>
+<hr>
+<h2 id="时间区间">时间区间</h2>
+<p>这类应用场景的典型特征是不同时间段内的数据组合优化，项目中类似场景之前的做法是使用筛选条件中的 (开始时间 + 结束时间 + 业务 key) 进行拼接作为缓存数据 key,
+稍微思考后会发现这其中有很大的潜在问题: <strong>不同的两个日期组合结果集合是一个庞大的数字，除了重复数据导致的巨量内存浪费外，还会造成很大的安全隐患</strong>。</p>
+<p>下面举个浪费内存的例子，不同用户查询的时间区间是重叠的:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>- 用户A 2023-01-01 ~ 2023-01-10
+</span></span><span style="display:flex;"><span>- 用户B 2023-01-02 ~ 2023-01-05
+</span></span><span style="display:flex;"><span>- 用户C 2023-01-05 ~ 2023-01-08
+</span></span></code></pre></div><p>通过示例可以看到，虽然有三个用户在查询，但是用户 B 和 用户 C 查询的数据都在 用户 A 的结果集内，也就造成了数据重估存储，白白浪费了内存。</p>
+<p>笔者的优化方案为:</p>
+<ol>
+<li>根据更小的粒度来缓存 (项目中以天为单位)，这样单个业务场景一年最多 365 个 key</li>
+<li>控制时间范围的上限，不能超过 31 天</li>
+<li>根据请求参数批量从 Redis 读取缓存数据</li>
+<li>将读取到的缓存数据组装完成后输出接口</li>
+</ol>
+<p><strong>注意</strong>: 如果项目的数据量很大，就需要调整时间粒度，并且进行数据异步批处理优化，但是整体的思路是不变的。</p>
+<h2 id="读写分离">读写分离</h2>
+<p>这类应用场景的典型特征是只有一端固定的数据生产者，例如:</p>
+<ul>
+<li>运营角色在管理后台完成整个 CMS 网站的内容</li>
+<li>定时任务从第三方同步数据，完成后展示给所有用户</li>
+</ul>
+<p>这种场景最容易优化，启动一个后台线程，定时刷新数据到缓存即可，这里不在赘述了 。</p>
+<h2 id="小结">小结</h2>
+<p>本文提到的大多数问题都是因为缺乏对 Redis 的全面了解，直接把 Redis 当成 MemCache 类型的纯 K-V 来应用，也许是因为大家都在忙着背八股？</p>
+<h2 id="写在最后">写在最后</h2>
+<p>希望大家都能有班上，有钱赚。</p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/system_design/logcial_rule_correlate/"><i class="fa fa-chevron-circle-left"></i> 业务规则引擎演变过程简述</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="降本增效 - 应用优化 (一)"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
