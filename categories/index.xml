@@ -534,6 +534,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - 探针</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/probe/</link>
+       <pubDate>Fri, 03 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/probe/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes 应用最佳实践 - 资源请求和限制</title>
        <link>https://dbwu.tech/posts/k8s/best_practice/requests_and_limits/</link>
        <pubDate>Wed, 01 Mar 2023 00:00:00 +0000</pubDate>

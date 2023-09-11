@@ -1,0 +1,276 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 应用最佳实践 - 探针 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - 探针" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/probe/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-03T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-03T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - 探针"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 应用最佳实践 - 探针</h1>
+
+    
+      
+<p>
+    <span>2023-03-03</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="探针类型">探针类型</h2>
+<p>Kubernetes 存在 3 种类型的探针。</p>
+<h3 id="启动探针">启动探针</h3>
+<p><strong>Startup Probe (启动探针)</strong> 用于检测容器是否已经完成所有初始化操作。</p>
+<h3 id="存活探针">存活探针</h3>
+<p><strong>Liveness Probe (存活探针)</strong> 用于检测容器内部应用是否在运行，可以为单个 Pod 中的所有容器单独设置，存活探针会监控容器的健康状态，如果容器发生故障或崩溃，存活探针会判断容器不再存活，容器会被重启或替换。</p>
+<p>一旦启动探针成功返回一次，存活探针就开始接管对容器对监控。</p>
+<p><img src="https://dbwu.tech/images/k8s/google-kubernetes-probe-livenessae14.gif" alt="图片来源: https://cloud.google.com/"></p>
+<h3 id="就绪探针">就绪探针</h3>
+<p><strong>Readiness Probe (就绪探针)</strong> 用于检测容器是否已经准备好接收流量，应用启动需要一系列初始化操作，就绪探针可以确保容器就绪前不会接收任何流量。
+如果就绪检测失败，Pod 就不会再收到任何流量。</p>
+<p><img src="https://dbwu.tech/images/k8s/google-kubernetes-probe-readiness6ktf.gif" alt="图片来源: https://cloud.google.com/"></p>
+<h2 id="检测方式">检测方式</h2>
+<h3 id="http-get">HTTP GET</h3>
+<p>针对容器指定 URL 执行 HTTP 请求，如果响应码 Status Code 是 2xx 或者 3xx, 将应用标记为正常运行。否则将应用标记为不健康。</p>
+<h3 id="tcp">TCP</h3>
+<p>针对容器指定端口号发起 TCP 连接，如果连接成功，将应用标记为正常运行。否则将应用标记为不健康。</p>
+<p>该方法主要针对 HTTP 探针或命令探针无法运行的情况，例如 gRPC 或 FTP 等协议。</p>
+<h3 id="exec">Exec</h3>
+<p>在容器内执行任意命令 (例如文件检查、网络检查)，并检查命令的退出状态码，如果状态码为 0，将应用标记为正常运行。否则将应用标记为不健康。</p>
+<h2 id="重要参数">重要参数</h2>
+<h3 id="initialdelayseconds">initialDelaySeconds</h3>
+<p>表示容器启动后，等待多少时间之后再启动各类探针。</p>
+<h3 id="periodseconds">periodSeconds</h3>
+<p>表示探针执行检测的间隔时间</p>
+<h3 id="timeoutseconds">timeoutSeconds</h3>
+<p>表示探针执行检测的超时后的等待时间</p>
+<h3 id="successthreshold">successThreshold</h3>
+<p>表示探针执行检测后，如果容器状态想被标记为健康，中间至少需要经过的成功检测数量</p>
+<h3 id="failurethreshold">failureThreshold</h3>
+<p>表示探针执行检测时，连续失败多少次，容器状态就会被确认不健康</p>
+<h2 id="最佳实践">最佳实践</h2>
+<h3 id="启动探针-1">启动探针</h3>
+<p><strong>如果应用的启动时间过长</strong>，应该设置一个启动探针，并且将 initialDelaySeconds 参数的值设置为大于应用的启动时间，应用启动时，
+不应该因为数据库等依赖项尚未就绪而崩溃，例如应该在连接失败后继续尝试重新连接，直到连接成功或者重试次数超出最大限制。</p>
+<blockquote>
+<p>initialDelaySeconds 参数的取值可以参考监控中的应用启动时间 P99 分位值。</p>
+</blockquote>
+<p>启动探针常用业务场景:</p>
+<ul>
+<li>数据库连接池初始化完成</li>
+<li>缓存连接池初始化完成</li>
+<li>热点数据缓存在本地初始化完成</li>
+</ul>
+<p>还有一种做法是，直接将 initialDelaySeconds 参数值设置为大于应用启动的估计时长，不使用启动探针。</p>
+<h3 id="存活探针-1">存活探针</h3>
+<p><strong>如果应用在发生鼓掌时无法自动结束退出</strong> (例如遇到了死锁)，应该设置一个存活探针，并指定 restartPolicy 为 &ldquo;Always&rdquo; 或 &ldquo;OnFailure&rdquo;, 这样该应用会被重启。</p>
+<h3 id="就绪探针-1">就绪探针</h3>
+<p><strong>如果需要应用在完成初始化工作之后才能开始接收流量</strong>，应该设置一个就绪探针，这样可以避免流量进入到错误到 Pod 中。</p>
+<p>就绪探针可能与存活探针相同，但是 <strong>就绪探针表示</strong>  Pod 在初始化阶段不接收任何流量，并且只有就绪探针返回成功后再开始接收流量，
+虽然使用启动探针也可以完成同样的功能，但是就绪探针可以区分应用位于 “正在启动中” 和 “已经完成启动，正在当前状态是正常｜失败” 两个不同的阶段中的哪一个。</p>
+<h2 id="小结">小结</h2>
+<p><strong>就绪探针和存活探针可以同时用于同一 Pod，这样可以确保流量无法到达未准备好的 Pod，并且在探针检测失败时重启</strong>。</p>
+<p><strong>就绪探针和存活探针应该保持独立 (不使用相同的检测逻辑)</strong>，不应该依赖于数据库的状态或者第三方接口返回的结果值，避免发生故障雪崩 (例如数据库状态不稳定可能导致 Pod 被标记为不健康)，
+也不要将 Pod 的重启、删除等逻辑混入探针逻辑，让 Kubernetes 自动完成这些操作。</p>
+<p><strong>探针应该保持轻量</strong>，运行时不需要太多的资源和时间，大对数情况下，探针执行检测的频率相对较高，并且必须在 1s 之内返回结果。
+探针中不需要实现重试循环，因为探针的失败阙值是可以通过参数配置的。</p>
+<blockquote>
+<p>定义期望的状态，剩下的交给 Kubernetes 来完成。</p>
+</blockquote>
+<h2 id="其他观点">其他观点</h2>
+<p><img src="https://dbwu.tech/images/k8s/k8s-liveness-probes-are-dangerous.png" alt="不要使用存活指针"></p>
+<p><a href="https://blog.fleeto.us/post/k8s-liveness-probes-are-dangerous/">这篇文章</a> 的建议是为了避免级联故障，不要使用存活指针，而是应该保证应用代码的健壮性，不要出现死锁等卡死容器的 Bug。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/">配置存活、就绪和启动探针</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-setting-up-health-checks-with-readiness-and-liveness-probes">Kubernetes best practices: Setting up health checks with readiness and liveness probes</a></li>
+<li><a href="https://developers.redhat.com/blog/2020/11/10/you-probably-need-liveness-and-readiness-probes">liveness and readiness probes</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/tasks/debug/debug-cluster/monitor-node-health/">节点健康监测</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/pods/pod-lifecycle/#container-probes">容器探针</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/best_practice/requests_and_limits/"><i class="fa fa-chevron-circle-left"></i> Kubernetes 应用最佳实践 - 资源请求和限制</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/what_is_cloudnative/">云原生和边缘计算简介 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 应用最佳实践 - 探针"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
