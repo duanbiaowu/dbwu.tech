@@ -123,7 +123,7 @@
     
 
     <h2 id="探针类型">探针类型</h2>
-<p>Kubernetes 存在 3 种类型的探针。</p>
+<p>Kubernetes 存在 3 种类型的探针，当探针检测失败时容器会被重启，如果容器在多次 (次数通过配置参数决定) 重启后仍然无法通过探针检测，容器状态将会被设置为 CrashLoopBackOff, 这意味着容器处于崩溃循环状态，无法成功启动和运行。</p>
 <h3 id="启动探针">启动探针</h3>
 <p><strong>Startup Probe (启动探针)</strong> 用于检测容器是否已经完成所有初始化操作。</p>
 <h3 id="存活探针">存活探针</h3>
@@ -144,15 +144,16 @@
 <p>在容器内执行任意命令 (例如文件检查、网络检查)，并检查命令的退出状态码，如果状态码为 0，将应用标记为正常运行。否则将应用标记为不健康。</p>
 <h2 id="重要参数">重要参数</h2>
 <h3 id="initialdelayseconds">initialDelaySeconds</h3>
-<p>表示容器启动后，等待多少时间之后再启动各类探针。</p>
+<p>表示容器启动后，等待多少时间之后再启动各类探针</p>
 <h3 id="periodseconds">periodSeconds</h3>
 <p>表示探针执行检测的间隔时间</p>
 <h3 id="timeoutseconds">timeoutSeconds</h3>
 <p>表示探针执行检测的超时后的等待时间</p>
 <h3 id="successthreshold">successThreshold</h3>
-<p>表示探针执行检测后，如果容器状态想被标记为健康，中间至少需要经过的成功检测数量</p>
+<p>表示探针执行检测失败之后，如果容器状态想再次被标记为健康，至少需要经过多少次连续成功检测</p>
 <h3 id="failurethreshold">failureThreshold</h3>
 <p>表示探针执行检测时，连续失败多少次，容器状态就会被确认不健康</p>
+<hr>
 <h2 id="最佳实践">最佳实践</h2>
 <h3 id="启动探针-1">启动探针</h3>
 <p><strong>如果应用的启动时间过长</strong>，应该设置一个启动探针，并且将 initialDelaySeconds 参数的值设置为大于应用的启动时间，应用启动时，

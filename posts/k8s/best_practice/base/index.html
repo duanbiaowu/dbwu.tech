@@ -170,7 +170,7 @@
 <ol>
 <li><strong>首先保证镜像仓库的高可用和访问速度，这是重中之重</strong>，如果这一点做到了，那么可以使用 latest 标签并将镜像拉取策略 imagePullPolicy 设置为 Always</li>
 <li>对于测试环境，直接使用 latest 标签并将 imagePullPolicy 设置为 Always, 配置 CI 构建脚本在打包应用镜像时，除了 latest 标签镜像外，再额外打包一个以 <code>git commit</code> 哈希值作为标签的镜像 (回滚时专用镜像)</li>
-<li>对于生产环境，使用应用迭代版本号作为镜像的标签</li>
+<li>对于生产环境，使用应用迭代语义化版本号作为镜像的标签 (例如 v1.2.3-prod)</li>
 </ol>
 <h3 id="使用多维度而不是单维度的标签">使用多维度而不是单维度的标签</h3>
 <table>
@@ -190,7 +190,7 @@
 <tr>
 <td>发布环境</td>
 <td>environment</td>
-<td>&ldquo;dev&rdquo;, &ldquo;qa&rdquo;, &ldquo;production&rdquo;</td>
+<td>&ldquo;dev&rdquo;, &ldquo;qa&rdquo;, &ldquo;prod&rdquo;</td>
 </tr>
 <tr>
 <td>应用类型</td>
