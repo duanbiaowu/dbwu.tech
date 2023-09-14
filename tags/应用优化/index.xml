@@ -472,6 +472,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - init 容器和事件函数</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/init_container/</link>
+       <pubDate>Wed, 15 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/init_container/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>为什么 recover 必须在 defer 中调用？</title>
        <link>https://dbwu.tech/posts/golang_panic_recover/</link>
        <pubDate>Mon, 13 Mar 2023 00:00:00 +0000</pubDate>
@@ -625,7 +634,7 @@
      </item>
    
      <item>
-       <title>Go 性能分析工具从入门到精通</title>
+       <title>Go pprof 从入门到精通</title>
        <link>https://dbwu.tech/posts/golang_pprof/</link>
        <pubDate>Thu, 16 Feb 2023 00:00:00 +0000</pubDate>
        
