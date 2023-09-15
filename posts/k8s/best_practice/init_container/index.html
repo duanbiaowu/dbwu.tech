@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>Kubernetes 应用最佳实践 - init 容器和事件函数 - 蛮荆</title>
+  <title>Kubernetes 应用最佳实践 - init 容器和钩子函数 - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - init 容器和事件函数" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - init 容器和钩子函数" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/init_container/" /><meta property="article:section" content="posts" />
@@ -16,7 +16,7 @@
 <meta property="article:modified_time" content="2023-03-15T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Kubernetes 应用最佳实践 - init 容器和事件函数"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - init 容器和钩子函数"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.113.0">
@@ -103,7 +103,7 @@
 
 <article>
 
-    <h1>Kubernetes 应用最佳实践 - init 容器和事件函数</h1>
+    <h1>Kubernetes 应用最佳实践 - init 容器和钩子函数</h1>
 
     
       
@@ -127,17 +127,18 @@
 
     <h2 id="init-容器">init 容器</h2>
 <blockquote>
-<p>init 容器在 Pod 中的应用容器启动之前运行，每个 Pod 中可以有任意个 init 容器。</p>
+<p>init 容器是一种特殊的容器，在 Pod 中的其他容器启动之前运行，单个 Pod 中可以有任意数量的 init 容器。</p>
 </blockquote>
-<p><strong>所有 init 容器按顺序逐个执行，当所有 init 容器执行 「成功」后，才会去启动应用容器</strong>。如果其中一个 init 容器失败，整个 Pod 将根据 restartPolicy 选择是否重新启动，
-如果需要重新启动（restartPolicy 配置不等于 Never），所有的 init 容器容器将再次重新运行，如果不需要重新启动（restartPolicy 配置等于 Never），Pod 的状态被标记为失败。</p>
-<p>也就是说，可以利用 init 容器来完成应用的必须初始化操作，例如定义 3 个 init 容器分别来完成:</p>
+<p><strong>Pod 中所有 init 容器按顺序逐个执行，当所有 init 容器执行 「成功」后，才会启动其他容器</strong>。</p>
+<p>如果其中一个 init 容器失败，Pod 将根据 restartPolicy 选择是否重新启动，如果需要重新启动（restartPolicy 配置不等于 Never），
+所有的 init 容器将再次重新运行，如果不需要重新启动（restartPolicy 配置等于 Never），Pod 的状态被标记为失败。</p>
+<p>也就是说，可以利用 init 容器来完成应用的必要初始化操作，例如定义 3 个 init 容器分别来完成:</p>
 <ol>
-<li>数据库连接池初始化完成</li>
-<li>缓存连接池初始化完成</li>
-<li>热点数据缓存在本地初始化完成</li>
+<li>数据库连接池初始化</li>
+<li>缓存连接池初始化</li>
+<li>热点数据缓存在本地预加载</li>
 </ol>
-<p>这样当 3 个 init 容器执行成功后，应用可以随时接收流量了，反之，如果 3 个 init 容器任意一个出现问题，应用不会启动，确保了流量不会进入到有问题的容器中。</p>
+<p>这样当 3 个 init 容器执行成功后，应用就可以随时接收流量了，反之，如果 3 个 init 容器任意一个出现问题，应用不会启动，这样确保流量不会进入到有问题的容器中。</p>
 <p><img src="https://dbwu.tech/images/k8s/init_and_app_containers_2.png" alt="图片来源: https://livebook.manning.com/book/kubernetes-in-action"></p>
 <h3 id="作用">作用</h3>
 <p><strong>init 容器可以分离逻辑关注点，使容器保持单一用途</strong>。</p>
@@ -155,12 +156,12 @@
 </ul>
 <hr>
 <h2 id="生命周期事件函数">生命周期事件函数</h2>
-<p>Kubernetes 提供了两种事件函数:</p>
+<p>Kubernetes 提供了两种容器事件函数 (钩子函数):</p>
 <ol>
 <li><strong>Post-Start</strong>: 容器启动后调用</li>
 <li><strong>Pre-Stop</strong>  : 容器停止 (Terminated) 前调用</li>
 </ol>
-<p>时间函数与探针的使用方式类似：</p>
+<p>事件函数与探针的使用方式类似：</p>
 <ul>
 <li>执行一个命令</li>
 <li>发送一个 HTTP请求</li>
@@ -178,7 +179,7 @@
 </ul>
 <h2 id="作用域">作用域</h2>
 <ol>
-<li>init 容器的作用域是 Pod (init 容器不支持探针和事件函数)</li>
+<li>init 容器的作用域是 Pod, <strong>同时 init 容器不支持探针和事件函数</strong></li>
 <li>探针的作用域是容器</li>
 <li>Post-Start, Pre-Stop 函数的作用域是容器</li>
 </ol>
@@ -231,7 +232,7 @@
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="Kubernetes 应用最佳实践 - init 容器和事件函数"
+        data-term="Kubernetes 应用最佳实践 - init 容器和钩子函数"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"

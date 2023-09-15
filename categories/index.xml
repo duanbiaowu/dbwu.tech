@@ -471,7 +471,7 @@
      </item>
    
      <item>
-       <title>Kubernetes 应用最佳实践 - init 容器和事件函数</title>
+       <title>Kubernetes 应用最佳实践 - init 容器和钩子函数</title>
        <link>https://dbwu.tech/posts/k8s/best_practice/init_container/</link>
        <pubDate>Wed, 15 Mar 2023 00:00:00 +0000</pubDate>
        
