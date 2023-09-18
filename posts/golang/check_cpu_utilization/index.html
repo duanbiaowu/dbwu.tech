@@ -1,0 +1,711 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Go 语言中如何获取 CPU 利用率 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Go 语言中如何获取 CPU 利用率" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang/check_cpu_utilization/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-09-18T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-09-18T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Go 语言中如何获取 CPU 利用率"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Go 语言中如何获取 CPU 利用率</h1>
+
+    
+      
+<p>
+    <span>2023-09-18</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/golang">Golang</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>Go 语言标准库没有提供获取 CPU 利用率的方法，如果业务开发中需要用到一些服务器性能指标数据，必须由开发者自己实现。</p>
+<p>本文主要介绍在 Linux 中如何获取 CPU 利用率，笔者的示例代码运行环境为 <code>go1.20 linux/amd64</code>。</p>
+<h2 id="命令行工具">命令行工具</h2>
+<p>Linux 中常见的命令如 <code>top</code>、<code>htop</code>、<code>sar</code>, 可以非常方便地获取和显示 CPU 利用率等数据，下面是 <code>top</code> 命令的结果输出。</p>
+<p><img src="https://dbwu.tech/images/golang/top_command.png" alt="top 命令输出"></p>
+<p>我们可以很容易想到，利用 Go 语言标准库中的 <code>exec.Command</code> 方法结合 <code>top</code> 命令，获取 CPU 的利用率，下面是对应的代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;bytes&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;os/exec&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> output bytes.Buffer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cmd := exec.<span style="color:#447fcf">Command</span>(<span style="color:#ed9d13">&#34;top&#34;</span>, <span style="color:#ed9d13">&#34;-b&#34;</span>, <span style="color:#ed9d13">&#34;-n&#34;</span>, <span style="color:#ed9d13">&#34;1&#34;</span>)
+</span></span><span style="display:flex;"><span>	cmd.Stdout = &amp;output
+</span></span><span style="display:flex;"><span>	err := cmd.<span style="color:#447fcf">Run</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;top result: \n%v\n&#34;</span>, output.<span style="color:#447fcf">String</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>执行命令</strong>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>top result:                                                                    
+</span></span><span style="display:flex;"><span>top - 15:07:24 up <span style="color:#3677a9">1</span> day,  1:13,  <span style="color:#3677a9">0</span> users,  load average: 0.00, 0.00, 0.00      
+</span></span><span style="display:flex;"><span>Tasks:  <span style="color:#3677a9">24</span> total,   <span style="color:#3677a9">1</span> running,  <span style="color:#3677a9">23</span> sleeping,   <span style="color:#3677a9">0</span> stopped,   <span style="color:#3677a9">0</span> zombie           
+</span></span><span style="display:flex;"><span>%Cpu(s):  0.1 us,  0.1 sy,  0.0 ni, 99.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+</span></span><span style="display:flex;"><span>KiB Mem :  <span style="color:#3677a9">8056768</span> total,  <span style="color:#3677a9">5245460</span> free,   <span style="color:#3677a9">750332</span> used,  <span style="color:#3677a9">2060976</span> buff/cache    
+</span></span><span style="display:flex;"><span>KiB Swap:  <span style="color:#3677a9">2097152</span> total,  <span style="color:#3677a9">2097152</span> free,        <span style="color:#3677a9">0</span> used.  <span style="color:#3677a9">7003500</span> avail Mem     
+</span></span><span style="display:flex;"><span>                                                                               
+</span></span><span style="display:flex;"><span>  PID USER        PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND    
+</span></span><span style="display:flex;"><span>    <span style="color:#3677a9">1</span> root        <span style="color:#3677a9">20</span>   <span style="color:#3677a9">0</span>    <span style="color:#3677a9">2324</span>   <span style="color:#3677a9">1708</span>   <span style="color:#3677a9">1600</span> S   0.0  0.0   0:01.13 init(Ubunt+
+</span></span><span style="display:flex;"><span>    <span style="color:#3677a9">4</span> root        <span style="color:#3677a9">20</span>   <span style="color:#3677a9">0</span>    <span style="color:#3677a9">2948</span>    <span style="color:#3677a9">308</span>     <span style="color:#3677a9">68</span> S   0.0  0.0   6:34.42 init       
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">20997</span> someone     <span style="color:#3677a9">20</span>   <span style="color:#3677a9">0</span>   <span style="color:#3677a9">19680</span>   <span style="color:#3677a9">9512</span>   <span style="color:#3677a9">5420</span> S   0.0  0.1   0:00.30 zsh        
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">29176</span> someone     <span style="color:#3677a9">20</span>   <span style="color:#3677a9">0</span> <span style="color:#3677a9">1610576</span>  <span style="color:#3677a9">21080</span>   <span style="color:#3677a9">9272</span> S   0.0  0.3   0:00.09 go         
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">29268</span> someone     <span style="color:#3677a9">20</span>   <span style="color:#3677a9">0</span>  <span style="color:#3677a9">711488</span>   <span style="color:#3677a9">3008</span>    <span style="color:#3677a9">872</span> S   0.0  0.0   0:00.00 main       
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">29273</span> someone     <span style="color:#3677a9">20</span>   <span style="color:#3677a9">0</span>   <span style="color:#3677a9">29444</span>   <span style="color:#3677a9">3656</span>   <span style="color:#3677a9">3228</span> R   0.0  0.0   0:00.00 top     
+</span></span></code></pre></div><p>从输出的结果中可以看到，虽然上面的方法可以获取到 CPU 相关数据，但是输出结果仅仅只是便于人眼阅读，如果我们希望将相关数据值单独取出来在程序中使用，
+就需要基于结果字符串进行解析操作，这个过程就会非常麻烦而且容易出错，所以我们需要一个更好的方案。</p>
+<hr>
+<h2 id="cpu-数据相关文件">CPU 数据相关文件</h2>
+<p>在 <a href="https://dbwu.tech/posts/linux_everything_is_a_file/">Linux 一切皆文件</a> 一文中提到，Linux 将资源抽象为文件表示，那么和 CPU 相关的数据是否也会被抽象为文件，进而保存在某个文件中呢？</p>
+<p>通过查找 Linux 开发在线文档，可以发现和 CPU 相关的数据主要分布于 <code>/proc</code> 目录下的几个文件中:</p>
+<h3 id="procstat">/proc/stat</h3>
+<p>提供了内核统计数据，当然也包括了 CPU 的数据。</p>
+<h3 id="proccpuinfo">/proc/cpuinfo</h3>
+<p>提供了有关 CPU 的详细数据，包括 CPU 型号、核心数量等。</p>
+<h3 id="procpidstat">/proc/&lt;PID&gt;/stat</h3>
+<p>和 <code>/proc/stat</code> 提供的数据类似，但是数据对应的是单个进程。</p>
+<h2 id="procstat-1">/proc/stat</h2>
+<p>因为我们希望看到系统全局 CPU 利用率，所以这里选择基于 <code>/proc/stat</code> 文件中的内容进行解析来获取数据。</p>
+<p>首先来看下 <code>/proc/stat</code> 的文件内容:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ cat /proc/stat
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 笔者的测试机器输出如下</span>
+</span></span><span style="display:flex;"><span>cpu  <span style="color:#3677a9">40493</span> <span style="color:#3677a9">6954</span> <span style="color:#3677a9">65486</span> <span style="color:#3677a9">76990150</span> <span style="color:#3677a9">9113</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">25483</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>cpu0 <span style="color:#3677a9">5181</span> <span style="color:#3677a9">995</span> <span style="color:#3677a9">9564</span> <span style="color:#3677a9">9615416</span> <span style="color:#3677a9">1201</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">20111</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>cpu7 <span style="color:#3677a9">4382</span> <span style="color:#3677a9">609</span> <span style="color:#3677a9">7231</span> <span style="color:#3677a9">9627991</span> <span style="color:#3677a9">626</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">203</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>intr <span style="color:#3677a9">11137544</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">1</span> <span style="color:#3677a9">1310</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">181</span> <span style="color:#3677a9">1</span> <span style="color:#3677a9">1</span> <span style="color:#3677a9">10</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">3</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">3</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">77853</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">1408</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">1408</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> 
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> 
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> 
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> 
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>ctxt <span style="color:#3677a9">37107675</span>
+</span></span><span style="display:flex;"><span>btime <span style="color:#3677a9">1694670818</span>
+</span></span><span style="display:flex;"><span>processes <span style="color:#3677a9">276043</span>
+</span></span><span style="display:flex;"><span>procs_running <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>procs_blocked <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>softirq <span style="color:#3677a9">21005941</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">2478101</span> <span style="color:#3677a9">7</span> <span style="color:#3677a9">16554</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">3790140</span> <span style="color:#3677a9">6921044</span> <span style="color:#3677a9">0</span> <span style="color:#3677a9">7800095</span>
+</span></span></code></pre></div><p>然后再对照看一下 <code>/proc/stat</code> 对应的文档:</p>
+<p><img src="https://dbwu.tech/images/golang/proc_stat_doc.png" alt="/proc/stat 文档描述"></p>
+<p>结合上面的文档描述，<code>/proc/stat</code> 文件的输内容表示如下:</p>
+<ul>
+<li>第一行输出系统全局 CPU 使用情况</li>
+<li>从第二行开始，依次输出单个逻辑 CPU 的使用情况</li>
+</ul>
+<p>CPU 使用情况数据按照空格划分，一共有 10 列 (也就是图中画红线的部分)，每一列表示的含义如下。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">列序号</th>
+<th style="text-align:left">名称</th>
+<th style="text-align:left">描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">1</td>
+<td style="text-align:left">user</td>
+<td style="text-align:left">用户态 CPU 时间</td>
+</tr>
+<tr>
+<td style="text-align:left">2</td>
+<td style="text-align:left">nice</td>
+<td style="text-align:left">低优先级用户态 CPU 时间 (进程的 nice 值被调整为 1-19 之间)</td>
+</tr>
+<tr>
+<td style="text-align:left">3</td>
+<td style="text-align:left">system</td>
+<td style="text-align:left">内核态 CPU 时间</td>
+</tr>
+<tr>
+<td style="text-align:left">4</td>
+<td style="text-align:left">idle</td>
+<td style="text-align:left">CPU 空闲时间 (不包括 IO 等待时间)</td>
+</tr>
+<tr>
+<td style="text-align:left">5</td>
+<td style="text-align:left">iowait</td>
+<td style="text-align:left">等待 I/O 的 CPU 时间</td>
+</tr>
+<tr>
+<td style="text-align:left">6</td>
+<td style="text-align:left">irq</td>
+<td style="text-align:left">处理硬中断的 CPU 时间</td>
+</tr>
+<tr>
+<td style="text-align:left">7</td>
+<td style="text-align:left">softirq</td>
+<td style="text-align:left">处理软中断的 CPU 时间</td>
+</tr>
+<tr>
+<td style="text-align:left">8</td>
+<td style="text-align:left">steal</td>
+<td style="text-align:left">当系统运行在虚拟机中的时候，被其他虚拟机占用的 CPU 时间</td>
+</tr>
+<tr>
+<td style="text-align:left">9</td>
+<td style="text-align:left">guest</td>
+<td style="text-align:left">通过虚拟化运行其他操作系统的时间</td>
+</tr>
+<tr>
+<td style="text-align:left">10</td>
+<td style="text-align:left">guest_nice</td>
+<td style="text-align:left">低优先级运行虚拟机的时间</td>
+</tr>
+</tbody>
+</table>
+<p>文件内容剩下的字段本文暂时用不到，不过这里还是简单提一下。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">字段</th>
+<th style="text-align:left">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">intr</td>
+<td style="text-align:left">系统中断相关数据</td>
+</tr>
+<tr>
+<td style="text-align:left">ctxt</td>
+<td style="text-align:left">系统上下文切换次数</td>
+</tr>
+<tr>
+<td style="text-align:left">btime</td>
+<td style="text-align:left">系统启动以来的时间</td>
+</tr>
+<tr>
+<td style="text-align:left">processes</td>
+<td style="text-align:left">创建的进程数量</td>
+</tr>
+<tr>
+<td style="text-align:left">procs_running</td>
+<td style="text-align:left">运行进程数量</td>
+</tr>
+<tr>
+<td style="text-align:left">procs_blocked</td>
+<td style="text-align:left">阻塞进程数量</td>
+</tr>
+<tr>
+<td style="text-align:left">softirq</td>
+<td style="text-align:left">不同类型软中断的处理次数</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="计算利用率">计算利用率</h2>
+<blockquote>
+<p>CPU 利用率 = CPU 使用时间 / (CPU 闲置时间 + CPU 使用时间)</p>
+</blockquote>
+<blockquote>
+<p>CPU 使用时间 = user + nice + system + irq + softirq + steal</p>
+</blockquote>
+<blockquote>
+<p>CPU 闲置时间 = idle + iowait</p>
+</blockquote>
+<p>在上面的公式中，我们将 <code>iowait</code> 字段算作 CPU 空闲时间，这一点可能存在争议 (因为 CPU 在等待 IO 时可能会去执行其他进程任务)，这里我们暂且跳过这个争议，
+先实现一个最小版本 (避免在细节上面浪费过多时间)，然后找一个成熟的开源组件，对比一下计算方法即可。</p>
+<h3 id="代码实现">代码实现</h3>
+<p>有了上面的理论基础之后，现在可以写代码来实现功能，核心的思路是: <strong>通过读取 <code>/proc/stat</code> 文件内容解析出对应的 CPU 指标数据完成采样，然后通过多次采样数据对比计算出 CPU 的利用率</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;math&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;math/rand&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;os&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;strconv&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;strings&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	cpuStatFile = <span style="color:#ed9d13">&#34;/proc/stat&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 采样结果对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> result <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	used <span style="color:#6ab825;font-weight:bold">uint64</span> <span style="color:#999;font-style:italic">// CPU 使用时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idle <span style="color:#6ab825;font-weight:bold">uint64</span> <span style="color:#999;font-style:italic">// CPU 闲置时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// CPU 指标采样函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sample</span>() (*result, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	data, err := os.<span style="color:#447fcf">ReadFile</span>(cpuStatFile)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	res := &amp;result{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	lines := strings.<span style="color:#447fcf">Split</span>(<span style="color:#24909d">string</span>(data), <span style="color:#ed9d13">&#34;\n&#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, line := <span style="color:#6ab825;font-weight:bold">range</span> lines {
+</span></span><span style="display:flex;"><span>		fields := strings.<span style="color:#447fcf">Fields</span>(line)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 为了简化演示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里只取所有 CPU 总的统计数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(fields) == <span style="color:#3677a9">0</span> || fields[<span style="color:#3677a9">0</span>] != <span style="color:#ed9d13">&#34;cpu&#34;</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将第一行数据分割为数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		n := <span style="color:#24909d">len</span>(fields)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">1</span>; i &lt; n; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> i &gt; <span style="color:#3677a9">8</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 解析每一列的数值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			val, err := strconv.<span style="color:#447fcf">ParseUint</span>(fields[i], <span style="color:#3677a9">10</span>, <span style="color:#3677a9">64</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 第 4 列表示 CPU 空闲时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 第 5 列表示 等待 I/O 的 CPU 时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> i == <span style="color:#3677a9">4</span> || i == <span style="color:#3677a9">5</span> {
+</span></span><span style="display:flex;"><span>				res.idle += val
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				res.used += val
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> res, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取第一次采样结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	first, err := <span style="color:#447fcf">sample</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 模拟一些 CPU 密集型任务
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">10000</span>; i++ {
+</span></span><span style="display:flex;"><span>		_ = math.<span style="color:#447fcf">Sqrt</span>(rand.<span style="color:#447fcf">Float64</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取第二次采样结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	second, err := <span style="color:#447fcf">sample</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算两次采样期间 CPU 的空闲时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	idle := <span style="color:#24909d">float64</span>(second.idle - first.idle)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算两次采样期间 CPU 的使用时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	used := <span style="color:#24909d">float64</span>(second.used - first.used)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// CPU 利用率 = CPU 使用时间 / (CPU 闲置时间 + CPU 使用时间)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> usage <span style="color:#6ab825;font-weight:bold">float64</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> idle+used &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		usage = used / (idle + used) * <span style="color:#3677a9">100</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;CPU usage is %f%%\n&#34;</span>, usage)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行上面的代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>CPU usage is 32.558140%
+</span></span></code></pre></div><p>上面的代码演示了如何获取系统中所有 CPU 总的利用率，感兴趣的读者可以在这个代码基础上进行改进，实现获取单个 CPU 的利用率。</p>
+<hr>
+<h2 id="对比验证">对比验证</h2>
+<p>现在找一个 Go 语言的开源组件，对比和验证一下刚才的实现代码是否存在问题，避免闭门造车，一叶障目。</p>
+<p>笔者选择的组件是 <a href="https://github.com/shirou/gopsutil">gopsutil</a>，下面是使用该组件获取 CPU 利用率对应的代码。</p>
+<h3 id="组件实现代码">组件实现代码</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;github.com/shirou/gopsutil/v3/cpu&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;log&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;math&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;math/rand&#34;</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#ed9d13">&#34;time&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	done := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">5</span>; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 获取 CPU 利用率 (每 100 毫秒获取一次)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			percent, err := cpu.<span style="color:#447fcf">Percent</span>(<span style="color:#3677a9">100</span>*time.Millisecond, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				log.<span style="color:#447fcf">Fatalf</span>(<span style="color:#ed9d13">&#34;get CPU usage: %v\n&#34;</span>, err)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">for</span> _, v := <span style="color:#6ab825;font-weight:bold">range</span> percent {
+</span></span><span style="display:flex;"><span>				fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;CPU usage is %.2f%%\n&#34;</span>, v)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 模拟程序结束后通过 channel 发送通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		done &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 模拟一些 CPU 密集型任务
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rand.<span style="color:#447fcf">Seed</span>(time.<span style="color:#447fcf">Now</span>().<span style="color:#447fcf">UnixNano</span>())
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">10000000</span>; i++ {
+</span></span><span style="display:flex;"><span>		_ = math.<span style="color:#447fcf">Sqrt</span>(rand.<span style="color:#447fcf">Float64</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	&lt;-done
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(done)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行上面的代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go run main.go
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>CPU usage is 32.558140%
+</span></span><span style="display:flex;"><span>CPU usage is 12.35%
+</span></span><span style="display:flex;"><span>CPU usage is 5.00%
+</span></span><span style="display:flex;"><span>CPU usage is 0.00%
+</span></span><span style="display:flex;"><span>CPU usage is 0.00%
+</span></span><span style="display:flex;"><span>CPU usage is 0.00%
+</span></span></code></pre></div><hr>
+<p>最后，我们追踪下 <code>gopsutil</code> 源代码的调用链路，学习一下内部的实现细节。</p>
+<h3 id="timesstat-对象">TimesStat 对象</h3>
+<p>TimesStat 表示 CPU 指标数据集合对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> TimesStat <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	CPU       <span style="color:#6ab825;font-weight:bold">string</span>  <span style="color:#ed9d13">`json:&#34;cpu&#34;`</span>
+</span></span><span style="display:flex;"><span>	User      <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;user&#34;`</span>
+</span></span><span style="display:flex;"><span>	System    <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;system&#34;`</span>
+</span></span><span style="display:flex;"><span>	Idle      <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;idle&#34;`</span>
+</span></span><span style="display:flex;"><span>	Nice      <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;nice&#34;`</span>
+</span></span><span style="display:flex;"><span>	Iowait    <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;iowait&#34;`</span>
+</span></span><span style="display:flex;"><span>	Irq       <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;irq&#34;`</span>
+</span></span><span style="display:flex;"><span>	Softirq   <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;softirq&#34;`</span>
+</span></span><span style="display:flex;"><span>	Steal     <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;steal&#34;`</span>
+</span></span><span style="display:flex;"><span>	Guest     <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;guest&#34;`</span>
+</span></span><span style="display:flex;"><span>	GuestNice <span style="color:#6ab825;font-weight:bold">float64</span> <span style="color:#ed9d13">`json:&#34;guestNice&#34;`</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="percent-方法">Percent 方法</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// https://github.com/shirou/gopsutil/blob/2fabf15a16dca198f735a5de2722158576e986a9/cpu/cpu.go#L148
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Percent 方法计算 CPU 利用率
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   可以计算总的 CPU 利用率，也可以计算单个 CPU 的利用率 (取决于第二个参数)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   在刚才的例子中，我们计算的是总的 CPU 利用率
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Percent</span>(interval time.Duration, percpu <span style="color:#6ab825;font-weight:bold">bool</span>) ([]<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">PercentWithContext</span>(context.<span style="color:#447fcf">Background</span>(), interval, percpu)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Percent 方法的内部具体实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">PercentWithContext</span>(ctx context.Context, interval time.Duration, percpu <span style="color:#6ab825;font-weight:bold">bool</span>) ([]<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第一次采样
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cpuTimes1, err := <span style="color:#447fcf">TimesWithContext</span>(ctx, percpu)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取指标的间隔时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 期间直接进入休眠
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := common.<span style="color:#447fcf">Sleep</span>(ctx, interval); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 第二次采样
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cpuTimes2, err := <span style="color:#447fcf">TimesWithContext</span>(ctx, percpu)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据两次采样数据计算出 CPU 利用率
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">calculateAllBusy</span>(cpuTimes1, cpuTimes2)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="timeswithcontext">TimesWithContext</h3>
+<p>该方法主要用于获取 CPU 指标数据采样。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TimesWithContext</span>(ctx context.Context, percpu <span style="color:#6ab825;font-weight:bold">bool</span>) ([]TimesStat, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取对应的指标数据文件名称，也就是 /proc/stat
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	filename := common.<span style="color:#447fcf">HostProc</span>(<span style="color:#ed9d13">&#34;stat&#34;</span>)
+</span></span><span style="display:flex;"><span>	lines := []<span style="color:#6ab825;font-weight:bold">string</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> percpu {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取单个 CPU 数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		...
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取总的 CPU 数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		lines, _ = common.<span style="color:#447fcf">ReadLinesOffsetN</span>(filename, <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	ret := <span style="color:#24909d">make</span>([]TimesStat, <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(lines))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, line := <span style="color:#6ab825;font-weight:bold">range</span> lines {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将 /proc/stat 文件中的单行文本数据解析为 TimesStat 指标对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ct, err := <span style="color:#447fcf">parseStatLine</span>(line)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		ret = <span style="color:#24909d">append</span>(ret, *ct)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ret, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="calculateallbusy">calculateAllBusy</h3>
+<p>该方法根据两个 TimesStat 采样数据对象，计算出 CPU 利用率，具体的计算方法委托给 calculateBusy 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">calculateAllBusy</span>(t1, t2 []TimesStat) ([]<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	ret := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#24909d">len</span>(t1))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i, t := <span style="color:#6ab825;font-weight:bold">range</span> t2 {
+</span></span><span style="display:flex;"><span>		ret[i] = <span style="color:#447fcf">calculateBusy</span>(t1[i], t)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> ret, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">calculateBusy</span>(t1, t2 TimesStat) <span style="color:#6ab825;font-weight:bold">float64</span> {
+</span></span><span style="display:flex;"><span>	t1All, t1Busy := <span style="color:#447fcf">getAllBusy</span>(t1)
+</span></span><span style="display:flex;"><span>	t2All, t2Busy := <span style="color:#447fcf">getAllBusy</span>(t2)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> math.<span style="color:#447fcf">Min</span>(<span style="color:#3677a9">100</span>, math.<span style="color:#447fcf">Max</span>(<span style="color:#3677a9">0</span>, (t2Busy-t1Busy)/(t2All-t1All)*<span style="color:#3677a9">100</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getAllBusy</span>(t TimesStat) (<span style="color:#6ab825;font-weight:bold">float64</span>, <span style="color:#6ab825;font-weight:bold">float64</span>) {
+</span></span><span style="display:flex;"><span>    busy := t.User + t.System + t.Nice + t.Iowait + t.Irq +
+</span></span><span style="display:flex;"><span>        t.Softirq + t.Steal
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> busy + t.Idle, busy
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>从上面的代码可以看到，calculateBusy 方法内部的计算公式为:</p>
+<blockquote>
+<p>CPU 利用率 = CPU 使用时间 / (CPU 闲置时间 + CPU 使用时间)</p>
+</blockquote>
+<blockquote>
+<p>CPU 使用时间 = user + nice + system + iowait + irq + softirq + steal</p>
+</blockquote>
+<blockquote>
+<p>CPU 闲置时间 = idle</p>
+</blockquote>
+<hr>
+<h2 id="小结">小结</h2>
+<p>本文主要介绍了在 Linux 系统中，如何使用 Go 语言获取 CPU 利用率，我们首先介绍了在 Linux 中获取 CPU 利用率时涉及到的文件和具体方法，
+然后通过自己手动实现了一个简单的版本，最后通过开源组件 <a href="https://github.com/shirou/gopsutil">gopsutil</a> 的内部实现和自己手动实现进行对比和验证，
+发现了计算细节的差异:</p>
+<ul>
+<li>自己手动实现的版本中，<code>iowait</code> 列的数据作为 CPU 闲置时间</li>
+<li>gopsutil 实现的版本中，<code>iowait</code> 列的数据作为 CPU 使用时间</li>
+</ul>
+<p>此外，笔者查看了 <code>htop 命令</code> 对应的源代码，发现 htop 也是将 <code>iowait</code> 列的数据作为 CPU 闲置时间，下面是具体的代码链接和截图。</p>
+<p><a href="https://github.com/htop-dev/htop/blob/e79788c250c23e0c7c9f3e29fdca578ce9e9bca0/linux/LinuxMachine.c#L469C1-L469C1">htop 命令源代码</a></p>
+<p><img src="https://dbwu.tech/images/golang/htop_iowait.png" alt="htop 命令 iowait 计算方式"></p>
+<p>针对上面的差异情况，笔者 (<del>不成熟的</del>) 的建议如下:</p>
+<ul>
+<li>如果技术栈为 Go 语言，直接使用 gopsutil 组件即可</li>
+<li>如果技术栈为其他语言，使用该语言中对应的成熟组件</li>
+<li>如果上述两种情况都不符合，或者必须自己实现获取 CPU 利用率的功能，可以根据业务场景来决定
+<ol>
+<li>对于 CPU 密集型场景，将 iowait 列的数据作为 CPU 计算时间</li>
+<li>对于 IO 密集型场景，将 iowait 列的数据作为 CPU 闲置时间</li>
+</ol>
+</li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://man7.org/linux/man-pages/man5/procfs.5.html">proc(5) — Linux manual page</a></li>
+<li><a href="https://www.scaler.com/topics/how-to-check-cpu-utilization-in-linux/">How to Check CPU Utilization in Linux?</a></li>
+<li><a href="https://www.atlantic.net/vps-hosting/how-to-check-linux-cpu-usage-or-utilization/">How to Check Linux CPU Usage or Utilization</a></li>
+<li><a href="https://github.com/shirou/gopsutil">gopsutil</a></li>
+<li><a href="https://www.rosettacode.org/wiki/Linux_CPU_utilization">Linux CPU utilization</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/optimize/redis_application_scenarios/"><i class="fa fa-chevron-circle-left"></i> 降本增效 - 应用优化 (一)</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Go 语言中如何获取 CPU 利用率"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

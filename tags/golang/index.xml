@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Mon, 24 Jul 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 18 Sep 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/golang/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Go 语言中如何获取 CPU 利用率</title>
+       <link>https://dbwu.tech/posts/golang/check_cpu_utilization/</link>
+       <pubDate>Mon, 18 Sep 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/golang/check_cpu_utilization/</guid>
+       <description></description>
+     </item>
    
      <item>
        <title>降本增效 - 应用优化 (一)</title>
