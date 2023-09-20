@@ -1,0 +1,279 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 应用最佳实践 - Sidecar 模式 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - Sidecar 模式" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/sidecar/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-16T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - Sidecar 模式"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 应用最佳实践 - Sidecar 模式</h1>
+
+    
+      
+<p>
+    <span>2023-03-16</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="sidecar-模式">Sidecar 模式</h2>
+<blockquote>
+<p>Sidecar (边车) 是一种安装在摩托车、踏板车或自行车侧面的单轮装置，使整个车辆成为三轮车辆。 &ndash; 维基百科</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/k8s/sidecar.png" alt="Sidecar 摩托三轮"></p>
+<p>Sidecar 和 Kubernetes 之间并没有什么实质性联系，但是通过 Sidecar 的机械工业设计思路，可以提炼出一种代码或者模块间的工作模式，称之为 “Sidecar 模式”。</p>
+<p>在前面的文章中提到过，<strong>Pod 是 Kubernetes 中应用运行的最小单位 (同时也是顶级资源)，也称为容器组</strong>，既然每个 Pod 可以存在多个容器，
+根据二八原则，可以将多个容器分为核心容器和非核心容器，将机械的 Sidecar (三轮摩托) 映射到 Pod 中的容器资源，就可以得到 “Sidecar 模式” 的通俗表达:</p>
+<ul>
+<li>核心容器也称为 Main 容器，负责主要工作 (对应三轮摩托的驾驶位)</li>
+<li>非核心容器也称为 Sidecar 容器，负责辅助工作和扩展性工作 (对应三轮摩托的侧面单轮装置)</li>
+</ul>
+<h3 id="组合优于继承">组合优于继承</h3>
+<p><strong>Sidecar 容器可以在不修改 Main 容器的情况下，进行功能扩展和增强，允许功能单一的容器通过运行时组合完成更多任务，同时分离每个容器的关注点</strong>。</p>
+<p>大多数情况下，多个不同的容器由不同的团队开发，并且使用不同的技术栈，通过正交性保证单个容器在其他服务中可以被复用，既可以单个容器作为 Pod 独立运行，也可以多个容器协作运行。</p>
+<h3 id="示例">示例</h3>
+<p>Pod 内部的容器可以通过卷 (Volume) 来共享文件数据，并且通过本地网络进行通信，我们可以利用 Pod 这两个特性来列举几个使用 Sidecar 模式的小例子。</p>
+<h4 id="1-静态资源服务器">1. 静态资源服务器</h4>
+<p><img src="https://dbwu.tech/images/k8s/sidecar_demo.png" alt="图片来源: https://www.amazon.com/Kubernetes-Patterns-Designing-Cloud-Native-Applications/dp/1492050288"></p>
+<p>在这个示例中，主要分为两个容器:</p>
+<ol>
+<li>Main 容器: HTTP Server 容器仅仅提供静态资源文件的 HTTP 请求服务，不需要关注具体的文件来源</li>
+<li>Sidecar 容器: 将静态资源文件通过 Git 定时从远程服务器同步到本地 HTTP Server 指定的目录，不需要关注文件同步后的下一步操作</li>
+</ol>
+<h4 id="2-配置热更新">2. 配置热更新</h4>
+<p><img src="https://dbwu.tech/images/k8s/config_map_hot_reload.png" alt="图片来源: https://www.manning.com/books/kubernetes-in-action-second-edition"></p>
+<p>在这个示例中，主要分为两个容器:</p>
+<ol>
+<li>Main 容器: 也就是应用容器</li>
+<li>Sidecar 容器: 将 ConfigMap 挂载为一个卷（Volume), 应用可以直接从卷中读取配置数据 (需要这里的 Sidecar 并不是容器形式，但是这也是 Sidecar 模式的一种体现)</li>
+</ol>
+<p>当配置数据需要更新时，修改 ConfigMap, 然后 Kubernetes 会自动触发相关的事件，通知 Pod 更新其挂载的卷，Pod 接收到更新事件，重新加载卷中的配置文件，从而实现配置热更新。</p>
+<h4 id="3-日志">3. 日志</h4>
+<p><img src="https://dbwu.tech/images/k8s/sidecar_efk_demo.png" alt="图片来源: https://openkruise.io/docs/next/best-practices/log-container-sidecarset/"></p>
+<p>在这个示例中，主要分为两个容器:</p>
+<ol>
+<li>Main 容器: 也就是应用容器</li>
+<li>Sidecar 容器: 也就是 FileBeat 日志收集组件</li>
+</ol>
+<p>FileBeat 收集日志之后，发送到 ElasticSearch 集群, 最后通过 Kibana 展示。</p>
+<h2 id="适配器模式">适配器模式</h2>
+<p>Kubernetes 中的适配器模式是 Sidecar 模式的一个变种，作用和 “设计模式” 中的适配器模式类似，用于对异构的容器系统进行包装，最终对外输出自适应统一的接口。</p>
+<p>容器允许我们以统一的方式打包和运行用不同库和语言编写的应用程序。如今，多个团队使用不同的技术并创建由异构组件组成的分布式系统是很常见的。</p>
+<p>当其他系统必须以统一的方式处理所有组件时，这种异构性可能会造成困难。适配器模式通过隐藏系统的复杂性并提供对其的统一访问来提供解决方案。</p>
+<h3 id="示例-1">示例</h3>
+<h4 id="1-监控系统">1. 监控系统</h4>
+<p>例如现在有一个监控系统希望监控所有服务，但是不同的服务是通过不同的技术栈完成的，并且接口输出的监控指标格式和协议也不相同，这时候就可以通过适配器模式，
+在内部将不同的服务的指标转换成一种格式和协议，最后输出给监控系统 (例如 Prometheus)。</p>
+<p><img src="https://dbwu.tech/images/k8s/sidecar_adapter_demo.png" alt="图片来源: https://www.amazon.com/Kubernetes-Patterns-Designing-Cloud-Native-Applications/dp/1492050288"></p>
+<p>在这个示例中，主要分为两个容器:</p>
+<ol>
+<li>Main 容器: 也就是应用容器</li>
+<li>Sidecar 容器: 读取应用容器本地存储的指标，并转换为监控系统可以理解的格式和协议</li>
+</ol>
+<p>例如，对于运行在 Pod 中的 Go 应用，Sidecar 容器知道如何获取和解析监控系统需要的数据，而对于运行在 Pod 中的 Java 应用，Sidecar 容器同样如此，
+简单来说，Sidecar 容器就是那个 “最强辅助”。</p>
+<h2 id="大使模式">大使模式</h2>
+<p>大使模式是 Sidecar 模式的另外一个变种，作用和 “设计模式” 中的代理模式类似，通过对外统一接口来隐藏内部的业务逻辑和实现。</p>
+<h3 id="示例-2">示例</h3>
+<h4 id="1-缓存">1. 缓存</h4>
+<p><img src="https://dbwu.tech/images/k8s/sidecar_ambassador_demo.png" alt="图片来源: https://www.amazon.com/Kubernetes-Patterns-Designing-Cloud-Native-Applications/dp/1492050288"></p>
+<p>在这个示例中，主要分为两个容器:</p>
+<ol>
+<li>Main 容器: 也就是应用容器</li>
+<li>Sidecar 容器: 读取缓存数据，这里将数据存储委托给 etcd</li>
+</ol>
+<p>当然，也可以将 Sidecar 容器的存储委托方切换到 memcached:</p>
+<p><img src="https://dbwu.tech/images/k8s/sidecar_ambassador_demo2.png" alt="图片来源: https://www.amazon.com/Kubernetes-Patterns-Designing-Cloud-Native-Applications/dp/1492050288"></p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://www.usenix.org/system/files/conference/hotcloud16/hotcloud16_burns.pdf">Design patterns for container-based distributed systems</a></li>
+<li><a href="https://medium.com/@marko.luksa/delaying-application-start-until-sidecar-is-ready-2ec2d21a7b74">Delaying application start until sidecar is ready</a></li>
+<li><a href="https://openkruise.io/docs/next/best-practices/log-container-sidecarset/">Best Practice for Managing Log Collection Sidecar Containers</a></li>
+<li><a href="https://github.com/k8spatterns/examples/tree/main/structural/Sidecar">Sidecar examples</a></li>
+<li><a href="https://kubernetes.io/zh-cn/blog/2023/08/25/native-sidecar-containers/">Kubernetes v1.28：介绍原生边车容器</a></li>
+<li><a href="https://kubernetes.feisky.xyz/practice/debugging">利用 sidecar 模式调试</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/best_practice/init_container/"><i class="fa fa-chevron-circle-left"></i> Kubernetes 应用最佳实践 - init 容器和钩子函数</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/http_evolution/">HTTP1 到 HTTP3 的工程优化 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 应用最佳实践 - Sidecar 模式"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

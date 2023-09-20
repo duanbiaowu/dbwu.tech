@@ -178,16 +178,16 @@
 <p>控制面板用于控制集群并使其正常工作，包含多个组件，组件可以运行在单个主节点或者多个主节点 (为了保证高可用)，下面是组件列表:</p>
 <p><img src="https://dbwu.tech/images/k8s/control_panel.png" alt="控制面板组件"></p>
 <ul>
-<li>Kubernetes API 服务器: 负责各组件之间的通信</li>
-<li>Scheduler: 负责应用的具体调度</li>
-<li>Controller Manager: 负责执行集群级别的功能，如复制组件、持续跟踪工作节点、处理失败节点等</li>
-<li>etcd: 持久化存储集群配置信息</li>
+<li><strong>API Server</strong>: 控制平面的前端，负责接收和处理所有 Restful 请求，并将处理结果状态存储到 etcd 中</li>
+<li><strong>Scheduler</strong>: 负责将应用调度到具体节点，调度时会考虑软硬件约束、标签、亲和性、污点和容忍性等特征</li>
+<li><strong>Controller</strong> Manager: 负责运行各种类型的控制器进程 (例如 NodeController, PodController)</li>
+<li><strong>etcd</strong>: 持久化存储集群配置和状态信息</li>
 </ul>
-<p>控制面板通过上面的组件检查并控制集群的状态，但是不会运行具体的应用。</p>
+<p>控制平面组件会存储和管理集群状态，控制并保证整个集群正常运行，但是不运行具体的应用容器。</p>
 <h3 id="工作节点">工作节点</h3>
 <p>工作节点的组件列表:</p>
 <ul>
-<li>实现了 OCI 标准的容器类型，如果 Docker, rtk 等</li>
+<li>实现了 OCI 标准的容器类型，例如 Docker, containerd 等</li>
 <li>kubelet: 通过和主节点上面的 API 服务器进行通信，管理所在节点上面的容器，核心是管理 Pod 的状态和生命周期</li>
 <li>Kubernetes Service Proxy: 对组件之间的流量进行负载均衡</li>
 </ul>
@@ -390,6 +390,7 @@ Ingress 工作在网络七层，可以提供网络四层无法提供的功能 (�
 </ul>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
+<li><a href="https://kubernetes.feisky.xyz/concepts/architecture">Kubernetes 架构</a></li>
 <li><a href="https://github.com/ramitsurana/awesome-kubernetes">awesome-kubernetes</a></li>
 <li><a href="https://github.com/rootsongjc/awesome-cloud-native/">awesome-cloud-native</a></li>
 <li><a href="https://www.processon.com/view/link/5ac64532e4b00dc8a02f05eb">Kubernetes知识图谱</a></li>

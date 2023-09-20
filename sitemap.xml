@@ -246,7 +246,10 @@
     <lastmod>2023-03-18T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/kubernetes/</loc>
-    <lastmod>2023-03-15T00:00:00+00:00</lastmod>
+    <lastmod>2023-03-16T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/k8s/sidecar/</loc>
+    <lastmod>2023-03-16T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/k8s/best_practice/init_container/</loc>
     <lastmod>2023-03-15T00:00:00+00:00</lastmod>
