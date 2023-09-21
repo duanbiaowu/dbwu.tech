@@ -1,0 +1,445 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>降本增效 - 应用优化 (二) - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="降本增效 - 应用优化 (二)" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/optimize/big_data_file_export/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-09-21T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-09-21T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="降本增效 - 应用优化 (二)"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>降本增效 - 应用优化 (二)</h1>
+
+    
+      
+<p>
+    <span>2023-09-21</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91">业务逻辑</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E5%BA%94%E7%94%A8%E4%BC%98%E5%8C%96">应用优化</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="背景">背景</h2>
+<p>在微服务或者单体业务系统中，都会有对应的管理后台系统，使用者通常为负责具体业务的产品和运营，这时候就会有一个经典的通用功能: “报表导出”。
+为什么不直接在后台页面看数据，而是要导出到 Excel 呢？开发人员可能无法理解，但是站在产品和运营的角度，Excel 文件具有以下优势:</p>
+<ul>
+<li>支持各种数据运算 (例如取某个字段的中位数和众数)，而不仅仅限于后台提供的分组和排序运算</li>
+<li>支持各项数据组合使用，而不仅仅限于后台提供的固定格式和形式</li>
+<li>可以直接根据数据生成报表，PPT 等演示文件</li>
+<li>可以直接使用除了 SQL 功能之外的高阶函数 (例如 VLoopUp, 统计类函数等)</li>
+<li>方便数据集成到其他系统中</li>
+<li>方便数据和其他系统中的数据异构组合使用</li>
+<li>&hellip;</li>
+</ul>
+<p>简单来说，Excel 可以为数据处理人员提效，并且大大降低开发人员的工作量，管理后台只需要提供最基础的数据筛选、列表、统计等功能即可，
+剩下的由数据处理人员在 Excel 完成，从而实现双赢。</p>
+<p><strong>注意</strong>: 本文主要针对的是总量在几十万到十亿内的数据规模，不考虑数据量 10W 以下的场景，以及海量数据的场景，前者的规模无需优化，后者有专门的大数据处理框架集。</p>
+<hr>
+<h2 id="功能设计">功能设计</h2>
+<h3 id="问题">问题</h3>
+<p>大多数情况下，大报表可以分为两种场景:</p>
+<ol>
+<li>数据量大，从几千到几十万不等，例如订单数据、用户数据、日志数据</li>
+<li>计算量大，最后结果数据可能就几十条，但是背后的计算量大，例如统计类数据、运营类数据</li>
+</ol>
+<p>不论哪种场景，如果按照普通接口同步的方式请求直接导出报表文件，通常的前端请求超时 504，后端程序中的 SQL 语句把数据库的 CPU 打满 (CPU 100% 问题)，或者应用服务器的内存跑满 (OOM)，
+最终的结果是导致其他请求阻塞，甚至导致数据库宕机。</p>
+<p><img src="https://dbwu.tech/images/optimize/nginx_504.png" alt="504 响应错误"></p>
+<h3 id="优化设计">优化设计</h3>
+<p>为了解决上面提到的问题，我们对整个报表文件的导出流程进行拆分:</p>
+<ol>
+<li>数据查询/计算异步执行</li>
+<li>单次执行查询/计算一部分数据 (例如总查询导出数据量为 20W, 那么单次可以查询 5000 条，总共查询 40 次)</li>
+<li>查询到的数据以追加方式写入文件，缓解内存和磁盘 IO 的压力</li>
+</ol>
+<blockquote>
+<p>核心设计思想是异步计算 + 数据分块 + IO 追加写入</p>
+</blockquote>
+<p>按照上面的方法解决了性能问题之后，我们可以针对导出功能本身做一些体验上的优化，例如在用户页面上增加一些字段:</p>
+<ul>
+<li>报表任务的提交时间</li>
+<li>任务预计开始时间</li>
+<li>任务实际开始时间</li>
+<li>任务预计完成时间</li>
+<li>任务实际完成时间</li>
+<li>任务当前进度</li>
+<li>任务完成总用时</li>
+<li>任务发生错误信息 (如果导出报表中途发生了错误)</li>
+<li>报表文件下载地址</li>
+<li>可以随时取消任务</li>
+</ul>
+<p><img src="https://dbwu.tech/images/optimize/data_export_1.png" alt="数据导出工单列表"></p>
+<hr>
+<h2 id="代码实现">代码实现</h2>
+<p>现在，我们基于上面的设计思路，来实现功能的核心部分，限于篇幅，本文的代码主要以功能整体骨架设计为主，具体的方法细节不做实现，主要分为下面几个方面来说明:</p>
+<ol>
+<li>设计任务数据结构</li>
+<li>设计接口</li>
+<li>创建任务</li>
+<li>计算任务预计开始时间</li>
+<li>计算任务预计完成时间</li>
+<li>更新任务当前进度</li>
+<li>计算 &amp; 更新任务总用时</li>
+<li>更新报表文件下载地址</li>
+</ol>
+<h3 id="1-数据结构">1. 数据结构</h3>
+<p>Task 对象表示单个报表导出任务。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Task <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	ID                   <span style="color:#6ab825;font-weight:bold">int</span>        <span style="color:#ed9d13">`json:&#34;id&#34;`</span>                   <span style="color:#999;font-style:italic">// 任务 ID
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Name                 <span style="color:#6ab825;font-weight:bold">string</span>     <span style="color:#ed9d13">`json:&#34;name&#34;`</span>                 <span style="color:#999;font-style:italic">// 任务名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	URL                  *url.URL   <span style="color:#ed9d13">`json:&#34;url&#34;`</span>                  <span style="color:#999;font-style:italic">// 创建任务的 URL (也就是用于界面发起请求的 URL)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Created              *time.Time <span style="color:#ed9d13">`json:&#34;created&#34;`</span>              <span style="color:#999;font-style:italic">// 创建时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Canceled             *time.Time <span style="color:#ed9d13">`json:&#34;canceled&#34;`</span>             <span style="color:#999;font-style:italic">// 取消时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ExpectedRunTime      *time.Time <span style="color:#ed9d13">`json:&#34;expectedRunTime&#34;`</span>      <span style="color:#999;font-style:italic">// 预期开始时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ExpectedFinishedTime *time.Time <span style="color:#ed9d13">`json:&#34;expectedFinishedTime&#34;`</span> <span style="color:#999;font-style:italic">// 预期完成时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ActualRunTime        *time.Time <span style="color:#ed9d13">`json:&#34;actualRunTime&#34;`</span>        <span style="color:#999;font-style:italic">// 实际开始时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ActualFinishedTime   *time.Time <span style="color:#ed9d13">`json:&#34;actualFinishedTime&#34;`</span>   <span style="color:#999;font-style:italic">// 实际完成时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ProgressPercent      <span style="color:#6ab825;font-weight:bold">float32</span>    <span style="color:#ed9d13">`json:&#34;progressPercent&#34;`</span>      <span style="color:#999;font-style:italic">// 任务当前进度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	TimeCost             <span style="color:#6ab825;font-weight:bold">float32</span>    <span style="color:#ed9d13">`json:&#34;timeCost&#34;`</span>             <span style="color:#999;font-style:italic">// 任务总用时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ErrorMsg             <span style="color:#6ab825;font-weight:bold">string</span>     <span style="color:#ed9d13">`json:&#34;errorMsg&#34;`</span>             <span style="color:#999;font-style:italic">// 任务错误信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ResultFile           <span style="color:#6ab825;font-weight:bold">string</span>     <span style="color:#ed9d13">`json:&#34;resultFile&#34;`</span>           <span style="color:#999;font-style:italic">// 生成的文件下载地址
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><h3 id="2-接口">2. 接口</h3>
+<p>Exporter 表示报表导出接口，我们可以实现不同业务报表导出的具体功能 (例如订单服务中的每周/每月/年度 销售额报表，用户服务中的 日活/月活/新增 报表)，
+限于篇幅，接口中只保留创建任务、取消任务、更新任务状态和数据三个抽象方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Exporter <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#447fcf">Create</span>() *Task
+</span></span><span style="display:flex;"><span>    <span style="color:#447fcf">Cancel</span>(*Task)
+</span></span><span style="display:flex;"><span>    <span style="color:#447fcf">Update</span>(*Task)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>下面是两个报表导出的具体实现示例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// OrderListExport 订单列表数据报表导出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 限于篇幅，这里只输出代码结构作为演示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> OrderListExport <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (ol *OrderListExport) <span style="color:#447fcf">Create</span>() *Task {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// OrderStatisticExport 订单分析数据报表导出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 限于篇幅，这里只输出代码结构作为演示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> OrderStatisticExport <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (os *OrderStatisticExport) <span style="color:#447fcf">Create</span>() *Task {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="3-创建任务">3. 创建任务</h3>
+<p><img src="https://dbwu.tech/images/optimize/data_export_2.png" alt="申请数据导出"></p>
+<p>当用户在页面上发起请求时，直接调用具体功能的 <code>Create</code> 方法即可，例如 “订单列表数据报表导出” 请求直接调用 <code>OrderListExport.Create</code> 方法，
+任务创建完成后返回给前端具体的响应代码，因为任务是异步执行的，所以符合 Restful 规范的 HTTP StatusCode 应该是 201，下面是示例代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例: 导出 2023 年 8 月份所有订单记录</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>POST https://console.example.com/orders/export?start_time=2023-08-01&amp;<span style="color:#40ffff">end_time</span>=2023-08-31
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">201</span> Created
+</span></span></code></pre></div><p>下面是示例请求发出之后，返回的对应数据:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;code&#34;</span>: <span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;msg&#34;</span>:<span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">&#34;data&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">&#34;location&#34;</span>: {
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;uri&#34;</span>: <span style="color:#ed9d13">&#34;https://admin.example.com/tasks/exports/123456&#34;</span>
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">&#34;task&#34;</span>: {
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;id&#34;</span>: <span style="color:#3677a9">123456</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;name&#34;</span>: <span style="color:#ed9d13">&#34;OrderList Export Test&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;created&#34;</span>: <span style="color:#ed9d13">&#34;2023-09-17T09:26:38.084577069+08:00&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;canceled&#34;</span>: <span style="color:#6ab825;font-weight:bold">null</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;expectedRunTime&#34;</span>: <span style="color:#ed9d13">&#34;2023-09-17T09:27:38.084577069+08:00&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;expectedFinishedTime&#34;</span>: <span style="color:#ed9d13">&#34;2023-09-17T09:28:38.084577069+08:00&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;actualRunTime&#34;</span>: <span style="color:#6ab825;font-weight:bold">null</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;actualFinishedTime&#34;</span>: <span style="color:#6ab825;font-weight:bold">null</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;progressPercent&#34;</span>: <span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;errorMsg&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#6ab825;font-weight:bold">&#34;resultFile&#34;</span>: <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>除了 <code>task</code> 字段表示的对象之外，这里还增加了一个新的对象 <code>location</code>, 用来表示查看已创建资源状态的链接，前端可以根据该链接增加一些交互功能，
+例如在用户创建导出任务之后，给出对应的弹窗提示并引导用户点击跳转到具体任务的详情页面。</p>
+<h3 id="4-计算任务预计开始时间">4. 计算任务预计开始时间</h3>
+<p>任务执行主要分为两大类:</p>
+<ul>
+<li>串行执行: 只需要获取任务队列中最后一个任务的 “预计结束时间”，然后加一个任务开始前的常数时间 (例如 5 秒)，就是任务的预计开始时间</li>
+<li>并行执行：这个需要结合任务队列中已有的任务类型以及当前系统负载情况来考虑，因为其中涉及到一些排队论和系统负载均衡调度相关的主题，和本文主题关系不大，暂且跳过</li>
+</ul>
+<p>在上面的示例代码中，我们假设用户创建的导出任务在创建 1 分钟之后自动开始。</p>
+<h3 id="5-计算任务预计完成时间">5. 计算任务预计完成时间</h3>
+<p>对导出任务进行估时，也可以分为两种情况:</p>
+<h4 id="导出列表数据型任务">导出列表数据型任务</h4>
+<ol>
+<li>先根据筛选条件查询出总数据条数 (T)</li>
+<li>指定单次导出最小数量 (N)</li>
+<li>计算出导出 N 条数据 + 写入文件的用时 (S)</li>
+<li>任务总用时 TN = T / N * S  (这里假设数据库和应用服务器都处于稳定运行中)</li>
+<li>在 TN 的基础之后，乘以一个百分比常数，作为整个任务导出流程中的缓冲时间</li>
+<li>最后得到是就是一个比较宽裕的任务预计完成用时</li>
+</ol>
+<p>举个例子来说明:</p>
+<ol>
+<li>假设根据筛选条件查询出总的数据条数 T = 120000</li>
+<li>指定单次导出最小数量 N = 5000</li>
+<li>假设单次导出数据 + 写入文件用时 S = 2 秒</li>
+<li>任务总用时 TN = 120000 / 5000 * 2 = 48 秒</li>
+<li>指定缓冲百分比常数为 1.2, 任务预计完成用时 = 48 * 1.2 = 57.6 秒</li>
+</ol>
+<h4 id="导出统计数据型任务">导出统计数据型任务</h4>
+<p>例如现在要导出以下统计数据 (时间范围为 2023 年 8 月):</p>
+<ul>
+<li>用户总增长</li>
+<li>订单总量</li>
+<li>订单总量增长百分比</li>
+<li>订单总金额</li>
+<li>订单总金额增长百分比</li>
+<li>订单商品总数量</li>
+<li>退货率</li>
+</ul>
+<p>因为不同的业务维度数据计算方式差异非常大，所以 <strong>无法</strong> 根据下面这个简单的公式来计算出任务的预计执行时间。</p>
+<blockquote>
+<p>任务预计总用时 = 单个业务维度数据用时 * 维度数量</p>
+</blockquote>
+<p>针对这个问题，笔者目前也没有特别好的解决方案，所以目前在项目中使用的方案为:</p>
+<ol>
+<li>从导出的业务维度指标中随机选取 3 个 (N)</li>
+<li>将筛选条件中的时间范围分割为最小粒度的时间片 (T)</li>
+<li>计算 N * T 得出 3 个指标数据在最小粒度的导出用时 (S)</li>
+<li>根据上面的结果数值计算出任务预计总用时 (TN)</li>
+</ol>
+<p>举个例子来说明:</p>
+<ol>
+<li>假设业务维度指标数量为 12 个，随机选取 3 个</li>
+<li>时间范围为 31 天，指定分割的最小粒度时间片 T = 1 天</li>
+<li>假设 3 个指标计算 1 天的数据 (包括写入文件)，用时 S = 1 秒</li>
+<li>任务预计总用时 TN = (12 / 3) * (31 / 1) * 1 秒 = 124 秒</li>
+</ol>
+<p>最后的时间值可以像上面的 {导出列表数据} 任务一样，乘以一个百分比常数，作为整个任务导出流程中的缓冲时间，这里不再赘述。</p>
+<h3 id="6-更新任务当前进度">6. 更新任务当前进度</h3>
+<p><img src="https://dbwu.tech/images/optimize/data_export_3.png" alt="更新任务进度"></p>
+<p>将导出任务根据时间片进行拆分之后，计算出时间片的个数 (N), 那么单个子任务完成应该更新的进度值 (P) 可以使用如下公式计算得出。</p>
+<blockquote>
+<p>P = floor (100 / N)</p>
+</blockquote>
+<p>转换成对应的伪代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>N := <span style="color:#3677a9">20</span>
+</span></span><span style="display:flex;"><span>P := math.<span style="color:#447fcf">Floor</span>(<span style="color:#24909d">float64</span>(<span style="color:#3677a9">100</span> / N))
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">for</span> _, subTask := <span style="color:#6ab825;font-weight:bold">range</span> subTasks {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 执行数据查询逻辑
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ...
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 执行追加写入文件逻辑
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ...
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    subTask.ProgressPercent += P
+</span></span><span style="display:flex;"><span>    export.<span style="color:#447fcf">Update</span>(subTask)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 任务全部完成，更新进度为 100%
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>subTask.ProgressPercent = <span style="color:#3677a9">100</span>
+</span></span><span style="display:flex;"><span>export.<span style="color:#447fcf">Update</span>(subTask)
+</span></span></code></pre></div><h3 id="7-计算--更新任务总用时">7. 计算 &amp; 更新任务总用时</h3>
+<p>任务完成时使用 {当前时间 - 任务实际开始时间} 得到任务总用时，更新 <code>TimeCost</code> 字段即可。</p>
+<h3 id="8-更新报表文件下载地址">8. 更新报表文件下载地址</h3>
+<p><img src="https://dbwu.tech/images/optimize/data_export_4.png" alt="更新任务进度"></p>
+<p>当任务完成后，将任务导出过程中写入本地的文件推送到存储中心 (例如阿里云的 OSS)，然后生成加密访问链接并更新 <code>ResultFile</code> 下载地址字段。</p>
+<hr>
+<h2 id="不足之处">不足之处</h2>
+<p>本文主要从 <strong>功能流程设计、代码实现框架、导出流程+示例</strong> 三个方面介绍了如何优化 {大报表数据导出} 业务场景，到这里就全部介绍完了。
+最后我们来总结下实际项目中还会遇到的其他问题:</p>
+<ul>
+<li>数据库采用了分库分表</li>
+<li>数据库负载并不是一直处于稳定状态，有峰值和低谷</li>
+<li>应用服务器负载升高</li>
+<li>数据库主从之间的数据同步延迟问题对报表数据的影响</li>
+<li>多个报表中可能存在的数据组合、优化等问题</li>
+</ul>
+<p>希望读者有了本文的框架基础之后，在遇到具体的问题时可以轻松快速地找到性能瓶颈，并给出实际可行的优化解决方案。</p>
+<h2 id="小结">小结</h2>
+<p>应用层业务开发中，很多功能模块可能 “技术含量” 并不高，但是却能给使用者带来良好的用户体验，当功能的使用者是公司高管甚至业务大老板时，
+功能体验本身会自带杠杆，开发人员应该尽可能抓住这些潜在的机会，同时在开发完功能之后要在组内甚至跨部门自我宣传，这种案例积累的越多，
+开发人员在公司内部和外部的机会也越来越多。如果读者有过内部业务系统开发或者担任过技术管理工作，应该对上面的话深有体会。</p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang/check_cpu_utilization/"><i class="fa fa-chevron-circle-left"></i> Go 语言如何获取 CPU 利用率</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="降本增效 - 应用优化 (二)"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
