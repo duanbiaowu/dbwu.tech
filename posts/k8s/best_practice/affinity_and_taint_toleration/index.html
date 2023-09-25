@@ -1,0 +1,503 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 应用最佳实践 - 亲和性和污点容忍度 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - 亲和性和污点容忍度" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/affinity_and_taint_toleration/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-31T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-31T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - 亲和性和污点容忍度"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 应用最佳实践 - 亲和性和污点容忍度</h1>
+
+    
+      
+<p>
+    <span>2023-03-31</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="亲和性">亲和性</h2>
+<blockquote>
+<p>亲和性用于指定某个 Pod 应该或尽可能在哪些 Node 上运行。</p>
+</blockquote>
+<h3 id="两种策略">两种策略</h3>
+<h4 id="1-requiredduringschedulingignoredduringexecution">1. requiredDuringSchedulingIgnoredDuringExecution</h4>
+<p>也称之为硬性亲和性 (<del>暴力变量命名法</del>)，Pod 必须被调度到满足条件的节点上，如果没有满足的条件，就一直重试。</p>
+<h4 id="2-preferredduringschedulingignoredduringexecution">2. preferredDuringSchedulingIgnoredDuringExecution</h4>
+<p>也称之为软性亲和性，即使没有满足条件的节点，调度器依然会将 Pod 调度到某一个节点上。</p>
+<p>在软性亲和性中，可以为每个匹配表达式设置权重，取值范围是 1 - 100。当调度器找到所有匹配 Pod 亲和性标签的节点时，会通过遍历匹配表达式对权重值求和，选择出总分，从而确定调度的优先级。</p>
+<h4 id="后缀">后缀</h4>
+<p>不论是软性亲和性还是硬性亲和性，都有两种通用的后缀:</p>
+<ul>
+<li><strong>IgnoredDuringExecution</strong>: 如果节点标签变化后不再满足 Pod 的匹配条件，节点上已经运行的 Pod 不会受到影响</li>
+<li><strong>requiredDuringSchedulingRequiredDuringExecution</strong>: 如果节点标签变化后不再满足 Pod 的匹配条件，节点上已经运行的 Pod 会被驱逐</li>
+</ul>
+<h4 id="常用操作符">常用操作符</h4>
+<table>
+<thead>
+<tr>
+<th>操作符</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In</td>
+<td>标签值存在于集合中</td>
+</tr>
+<tr>
+<td>NotIn</td>
+<td>标签值不存在于集合中</td>
+</tr>
+<tr>
+<td>Exists</td>
+<td>包含对应标签</td>
+</tr>
+<tr>
+<td>DoesNotExist</td>
+<td>不包含对应的标签</td>
+</tr>
+</tbody>
+</table>
+<h4 id="匹配表达式">匹配表达式</h4>
+<ul>
+<li><strong>nodeSelectorTerms</strong>: 如果存在多个条件，节点满足任何一个条件就可以</li>
+<li><strong>matchExpressions</strong>:  如果存在多个条件，节点必须满足所有的条件才可以</li>
+</ul>
+<h3 id="三种类型">三种类型</h3>
+<p>大部分情况下，可以使用标签选择器来约束 Pod 的调度，保证将 Pod 调度到匹配标签的节点上。</p>
+<p>但是相比于标签选择器，<strong>亲和性拥有更强的表达能力和调度控制能力</strong>，亲和度类型有下面三种:</p>
+<ol>
+<li><strong>nodeAffinity</strong>:  Node 亲和性，表示 Pod 倾向于调度到拥有指定标签的节点上</li>
+<li><strong>podAffinity</strong>:   Pod 亲和性，表示 Pod 倾向于和拥有同样标签的 Pod 调度到一起</li>
+<li><strong>podAntiAffinity</strong>: Pod 反亲和性，表示 Pod 尽量避免和拥有同样标签的 Pod 调度到一起</li>
+</ol>
+<p><strong>注意</strong>: 如果同时指定了标签选择器和亲和性，则两者的条件必须同时满足，才能将 Pod 调度到节点上。</p>
+<h3 id="示例">示例</h3>
+<p>通过亲和性规则，我们可以实现更强大的调度逻辑语义，下面来看几个小的示例。</p>
+<h4 id="1-必须调度到-xx-节点">1. 必须调度到 XX 节点</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#447fcf;text-decoration:underline">...</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>redis-server<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#999;font-style:italic"># ...</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">affinity</span>:<span style="color:#666">  </span><span style="color:#999;font-style:italic"># 亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">nodeAffinity</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># Node 亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">requiredDuringSchedulingIgnoredDuringExecution</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 硬性亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">nodeSelectorTerms</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span>- <span style="color:#6ab825;font-weight:bold">matchExpressions</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span>- <span style="color:#6ab825;font-weight:bold">key</span>:<span style="color:#666"> </span>memory-size<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 内存标签名称</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span><span style="color:#6ab825;font-weight:bold">operator</span>:<span style="color:#666"> </span>In<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span><span style="color:#6ab825;font-weight:bold">values</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                  </span>- large<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 内存标签值</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span>...<span style="color:#666">
+</span></span></span></code></pre></div><p>通过上面的 yaml 声明，指定 Redis 必须被调度到拥有较大内存的节点上面。</p>
+<h4 id="2-尽量调度到-xx-节点">2. 尽量调度到 XX 节点</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#447fcf;text-decoration:underline">...</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Stateful<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>mysql-server<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#999;font-style:italic"># ...</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">affinity</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">nodeAffinity</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># Node 亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">preferredDuringSchedulingIgnoredDuringExecution</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 软性亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>- <span style="color:#6ab825;font-weight:bold">weight</span>:<span style="color:#666"> </span><span style="color:#3677a9">100</span><span style="color:#666"> </span><span style="color:#999;font-style:italic"># 权重设置为最高</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">nodeSelectorTerms</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span>- <span style="color:#6ab825;font-weight:bold">matchExpressions</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span>- <span style="color:#6ab825;font-weight:bold">key</span>:<span style="color:#666"> </span>storage<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 硬盘标签名称</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                  </span><span style="color:#6ab825;font-weight:bold">operator</span>:<span style="color:#666"> </span>In<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                  </span><span style="color:#6ab825;font-weight:bold">values</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                    </span>- ssd<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 硬盘标签值</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span>...<span style="color:#666">
+</span></span></span></code></pre></div><p>通过上面的 yaml 声明，指定 MySQL 尽可能被调度到拥有 SSD 的节点上面。</p>
+<h4 id="3-避免单点故障">3. 避免单点故障</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">replicas</span>:<span style="color:#666"> </span><span style="color:#3677a9">3</span><span style="color:#666"> </span><span style="color:#999;font-style:italic"># 副本数量</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">selector</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">matchLabels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#999;font-style:italic"># ...</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">affinity</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">podAntiAffinity</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># Pod 反亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">requiredDuringSchedulingIgnoredDuringExecution</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 硬性亲和性</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span>- <span style="color:#6ab825;font-weight:bold">labelSelector</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span><span style="color:#6ab825;font-weight:bold">matchExpressions</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span>- <span style="color:#6ab825;font-weight:bold">key</span>:<span style="color:#666"> </span>app<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 标签名称</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span><span style="color:#6ab825;font-weight:bold">operator</span>:<span style="color:#666"> </span>In<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span><span style="color:#6ab825;font-weight:bold">values</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span>- nginx<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 标签值</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">topologyKey</span>:<span style="color:#666"> </span><span style="color:#ed9d13">&#34;kubernetes.io/hostname&#34;</span><span style="color:#666"> </span><span style="color:#999;font-style:italic"># 拓扑域</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>...<span style="color:#666">
+</span></span></span></code></pre></div><p>通过上面的 yaml 声明，指定拥有 3 个副本的 Nginx 必须被调度到 3 个不同节点上面，避免单个节点宕机时服务中断，提高可用性。</p>
+<p>上面的 yaml 声明中，有一行代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>topologyKey: <span style="color:#ed9d13">&#34;kubernetes.io/hostname&#34;</span>
+</span></span></code></pre></div><p>这里简单进行说明: 这行代码用于指定反亲和性的拓扑域 key, 告诉调度器应该根据节点的主机名称来确定节点之间的拓扑域。因为我们使用的是反亲和性规则，
+同时使用主机名称作为拓扑域 key, 两者结合，确保了同一个 Pod 不会被调度到具有相同主机名称的节点上。</p>
+<hr>
+<h2 id="污点和容忍度">污点和容忍度</h2>
+<blockquote>
+<p>污点的作用目标是 Node (节点), 容忍度的作用目标是 Pod。一个 Node 可以设置多个污点，一个 Pod 也可以设置多个容忍度。</p>
+</blockquote>
+<h3 id="和亲和性的差异">和亲和性的差异</h3>
+<p>污点 (Taint) 和容忍度 (Toleration) 和亲和性机制类似，可以优化 Pod 在集群节点间的调度，只不过两者的工作方式正好相反。</p>
+<ul>
+<li>对于亲和性来说，可以将 Pod 调度到满足亲和性的节点上</li>
+<li>对于污点来说，<strong>只要给节点设置了污点，默认情况下所有 Pod 都无法调度到该节点，只有能容忍该节点污点的 Pod 才会被调度过来</strong></li>
+</ul>
+<h3 id="关键字段">关键字段</h3>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key</td>
+<td>键</td>
+</tr>
+<tr>
+<td>value</td>
+<td>值</td>
+</tr>
+<tr>
+<td>operator</td>
+<td>污点操作符</td>
+</tr>
+<tr>
+<td>effect</td>
+<td>污点影响</td>
+</tr>
+</tbody>
+</table>
+<h3 id="常用操作符-1">常用操作符</h3>
+<table>
+<thead>
+<tr>
+<th>操作符</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Equal</td>
+<td>容忍度等于具体的值</td>
+</tr>
+<tr>
+<td>Exists</td>
+<td>容忍度包含具体的值</td>
+</tr>
+</tbody>
+</table>
+<h3 id="污点影响">污点影响</h3>
+<h4 id="noschedule">NoSchedule</h4>
+<p>表示只有可以容忍节点污点的 Pod 才会被调度到这个节点上。</p>
+<h4 id="prefernoschedule">PreferNoSchedule</h4>
+<p>表示 NoSchedule 的宽松版本，如果 Pod 没有节点的污点容忍度，会尽可能阻止 Pod 被调度到这个节点上，但是如果没有其他节点可以调度，Pod 还是会被调度到这个节点上。</p>
+<h4 id="noexecute">NoExecute</h4>
+<p>前面两种类型只影响到 <strong>调度期间的</strong> Pod, NoExecute 类型同时还会影响当前正在节点 <strong>运行期间的</strong> Pod。</p>
+<p>如果一个节点添加了 NoExecute 污点，那么就会该节点上正在运行着的 Pod 进行检测, 如果 Pod 没有这个新增的 NoExecute 污点容忍度，将会被驱逐。</p>
+<h3 id="示例-1">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl taint nodes node-123 <span style="color:#40ffff">compute_type</span>=GPU:NoSchedule
+</span></span></code></pre></div><p>上面的命令为名称为 <code>node-123</code> 的节点添加了污点，其中:</p>
+<ul>
+<li>污点的 key 字段为 compute_type, 表示计算类型</li>
+<li>污点的 value 字段为 GPU</li>
+<li>污点的 effect 字段为 NoSchedule</li>
+</ul>
+<p>通过这行命令设置，保证只有可以容忍污点的 Pod 才可以被调度到该节点上面，换句话说，这是一个 GPU 计算型节点。</p>
+<h4 id="1-实现节点专用">1. 实现节点专用</h4>
+<p>利用污点和容忍度，可以实现 “非生产环境的 Redis 不能运行在生产环境的节点上” 这个功能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl taint nodes node-123 <span style="color:#40ffff">environment</span>=production:NoSchedule
+</span></span></code></pre></div><p>在生产环境的节点 node-123 上面添加一个污点 (environment=production)，并将污点效果设置为 NoSchedule。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>redis-server<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">tolerations</span>:<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 容忍度</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span>- <span style="color:#6ab825;font-weight:bold">key</span>:<span style="color:#666"> </span>environment<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 污点 key </span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">operator</span>:<span style="color:#666"> </span>Equal <span style="color:#666"> </span><span style="color:#999;font-style:italic"># 污点操作符</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">value</span>:<span style="color:#666"> </span>production<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 污点 value</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">effect</span>:<span style="color:#666"> </span>NoSchedule<span style="color:#666"> </span><span style="color:#999;font-style:italic"># 污点影响</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span>...<span style="color:#666">
+</span></span></span></code></pre></div><p>在 Pod 中定义了一个污点容忍度规则，确保只有生产环境中的 Pod 会被调度到该节点上面。</p>
+<hr>
+<h2 id="最佳实践">最佳实践</h2>
+<h3 id="亲和性-1">亲和性</h3>
+<h4 id="1-优化资源分配">1. 优化资源分配</h4>
+<p>通过亲和性将业务相关联的 Pod 调度到同一个节点或者同一组节点 (例如以机架进行分组)，可以提高资源利用率并节省成本，尤其是在使用云服务商提供的按量付费资源时效果更明显。</p>
+<p>例如在测试环境中，不需要保证高可用性，这时就可以把无状态服务和缓存服务调度到同一节点，通过更紧凑地编排 Pod 的分布来减少总节点的数量，这样多余的节点就不会产生任何费用了。</p>
+<p>除了优化资源分配外，还可以实现协同部署，例如将一个前端 Pod 和一个后端 Pod 部署到靠近的节点上，可以降低延时，提升请求的响应时间。</p>
+<h4 id="2-高可用和容错性">2. 高可用和容错性</h4>
+<p>通过亲和性将 Pod 调度到不同的节点，扩大服务发生故障时的节点域，提高服务的可用性和容错性，避免单点故障。</p>
+<h3 id="污点和容忍度-1">污点和容忍度</h3>
+<h4 id="1-保证资源独享">1. 保证资源独享</h4>
+<p>通过污点将重要的节点标记为不可调度，然后为重要的服务 Pod 设置容忍度机制，保证只有重要的服务才会被调度到重要的节点上 (例如专门用于 CPU, GPU 密集计算型的节点)，
+实现 “将 Pod 调度给指定节点” 功能。</p>
+<h4 id="2-避免服务中断">2. 避免服务中断</h4>
+<p>通过容忍性规则可以保证在节点维护或升级期间，将节点标记为故障节点，并触发已运行 Pod 的驱逐和调度，避免服务中断。</p>
+<h2 id="注意事项">注意事项</h2>
+<p>Pod 间亲和性 (podAffinity) 和反亲和性 (podAntiAffinity) 都需要相当的计算量，因此在大规模集群中会显著降低调度性能，官方建议不要在数百个及以上节点的集群中使用这两类规则。</p>
+<h2 id="标签命名-附录">标签命名 (附录)</h2>
+<p>Kubernetes 推荐每个资源对象都应该充分使用标签，这样就可以指定任意维度对资源进行拆分组合，下面是官方的标签类型和名称建议。</p>
+<table>
+<thead>
+<tr>
+<th>键</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>应用名称</td>
+</tr>
+<tr>
+<td><code>instance</code></td>
+<td>应用实例唯一名称</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>应用当前版本</td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>应用位于架构中的组件类型</td>
+</tr>
+<tr>
+<td><code>part-of</code></td>
+<td>更高级别应用名称</td>
+</tr>
+<tr>
+<td><code>managed-by</code></td>
+<td>应用管理工具</td>
+</tr>
+</tbody>
+</table>
+<p>下面是一个 wordpress 的无状态应用示例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>wordpress<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">instance</span>:<span style="color:#666"> </span>wordpress-abcxzy<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">version</span>:<span style="color:#666"> </span><span style="color:#ed9d13">&#34;4.9.4&#34;</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">managed-by</span>:<span style="color:#666"> </span>helm<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">component</span>:<span style="color:#666"> </span>server<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">part-of</span>:<span style="color:#666"> </span>wordpress<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#447fcf;text-decoration:underline">...</span><span style="color:#666">
+</span></span></span></code></pre></div><h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/design-proposals-archive/blob/main/scheduling/podaffinity.md">Inter-pod topological affinity and anti-affinity</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/controllers/daemonset/#how-daemon-pods-are-scheduled">DaemonSet</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/taint-and-toleration/">污点和容忍度</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity">亲和性与反亲和性</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/topology-spread-constraints/">Pod 拓扑分布约束</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/overview/working-with-objects/common-labels/">推荐使用的标签</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_reflect/"><i class="fa fa-chevron-circle-left"></i> Go 的反射与三大定律</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/iptables/">iptables 概述 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 应用最佳实践 - 亲和性和污点容忍度"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -454,6 +454,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - 亲和性和污点容忍度</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/affinity_and_taint_toleration/</link>
+       <pubDate>Fri, 31 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/affinity_and_taint_toleration/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Go 的反射与三大定律</title>
        <link>https://dbwu.tech/posts/golang_reflect/</link>
        <pubDate>Thu, 30 Mar 2023 00:00:00 +0000</pubDate>

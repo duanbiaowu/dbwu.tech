@@ -7,7 +7,7 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Thu, 16 Mar 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Fri, 31 Mar 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/kubernetes/index.xml" rel="self" type="application/rss+xml" />
    
@@ -451,6 +451,15 @@
        
        <guid>https://dbwu.tech/posts/iptables/</guid>
        <description>iptables 是一个配置 Linux 内核防火墙的命令行工具，它基于内核的包过滤框架（packet filtering framework） netfilter, 主要用于管理数据包过滤和 NAT 规则。</description>
+     </item>
+   
+     <item>
+       <title>Kubernetes 应用最佳实践 - 亲和性和污点容忍度</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/affinity_and_taint_toleration/</link>
+       <pubDate>Fri, 31 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/affinity_and_taint_toleration/</guid>
+       <description></description>
      </item>
    
      <item>
