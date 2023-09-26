@@ -7,7 +7,7 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Fri, 31 Mar 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Fri, 14 Apr 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/kubernetes/index.xml" rel="self" type="application/rss+xml" />
    
@@ -397,6 +397,15 @@
        
        <guid>https://dbwu.tech/posts/uuid/</guid>
        <description>分布式唯一 ID 是指在分布式系统中生成的全局唯一标识符。在分布式系统中，由于多个节点同时操作数据可能会导致数据冲突或者重复，因此需要为每个数据对象赋予一个唯一的标识符，以便在系统范围内进行区分。</description>
+     </item>
+   
+     <item>
+       <title>Kubernetes 应用最佳实践 - 水平自动伸缩</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/hpa/</link>
+       <pubDate>Fri, 14 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/hpa/</guid>
+       <description></description>
      </item>
    
      <item>

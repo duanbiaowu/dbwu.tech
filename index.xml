@@ -400,6 +400,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - 水平自动伸缩</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/hpa/</link>
+       <pubDate>Fri, 14 Apr 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/hpa/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Go 高性能 Tips</title>
        <link>https://dbwu.tech/posts/golang_performance_tips/</link>
        <pubDate>Mon, 10 Apr 2023 00:00:00 +0000</pubDate>

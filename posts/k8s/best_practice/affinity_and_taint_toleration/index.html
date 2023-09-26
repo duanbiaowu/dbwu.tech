@@ -182,6 +182,7 @@
 <li><strong>podAntiAffinity</strong>: Pod 反亲和性，表示 Pod 尽量避免和拥有同样标签的 Pod 调度到一起</li>
 </ol>
 <p><strong>注意</strong>: 如果同时指定了标签选择器和亲和性，则两者的条件必须同时满足，才能将 Pod 调度到节点上。</p>
+<hr>
 <h3 id="示例">示例</h3>
 <p>通过亲和性规则，我们可以实现更强大的调度逻辑语义，下面来看几个小的示例。</p>
 <h4 id="1-必须调度到-xx-节点">1. 必须调度到 XX 节点</h4>
@@ -323,6 +324,7 @@
 <h4 id="noexecute">NoExecute</h4>
 <p>前面两种类型只影响到 <strong>调度期间的</strong> Pod, NoExecute 类型同时还会影响当前正在节点 <strong>运行期间的</strong> Pod。</p>
 <p>如果一个节点添加了 NoExecute 污点，那么就会该节点上正在运行着的 Pod 进行检测, 如果 Pod 没有这个新增的 NoExecute 污点容忍度，将会被驱逐。</p>
+<hr>
 <h3 id="示例-1">示例</h3>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl taint nodes node-123 <span style="color:#40ffff">compute_type</span>=GPU:NoSchedule
 </span></span></code></pre></div><p>上面的命令为名称为 <code>node-123</code> 的节点添加了污点，其中:</p>
