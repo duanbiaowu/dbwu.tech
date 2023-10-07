@@ -248,7 +248,8 @@ Service 保证客户端可以连接到其中一个 Pod, 客户端不需要关注
 <p>Headless 是一种服务类型，通常用于在集群内部的服务发现和网络通信。Headless 服务是一种没有 Cluster IP 的服务，它允许直接访问 Pod 的网络地址，而不会通过服务代理进行负载均衡。
 这对于某些特定的应用场景非常有用，比如数据库集群、分布式存储系统等，因为它可以绕过负载均衡层，直接与特定的 Pod 进行通信。 使用场景: 不需要或不想要负载均衡，以及单独的 Service IP。</p>
 <h3 id="endpoint">EndPoint</h3>
-<p>Endpoint 对象是一种用来表示与服务相关联的网络端点的资源类型，主要作用是将服务的逻辑名称与实际的网络终点（Pod IP 地址和端口）进行映射。每个服务对应一个或多个 Endpoint 对象，这些对象定义了该服务所指向的具体 Pod 的网络位置。</p>
+<p>Endpoint 对象是一种用来表示与服务相关联的网络端点的资源类型，主要作用是将服务的逻辑名称与实际的网络位置（Pod IP 地址和端口）进行映射。
+每个服务对应一个或多个 Endpoint 对象，这些对象定义了该服务所指向的具体 Pod 的网络位置 (IP 地址和端口)。</p>
 <p><img src="https://dbwu.tech/images/k8s/endpoint.png" alt="nginx-EndPoint 示例"></p>
 <h2 id="replicationcontroller">ReplicationController</h2>
 <p>ReplicationController 的概念做个简单的了解即可，无需深入，因为在官方的设计中，它最终会被 ReplicaSet 完全替换，而在实际应用中，直接使用 ReplicaSet 即可。</p>
@@ -362,8 +363,7 @@ Service 保证客户端可以连接到其中一个 Pod, 客户端不需要关注
 <h2 id="ingress">Ingress</h2>
 <p><img src="https://dbwu.tech/images/k8s/ingress.png" alt="图片来源: https://banzaicloud.com/blog/k8s-ingress/"></p>
 <p>Ingress 是从 Kubernetes 集群外部访问集群内部服务的入口，通过一个公网 IP 地址可以访问多个服务，Ingress 控制器会根据客户端的请求来决定转发到具体的服务，
-Ingress 工作在网络七层，可以提供网络四层无法提供的功能 (例如根据客户端的请求 Header, Cookie 来完成会话亲和性)。
-但是有一点需要注意的是: <strong>Ingress 控制器不会将客户端请求直接转发到服务，而是会转发到服务背后的 Pod</strong>。</p>
+Ingress 工作在网络七层，可以提供网络四层无法提供的功能 (例如根据客户端的请求 Header, Cookie 来完成会话亲和性)。</p>
 <p>这里以 HTTP 请求为例，有了 Ingress 控制器之后，客户端和服务端的 HTTP 通信过程如下:</p>
 <ol>
 <li>客户端对服务端的应用域名 (例如 service1.example.com) 进行解析，查询到 Ingress 控制器的 IP 地址</li>

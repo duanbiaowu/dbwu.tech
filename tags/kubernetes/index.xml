@@ -7,7 +7,7 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Fri, 14 Apr 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 01 May 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/kubernetes/index.xml" rel="self" type="application/rss+xml" />
    
@@ -265,6 +265,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 应用最佳实践 - 金丝雀发布</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/canary_release/</link>
+       <pubDate>Mon, 01 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/canary_release/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>容器中如何正确配置 GOMAXPROCS ?</title>
        <link>https://dbwu.tech/posts/golang_automaxprocs/</link>
        <pubDate>Sun, 30 Apr 2023 00:00:00 +0000</pubDate>
@@ -454,7 +463,7 @@
      </item>
    
      <item>
-       <title>iptables 概述</title>
+       <title>iptables 的五表五链</title>
        <link>https://dbwu.tech/posts/iptables/</link>
        <pubDate>Mon, 03 Apr 2023 00:00:00 +0000</pubDate>
        
