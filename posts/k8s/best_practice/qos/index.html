@@ -1,0 +1,358 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Pod 服务质量等级 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Pod 服务质量等级" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/qos/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-07T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Pod 服务质量等级"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Pod 服务质量等级</h1>
+
+    
+      
+<p>
+    <span>2023-03-07</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>本文主要是对 <a href="https://dbwu.tech/posts/k8s/best_practice/requests_and_limits/">Kubernetes 应用最佳实践 - 资源请求和限制</a> 的补充。</p>
+<p>kubernetes 会自动将 Pod 的服务质量 (QoS) 分成三个等级，每个等级可以指定 Node 在资源不足时以什么策略来驱逐 Pod。</p>
+<table>
+<thead>
+<tr>
+<th>服务等级等级</th>
+<th>优先级</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BestEffort</td>
+<td>最低</td>
+</tr>
+<tr>
+<td>Guaranteed</td>
+<td>最高</td>
+</tr>
+<tr>
+<td>Burstable</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="besteffort">BestEffort</h2>
+<p><strong>BestEffort 是优先级最低的 Qos 等级，针对的目标是没有设置任何资源请求 (requests) 和资源限制 (limits) 的 Pod</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># BestEffort 优先级示例</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>foo<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>bar<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span></code></pre></div><p>如果 Pod 的 Qos 等级是 BestEffort, 那么在极端情况下，这些 Pod 分配不到任何资源 (CPU, 内存等)，同时当节点资源不足时，这些 Pod 会被优先终止，
+不过有坏的一面，也有好的一面，当节点资源充足时，这些 Pod 同样会充分使用资源。</p>
+<h2 id="guaranteed">Guaranteed</h2>
+<p><strong>Guaranteed 是优先级最高的 Qos 等级，针对的目标是已经设置了资源请求(requests) 和资源限制 (limits) 的 Pod</strong>。</p>
+<p>Guaranteed 等级的 Pod 需要满足以下几个条件:</p>
+<ol>
+<li>Pod 内的每个容器都需要设置 requests 和 limits (requests 默认情况下和 limits 相等，所以可以不用单独设置)</li>
+<li>requests 和 limits 指标必须同时包括 CPU 和内存</li>
+<li>requests 和 limits 指标值必须相等 (例如内存的 requests 和 limits 都是 2 GB)</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Guaranteed 优先级示例</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>foo<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">limits</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>10m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>1Gi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>10m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>1Gi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>bar<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">limits</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>10m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>1Gi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>10m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>1Gi<span style="color:#666">
+</span></span></span></code></pre></div><p>如果 Pod 的 Qos 等级是 Guaranteed, 可以使用请求到的资源 (request)，但是不能超过资源的限制量 (limits)。</p>
+<h2 id="burstable">Burstable</h2>
+<p>Burstable 是介于 BestEffort 和 Guaranteed 之间的 Qos 等级，如果 Pod 不属于上述两个等级，就属于 Burstable 等级。</p>
+<p>通过 BestEffort 和 Guaranteed 两个等级的条件，我们可以得出 Burstable 等级的满足条件:</p>
+<ol>
+<li>Pod 内只有单个容器，且容器的 requests 和 limits 不相等</li>
+<li>Pod 内有多个容器，且至少有一个容器没有设置 limits</li>
+<li>Pod 内有多个容器，且至少有两个容器的 requests 和 limits 不相等 (包括没有设置的情况)</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Burstable 优先级示例</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>foo<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">limits</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>10m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>1Gi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>10m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>1Gi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>bar<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">resources</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">limits</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>100m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>100Mi<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">requests</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">cpu</span>:<span style="color:#666"> </span>100m<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">memory</span>:<span style="color:#666"> </span>100Mi<span style="color:#666">
+</span></span></span></code></pre></div><p>如果 Pod 的 Qos 等级是 Burstable, 可以使用请求到的资源 (request)，如果设置了资源限制量 limits (则不能超过 limits)，如果没有设置资源限制量 limits (可以充分利用资源)。</p>
+<hr>
+<h2 id="表格小结">表格小结</h2>
+<p>根据上文中 Pod 和 Qos 等级之间的关系描述，我们可以总结出如下表格。</p>
+<table>
+<thead>
+<tr>
+<th>CPU (requests + limits)</th>
+<th>内存 (requests + limits)</th>
+<th>QoS 等级</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>未设置</td>
+<td>未设置</td>
+<td>BestEffort</td>
+</tr>
+<tr>
+<td>未设置</td>
+<td>requests &lt;= limits</td>
+<td>Burstable</td>
+</tr>
+<tr>
+<td>requests &lt;= limits</td>
+<td>未设置</td>
+<td>Burstable</td>
+</tr>
+<tr>
+<td>requests = limits</td>
+<td>requests &lt; limits</td>
+<td>Burstable</td>
+</tr>
+<tr>
+<td>requests &lt; limits</td>
+<td>requests = limits</td>
+<td>Burstable</td>
+</tr>
+<tr>
+<td>requests = limits</td>
+<td>requests = limits</td>
+<td>Guaranteed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="资源不足时的驱逐策略">资源不足时的驱逐策略</h2>
+<p>当节点资源不足时，会驱逐 Pod 并释放出资源给优先级高的 Pod 使用，此时<strong>被驱逐的 Pod 的 Qos 等级依次为: BestEffort, Burstable, Guaranteed</strong>,
+Guaranteed 等级的 Pod 只有在系统进程需要资源时才会被驱逐。</p>
+<p><strong>如果两个 Pod 的 Qos 等级相同，会优先驱逐资源实际使用量占请求量比例更高的 Pod</strong>。</p>
+<h2 id="最佳实践">最佳实践</h2>
+<ul>
+<li>设置 Pod 的资源 requests 和 limits 参数时，要根据节点资源总量预留出一定的缓冲区，避免节点的资源耗尽</li>
+<li>将关键业务应用 Pod 的 Qos 等级设置为 Guaranteed, 保证其资源可用性和运行的稳定性</li>
+<li>非关键业务应用 Pod 的 Qos 等级可以适当调整为 Burstable, 预留出一定的弹性</li>
+<li>避免使用 BestEffort 等级，因为该等级不能提供任何资源保证，即使在资源充足时，该等级对应的 Pod 申请资源过程也是不可控的</li>
+<li>不仅要关注 Pod 的资源 requests 和 limits 参数，同时还要关注资源 requests 请求量和实际使用量，持续监控和调整</li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/design-proposals-archive/blob/main/node/resource-qos.md#qos-classes">QoS Classes</a></li>
+<li><a href="https://kubernetes.io/docs/tasks/configure-Pod-container/quality-service-Pod/">配置 Pod 的服务质量</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/workloads/Pods/Pod-qos/">Pod QoS</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/best_practice/probe/"><i class="fa fa-chevron-circle-left"></i> Kubernetes 应用最佳实践 - 探针</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/what_is_cloudnative/">云原生和边缘计算简介 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Pod 服务质量等级"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

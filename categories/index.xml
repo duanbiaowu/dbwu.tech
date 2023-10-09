@@ -597,6 +597,15 @@
      </item>
    
      <item>
+       <title>Kubernetes Pod 服务质量等级</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/qos/</link>
+       <pubDate>Tue, 07 Mar 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/qos/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes 应用最佳实践 - 探针</title>
        <link>https://dbwu.tech/posts/k8s/best_practice/probe/</link>
        <pubDate>Fri, 03 Mar 2023 00:00:00 +0000</pubDate>
