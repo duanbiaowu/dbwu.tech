@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Mon, 01 May 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Thu, 12 Oct 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/cloud-native/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Kubernetes 架构 - 控制平面和数据平面</title>
+       <link>https://dbwu.tech/posts/k8s/arch/</link>
+       <pubDate>Thu, 12 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/arch/</guid>
+       <description></description>
+     </item>
    
      <item>
        <title>降本增效 - 应用优化 (二)</title>

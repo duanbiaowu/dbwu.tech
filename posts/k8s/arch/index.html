@@ -1,0 +1,302 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 架构 - 控制平面和数据平面 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 架构 - 控制平面和数据平面" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/arch/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-10-12T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 架构 - 控制平面和数据平面"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 架构 - 控制平面和数据平面</h1>
+
+    
+      
+<p>
+    <span>2023-10-12</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="集群组成">集群组成</h2>
+<p>Kubernetes 集群分为两部分</p>
+<ol>
+<li>Master Node (主节点，也就是控制平面)</li>
+<li>Worker Node (工作节点)</li>
+</ol>
+<p><img src="../../images/k8s/arch_demo.png" alt="图片来源: 网络"></p>
+<h3 id="控制平面的组件">控制平面的组件</h3>
+<ul>
+<li><strong>API Server</strong>: 控制平面的前端，负责各组件之间的通信，接收和处理所有 REST 请求，并将处理结果状态存储到 etcd 中</li>
+<li><strong>Scheduler</strong>: 负责将应用调度到具体节点，调度时会考虑软硬件约束、标签、亲和性、污点和容忍性等特征</li>
+<li><strong>Controller Manager</strong>: 负责维护集群的状态，通过运行各种类型的控制器进程 (例如 NodeController, PodController, JobController)，每个控制器保证对应资源的状态向期望值收敛</li>
+<li><strong>etcd</strong>: 持久化存储集群配置、状态、元数据，担任后端 “服务发现 + 数据库” 的角色，是集群中唯一的 “有状态” 组件</li>
+</ul>
+<p><strong>控制平面组件会存储和管理集群状态，控制并保证整个集群正常运行，但是不运行具体的应用容器</strong>。</p>
+<h3 id="工作节点上的组件">工作节点上的组件</h3>
+<p><strong>下面的三个组件会在集群中的每个节点上运行</strong>。</p>
+<ul>
+<li><strong>kubelet</strong>: 负责管理所在节点上面的容器和网络 (CNI)，通过和控制平面的 API Server 进行通信，对节点上的各类资源操作管理和状态上报</li>
+<li><strong>kube-proxy</strong>: 每个节点上运行的 “网络代理”，通过维护网络转发规则 (iptables, ipvs)，将流量分发到对应的 Pod 中，</li>
+<li><strong>CRI (容器运行时)</strong>: 实现了 OCI 标准的容器类型，例如 Docker, containerd 等</li>
+</ul>
+<hr>
+<h3 id="附加组件">附加组件</h3>
+<p>除了控制平面和工作节点上面的组件之外，还需要一些其他组件，通过组合来共同完成集群提供的功能。</p>
+<h4 id="dns-必要组件">DNS (必要组件)</h4>
+<p>表示集群内部运行的 DNS 服务器 (默认使用 CoreDNS)，负责为 Kubernetes 服务提供 DNS 记录，Pod 中的容器自动将此 DNS 服务器包含在搜索列表中。</p>
+<h4 id="容器资源监控">容器资源监控</h4>
+<p>存储容器运行时 Metrics 数据并提供浏览和查询，一般是集成到 Prometheus 完成。</p>
+<h4 id="集群日志">集群日志</h4>
+<p>存储 Node 和 Pod 的日志数据并提供浏览和查询，一般是集成到 EFK 集群。</p>
+<h4 id="cni">CNI</h4>
+<p>CNI (Container Network Interface) 表示容器网络接口，用于定义容器运行时如何与底层网络解耦，主要负责为 Pod 分配 IP 地址，保证 Pod 能在集群内部相互通信。</p>
+<h4 id="仪表盘-web-页面">仪表盘 (Web 页面)</h4>
+<p>基于网页的 Kubernetes 用户界面，用户通过仪表盘可以管理集群、各类资源、应用容器、故障排查。</p>
+<p><img src="../../images/k8s/dashboard.png" alt="通过仪表盘查看 Pod 监控"></p>
+<hr>
+<h2 id="集群高可用">集群高可用</h2>
+<p>开发者应该尽可能将服务设计成 <a href="https://dbwu.tech/posts/cloudnative/how_to_design_stateless_app/">无状态应用</a>，保证应用本身可以水平扩展，
+然后为对应的 Deployment 配置不同的副本数量，剩下的工作交给 Kubernetes 处理就可以了。</p>
+<h3 id="控制平面">控制平面</h3>
+<p>为了保证服务不中断，除了应用本身之外，更重要的是 kubernetes 控制平面组件要稳定运行，可以通过运行下面各组件的多个实例，形成多个 “主节点” 协同运行。</p>
+<ul>
+<li><strong>API Server</strong></li>
+<li><strong>Scheduler</strong></li>
+<li><strong>Controller Manager</strong></li>
+<li><strong>etcd</strong></li>
+</ul>
+<p>如图所示是一个三节点的高可用集群。</p>
+<p><img src="../../images/k8s/three_nodes_cluster.png" alt="图片来源: https://www.amazon.com/Kubernetes-Action-Marko-Luksa/dp/1617293725"></p>
+<h3 id="api-server">API Server</h3>
+<p>API Server 本身就是无状态的 (所有数据都存在在 etcd 中)，所以直接运行多个实例即可。<strong>典型的配置方案是</strong>: 单节点部署一个 API Server 实例加一个 etcd 实例，
+etcd 实例之前不需要任何负载均衡，因为每个 API Server 只和本地 etcd 实例进行通信。 但是 API Server 需要一个负载均衡，
+这样可以保证所有需要和 API Server 通信的客户端 (Controller Manager、Scheduler, kubectl，Kubelet) 总是可以连接到健康的 API Server 实例。</p>
+<h3 id="scheduler-和-controller-manager">Scheduler 和 Controller Manager</h3>
+<p>相比于 API Server，Scheduler 和 Controller Manager 运行多个实例会相对比较复杂，因为 Scheduler 和 Controller Manager 都会积极地监听集群状态，
+并在监听数据状态发生变更时做出对应操作，(例如，当 Deployment 的期望复制数增加时，DeploymentController 会创建新的 Pod)，
+组件运行多个实例时，每个实例都会执行同一个操作，不可避免产生竞争状态，从而造成非预期的结果 (例如，本来只需要创建 2 个新 Pod, 结果三个实例创建了 6 个)。</p>
+<p>基于上述原因，<strong>当运行多个 Scheduler 和 Controller Manager 实例时，给定时间内应该保证只有一个实例有效 (领导者)</strong>，
+只有当选为 “领导者” 的实例才能真正执行操作，其余实例都处于候选状态，当领导者实例宕机时，候选实例开始选举新的领导者接管工作。</p>
+<p>Scheduler 和 Controller Manager 可以和 API Server 部署在同一节点，这样全程都是本地通信。</p>
+<h4 id="领导者选举机制">领导者选举机制</h4>
+<p>领导选举机制: 多个实例 (Scheduler 或 Controller Manager) 会同时向 API Server 发起创建资源请求，第一个创建成功的实例就会成为领导者，
+内部采用了类似 “乐观锁” 的机制，保证即使多个实例同时发起请求，最后只会有一个实例写入成功。</p>
+<p><strong>一旦成为领导者，必须定时更新资源</strong> (默认 2 秒)，这样候选实例就可以知道领导者状态是否正常，当领导者实例发生故障，候选实例就会发起创建资源请求并尝试成为领导者。</p>
+<h3 id="etcd">etcd</h3>
+<p>除了持久化存储集群配置、状态、元数据之外，etcd 还会存储如 ConfigMap, Secret 等数据，etcd 会在多个实例间复制数据，所以多个节点中的一个节点宕机时，不会影响数据读写操作。</p>
+<p>高可用性是通过部署奇数个数量节点来完成:</p>
+<blockquote>
+<p>节点数量 = 节点故障容忍数量 * 2 + 1</p>
+</blockquote>
+<p>例如为了容忍 2 个或者 3 个节点宕机，需要运行 5 个或 7 个 etcd 节点，但是节点数量并不是越多越多，过多的节点会对性能造成影响，尤其是当节点跨数据中心甚至跨区域的情况。</p>
+<hr>
+<h2 id="通信">通信</h2>
+<p>集群各组件只能通过 API Server 进行通信，而不是组件之间直接通信。</p>
+<p>API Server 是唯一和 etcd 通信的组件，其他组件获取/修改集群状态数据时，会将请求发送至 API Server, 然后由 API Server 处理成对应的读写请求并转发到 etcd,
+最后将 etcd 的响应结果返回给请求方组件。</p>
+<p><strong>控制平面可以订阅资源被创建、修改或删除的通知</strong>，各组件可以利用这个功能，在资源数据发生变化时执行任何对应的操作。</p>
+<p>下面是一个创建 Pod 的流程示例:</p>
+<p><img src="../../images/k8s/pod_create_flow.png" alt="图片来源: https://kubernetes.feisky.xyz/concepts/components"></p>
+<h3 id="通信协议">通信协议</h3>
+<p><a href="../../images/k8s/kubernetes-high-level-component-archtecture.png">图片来源: 网络</a></p>
+<p>通过上面的大图，可以非常清晰地看到 Kubernetes 集群中组件之间的通信协议，例如:</p>
+<ul>
+<li>API Server 和 etcd 之间使用 gRPC 协议</li>
+<li>控制平面内的组件之间、控制平面组件与 kubelet 之间使用 Protobuf 序列化编码协议</li>
+<li>&hellip;</li>
+</ul>
+<h2 id="小结">小结</h2>
+<p>Kubernetes 组件概览:</p>
+<p><a href="../../images/k8s/arch.png">图片来源: https://kubernetes.io</a></p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/architecture.md">kubernetes/design-proposals-archive/architecture</a></li>
+<li><a href="https://arthurchiao.art/blog/borg-omega-k8s-zh/">Borg、Omega、K8s：Google 十年三代容器管理系统的设计与思考</a></li>
+<li><a href="https://arthurchiao.art/blog/k8s-cgroup-zh/">k8s 基于 cgroup 的资源限额（capacity enforcement）：模型设计与代码实现</a></li>
+<li><a href="https://www.sofastack.tech/blog/ant-financial-managing-large-scale-kubernetes-clusters/">蚂蚁金服万级规模 K8s 集群管理系统如何设计？</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/overview/components/">Kubernetes 组件</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/optimize/big_data_file_export/"><i class="fa fa-chevron-circle-left"></i> 降本增效 - 应用优化 (二)</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 架构 - 控制平面和数据平面"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
