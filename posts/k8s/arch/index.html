@@ -131,7 +131,7 @@
 <li>Master Node (主节点，也就是控制平面)</li>
 <li>Worker Node (工作节点)</li>
 </ol>
-<p><img src="../../images/k8s/arch_demo.png" alt="图片来源: 网络"></p>
+<p><img src="https://dbwu.tech/images/k8s/arch_demo.png" alt="图片来源: 网络"></p>
 <h3 id="控制平面的组件">控制平面的组件</h3>
 <ul>
 <li><strong>API Server</strong>: 控制平面的前端，负责各组件之间的通信，接收和处理所有 REST 请求，并将处理结果状态存储到 etcd 中</li>
@@ -160,7 +160,7 @@
 <p>CNI (Container Network Interface) 表示容器网络接口，用于定义容器运行时如何与底层网络解耦，主要负责为 Pod 分配 IP 地址，保证 Pod 能在集群内部相互通信。</p>
 <h4 id="仪表盘-web-页面">仪表盘 (Web 页面)</h4>
 <p>基于网页的 Kubernetes 用户界面，用户通过仪表盘可以管理集群、各类资源、应用容器、故障排查。</p>
-<p><img src="../../images/k8s/dashboard.png" alt="通过仪表盘查看 Pod 监控"></p>
+<p><img src="https://dbwu.tech/images/k8s/dashboard.png" alt="通过仪表盘查看 Pod 监控"></p>
 <hr>
 <h2 id="集群高可用">集群高可用</h2>
 <p>开发者应该尽可能将服务设计成 <a href="https://dbwu.tech/posts/cloudnative/how_to_design_stateless_app/">无状态应用</a>，保证应用本身可以水平扩展，
@@ -174,7 +174,7 @@
 <li><strong>etcd</strong></li>
 </ul>
 <p>如图所示是一个三节点的高可用集群。</p>
-<p><img src="../../images/k8s/three_nodes_cluster.png" alt="图片来源: https://www.amazon.com/Kubernetes-Action-Marko-Luksa/dp/1617293725"></p>
+<p><img src="https://dbwu.tech/images/k8s/three_nodes_cluster.png" alt="图片来源: https://www.amazon.com/Kubernetes-Action-Marko-Luksa/dp/1617293725"></p>
 <h3 id="api-server">API Server</h3>
 <p>API Server 本身就是无状态的 (所有数据都存在在 etcd 中)，所以直接运行多个实例即可。<strong>典型的配置方案是</strong>: 单节点部署一个 API Server 实例加一个 etcd 实例，
 etcd 实例之前不需要任何负载均衡，因为每个 API Server 只和本地 etcd 实例进行通信。 但是 API Server 需要一个负载均衡，
@@ -204,9 +204,9 @@ etcd 实例之前不需要任何负载均衡，因为每个 API Server 只和本
 最后将 etcd 的响应结果返回给请求方组件。</p>
 <p><strong>控制平面可以订阅资源被创建、修改或删除的通知</strong>，各组件可以利用这个功能，在资源数据发生变化时执行任何对应的操作。</p>
 <p>下面是一个创建 Pod 的流程示例:</p>
-<p><img src="../../images/k8s/pod_create_flow.png" alt="图片来源: https://kubernetes.feisky.xyz/concepts/components"></p>
+<p><img src="https://dbwu.tech/images/k8s/pod_create_flow.png" alt="图片来源: https://kubernetes.feisky.xyz/concepts/components"></p>
 <h3 id="通信协议">通信协议</h3>
-<p><a href="../../images/k8s/kubernetes-high-level-component-archtecture.png">图片来源: 网络</a></p>
+<p><a href="https://dbwu.tech/images/k8s/kubernetes-high-level-component-archtecture.png">图片来源: 网络</a></p>
 <p>通过上面的大图，可以非常清晰地看到 Kubernetes 集群中组件之间的通信协议，例如:</p>
 <ul>
 <li>API Server 和 etcd 之间使用 gRPC 协议</li>
@@ -215,7 +215,7 @@ etcd 实例之前不需要任何负载均衡，因为每个 API Server 只和本
 </ul>
 <h2 id="小结">小结</h2>
 <p>Kubernetes 组件概览:</p>
-<p><a href="../../images/k8s/arch.png">图片来源: https://kubernetes.io</a></p>
+<p><a href="https://dbwu.tech/images/k8s/arch.png">图片来源: https://kubernetes.io</a></p>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/architecture.md">kubernetes/design-proposals-archive/architecture</a></li>
