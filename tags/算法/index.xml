@@ -13,6 +13,15 @@
    
    
      <item>
+       <title>Kubernetes Service 类型和最佳实践</title>
+       <link>https://dbwu.tech/posts/k8s/service/</link>
+       <pubDate>Mon, 16 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/service/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes 架构 - 控制平面和数据平面</title>
        <link>https://dbwu.tech/posts/k8s/arch/</link>
        <pubDate>Thu, 12 Oct 2023 00:00:00 +0000</pubDate>
