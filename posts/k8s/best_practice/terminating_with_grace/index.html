@@ -1,0 +1,353 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 应用最佳实践 - 长连接优雅关闭 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - 长连接优雅关闭" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/terminating_with_grace/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-20T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-10-20T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - 长连接优雅关闭"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 应用最佳实践 - 长连接优雅关闭</h1>
+
+    
+      
+<p>
+    <span>2023-10-20</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>Kubernetes 中的网络连接由节点上面的 Service 代理进行管理，Service 会将流量转发到对应的 Pod 中，相比于传统网络编程中使用 IP 地址连接到单个服务器的方式，
+Kubernetes 可以提供更高的灵活性和扩展性。</p>
+<p>Pod 是 Kubernetes 中应用运行的最小单位，虽然单个 Pod 拥有自己的 IP 和主机名称，但是 Pod 可能会因为伸缩、驱逐、容器内进程异常等情况被终止并重启，
+重启后的 Pod 和之前之前的 Pod 拥有不同的 IP 地址，这样一来，也就产生了下面的问题:</p>
+<p><strong>网络编程长连接场景中，Pod 被终止后，容器内应用服务管理的所有连接都会被释放，如何在 Pod 终止前通知到所有长连接的客户端呢？</strong></p>
+<p>针对这个问题，Kubernetes 提供了成熟的 “优雅关闭应用” 方案。</p>
+<h2 id="优雅关闭">优雅关闭</h2>
+<p>在 Kubernetes 中要优雅地关闭长连接，需要保证执行以下步骤:</p>
+<ol>
+<li><strong>确保应用程序可以快速启动和关闭，并且可以处理 SIGTERM 信号 (这个是前提)</strong></li>
+<li>Pod 被终止时, kubelet 会向 API Server 发送 DELETE 请求</li>
+<li>API Server 处理完 DELETE 请求会通知监听对象 kubelet 和 EndPoint 控制器</li>
+<li>kubelet 执行 Pre-Stop 钩子函数并且向容器内应用程序发送 SIGTERM 信号</li>
+<li>Endpoints 控制器删除 Pod 对应的 EndPoint 对象, 然后发送事件到 API Server</li>
+<li>API Server 通知所有关注这个被删除的 Endpoint 对象的观察者，其中也包括了被删除 Pod 所在节点上面的 kube-proxy</li>
+<li>kube-proxy 更新转发规则，更新完成后就会停止向被终止的 Pod 转发流量</li>
+<li>应用程序在接收到 SIGTERM 信号时，应该继续处理新的连接请求，同时开始进行收尾工作 (通知客户端并关闭连接，例如向所有客户端发送广播消息后关闭所有连接)</li>
+<li>客户端在连接断开后，尝试发起新的连接，然后新的连接会被转发到新的 Pod 中</li>
+</ol>
+<p><img src="https://dbwu.tech/images/k8s/terminating_with_grace.png" alt="Pod 关闭后转发规则变化" title="Pod 关闭后转发规则变化"></p>
+<p>如图所示，当 Pod-2 终止后，新的流量会被转发到 Pod-3。</p>
+<h3 id="潜在问题">潜在问题</h3>
+<p>kubelet 和 Endpoints 控制器接收到通知消息后，会进入并行执行阶段，因此可能出现的情况是:
+关闭 Pod 应用进程的完成时间要早于 kube-proxy 更新转发规则的完成时间，此时 Pod 已经终止，但是转发规则还没有更新，又正好新的请求连接过来了，
+于是 kube-proxy 将新的请求转发到了已终止的 Pod, 抛出客户端连接错误。</p>
+<p>上面这个问题的解决方案，我们将在下文中的 “细节问题” 小节详细描述，接下来先来看看信号捕获和处理的问题。</p>
+<hr>
+<h2 id="信号捕获方法">信号捕获方法</h2>
+<p>主流编程语言标准库都提供了信号捕获和处理方法，直接使用即可，例如在 Go 语言中可以这样捕获 SIGTERM 信号 (伪代码):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建一个 channel 接收信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	signalChan := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> os.Signal, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 捕获 SIGTERM 信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	signal.<span style="color:#447fcf">Notify</span>(signalChan, syscall.SIGTERM)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 无限循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 收到 SIGTERM 信号之后退出程序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		&lt;-signalChan
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;收到 SIGTERM 信号&#34;</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="信号处理">信号处理</h2>
+<p>在下面的代码中，我们创建了一个 TCP 服务并监听请求连接 (伪代码，不考虑并发读写等问题)，并在接收到 SIGTERM 信号之后进行以下工作:</p>
+<ol>
+<li>goroutine 收到信号之后打印一条日志</li>
+<li>遍历所有已建立的连接，逐个关闭</li>
+<li>关闭 TCP 服务监听，不再接收新的连接</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 全局连接池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> connections = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[net.Conn]<span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 创建 TCP 服务
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    listener, err := net.<span style="color:#447fcf">Listen</span>(<span style="color:#ed9d13">&#34;tcp&#34;</span>, <span style="color:#ed9d13">&#34;:8080&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>        os.<span style="color:#447fcf">Exit</span>(<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">defer</span> listener.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建一个 channel 接收信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	signalChan := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> os.Signal, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 捕获 SIGTERM 信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	signal.<span style="color:#447fcf">Notify</span>(signalChan, syscall.SIGTERM)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 启动一个 goroutine 用来监听信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>        &lt;-signalChan
+</span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;收到 SIGTERM 信号，开始关闭连接&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 遍历所有已建立的连接，依次关闭
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意: 这里可能存在并发读写延迟，最好的实现方式为 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#6ab825;font-weight:bold">for</span> conn := <span style="color:#6ab825;font-weight:bold">range</span> connections {
+</span></span><span style="display:flex;"><span>            conn.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 关闭 TCP 服务器，停止接受新连接
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		listener.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 退出程序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        os.<span style="color:#447fcf">Exit</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    }()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 无限循环，接受客户端新连接
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>        conn, err := listener.<span style="color:#447fcf">Accept</span>()
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			log.<span style="color:#447fcf">Fatal</span>(err)
+</span></span><span style="display:flex;"><span>            <span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 将新连接添加到连接池
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意: 这里可能存在并发读写延迟，最好的实现方式为 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        connections[conn] = <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 在新协程中处理客户端请求
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#447fcf">handleConnection</span>(conn)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 处理客户端请求
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">handleConnection</span>(conn net.Conn) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span></code></pre></div><hr>
+<h2 id="细节问题">细节问题</h2>
+<p><strong>为什么收到 SIGTERM 信号之后，对于新到的连接请求，应用程序还要继续处理，而不是直接拒绝呢？</strong></p>
+<p>因为 Kubernetes 处理 kube-proxy 的转发规则和负载均衡需要时间，
+如果应用程序直接拒绝新的请求，会导致客户端错误。Pod 在删除期间虽然处于 Terminating 状态，但是依然可以正常接收和处理请求。</p>
+<p><strong>最佳实践是</strong>: 在收到 SIGTERM 信号之后，使 <strong>就绪探针</strong> 停止检查 (探针直接返回失败即可)，这样 Pod 将不再接收任何流量，应用程序不需要再处理新的请求连接。</p>
+<h3 id="pre-stop-钩子函数">Pre-Stop 钩子函数</h3>
+<p>除了使用应用程序来处理 Pod 的终止到重启之间的过渡阶段，还可以使用 Pre-Stop 钩子函数来处理，常见的策略是在钩子函数内休眠一段时间，
+这样可以为 Pod 的删除过程提供额外的缓冲时间。</p>
+<p>Pre-Stop 钩子函数执行完成后向容器应用进程发送 SIGTERM 信号，默认情况下，Pod 删除的超时 (<strong>terminationGracePeriodSeconds</strong>) 时间为 30 秒，
+超时后 Pod 会被 Kill, 这个时间指的就是 <strong>Pre-Stop 钩子函数的执行时间加应用程序处理 SIGTERM 信号的时间</strong>。</p>
+<p>例如 <code>terminationGracePeriodSeconds</code> 的值为 30 秒, Pre-Stop 钩子函数执行了 25 秒，应用程序处理 SIGTERM 信号需要 10 秒，那么应用程序等不到执行完成，
+就会被 kill, 因为 25 + 10 &gt; 30。</p>
+<p>下面是是一个 Nginx Pod 使用 Pre-Stop 钩子函数的示例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 指定超时为 60 秒</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">terminationGracePeriodSeconds</span>:<span style="color:#666"> </span><span style="color:#3677a9">60</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span>- <span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">lifecycle</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">preStop</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">exec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">command</span>:<span style="color:#666"> </span>[<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#ed9d13">&#34;sh&#34;</span>,<span style="color:#666"> </span><span style="color:#ed9d13">&#34;-c&#34;</span>,<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#999;font-style:italic"># 休眠 10 秒，然后优雅关闭 Nginx</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#ed9d13">&#34;sleep 10 &amp;&amp; /usr/sbin/nginx -s quit&#34;</span>,<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>]<span style="color:#666">
+</span></span></span></code></pre></div><p><strong>注意</strong>: Kubernetes 集群自动伸缩的执行超时为 10 分钟，所以 <code>terminationGracePeriodSeconds</code> 参数的值应该小于 10 分钟，默认情况下的 30 秒其实是良好的实践。</p>
+<hr>
+<h2 id="小结">小结</h2>
+<p>Pod 的删除首先逻辑删除过程，具体来说就是 etcd 中删除了对应的 Pod 记录，其次是物理删除过程，也就是节点的 Pod 在执行完 Pre-Stop 钩子函数和 SIGTERM 信号捕获之后，
+关闭 Pod 内的所有容器，最后 Pod 被节点删除。所有想实现 “优雅关闭、升级” 的应用程序，都要围绕着这两个过程展开具体的业务逻辑，最终实现服务端的高可用加客户端的优秀体验。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://cloud.google.com/blog/products/containers-kubernetes/kubernetes-best-practices-terminating-with-grace">Kubernetes best practices: terminating with grace</a></li>
+<li><a href="https://medium.com/@marko.luksa/graceful-scaledown-of-stateful-apps-in-kubernetes-2205fc556ba9">Graceful scaledown of stateful apps in Kubernetes</a></li>
+<li><a href="https://developer.aliyun.com/article/767535?spm=a2c4g.11186623.0.0.2e2844cbyufV4u">如何实现 K8s 零中断滚动更新？</a></li>
+<li><a href="https://www.qikqiak.com/post/zero-downtime-rolling-update-k8s/">Kubernetes 零宕机滚动更新</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/service/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Service 类型和会话亲和性</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 应用最佳实践 - 长连接优雅关闭"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

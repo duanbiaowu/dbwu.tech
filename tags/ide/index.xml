@@ -13,7 +13,16 @@
    
    
      <item>
-       <title>Kubernetes Service 类型和最佳实践</title>
+       <title>Kubernetes 应用最佳实践 - 长连接优雅关闭</title>
+       <link>https://dbwu.tech/posts/k8s/best_practice/terminating_with_grace/</link>
+       <pubDate>Fri, 20 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/best_practice/terminating_with_grace/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Kubernetes Service 类型和会话亲和性</title>
        <link>https://dbwu.tech/posts/k8s/service/</link>
        <pubDate>Mon, 16 Oct 2023 00:00:00 +0000</pubDate>
        
