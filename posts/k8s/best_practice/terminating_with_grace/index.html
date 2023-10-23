@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>Kubernetes 应用最佳实践 - 长连接优雅关闭 - 蛮荆</title>
+  <title>Kubernetes 应用最佳实践 - 优雅关闭长连接 - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - 长连接优雅关闭" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 应用最佳实践 - 优雅关闭长连接" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/k8s/best_practice/terminating_with_grace/" /><meta property="article:section" content="posts" />
@@ -16,7 +16,7 @@
 <meta property="article:modified_time" content="2023-10-20T00:00:00+00:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Kubernetes 应用最佳实践 - 长连接优雅关闭"/>
+<meta name="twitter:title" content="Kubernetes 应用最佳实践 - 优雅关闭长连接"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.113.0">
@@ -103,7 +103,7 @@
 
 <article>
 
-    <h1>Kubernetes 应用最佳实践 - 长连接优雅关闭</h1>
+    <h1>Kubernetes 应用最佳实践 - 优雅关闭长连接</h1>
 
     
       
@@ -204,7 +204,7 @@ Kubernetes 可以提供更高的灵活性和扩展性。</p>
 </span></span><span style="display:flex;"><span>		fmt.<span style="color:#447fcf">Println</span>(<span style="color:#ed9d13">&#34;收到 SIGTERM 信号，开始关闭连接&#34;</span>)
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 遍历所有已建立的连接，依次关闭
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意: 这里可能存在并发读写延迟，最好的实现方式为 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意: 这里可能存在并发读写延迟，更好的实现方式为 channel
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#6ab825;font-weight:bold">for</span> conn := <span style="color:#6ab825;font-weight:bold">range</span> connections {
 </span></span><span style="display:flex;"><span>            conn.<span style="color:#447fcf">Close</span>()
 </span></span><span style="display:flex;"><span>        }
@@ -225,7 +225,7 @@ Kubernetes 可以提供更高的灵活性和扩展性。</p>
 </span></span><span style="display:flex;"><span>        }
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 将新连接添加到连接池
-</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意: 这里可能存在并发读写延迟，最好的实现方式为 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 注意: 这里可能存在并发读写延迟，更好的实现方式为 channel
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        connections[conn] = <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 在新协程中处理客户端请求
@@ -266,7 +266,7 @@ Kubernetes 可以提供更高的灵活性和扩展性。</p>
 </span></span></span></code></pre></div><p><strong>注意</strong>: Kubernetes 集群自动伸缩的执行超时为 10 分钟，所以 <code>terminationGracePeriodSeconds</code> 参数的值应该小于 10 分钟，默认情况下的 30 秒其实是良好的实践。</p>
 <hr>
 <h2 id="小结">小结</h2>
-<p>Pod 的删除首先逻辑删除过程，具体来说就是 etcd 中删除了对应的 Pod 记录，其次是物理删除过程，也就是节点的 Pod 在执行完 Pre-Stop 钩子函数和 SIGTERM 信号捕获之后，
+<p>Pod 的删除首先是 <strong>逻辑删除过程</strong>，具体来说就是 etcd 中删除了对应的 Pod 记录，其次是 <strong>物理删除过程</strong>，也就是节点的 Pod 在执行完 Pre-Stop 钩子函数和 SIGTERM 信号捕获之后，
 关闭 Pod 内的所有容器，最后 Pod 被节点删除。所有想实现 “优雅关闭、升级” 的应用程序，都要围绕着这两个过程展开具体的业务逻辑，最终实现服务端的高可用加客户端的优秀体验。</p>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
@@ -300,6 +300,8 @@ Kubernetes 可以提供更高的灵活性和扩展性。</p>
         </li>
         <li>
         
+            <a href="https://dbwu.tech/posts/k8s/kube_proxy/">Kubernetes - kube-proxy 代理模式工程优化 <i class="fa fa-chevron-circle-right"></i> </a>
+        
         </li>
     </ul>
 </section>
@@ -315,7 +317,7 @@ Kubernetes 可以提供更高的灵活性和扩展性。</p>
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="Kubernetes 应用最佳实践 - 长连接优雅关闭"
+        data-term="Kubernetes 应用最佳实践 - 优雅关闭长连接"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"

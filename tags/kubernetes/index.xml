@@ -7,13 +7,22 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Fri, 20 Oct 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 23 Oct 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/kubernetes/index.xml" rel="self" type="application/rss+xml" />
    
    
      <item>
-       <title>Kubernetes 应用最佳实践 - 长连接优雅关闭</title>
+       <title>Kubernetes - kube-proxy 代理模式工程优化</title>
+       <link>https://dbwu.tech/posts/k8s/kube_proxy/</link>
+       <pubDate>Mon, 23 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/kube_proxy/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Kubernetes 应用最佳实践 - 优雅关闭长连接</title>
        <link>https://dbwu.tech/posts/k8s/best_practice/terminating_with_grace/</link>
        <pubDate>Fri, 20 Oct 2023 00:00:00 +0000</pubDate>
        
