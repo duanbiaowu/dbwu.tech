@@ -137,14 +137,14 @@ kube-proxy 可以根据 EndPoint 的数据作为流量转发规则的指定依�
 <p>userspace 是 Kubernetes 早期的默认代理模式，这里简单提一下。</p>
 <p>在这种模式中，对于每个 Service, kube-proxy 会在节点上随机选择一个端口作为 “代理端口”，然后新建 iptables 规则，将 Service 对应的 ClusterIP (虚拟 IP) + Port 重定向到 “代理端口”，
 这样一来，任何发送到 Service 的请求都会被转发到 “代理端口”，最后转发到 Service 对应的 Pod 中。</p>
-<p><img src="../../images/k8s/kube_proxy.png" alt="图片来源: https://rtfm.co.ua/en/kubernetes-service-load-balancing-kube-proxy-and-iptables/"></p>
+<p><img src="https://dbwu.tech/images/k8s/kube_proxy.png" alt="图片来源: https://rtfm.co.ua/en/kubernetes-service-load-balancing-kube-proxy-and-iptables/"></p>
 <p>userspace 模式已经不再推荐使用，因为其存在显而易见的 <strong>性能问题</strong>: userspace 模式通过在用户空间中处理网络数据包来实现负载均衡和流量转发，这会引发用户态到内核态的上下文切换和数据拷贝。</p>
 <h3 id="iptables">iptables</h3>
 <p>创建一个 Service 时会得到一个对应的 ClusterIP (虚拟 IP)，然后 API Server 通过所有工作节点 (Node) 上运行的 kube-proxy 组件，
 为新创建的 Service 建立对应的 iptables 规则，确保任何发送到 Service 的请求被正确解析并转发到对应的 Pod 中。</p>
 <p>在这种模式中，对于每个 Service, kube-proxy 会新建 iptables 规则，将 Service 对应的 ClusterIP (虚拟 IP) + Port 重定向到 Service 对应的 Pod，
 这样一下，任何发送到 Service 的请求都会被转发到 Service 对应的 Pod 中。</p>
-<p><img src="../../images/k8s/kube_proxy_2.png" alt="图片来源: https://rtfm.co.ua/en/kubernetes-service-load-balancing-kube-proxy-and-iptables/"></p>
+<p><img src="https://dbwu.tech/images/k8s/kube_proxy_2.png" alt="图片来源: https://rtfm.co.ua/en/kubernetes-service-load-balancing-kube-proxy-and-iptables/"></p>
 <h4 id="优化参数">优化参数</h4>
 <table>
 <thead>
@@ -178,14 +178,14 @@ kube-proxy 可以根据 EndPoint 的数据作为流量转发规则的指定依�
 </span></span></span><span style="display:flex;"><span><span style="color:#666"></span>sed 最短期望延迟<span style="color:#666">
 </span></span></span><span style="display:flex;"><span><span style="color:#666"></span>nq  不排队调度<span style="color:#666">
 </span></span></span></code></pre></div><p><strong>注意</strong>: ipvs 模式假定节点上已经安装了 ipvs 内核模块，当 kube-proxy 以 ipvs 代理模式启动时，如果节点未安装 ipvs 内核模块，则回退到 iptables 模式。</p>
-<p><img src="../../images/k8s/kube_proxy_3.png" alt="图片来源: https://rtfm.co.ua/en/kubernetes-service-load-balancing-kube-proxy-and-iptables/"></p>
+<p><img src="https://dbwu.tech/images/k8s/kube_proxy_3.png" alt="图片来源: https://rtfm.co.ua/en/kubernetes-service-load-balancing-kube-proxy-and-iptables/"></p>
 <hr>
 <h2 id="ipvs-为什么优于-iptables">ipvs 为什么优于 iptables</h2>
 <p>iptables 是一项 Linux 内核功能，目标是成为一个高效的防火墙，具有足够的灵活性来处理各种常见的数据包操作和过滤需求，但是其底层的链表数据结构的实现决定了，
 每次添加或更新规则时需要遍历所有规则，<strong>最终控制平面时间复杂度为 O(N²), 数据平面时间复杂度为 O(N)</strong>。
 根据社区统计，当集群中的 Service 数量超过 5000 个时，每增加一条 iptables 规则耗时将超过 10 分钟。</p>
 <p>ipvs 是专门为负载平衡而设计的 Linux 内核功能，其底层数据结构为哈希表，<strong>时间复杂度为 O(1)</strong>, 也就是说，大多数情况下其性能和集群规模无关 (回忆一下哈希表数据结构的最好情况和最坏情况)。</p>
-<p><img src="../../images/k8s/iptables_with_ipvs.png" alt="图片来源: https://www.tigera.io/blog/comparing-kube-proxy-modes-iptables-or-ipvs/"></p>
+<p><img src="https://dbwu.tech/images/k8s/iptables_with_ipvs.png" alt="图片来源: https://www.tigera.io/blog/comparing-kube-proxy-modes-iptables-or-ipvs/"></p>
 <p>上图是针对 iptables 和 ipvs 模式进行的性能测试，从输出的图表结果来看，在 Service 数量不超过 1000 个时，两者之间的性能差异很小。</p>
 <h3 id="美中不足">美中不足</h3>
 <p>虽然 ipvs 的性能要优于 iptables, 但是 ipvs 只负责负载均衡和流量转发功能，而一个完整的 Service 功能还包括数据包过滤、SNAT 等操作，这部分功能依然需要配合 iptables 来实现。
