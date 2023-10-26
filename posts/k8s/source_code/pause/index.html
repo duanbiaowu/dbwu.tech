@@ -155,69 +155,70 @@
 <p>linux 目录下面只有两个文件， <code>pause.c</code>, <code>orphan.c</code>, 其中 <code>orphan.c</code> 文件中的代码只是模拟了一个僵尸进程用于测试，这里不做分析。</p>
 <h3 id="pausec">pause.c</h3>
 <p>Pause 容器的核心实现代码:</p>
-<pre tabindex="0"><code class="language-cgo" data-lang="cgo">// 引入各种头文件
-
-// 信号注册处理函数 (SIGINT, SIGTERM)
-// 这种属于正常退出情况，所以退出码为 0
-static void sigdown(int signo) {
-  psignal(signo, &#34;Shutting down, got signal&#34;);
-  exit(0);
-}
-
-// 信号注册处理函数 (SIGCHLD)
-// 由操作系统发送给父进程，通知子进程的状态变化
-//   子进程终止:  
-//   子进程暂停或恢复运行: 
-static void sigreap(int signo) {
-  // 等待指定的子进程退出
-  
-  // 函数原型:
-  //   pid_t waitpid(pid_t pid, int *status, int options);
-  
-  // 参数说明:
-  //   -1: 任意子进程
-  //   NULL: 子进程的退出状态无需存储
-  //   WNOHANG: 非阻塞，没有找到子进程时直接返回 0
-  while (waitpid(-1, NULL, WNOHANG) &gt; 0)
-    ;
-  // 如果子进程的数量大于 0, 无限循环
-}
-
-int main(int argc, char **argv) {
-  // 打印版本号 ...
-
-  if (getpid() != 1)
-    // 如果 Pause 进程 ID 不等于 1, 输出警告信息
-    
-    // 因为进程 ID 等于 1 是 init 进程，负责接收处理僵尸进程
-    // 所以如果 Pause 进程 ID 不等于 1, 可能产生僵尸进程的堆积
-    fprintf(stderr, &#34;Warning: pause should be the first process\n&#34;);
-
-  // 注册 SIGINT 信号 (Ctrl + C)
-  if (sigaction(SIGINT, &amp;(struct sigaction){.sa_handler = sigdown}, NULL) &lt; 0)
-    return 1;
-  // 注册 SIGTERM 信号 (例如执行 kill, systemctl stop 等命令)
-  if (sigaction(SIGTERM, &amp;(struct sigaction){.sa_handler = sigdown}, NULL) &lt; 0)
-    return 2;
-  // 注册 SIGCHLD 信号
-  if (sigaction(SIGCHLD, &amp;(struct sigaction){.sa_handler = sigreap,
-                                             .sa_flags = SA_NOCLDSTOP},
-                NULL) &lt; 0)
-    return 3;
-
-  // 无限循环
-  for (;;)
-    // pause 函数可以使当前进程陷入睡眠状态，避免浪费 CPU 资源
-    // 直到捕获到一个信号后被唤醒
-    pause();
-  
-  // 为什么退出码是 42 ? 因为作者比较任性 ?
-  // 感兴趣的读者可以看看回答
-  // https://stackoverflow.com/questions/16236182/what-is-the-origin-of-magic-number-42-indispensable-in-coding
-  return 42;
-}
-</code></pre><p>通过上面的源代码可以看到，<strong>Pause 容器的本质就是一个独立的进程</strong>，该进程作为容器内第一个进程启动之后变身为父进程，后续启动的进程都会成为该进程的子进程，
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 引入各种头文件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 信号注册处理函数 (SIGINT, SIGTERM)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 这种属于正常退出情况，所以退出码为 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>static void <span style="color:#447fcf">sigdown</span>(<span style="color:#6ab825;font-weight:bold">int</span> signo) {
+</span></span><span style="display:flex;"><span>  <span style="color:#447fcf">psignal</span>(signo, <span style="color:#ed9d13">&#34;Shutting down, got signal&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#447fcf">exit</span>(<span style="color:#3677a9">0</span>);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 信号注册处理函数 (SIGCHLD)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 由操作系统发送给父进程，通知子进程的状态变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   子进程终止:  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   子进程暂停或恢复运行: 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>static void <span style="color:#447fcf">sigreap</span>(<span style="color:#6ab825;font-weight:bold">int</span> signo) {
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 等待指定的子进程退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 函数原型:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#999;font-style:italic">//   pid_t waitpid(pid_t pid, int *status, int options);
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 参数说明:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#999;font-style:italic">//   -1: 任意子进程
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#999;font-style:italic">//   NULL: 子进程的退出状态无需存储
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#999;font-style:italic">//   WNOHANG: 非阻塞，没有找到子进程时直接返回 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#447fcf">while</span> (<span style="color:#447fcf">waitpid</span>(-<span style="color:#3677a9">1</span>, NULL, WNOHANG) &gt; <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    ;
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 如果子进程的数量大于 0, 无限循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">int</span> <span style="color:#447fcf">main</span>(<span style="color:#6ab825;font-weight:bold">int</span> argc, char **argv) {
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 打印版本号 ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">if</span> (<span style="color:#447fcf">getpid</span>() != <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 如果 Pause 进程 ID 不等于 1, 输出警告信息
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 因为进程 ID 等于 1 是 init 进程，负责接收处理僵尸进程
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 所以如果 Pause 进程 ID 不等于 1, 可能产生僵尸进程的堆积
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#447fcf">fprintf</span>(stderr, <span style="color:#ed9d13">&#34;Warning: pause should be the first process\n&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 注册 SIGINT 信号 (Ctrl + C)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#6ab825;font-weight:bold">if</span> (<span style="color:#447fcf">sigaction</span>(SIGINT, &amp;(<span style="color:#6ab825;font-weight:bold">struct</span> sigaction){.sa_handler = sigdown}, NULL) &lt; <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">1</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 注册 SIGTERM 信号 (例如执行 kill, systemctl stop 等命令)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#6ab825;font-weight:bold">if</span> (<span style="color:#447fcf">sigaction</span>(SIGTERM, &amp;(<span style="color:#6ab825;font-weight:bold">struct</span> sigaction){.sa_handler = sigdown}, NULL) &lt; <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">2</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 注册 SIGCHLD 信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#6ab825;font-weight:bold">if</span> (<span style="color:#447fcf">sigaction</span>(SIGCHLD, &amp;(<span style="color:#6ab825;font-weight:bold">struct</span> sigaction){.sa_handler = sigreap,
+</span></span><span style="display:flex;"><span>                                             .sa_flags = SA_NOCLDSTOP},
+</span></span><span style="display:flex;"><span>                NULL) &lt; <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">3</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 无限循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#6ab825;font-weight:bold">for</span> (;;)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// pause 函数可以使当前进程陷入睡眠状态，避免浪费 CPU 资源
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 直到捕获到一个信号后被唤醒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#447fcf">pause</span>();
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  <span style="color:#999;font-style:italic">// 为什么退出码是 42 ? 因为作者比较任性 ?
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#999;font-style:italic">// 感兴趣的读者可以看看回答
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#999;font-style:italic">// https://stackoverflow.com/questions/16236182/what-is-the-origin-of-magic-number-42-indispensable-in-coding
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>  <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">42</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过上面的源代码可以看到，<strong>Pause 容器的本质就是一个独立的进程</strong>，该进程作为容器内第一个进程启动之后变身为父进程，后续启动的进程都会成为该进程的子进程，
 父进程通过信号量的变化来执行对应的操作。<strong>Pause 容器唯一的作用是</strong> 保证即使 Pod 中没有任何容器运行也不会被删除，因为这时候还有 Pause 容器在运行。</p>
+<hr>
 <h3 id="kubernetes-pod-启动流程">Kubernetes Pod 启动流程</h3>
 <p>对 Pause 容器 (进程) 有了基础认识之后，我们可以看看 Kubernetes 中的 Pod 是如何通过 Pause 进程来管理子容器 (进程) 的， Pod 中的容器可以大致分类为:</p>
 <ol>
