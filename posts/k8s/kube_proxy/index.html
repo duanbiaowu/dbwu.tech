@@ -126,10 +126,10 @@
     
 
     <h2 id="概述">概述</h2>
-<p>kube-proxy 是集群中每个工作节点 (Node) 上运行的网络代理，通过维护网络转发规则 (iptables, ipvs)，将流量分发到对应的 Pod 中，
-是实现 Service 功能的 ClusterIP (虚拟 IP) 重要组件。</p>
+<p>kube-proxy 是集群中运行在每个工作节点 (Node) 上面的网络代理，通过维护网络转发规则 (iptables, ipvs)，将流量分发到对应的 Pod 中，
+是实现 Service 功能 ClusterIP (虚拟 IP) 的重要组件。</p>
 <p>kube-proxy 会通过 API Server 的通知消息来检测 Service 和 EndPoint 的变化，然后改变节点上的网络转发规则 (iptables, ipvs),
-kube-proxy 可以根据 EndPoint 的数据作为流量转发规则的指定依据。换句话就是说，<strong>kube-proxy 并不会直接就接收进入 Node 的流量</strong>，
+kube-proxy 可以根据 EndPoint 的数据作为流量转发规则的指定依据。也就是说，<strong>kube-proxy 并不会直接就接收进入 Node 的流量</strong>，
 而是会创建相应的 iptables 规则，将流量转发到 Service 对应的 Pod 中。</p>
 <h2 id="代理模式">代理模式</h2>
 <p>下面着重介绍下 kube-proxy 内部实现的工程优化历史过程。</p>
@@ -226,6 +226,8 @@ kube-proxy 可以根据 EndPoint 的数据作为流量转发规则的指定依�
         
         </li>
         <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/pause/">Kubernetes Pod 设计与实现 - Pause 容器 <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>

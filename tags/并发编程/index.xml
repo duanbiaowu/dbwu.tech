@@ -13,6 +13,15 @@
    
    
      <item>
+       <title>Kubernetes Pod 设计与实现 - Pause 容器</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/pause/</link>
+       <pubDate>Thu, 26 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/pause/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes - kube-proxy 代理模式工程优化</title>
        <link>https://dbwu.tech/posts/k8s/kube_proxy/</link>
        <pubDate>Mon, 23 Oct 2023 00:00:00 +0000</pubDate>

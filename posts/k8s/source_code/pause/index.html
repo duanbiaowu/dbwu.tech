@@ -1,0 +1,471 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Pod 设计与实现 - Pause 容器 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Pod 设计与实现 - Pause 容器" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/pause/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-26T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-10-26T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Pod 设计与实现 - Pause 容器"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Pod 设计与实现 - Pause 容器</h1>
+
+    
+      
+<p>
+    <span>2023-10-26</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="pause-容器">Pause 容器</h2>
+<p>Pod 是 Kubernetes 中应用运行的最小单位 (同时也是顶级资源)，也称为容器组，单个 Pod 可以看作是一个逻辑独立的主机，拥有自己的 IP、主机名称、进程等。</p>
+<p>每个节点上面可以运行多个 Pod, 每个 Pod 中可以运行多个容器，那么单个 Pod 中的容器是如何共享同一个 IPC、Network 等资源的呢？
+这就需要使用到本文的主角: Pause 容器。</p>
+<blockquote>
+<p>Pause 容器是一个基础容器，顾名思义 (该容器进程会一直处于 “暂停” 状态)，主要作用是将相关容器集中到一起，并通过让内部容器加入其命名空间，最终形成逻辑上的容器组。
+其次，在启用共享 PID 命名空间的情况下，它作为每个 Pod 中第一个启动的进程 (init 进程) 接收并处理僵尸进程 (僵尸进程最坏情况下会耗尽内存)。</p>
+</blockquote>
+<p>当 Pod 中的容器重启之后，需要位于和重启之前相同的命名空间中，因为容器的生命周期和 Pod 进行了绑定，所以 Pause 容器可以使这个过程变得非常快捷方便。
+也就是说，同一个 Pod 中的所有容器看到的 Namespace 视图是一样的。</p>
+<p><strong>Pause 容器和 Pod 的生命周期是一样的，Pause 容器从 Pod 创建调度后开始运行 (Pod 中第一个启动的容器)，一直到 Pod 被删除后退出，如果在这期间 Pod 被驱逐或关闭，Kubernetes 会重新创建 Pod 并自动运行 Pause 容器</strong>。</p>
+<h3 id="示例">示例</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/pause_demo.png" alt="Pause 示例"></p>
+<p>上面的图中展示了一个典型的 Pod 结构，其中包含了 3 个容器:</p>
+<ol>
+<li>Pause 容器，负责构建 Pod 的 Namespace 基础</li>
+<li>nginx 容器，加入到 Pause 容器的 Namespace 中，共享资源</li>
+<li>ghost 容器，加入到 Pause 容器的 Namespace 中，共享资源</li>
+</ol>
+<hr>
+<h2 id="源码实现">源码实现</h2>
+<p>Pause 官方容器使用 C 语言编写，Github 地址为: <a href="https://github.com/kubernetes/kubernetes/tree/master/build/pause">https://github.com/kubernetes/kubernetes/tree/master/build/pause</a>,
+源代码只有短短十几行，本文以 Linux 实现为例学习 Pause 容器的实现。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/pause_github.png" alt="Pause 仓库目录"></p>
+<p>linux 目录下面只有两个文件， <code>pause.c</code>, <code>orphan.c</code>, 其中 <code>orphan.c</code> 文件中的代码只是模拟了一个僵尸进程用于测试，这里不做分析。</p>
+<h3 id="pausec">pause.c</h3>
+<p>Pause 容器的核心实现代码:</p>
+<pre tabindex="0"><code class="language-cgo" data-lang="cgo">// 引入各种头文件
+
+// 信号注册处理函数 (SIGINT, SIGTERM)
+// 这种属于正常退出情况，所以退出码为 0
+static void sigdown(int signo) {
+  psignal(signo, &#34;Shutting down, got signal&#34;);
+  exit(0);
+}
+
+// 信号注册处理函数 (SIGCHLD)
+// 由操作系统发送给父进程，通知子进程的状态变化
+//   子进程终止:  
+//   子进程暂停或恢复运行: 
+static void sigreap(int signo) {
+  // 等待指定的子进程退出
+  
+  // 函数原型:
+  //   pid_t waitpid(pid_t pid, int *status, int options);
+  
+  // 参数说明:
+  //   -1: 任意子进程
+  //   NULL: 子进程的退出状态无需存储
+  //   WNOHANG: 非阻塞，没有找到子进程时直接返回 0
+  while (waitpid(-1, NULL, WNOHANG) &gt; 0)
+    ;
+  // 如果子进程的数量大于 0, 无限循环
+}
+
+int main(int argc, char **argv) {
+  // 打印版本号 ...
+
+  if (getpid() != 1)
+    // 如果 Pause 进程 ID 不等于 1, 输出警告信息
+    
+    // 因为进程 ID 等于 1 是 init 进程，负责接收处理僵尸进程
+    // 所以如果 Pause 进程 ID 不等于 1, 可能产生僵尸进程的堆积
+    fprintf(stderr, &#34;Warning: pause should be the first process\n&#34;);
+
+  // 注册 SIGINT 信号 (Ctrl + C)
+  if (sigaction(SIGINT, &amp;(struct sigaction){.sa_handler = sigdown}, NULL) &lt; 0)
+    return 1;
+  // 注册 SIGTERM 信号 (例如执行 kill, systemctl stop 等命令)
+  if (sigaction(SIGTERM, &amp;(struct sigaction){.sa_handler = sigdown}, NULL) &lt; 0)
+    return 2;
+  // 注册 SIGCHLD 信号
+  if (sigaction(SIGCHLD, &amp;(struct sigaction){.sa_handler = sigreap,
+                                             .sa_flags = SA_NOCLDSTOP},
+                NULL) &lt; 0)
+    return 3;
+
+  // 无限循环
+  for (;;)
+    // pause 函数可以使当前进程陷入睡眠状态，避免浪费 CPU 资源
+    // 直到捕获到一个信号后被唤醒
+    pause();
+  
+  // 为什么退出码是 42 ? 因为作者比较任性 ?
+  // 感兴趣的读者可以看看回答
+  // https://stackoverflow.com/questions/16236182/what-is-the-origin-of-magic-number-42-indispensable-in-coding
+  return 42;
+}
+</code></pre><p>通过上面的源代码可以看到，<strong>Pause 容器的本质就是一个独立的进程</strong>，该进程作为容器内第一个进程启动之后变身为父进程，后续启动的进程都会成为该进程的子进程，
+父进程通过信号量的变化来执行对应的操作。<strong>Pause 容器唯一的作用是</strong> 保证即使 Pod 中没有任何容器运行也不会被删除，因为这时候还有 Pause 容器在运行。</p>
+<h3 id="kubernetes-pod-启动流程">Kubernetes Pod 启动流程</h3>
+<p>对 Pause 容器 (进程) 有了基础认识之后，我们可以看看 Kubernetes 中的 Pod 是如何通过 Pause 进程来管理子容器 (进程) 的， Pod 中的容器可以大致分类为:</p>
+<ol>
+<li>临时容器 (一般用于 debug)</li>
+<li>init 容器</li>
+<li>业务容器</li>
+</ol>
+<p>Pod 创建的主干代码位于 kubeGenericRuntimeManager 对象的 SyncPod 方法中，下面结合具体的代码做一个简单的注解。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// https://github.com/kubernetes/kubernetes/blob/f8a4e343a106a73145464e8de8a919d13b59d25a/pkg/kubelet/kuberuntime/kuberuntime_manager.go#L1053
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// SyncPod 方法通过执行下列步骤使 Pod 运行并达到预期的状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  1. 计算 Pause 容器和其他容器的状态变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  2. 清理 Pause 容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  3. 清理还在运行中，但是状态不合理的容器 (也就是早应该退出的容器)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  4. 创建 Pause 容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  5. 创建临时容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  6. 创建 init 容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  7. 调整运行容器的状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//  8. 创建具体的业务容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *kubeGenericRuntimeManager) <span style="color:#447fcf">SyncPod</span>(ctx context.Context, ...) (result kubecontainer.PodSyncResult) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 1: 计算 Pause 容器和其他容器的状态变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podContainerChanges := m.<span style="color:#447fcf">computePodActions</span>(ctx, pod, podStatus)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 2: 如果 Pause 容器发生了变化，结束 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> podContainerChanges.KillPod {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// Step 3: 结束 Pod 内所有不需要运行的容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> containerID, containerInfo := <span style="color:#6ab825;font-weight:bold">range</span> podContainerChanges.ContainersToKill {
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 默认使用参数 Pod 状态对象的 IP 地址作为 Pod 的 IP
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> podIPs []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> podStatus != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		podIPs = podStatus.IPs
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 4: 创建 Pause 容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podSandboxID := podContainerChanges.SandboxID
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> podContainerChanges.CreateSandbox {
+</span></span><span style="display:flex;"><span>		podSandboxID, msg, err = m.<span style="color:#447fcf">createPodSandbox</span>(ctx, pod, podContainerChanges.Attempt)
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 针对各种类型容器的通用启动函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 参数说明:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   typeName: 容器类型 (例如临时容器，init 容器等)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   metricLabel: 容器的标签，主要用于 metric 采集
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	start := <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context, typeName, metricLabel <span style="color:#6ab825;font-weight:bold">string</span>, spec *startSpec) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 启动容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 真正启动容器的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> msg, err := m.<span style="color:#447fcf">startContainer</span>(ctx, ...); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 5: 创建临时容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, idx := <span style="color:#6ab825;font-weight:bold">range</span> podContainerChanges.EphemeralContainersToStart {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">start</span>(ctx, <span style="color:#ed9d13">&#34;ephemeral container&#34;</span>, ...)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !utilfeature.DefaultFeatureGate.<span style="color:#447fcf">Enabled</span>(features.SidecarContainers) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// Step 6: 创建单个 init 容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> container := podContainerChanges.NextInitContainerToStart; container != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err := <span style="color:#447fcf">start</span>(ctx, <span style="color:#ed9d13">&#34;init container&#34;</span>, ...); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				...
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// Step 6: 创建多个 init 容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> _, idx := <span style="color:#6ab825;font-weight:bold">range</span> podContainerChanges.InitContainersToStart {
+</span></span><span style="display:flex;"><span>			container := &amp;pod.Spec.InitContainers[idx]
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err := <span style="color:#447fcf">start</span>(ctx, <span style="color:#ed9d13">&#34;init container&#34;</span>, ...); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>                ...
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 7: 调整运行容器的状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isInPlacePodVerticalScalingAllowed</span>(pod) {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 8: 创建具体的业务容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, idx := <span style="color:#6ab825;font-weight:bold">range</span> podContainerChanges.ContainersToStart {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">start</span>(ctx, <span style="color:#ed9d13">&#34;container&#34;</span>, ...)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上面的 <code>SyncPod</code> 方法主要完成了 Pod 的创建和 Pod 内各种容器的创建，从方法内部的调用可以看到，真正启动容器的操作实现在 <code>startContainer</code> 方法中:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// startContainer 方法启动容器并返回执行结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 主要分为如下几个步骤:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   1. 拉取镜像
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   2. 创建容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   3. 启动容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">//   4. 执行生命周期事件钩子函数 (容器启动后函数)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> (m *kubeGenericRuntimeManager) <span style="color:#447fcf">startContainer</span>(ctx context.Context, ...) (<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	container := spec.container
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 1: 拉取镜像
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	imageRef, msg, err := m.imagePuller.<span style="color:#447fcf">EnsureImageExists</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 2: 创建容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 新容器的重启次数为 0 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 旧容器的重启次数递增
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	restartCount := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	containerStatus := podStatus.<span style="color:#447fcf">FindContainerStatusByName</span>(container.Name)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> containerStatus != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		restartCount = containerStatus.RestartCount + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 为容器设置资源限制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 生成容器配置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	containerConfig, cleanupAction, err := m.<span style="color:#447fcf">generateContainerConfig</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 3: 启动容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err = m.runtimeService.<span style="color:#447fcf">StartContainer</span>(ctx, containerID)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将容器日志文件通过软链接 连接到遗留的历史容器日志位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> _, err := m.osInterface.<span style="color:#447fcf">Stat</span>(containerLog); !os.<span style="color:#447fcf">IsNotExist</span>(err) {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Step 4: 执行生命周期事件钩子函数 (容器启动后函数)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> container.Lifecycle != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; container.Lifecycle.PostStart != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		msg, handlerErr := m.runner.<span style="color:#447fcf">Run</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> handlerErr != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果钩子函数执行失败，杀死容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> err := m.<span style="color:#447fcf">killContainer</span>(ctx, ...); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			    ...	
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> msg, ErrPostStartHook
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;&#34;</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>到这里，容器的创建和启动代码就分析完了。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://linux.die.net/man/2/pause">pause(2) - Linux man page</a></li>
+<li><a href="https://linux.die.net/man/2/waitpid">waitpid(2) - Linux man page</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/docker_network/">Docker 网络原理概览</a></li>
+<li><a href="https://dbwu.tech/posts/k8s/best_practice/init_container/">Kubernetes 应用最佳实践 - init 容器和钩子函数</a></li>
+<li><a href="https://www.ianlewis.org/en/almighty-pause-container">The Almighty Pause Container</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/kube_proxy/"><i class="fa fa-chevron-circle-left"></i> Kubernetes - kube-proxy 代理模式工程优化</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Pod 设计与实现 - Pause 容器"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

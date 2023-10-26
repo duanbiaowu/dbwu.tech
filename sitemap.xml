@@ -3,21 +3,27 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2023-10-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2023-10-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/cloud-native/</loc>
-    <lastmod>2023-10-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/kubernetes/</loc>
-    <lastmod>2023-10-23T00:00:00+00:00</lastmod>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://dbwu.tech/posts/k8s/kube_proxy/</loc>
-    <lastmod>2023-10-23T00:00:00+00:00</lastmod>
+    <loc>https://dbwu.tech/posts/k8s/source_code/pause/</loc>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/</loc>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81/</loc>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/k8s/kube_proxy/</loc>
     <lastmod>2023-10-23T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/k8s/best_practice/terminating_with_grace/</loc>
@@ -63,9 +69,6 @@
     <lastmod>2023-07-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/golang_hystrix/</loc>
-    <lastmod>2023-07-24T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81/</loc>
     <lastmod>2023-07-24T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/golang_ratelimit/</loc>
