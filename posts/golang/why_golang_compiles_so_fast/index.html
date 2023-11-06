@@ -1,0 +1,254 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Golang 编译速度为什么这么快？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Golang 编译速度为什么这么快？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/golang/why_golang_compiles_so_fast/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-28T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-10-28T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Golang 编译速度为什么这么快？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.113.0">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Golang 编译速度为什么这么快？</h1>
+
+    
+      
+<p>
+    <span>2023-10-28</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/golang">Golang</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>开始接触 GO 语言的时候，笔者已经拥有 C/C++, Java 三种静态语言和 PHP, Javascript 两种动态语言的基础。正因为如此，在入门 Go 语言的过程中，
+第一次编译一个几百行的 demo 文件时，着实被其编译速度惊到了，当时心中感慨: “Go 语言号称静态语言的执行速度，动态语言的编译速度，果然名不虚传”。
+事实上，Google 发明 Go 语言的核心诉求就是解决其内部的大型项目代码每次构建时都需要花费很长时间的问题，抛开技术的产生历史背景，
+本文着重介绍一下 Go 语言编译速度背后的主要优化方案。</p>
+<h2 id="极简关键字">极简关键字</h2>
+<p>Go 语言只有 25 个关键字，这有助于缩短编译时间。</p>
+<h2 id="符号表">符号表</h2>
+<p>符号表是编译器中的一种数据结构，用于存储程序中的标志符 (变量、函数、结构体/对象) 等，主要作用是提供了一个管理程序中的各种标志符的快捷方式，
+以便在程序编译的不同阶段进行引用、解析、优化等工作。</p>
+<p>Go 语言中并没有直接 (显式) 的符号表，编译器会在编译过程中创建一些内部数据结构来管理标志符和类型信息，虽然这些内部数据结构直接暴露给开发者使用的符号表，
+但是可以看做是编译器的 “内部符号表”。此外，Go 语言提供了反射 (Reflection) 机制，可以在运行时获取类型、结构体字段、调用方法/堆栈 等，
+也可以获取和修改对象的字段，开发者可以通过这种间接的方式获取类似符号表的信息。</p>
+<h2 id="依赖分析">依赖分析</h2>
+<p><strong>这是 Go 语言编译速度性能提升的主要原因</strong>。</p>
+<h3 id="消除循环依赖">消除循环依赖</h3>
+<p><img src="../../images/golang/import_cycles.png" alt="循环依赖示例"></p>
+<p>Go 语言出现循环依赖会在编译时报错，在开发者解决了循环依赖问题之后，编译过程只需要递归到依赖关系树的底部即可，本质上就是一个 DFS (深度优先搜索) 过程。
+此外在没有循环依赖的前提下，每个包可以独立并行编译。</p>
+<h3 id="依赖简化">依赖简化</h3>
+<p>Go 语言代码文件中只需要包含直接在代码中使用到的包名，例如当我们需要使用 <code>Cookie</code> 对象时， 只需要引入 <code>cookiejar</code> 包即可，不需要引入 <code>http</code> 包。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">package</span> main
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">import</span> <span style="color:#ed9d13">&#34;net/http/cookiejar&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">main</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> c cookiejar.Jar
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>与此同时，Go 语言中引入未使用的包也会产生编译错误:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>imported and not used:  ...
+</span></span></code></pre></div><p>这个编译前置约束可以保证不相关的包对编译时间造成影响。</p>
+<p>最后，Go 语言规定源文件中所有使用到的包必须在文件开始处 (package 语句之后) 全部列出，因此编译器无须读完整个文件内容就可以确定依赖关系。
+已经编译完成的 Go 包的目标文件不仅记录了包文件的导出信息，还记录了其本身依赖的包导出信息，编译时每次导入一个目标文件即可，不需要查看其他信息。</p>
+<h2 id="不支持重载重写">不支持重载/重写</h2>
+<p>Go 语言不支持方法重写和方法重载，也就是说，所有的方法都可以视为静态类型的，就像 Java 里面的 static 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>class HelloWorld {
+</span></span><span style="display:flex;"><span>    public static void <span style="color:#447fcf">main</span>(String[] args) {
+</span></span><span style="display:flex;"><span>        System.out.<span style="color:#24909d">println</span>(<span style="color:#ed9d13">&#34;Hello, World!&#34;</span>); 
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="不支持模板">不支持模板</h2>
+<p>Go 语言同样不支持模板方法，这可以避免模板实例化带来的性能开销。</p>
+<h2 id="无须虚拟机">无须虚拟机</h2>
+<p>Go 语言和 Java 一样，也是自带 GC 的语言，但是不同的地方在于，Java 是在虚拟机中编译的，因此 Java 代码在通过编译器之前必须先编译为字节码，
+但是 Go 不依赖虚拟机编译代码，而是直接从源代码编译为二进制文件。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://devrajcoder.medium.com/why-go-compiles-so-fast-772435b6bd86">Why Go compiles so fast</a></li>
+<li><a href="https://go.dev/doc/faq#What_compiler_technology_is_used_to_build_the_compilers">What compiler technology is used to build the compilers?</a></li>
+<li><a href="https://stackoverflow.com/questions/2976630/how-does-go-compile-so-quickly">How does Go compile so quickly?</a></li>
+<li><a href="https://www.bairesdev.com/blog/why-golang-is-so-fast-performance-analysis/">why-golang-is-so-fast-performance-analysis</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/619851340">深入理解 Go 语言的编译与内存管理</a></li>
+<li><a href="https://talkgo.org/t/topic/4043">Go语言链接器简介</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/pause/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Pod 设计与实现 - Pause 容器</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Golang 编译速度为什么这么快？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
