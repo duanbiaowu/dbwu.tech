@@ -138,7 +138,7 @@
 <h2 id="依赖分析">依赖分析</h2>
 <p><strong>这是 Go 语言编译速度性能提升的主要原因</strong>。</p>
 <h3 id="消除循环依赖">消除循环依赖</h3>
-<p><img src="../../images/golang/import_cycles.png" alt="循环依赖示例"></p>
+<p><img src="https://dbwu.tech/images/golang/import_cycles.png" alt="循环依赖示例"></p>
 <p>Go 语言出现循环依赖会在编译时报错，在开发者解决了循环依赖问题之后，编译过程只需要递归到依赖关系树的底部即可，本质上就是一个 DFS (深度优先搜索) 过程。
 此外在没有循环依赖的前提下，每个包可以独立并行编译。</p>
 <h3 id="依赖简化">依赖简化</h3>
