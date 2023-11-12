@@ -20,12 +20,6 @@
     <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>
     <lastmod>2023-11-11T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://dbwu.tech/tags/kubernetes/</loc>
-    <lastmod>2023-11-07T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://dbwu.tech/posts/k8s/source_code/cri/</loc>
-    <lastmod>2023-11-07T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://dbwu.tech/tags/golang/</loc>
     <lastmod>2023-10-28T00:00:00+00:00</lastmod>
   </url><url>
@@ -33,6 +27,9 @@
     <lastmod>2023-10-28T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/cloud-native/</loc>
+    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/kubernetes/</loc>
     <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/k8s/source_code/pause/</loc>
