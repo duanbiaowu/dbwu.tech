@@ -1,0 +1,296 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Unix 编程艺术名句摘录 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Unix 编程艺术名句摘录" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/engineering/unix/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-11-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-11-11T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Unix 编程艺术名句摘录"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Unix 编程艺术名句摘录</h1>
+
+    
+      
+<p>
+    <span>2023-11-11</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/unix">Unix</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B">软件工程</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <blockquote>
+<p>Unix 哲学浓缩: KISS 原则。</p>
+</blockquote>
+<blockquote>
+<p>Unix 哲学：一个程序只做一件事并且做好。程序之间可以协作并且可以处理文本流，因为这是最通用的接口。</p>
+</blockquote>
+<ol>
+<li>
+<p>(不要过早优化) 你无法确定程序会在什么地方耗费时间，瓶颈通常出现在意想不到的地方，所以不要着急胡乱修改代码。</p>
+</li>
+<li>
+<p>花哨的算法比简单算法更容易出 Bug、更难实现，尽量使用简单的算法配合简单的数据结构。</p>
+</li>
+<li>
+<p>编程的核心是数据结构，而不是算法。题外话：程序 = 数据结构 + 算法，但是前者比后者更重要。</p>
+</li>
+<li>
+<p>计算机编程的本质就是控制复杂度。</p>
+</li>
+<li>
+<p>(模块原则) 控制复杂软件的唯一方法是降低其整体复杂度——用清晰的接口把若干简单的模块组合成一个复杂软件。如此一来，多数问题只会局限于某个局部，那么就还有希望对局部进行改进而不至于牵动全身。</p>
+</li>
+<li>
+<p>源代码首先是给人看到，其次才是计算机。</p>
+</li>
+<li>
+<p>(隔离原则) 策略同机制分离，接口同引擎分离。</p>
+</li>
+<li>
+<p>(健壮原则) 软件不仅能在正常情况下运行良好，而且在超出设计者设想的意外条件下也能够运行良好。</p>
+</li>
+<li>
+<p>程序越简洁，越透明，也就越健壮。</p>
+</li>
+<li>
+<p>设计良好的程序将用户的注意力视为有限的宝贵资源。</p>
+</li>
+<li>
+<p>程序出现异常时，马上退出并给出足够的错误信息。</p>
+</li>
+<li>
+<p>(自动化) 尽量编写程序去生成程序。</p>
+</li>
+<li>
+<p>先制作原型，再精雕细琢。先求运行，再求正确，最后求快。</p>
+</li>
+<li>
+<p>Linux 的长期目标是包容，Linux 模拟的目的就是为了吸收。</p>
+</li>
+<li>
+<p>软件设计有两种方式：一种是设计得极为简洁，没有明显的缺陷；另一种是设计得极为复杂，明显看不到缺陷。</p>
+</li>
+<li>
+<p>魔数七，加二或减二：人类信息处理能力的局限性。</p>
+</li>
+<li>
+<p>完美之道，不在无可增加，而在无可删减。</p>
+</li>
+<li>
+<p>编写简洁、健壮的代码而节省的精力，将来完全可能就是自己的财富。</p>
+</li>
+<li>
+<p>拿不准，用穷举。</p>
+</li>
+<li>
+<p>更高级的语言可以用更少的行数完成更多的任务，也意味着更少的 Bug。</p>
+</li>
+<li>
+<p>随着时间的推移，设备资源变得越来越廉价，但程序员头脑中的空间只会越来越昂贵。</p>
+</li>
+<li>
+<p>表达是编程的精髓，仔细思考数据才是最好的行动。</p>
+</li>
+<li>
+<p>一切都是可配置的。</p>
+</li>
+<li>
+<p>可以假设并悲观地认为，许多优化方法都是暂时的，而且常常随着成本比例而变化。</p>
+</li>
+<li>
+<p>Everything should be made as simple as possible, but no simpler. ——Albert Einstein</p>
+</li>
+<li>
+<p>急剧下降的成本从根本上改变了编程的经济含义。大多数情况下，和C一样节约机器资源已经不再有任何意义。
+相反地，经济方面的最优选择已经变成尽可能减少调试时间、尽可能延长人类对代码的长期可维护性。因此，用较新一代的解释语言和脚本语言，
+能够更好地为绝大多数种类的应用实现（包括应用程序的原型设计）服务。这种转变和历史车轮中上一次 C/C++ 崛起而汇编语言衰落的情况类似。</p>
+</li>
+</ol>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://book.douban.com/subject/1467587/">Unix 编程艺术</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/cri/"><i class="fa fa-chevron-circle-left"></i> Kubernetes - CRI 模型简述</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Unix 编程艺术名句摘录"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

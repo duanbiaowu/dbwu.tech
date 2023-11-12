@@ -3,10 +3,28 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://dbwu.tech/posts/</loc>
-    <lastmod>2023-10-28T00:00:00+00:00</lastmod>
+    <lastmod>2023-11-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/</loc>
-    <lastmod>2023-10-28T00:00:00+00:00</lastmod>
+    <lastmod>2023-11-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/unix/</loc>
+    <lastmod>2023-11-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/engineering/unix/</loc>
+    <lastmod>2023-11-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/</loc>
+    <lastmod>2023-11-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>
+    <lastmod>2023-11-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/tags/kubernetes/</loc>
+    <lastmod>2023-11-07T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/k8s/source_code/cri/</loc>
+    <lastmod>2023-11-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/golang/</loc>
     <lastmod>2023-10-28T00:00:00+00:00</lastmod>
@@ -14,13 +32,7 @@
     <loc>https://dbwu.tech/posts/golang/why_golang_compiles_so_fast/</loc>
     <lastmod>2023-10-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://dbwu.tech/</loc>
-    <lastmod>2023-10-28T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>https://dbwu.tech/tags/cloud-native/</loc>
-    <lastmod>2023-10-26T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://dbwu.tech/tags/kubernetes/</loc>
     <lastmod>2023-10-26T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/k8s/source_code/pause/</loc>
@@ -60,9 +72,6 @@
     <lastmod>2023-09-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/system_design/logcial_rule_correlate/</loc>
-    <lastmod>2023-08-07T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://dbwu.tech/tags/%E8%BD%AF%E4%BB%B6%E5%B7%A5%E7%A8%8B/</loc>
     <lastmod>2023-08-07T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/</loc>

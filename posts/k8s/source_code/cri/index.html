@@ -1,0 +1,345 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes - CRI 模型简述 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes - CRI 模型简述" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/cri/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-11-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-11-07T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes - CRI 模型简述"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes - CRI 模型简述</h1>
+
+    
+      
+<p>
+    <span>2023-11-07</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>CRI（Container Runtime Interface, 容器运行时接口）是 Kubernetes 用于管理容器运行时和容器镜像的 gRPC 协议接口集合，kubelet 可以通过 CRI 来使用不同的容器运行时，而无需重新编译集群组件。</p>
+</blockquote>
+<p>为了保证 CRI 可以正常工作，Kubernetes 集群中的每个节点都需要有一个实现了 CRI 的具体容器运行时 (例如 containerd)，这样 kubelet 可以直接对 Pod 及其内部容器进行操作。</p>
+<p>下面以 containerd 为例进行说明，<strong>containerd 是来自 Docker 的高级容器运行时，实现了 CRI 规范</strong>。</p>
+<p><img src="../../../images/k8s/source_code/cri_containerd.png" alt="containerd 实现了 CRI"></p>
+<h2 id="宏观接口模型">宏观接口模型</h2>
+<p>因为 Pod 是 Kubernetes 中应用运行的最小单位，此外容器运行时除了运行、重启、停止 Pod 操作外，还有容器对应的镜像拉取、删除等操作，
+结合两者，我们可以给出一个粗糙的 CRI 模型示例图:</p>
+<p><img src="../../../images/k8s/source_code/cri_model.png" alt="CRI 模型"></p>
+<p>然后就可以直接将上述接口模型转化成伪代码 (Go 语言实现):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CRI <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">PullImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)   <span style="color:#999;font-style:italic">// 拉取容器镜像
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">RemoveImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#999;font-style:italic">// 删除容器镜像
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">StartPod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)  <span style="color:#999;font-style:italic">// 启动 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">StopPod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)   <span style="color:#999;font-style:italic">// 停止 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">RemovePod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#999;font-style:italic">// 删除 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">StartContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)  <span style="color:#999;font-style:italic">// 启动 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">StopContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)   <span style="color:#999;font-style:italic">// 停止 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">RemoveContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#999;font-style:italic">// 删除 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Docker 实现了 CRI 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Docker <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">PullImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)       {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">RemoveImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)     {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">StartPod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)        {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">StopPod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)         {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">RemovePod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)       {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">StartContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)  {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">StopContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)   {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (d *Docker) <span style="color:#447fcf">RemoveContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Containerd 实现了 CRI 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Containerd <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">PullImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)       {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">RemoveImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)     {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">StartPod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)        {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">StopPod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)         {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">RemovePod</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)       {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">StartContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)  {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">StopContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)   {}
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *Containerd) <span style="color:#447fcf">RemoveContainer</span>(name <span style="color:#6ab825;font-weight:bold">string</span>) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// CRI-O 实现了 CRI 接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> CRI-O <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>通过上面的伪代码，我们可以对 CRI 有一个基础的认识，下面我们一起看看 Kubernetes 中 CRI 的代码，学习一下成熟的方案和设计思路。</p>
+<h2 id="kubernetes-中的-cri">Kubernetes 中的 CRI</h2>
+<p>Kubernetes 中的 CRI 定义和实现使用的是 gRPC 协议，在对应的 gRPC 定义文件中，可以看到两个 Service:</p>
+<ol>
+<li>RuntimeService: 定义了容器运行时的相关操作 API</li>
+<li>ImageService: 定义了容器镜像管理的相关操作 API</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/cri-api/pkg/apis/runtime/v1/api.proto
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>service RuntimeService {
+</span></span><span style="display:flex;"><span>    rpc <span style="color:#447fcf">Version</span>(VersionRequest) <span style="color:#447fcf">returns</span> (VersionResponse) {}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    rpc <span style="color:#447fcf">RunPodSandbox</span>(RunPodSandboxRequest) <span style="color:#447fcf">returns</span> (RunPodSandboxResponse) {}
+</span></span><span style="display:flex;"><span>    rpc <span style="color:#447fcf">StopPodSandbox</span>(StopPodSandboxRequest) <span style="color:#447fcf">returns</span> (StopPodSandboxResponse) {}
+</span></span><span style="display:flex;"><span>    rpc <span style="color:#447fcf">RemovePodSandbox</span>(RemovePodSandboxRequest) <span style="color:#447fcf">returns</span> (RemovePodSandboxResponse) {}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>service ImageService {
+</span></span><span style="display:flex;"><span>    rpc <span style="color:#447fcf">ListImages</span>(ListImagesRequest) <span style="color:#447fcf">returns</span> (ListImagesResponse) {}
+</span></span><span style="display:flex;"><span>    rpc <span style="color:#447fcf">PullImage</span>(PullImageRequest) <span style="color:#447fcf">returns</span> (PullImageResponse) {}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上面的 Service 对应的 Go 代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/cri-api/pkg/apis/services.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> RuntimeVersioner <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Version</span>(ctx context.Context, apiVersion <span style="color:#6ab825;font-weight:bold">string</span>) (*runtimeapi.VersionResponse, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 容器管理接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ContainerManager <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">CreateContainer</span>(ctx context.Context, podSandboxID <span style="color:#6ab825;font-weight:bold">string</span>, config *runtimeapi.ContainerConfig, sandboxConfig *runtimeapi.PodSandboxConfig) (<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">StartContainer</span>(ctx context.Context, containerID <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">StopContainer</span>(ctx context.Context, containerID <span style="color:#6ab825;font-weight:bold">string</span>, timeout <span style="color:#6ab825;font-weight:bold">int64</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">RemoveContainer</span>(ctx context.Context, containerID <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">ListContainers</span>(ctx context.Context, filter *runtimeapi.ContainerFilter) ([]*runtimeapi.Container, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Pod 管理接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> PodSandboxManager <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">RunPodSandbox</span>(ctx context.Context, config *runtimeapi.PodSandboxConfig, runtimeHandler <span style="color:#6ab825;font-weight:bold">string</span>) (<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">StopPodSandbox</span>(pctx context.Context, odSandboxID <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">RemovePodSandbox</span>(ctx context.Context, podSandboxID <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 通过内嵌上述几个接口，形成一个 CRI 主要接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> RuntimeService <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	RuntimeVersioner
+</span></span><span style="display:flex;"><span>	ContainerManager
+</span></span><span style="display:flex;"><span>	PodSandboxManager
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">UpdateRuntimeConfig</span>(ctx context.Context, runtimeConfig *runtimeapi.RuntimeConfig) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Status</span>(ctx context.Context, verbose <span style="color:#6ab825;font-weight:bold">bool</span>) (*runtimeapi.StatusResponse, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">RuntimeConfig</span>(ctx context.Context) (*runtimeapi.RuntimeConfigResponse, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 镜像管理接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ImageManagerService <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">PullImage</span>(ctx context.Context, image *runtimeapi.ImageSpec, auth *runtimeapi.AuthConfig, podSandboxConfig *runtimeapi.PodSandboxConfig) (<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">RemoveImage</span>(ctx context.Context, image *runtimeapi.ImageSpec) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="containerd">containerd</h2>
+<p><img src="../../../images/k8s/source_code/cri_containerd2.png" alt="containerd, Docker 和 CRI 交互"></p>
+<p>这里以 containerd 为例，看看其内部关于 CRI 接口的具体代码结构，篇幅所限，具体的代码不再进行具体分析。</p>
+<p><img src="../../../images/k8s/source_code/containerd_image.png" alt="remote_image.go 实现了容器镜像相关操作"></p>
+<p><img src="../../../images/k8s/source_code/containerd_runtime.png" alt="remote_runtime.go 实现了容器运行时相关操作"></p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/kubernetes/tree/master/staging/src/k8s.io/cri-api">cri-api</a></li>
+<li><a href="https://github.com/containerd/containerd">containerd</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://cri-o.io/">CRI-O</a></li>
+<li><a href="https://medium.com/@vineetcic/the-differences-between-docker-containerd-cri-o-and-runc-a93ae4c9fdac">The differences between Docker, containerd, CRI-O and runc</a></li>
+<li><a href="https://saurabhkharkate05.medium.com/kubernetes-cluster-setup-with-containerd-945214a0d02c">Kubernetes Cluster Setup with Container</a></li>
+<li><a href="https://feisky.xyz/posts/kubernetes-container-runtime/">Kubernetes 容器运行时演进</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang/why_golang_compiles_so_fast/"><i class="fa fa-chevron-circle-left"></i> Golang 编译速度为什么这么快？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/engineering/unix/">Unix 编程艺术名句摘录 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes - CRI 模型简述"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
