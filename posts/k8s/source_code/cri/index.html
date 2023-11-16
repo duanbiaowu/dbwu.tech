@@ -135,11 +135,11 @@
 </blockquote>
 <p>为了保证 CRI 可以正常工作，Kubernetes 集群中的每个节点都需要有一个实现了 CRI 的具体容器运行时 (例如 containerd)，这样 kubelet 可以直接对 Pod 及其内部容器进行操作。</p>
 <p>下面以 containerd 为例进行说明，<strong>containerd 是来自 Docker 的高级容器运行时，实现了 CRI 规范</strong>。</p>
-<p><img src="../../../images/k8s/source_code/cri_containerd.png" alt="containerd 实现了 CRI"></p>
+<p><img src="https://dbwu.tech/images//k8s/source_code/cri_containerd.png" alt="containerd 实现了 CRI"></p>
 <h2 id="宏观接口模型">宏观接口模型</h2>
 <p>因为 Pod 是 Kubernetes 中应用运行的最小单位，此外容器运行时除了运行、重启、停止 Pod 操作外，还有容器对应的镜像拉取、删除等操作，
 结合两者，我们可以给出一个粗糙的 CRI 模型示例图:</p>
-<p><img src="../../../images/k8s/source_code/cri_model.png" alt="CRI 模型"></p>
+<p><img src="https://dbwu.tech/images//k8s/source_code/cri_model.png" alt="CRI 模型"></p>
 <p>然后就可以直接将上述接口模型转化成伪代码 (Go 语言实现):</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> CRI <span style="color:#6ab825;font-weight:bold">interface</span> {
 </span></span><span style="display:flex;"><span>	<span style="color:#447fcf">PullImage</span>(name <span style="color:#6ab825;font-weight:bold">string</span>)   <span style="color:#999;font-style:italic">// 拉取容器镜像
@@ -253,10 +253,10 @@
 </span></span><span style="display:flex;"><span>	...
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h2 id="containerd">containerd</h2>
-<p><img src="../../../images/k8s/source_code/cri_containerd2.png" alt="containerd, Docker 和 CRI 交互"></p>
+<p><img src="https://dbwu.tech/images//k8s/source_code/cri_containerd2.png" alt="containerd, Docker 和 CRI 交互"></p>
 <p>这里以 containerd 为例，看看其内部关于 CRI 接口的具体代码结构，时间所限，这里只留下相关代码骨架截图，具体的源代码不再进行分析。</p>
-<p><img src="../../../images/k8s/source_code/containerd_image.png" alt="remote_image.go 实现了容器镜像相关操作"></p>
-<p><img src="../../../images/k8s/source_code/containerd_runtime.png" alt="remote_runtime.go 实现了容器运行时相关操作"></p>
+<p><img src="https://dbwu.tech/images//k8s/source_code/containerd_image.png" alt="remote_image.go 实现了容器镜像相关操作"></p>
+<p><img src="https://dbwu.tech/images//k8s/source_code/containerd_runtime.png" alt="remote_runtime.go 实现了容器运行时相关操作"></p>
 <h2 id="reference">Reference</h2>
 <ul>
 <li><a href="https://github.com/kubernetes/kubernetes/tree/master/staging/src/k8s.io/cri-api">cri-api</a></li>
