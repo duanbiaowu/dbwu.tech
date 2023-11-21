@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Tue, 07 Nov 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 20 Nov 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/kubernetes/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Kubernetes 探针设计与实现</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/prober/</link>
+       <pubDate>Mon, 20 Nov 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/prober/</guid>
+       <description></description>
+     </item>
    
      <item>
        <title>Unix 编程艺术名句摘录</title>
@@ -22,7 +31,7 @@
      </item>
    
      <item>
-       <title>Kubernetes - CRI 模型概述</title>
+       <title>Kubernetes - CRI 概述</title>
        <link>https://dbwu.tech/posts/k8s/source_code/cri/</link>
        <pubDate>Tue, 07 Nov 2023 00:00:00 +0000</pubDate>
        
@@ -36,6 +45,15 @@
        <pubDate>Sat, 28 Oct 2023 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/golang/why_golang_compiles_so_fast/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Kubernetes Pod 设计与实现</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/pod/</link>
+       <pubDate>Thu, 26 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/pod/</guid>
        <description></description>
      </item>
    

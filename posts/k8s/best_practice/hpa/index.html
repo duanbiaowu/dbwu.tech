@@ -132,7 +132,7 @@
 </blockquote>
 <p>Kubernetes 可以监控应用 Pod, 并在检测到度量指标 (例如 CPU 使用率, 内存使用率) 发生变化时自动对 Pod 进行扩容或缩容。
 如果 Kubernetes 运行在主流云计算服务商提供的集群环境中，甚至可以在现有节点无法负载更多 Pod 时自动创建更多新节点 (按需付费)，也就是说，实现了 Node 的自动伸缩。</p>
-<p><img src="https://dbwu.tech/images/k8s/hpa3.png" alt="HPA 流程图"></p>
+<p><img src="https://dbwu.tech/images/k8s/hpa_thumb.png" alt="HPA 流程图"></p>
 <h2 id="使用方式">使用方式</h2>
 <p>创建了 Deployment 之后，为了使对应的 Pod 自动伸缩，需要创建一个 HPA 对象，并将它指向 Deployment。</p>
 <p><img src="https://dbwu.tech/images/k8s/cronhpa.png" alt="HPA 自动伸缩类型"></p>
@@ -279,6 +279,7 @@
 </ul>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
+<li><a href="https://kubernetes.io/zh-cn/docs/tasks/run-application/horizontal-pod-autoscale/#configurable-scaling-behavior">可配置的扩缩行为</a></li>
 <li><a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/best-practices-for-auto-scaling">弹性伸缩最佳实践</a></li>
 <li><a href="https://github.com/tkestack/cron-hpa">tkestack/cron-hpa</a></li>
 </ul>
