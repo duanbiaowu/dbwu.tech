@@ -1,0 +1,598 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Pod 设计与实现 - 创建流程 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Pod 设计与实现 - 创建流程" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/pod_create/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-26T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-10-26T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Pod 设计与实现 - 创建流程"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Pod 设计与实现 - 创建流程</h1>
+
+    
+      
+<p>
+    <span>2023-10-26</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>Pod 是 Kubernetes 中应用运行的最小单位 (同时也是顶级资源)，也称为容器组，单个 Pod 可以看作是一个逻辑独立的主机，拥有自己的 IP、主机名称、进程等。</p>
+</blockquote>
+<p>Pod 的使用方法和最佳实践在 <a href="https://dbwu.tech/posts/k8s/best_practice/base/">这篇文章</a> 中已经介绍过了，这里不再赘述，本文着重从源代码的角度分析一下 Pod 创建流程的实现原理。</p>
+<h3 id="示例">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 pods/simple-pod.yaml</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Pod<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>nginx:1.14.2<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">ports</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span>- <span style="color:#6ab825;font-weight:bold">containerPort</span>:<span style="color:#666"> </span><span style="color:#3677a9">80</span><span style="color:#666">
+</span></span></span></code></pre></div><p>基于 YAML 文件创建 Pod：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl apply -f https://k8s.io/examples/pods/simple-pod.yaml
+</span></span></code></pre></div><p>在 Kubernetes 中执行上面的代码后，会创建一个包含容器 <code>nginx</code> 的 Pod, 当然在实际应用中不会直接创建 Pod, 而是会使用 Deployment、Job 等工作负载资源来创建 Pod。</p>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 Pod 的实现原理，Pod 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/kubelet/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p>因为 Pod 主要是由 kubelet 管理和操作 (创建、删除、重启等) 的，所以相关的代码基本集中在 kubelet 目录。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/pod_1.png" alt="Pod 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/pod_create_flow.png" alt="Pod 创建流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<hr>
+<h2 id="主循环入口">主循环入口</h2>
+<p>我们先跳过 kubelet 的初始化内容，因为这部分的代码很多，为了节省时间和篇幅，本文的源代码直接从 kubectl 的调度入口开始，后面有空了再单独写一篇关于 kubelet 的文章。</p>
+<p><code>Kubelet.syncLoop</code> 方法是 kubelet 的核心调度方法 (主循环流程)，内部通过订阅多个 <code>channel</code> 相关事件的变化，
+对比资源的运行状态和期望状态来执行对应的操作，内部的主流程会无限循环，永不退出。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (kl *Kubelet) <span style="color:#447fcf">syncLoop</span>(ctx context.Context, updates &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> kubetypes.PodUpdate, handler SyncHandler) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 同步定时器: 每秒一次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	syncTicker := time.<span style="color:#447fcf">NewTicker</span>(time.Second)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> syncTicker.<span style="color:#447fcf">Stop</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 异常清理定时器: 每 2 秒一次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	housekeepingTicker := time.<span style="color:#447fcf">NewTicker</span>(housekeepingPeriod)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> housekeepingTicker.<span style="color:#447fcf">Stop</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 记录同步开始时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		kl.syncLoopMonitor.<span style="color:#447fcf">Store</span>(kl.clock.<span style="color:#447fcf">Now</span>())
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 调用 syncLoopIteration 方法执行具体的同步操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !kl.<span style="color:#447fcf">syncLoopIteration</span>(ctx, updates, handler, syncTicker.C, housekeepingTicker.C, plegCh) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 记录同步结束时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		kl.syncLoopMonitor.<span style="color:#447fcf">Store</span>(kl.clock.<span style="color:#447fcf">Now</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="执行同步操作">执行同步操作</h2>
+<p><code>Kubelet.syncLoopIteration</code> 方法用于主循环中单次的同步操作，通过订阅不同的 <code>channel</code> 并且将发生变化的 Pods 分发到对应的回调方法进行处理。</p>
+<p>订阅 <code>channel</code> 列表:</p>
+<table>
+<thead>
+<tr>
+<th>channel 名称</th>
+<th>相关事件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>configCh</td>
+<td>发生变更的 Pod</td>
+</tr>
+<tr>
+<td>plegCh</td>
+<td>更新运行时缓存, 同步 Pod</td>
+</tr>
+<tr>
+<td>syncCh</td>
+<td>定时同步 Pod</td>
+</tr>
+<tr>
+<td>housekeepingCh</td>
+<td>清理 Pod</td>
+</tr>
+<tr>
+<td>health manager</td>
+<td>探针检测失败的 Pod</td>
+</tr>
+</tbody>
+</table>
+<p>方法内部的工作流:</p>
+<ol>
+<li>从 channel 读取事件</li>
+<li>调用事件对应的回调方法</li>
+<li>更新主循环最后同步时间</li>
+</ol>
+<p>从源代码中可以看到，内部使用了 <code>switch</code> 预计从多个 <code>channel</code> 读取数据，这也就意味着: 不同的事件处理并没有固定的先后顺序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (kl *Kubelet) <span style="color:#447fcf">syncLoopIteration</span>(ctx context.Context, &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> ...) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 处理不同事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 哪个事件来了算哪个 :-)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> u, open := &lt;-configCh:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 来自 {文件系统, ApiServer, HTTP} 的 Pod 变更事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 再次检测具体的事件类型 (创建、删除、更新等)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> u.Op {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> kubetypes.ADD:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 创建 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			handler.<span style="color:#447fcf">HandlePodAdditions</span>(u.Pods)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> kubetypes.UPDATE:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			handler.<span style="color:#447fcf">HandlePodUpdates</span>(u.Pods)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> kubetypes.REMOVE:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 直接删除 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			handler.<span style="color:#447fcf">HandlePodRemoves</span>(u.Pods)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> kubetypes.RECONCILE:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 协调 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			handler.<span style="color:#447fcf">HandlePodReconcile</span>(u.Pods)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> kubetypes.DELETE:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 优雅删除 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 不同于上面的直接删除操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 注意: 这里的删除使用的是先更新、后删除操作，实现优雅删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			handler.<span style="color:#447fcf">HandlePodUpdates</span>(u.Pods)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		kl.sourcesReady.<span style="color:#447fcf">AddSource</span>(u.Source)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> e := &lt;-plegCh:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新运行时缓存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isSyncPodWorthy</span>(e) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> pod, ok := kl.podManager.<span style="color:#447fcf">GetPodByUID</span>(e.ID); ok {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 同步 Pod 的运行时状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				handler.<span style="color:#447fcf">HandlePodSyncs</span>([]*v1.Pod{pod})
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> e.Type == pleg.ContainerDied {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果是需要更新 Pod 内部的容器运行时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接删除当前运行的容器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> containerID, ok := e.Data.(<span style="color:#6ab825;font-weight:bold">string</span>); ok {
+</span></span><span style="display:flex;"><span>				kl.<span style="color:#447fcf">cleanUpContainersInPod</span>(e.ID, containerID)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> &lt;-syncCh:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 定时同步 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		podsToSync := kl.<span style="color:#447fcf">getPodsToSync</span>()
+</span></span><span style="display:flex;"><span>		handler.<span style="color:#447fcf">HandlePodSyncs</span>(podsToSync)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> update := &lt;-kl.livenessManager.<span style="color:#447fcf">Updates</span>():
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 存活探针检测失败的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> update.Result == proberesults.Failure {
+</span></span><span style="display:flex;"><span>			<span style="color:#447fcf">handleProbeSync</span>(kl, update, handler, <span style="color:#ed9d13">&#34;liveness&#34;</span>, <span style="color:#ed9d13">&#34;unhealthy&#34;</span>)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> update := &lt;-kl.readinessManager.<span style="color:#447fcf">Updates</span>():
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 就绪探针检测失败的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ready := update.Result == proberesults.Success
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">handleProbeSync</span>(kl, update, handler, <span style="color:#ed9d13">&#34;readiness&#34;</span>, status)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> update := &lt;-kl.startupManager.<span style="color:#447fcf">Updates</span>():
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 启动探针检测失败的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		started := update.Result == proberesults.Success
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">handleProbeSync</span>(kl, update, handler, <span style="color:#ed9d13">&#34;startup&#34;</span>, status)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> &lt;-housekeepingCh:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 清理 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !kl.sourcesReady.<span style="color:#447fcf">AllReady</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果资源还未就绪，无需清理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 开始清理 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> err := handler.<span style="color:#447fcf">HandlePodCleanups</span>(ctx); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				klog.<span style="color:#447fcf">ErrorS</span>(err, <span style="color:#ed9d13">&#34;Failed cleaning pods&#34;</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>方法内部虽然使用了很多的条件分支语句，但是流程结构非常直观，我们只需要根据具体的回调方法名称追踪调用链路即可。</p>
+<hr>
+<h2 id="pod-创建">Pod 创建</h2>
+<p>本文着重分析一下 Pod 的创建流程，对应的方法为 <code>Kubelet.HandlePodAdditions</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (kl *Kubelet) <span style="color:#447fcf">HandlePodAdditions</span>(pods []*v1.Pod) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 的创建时间进行排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为上文中提到，主循环中的事件处理依赖于 channel 的读取，无法保证顺序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sort.<span style="color:#447fcf">Sort</span>(sliceutils.<span style="color:#447fcf">PodsByCreationTime</span>(pods))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历要创建的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, pod := <span style="color:#6ab825;font-weight:bold">range</span> pods {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 直接将 Pod 添加到专门的 Pod 管理器中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 因为 kubelet 依赖于从 Pod 管理器获取期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果一个 Pod 不存在于 Pod 管理器中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 也就意味着该 Pod 已经从 ApiServer 中被删除了，不需要执行其他额外操作了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		kl.podManager.<span style="color:#447fcf">AddPod</span>(pod)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将创建 Pod 的操作分发到 podWorkers.UpdatePod 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		kl.podWorkers.<span style="color:#447fcf">UpdatePod</span>(UpdatePodOptions{
+</span></span><span style="display:flex;"><span>			Pod:        pod,
+</span></span><span style="display:flex;"><span>			MirrorPod:  mirrorPod,
+</span></span><span style="display:flex;"><span>			UpdateType: kubetypes.SyncPodCreate,
+</span></span><span style="display:flex;"><span>			StartTime:  start,
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>podWorkers.UpdatePod</code> 方法根据参数配置更新或终止对应的 Pod, 当一个 Pod 状态发生以下变化时:</p>
+<ol>
+<li>从 ApiServer 删除</li>
+<li>运行时错误 (探针检测失败、内部容器崩溃等)</li>
+<li>被 kubelet 驱逐</li>
+</ol>
+<p>那么此时 Pod 状态不论是可运行、正在终止、已经终止 3 种状态中的那一个，最终都会变为已终止。</p>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SyncPod</td>
+<td>Pod 需要被启动并运行</td>
+</tr>
+<tr>
+<td>TerminatingPod</td>
+<td>Pod 正在终止中，内部的一些容器还在运行</td>
+</tr>
+<tr>
+<td>TerminatedPod</td>
+<td>Pod 已经终止，内部的容器全部停止运行，随时可以被清理</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (p *podWorkers) <span style="color:#447fcf">UpdatePod</span>(options UpdatePodOptions) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	status, ok := p.podSyncStatuses[uid]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果当前 Pod 不存在于 Pod 状态中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 就先创建对应的 Pod 状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		status = &amp;podSyncStatus{
+</span></span><span style="display:flex;"><span>			syncedAt: now,
+</span></span><span style="display:flex;"><span>			fullname: kubecontainer.<span style="color:#447fcf">BuildPodFullName</span>(name, ns),
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		p.podSyncStatuses[uid] = status
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 已经完成并终止
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 此时 Pod 状态不能被更新，直到 Pod UID 被清除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> status.<span style="color:#447fcf">IsFinished</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测 Pod 状态是否需要转换到终止
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 终于走到核心流程了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果 Pod 不存在，就启动一个 goroutine 创建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podUpdates, exists := p.podUpdates[uid]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !exists {
+</span></span><span style="display:flex;"><span>		podUpdates = <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		p.podUpdates[uid] = podUpdates
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 单独的 goroutine 创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 调用 podWorkerLoop 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			p.<span style="color:#447fcf">podWorkerLoop</span>(uid, outCh)
+</span></span><span style="display:flex;"><span>		}()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>podWorkers.UpdatePod</code> 方法内部调用链路多且比较复杂，为了抓住重点，上述代码中只保留了和下文中调用相关代码。</p>
+<hr>
+<p><code>podWorkers.podWorkerLoop</code> 方法用于管理单个 Pod 的状态顺序更新，方法的运行时位于一个单独的 <code>goroutine</code> 中，内部的逻辑流程如下:</p>
+<ol>
+<li>Pod 启动，保证统一时间没有两个 Pod 使用相同的 UID、名称</li>
+<li>Pod 同步，通过协调 Pod 定义的期望状态与运行状态来完成 Pod 编排</li>
+<li>Pod 终止，保证 Pod 中运行的所有容器终止</li>
+<li>Pod 清理，在 Pod 被删除之前清理所有必要的资源</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (p *podWorkers) <span style="color:#447fcf">podWorkerLoop</span>(podUID types.UID, podUpdates &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历更新的 Pod channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> <span style="color:#6ab825;font-weight:bold">range</span> podUpdates {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 小技巧: 将复杂的 switch 条件分支语句放入一个匿名函数执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 匿名方法是 Pod 同步操作的核心部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		err := <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> update.WorkType == TerminatedPod:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Pod 正在终止中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> update.WorkType == TerminatingPod:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Pod 已经终止
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Pod 创建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 调用 Kubelet.SyncPod 方法创建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				isTerminal, err = p.podSyncer.<span style="color:#447fcf">SyncPod</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>		}()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<p>最后，创建 Pod 的工作委托给 <code>Kubelet.SyncPod</code> 方法执行。</p>
+<p><code>Kubelet.SyncPod</code> 方法用于创建单个 Pod, 内部逻辑流程如下:</p>
+<ol>
+<li>如果 Pod 正处于创建过程中，记录创建操作执行延迟</li>
+<li>调用 generateAPIPodStatus 方法预处理 Pod 的状态</li>
+<li>如果 Pod 是第一次启动，记录 Pod 的启动延迟</li>
+<li>将 Pod 的状态同步到 statusManager 对象</li>
+<li>停止 Pod 中状态异常的容器</li>
+<li>启动 Pod 相关的后台追踪采样任务</li>
+<li>创建 Pod 对应的数据目录</li>
+<li>等待卷目录挂载完成</li>
+<li>拉取 Pod 对应的 Secrets</li>
+<li>添加 Pod 的探针检测</li>
+<li>调用容器运行时 (CRI) 真正创建 Pod</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (kl *Kubelet) <span style="color:#447fcf">SyncPod</span>(ctx context.Context, ...) (isTerminal <span style="color:#6ab825;font-weight:bold">bool</span>, err <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 Pod 的状态同步到 statusManager 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kl.statusManager.<span style="color:#447fcf">SetPodStatus</span>(pod, apiPodStatus)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 Pod 没有达到运行条件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// Pods that are not runnable must be stopped - return a typed error to the pod worker
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !runnable.Admit {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, syncErr
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 CNI 插件未就绪
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那么只有 Pod 的网络模式为 Host 时，才可以创建 (Pod 使用宿主机的 Network Namespace)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   其他情况直接返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := kl.runtimeState.<span style="color:#447fcf">networkErrors</span>(); err != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; !kubecontainer.<span style="color:#447fcf">IsHostNetworkPod</span>(pod) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, fmt.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;%s: %v&#34;</span>, NetworkNotReadyErrorMsg, err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 kubelet 启动时开启了 cgroups-per-qos 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   如果 Pod 还未创建过对应的 Cgroups 资源控制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     创建对应的 Cgroups 资源控制
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   对于已经创建过 Cgroups 资源控制，但是已经终止的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     直接复用之前的 Cgroups 资源控制即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pcm := kl.containerManager.<span style="color:#447fcf">NewPodContainerManager</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> !kl.podWorkers.<span style="color:#447fcf">IsPodTerminationRequested</span>(pod.UID) {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 Pod 对应的数据目录
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := kl.<span style="color:#447fcf">makePodDataDirs</span>(pod); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待卷目录挂载完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := kl.volumeManager.<span style="color:#447fcf">WaitForAttachAndMount</span>(ctx, pod); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 拉取 Pod 对应的 Secrets
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pullSecrets := kl.<span style="color:#447fcf">getPullSecretsForPod</span>(pod)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 添加 Pod 的探针检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 探针实现细节请参考之前的文章: https://dbwu.tech/posts/k8s/source_code/prober/
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kl.probeManager.<span style="color:#447fcf">AddPod</span>(pod)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 CRI 创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// CRI 设计可以参考之前的文章: https://dbwu.tech/posts/k8s/source_code/cri/
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	result := kl.containerRuntime.<span style="color:#447fcf">SyncPod</span>(todoCtx, pod, podStatus, pullSecrets, kl.backOff)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>当代码执行到 调用 <code>CRI (容器运行时)</code> 创建 <code>Pod</code> 时，就和 <a href="https://dbwu.tech/posts/k8s/source_code/pause/">之前的这篇文章</a> 连接起来了，
+后续源代码本文不再分析，感兴趣的读者可以看看 <a href="https://dbwu.tech/posts/k8s/source_code/pause/">Pod 设计与实现</a> 一文中的 <code>Kubernetes Pod 启动流程</code> 小节。</p>
+<h3 id="小节">小节</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/pod_create_flow.png" alt="Pod 创建流程图"></p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/k8s/source_code/pause/">Kubernetes Pod 设计与实现 - Pause 容器</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/kube_proxy/"><i class="fa fa-chevron-circle-left"></i> Kubernetes - kube-proxy 代理模式工程优化</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/pause/">Kubernetes Pod 设计与实现 - Pause 容器 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Pod 设计与实现 - 创建流程"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

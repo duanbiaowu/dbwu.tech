@@ -100,8 +100,8 @@ time {
 
 #container main {
   flex: 1 0 0;
-  line-height: 1.5;
-  font-size: 1.2rem;
+  line-height: 1.8;
+  font-size: 19px;
 }
 
 #container main section#home ul {
