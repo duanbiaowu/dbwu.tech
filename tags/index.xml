@@ -7,10 +7,19 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Thu, 23 Nov 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 27 Nov 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>降本增效之应用优化 (三) 日志存储与检索</title>
+       <link>https://dbwu.tech/posts/optimize/remove_efk_from_log_system/</link>
+       <pubDate>Mon, 27 Nov 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/optimize/remove_efk_from_log_system/</guid>
+       <description></description>
+     </item>
    
      <item>
        <title>Kubernetes Pod 设计与实现 - 创建流程</title>

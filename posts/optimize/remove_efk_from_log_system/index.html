@@ -1,0 +1,326 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>降本增效之应用优化 (三) 日志存储与检索 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="降本增效之应用优化 (三) 日志存储与检索" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/optimize/remove_efk_from_log_system/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-11-27T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-11-27T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="降本增效之应用优化 (三) 日志存储与检索"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>降本增效之应用优化 (三) 日志存储与检索</h1>
+
+    
+      
+<p>
+    <span>2023-11-27</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91">业务逻辑</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E5%BA%94%E7%94%A8%E4%BC%98%E5%8C%96">应用优化</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="背景">背景</h2>
+<p>本文接着前两篇 “降本增效” 系列文章，复盘一下在业务系统中的日志功能优化。</p>
+<p>笔者所在业务线，老的日志查询功能依赖于一套 EFK 集群，该集群除了作为日志查询分析之外，还作为另外一条已经阵亡的产品线的搜索模块，
+但是当对应的产品和运维人员都被优化掉之后，这套集群就只是作为日志查询，于是一个降本增效的优化目标又有了 (<del>最主要的问题是负责该集群的运维同事也被优化了，没人维护了</del>)。</p>
+<p>如无特殊说明，本文中云服务商均指阿里云 (<del>毕竟刚收到一波代金券</del>)。</p>
+<h2 id="优化目标">优化目标</h2>
+<ol>
+<li>降低集群配置甚至直接去掉集群，降低云服务资源费用</li>
+<li>从按年付费开通集群，转换到按需付费模式，提升业务 (公司) 的现金流</li>
+<li>自动化管理，无需运维介入工作 (<del>主要是也没有运维人员了</del>)</li>
+<li>不同的环境 (开发/灰度/生产) + 不同的服务组合，可以使用单独的日志仓库进行存储和查询，做到应用层无感知</li>
+<li>日志采集和推送更符合 “云原生” 理念，可以更方便集成到 Kubernetes 中</li>
+</ol>
+<h2 id="优化之前">优化之前</h2>
+<h3 id="集群费用">集群费用</h3>
+<p>涉及到公司的业务体制，优化之前的集群不方便截图，不过这里可以直接给一个阿里云普通 EFK 集群规模价格费用，直观地感受一下 “钞能力”。</p>
+<p>这里以一个普通的 ElasticSearch 小集群为例来看看对应的价格:</p>
+<table>
+<thead>
+<tr>
+<th>规则</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>业务场景</td>
+<td>日志存储与检索</td>
+</tr>
+<tr>
+<td>数据节点</td>
+<td>3</td>
+</tr>
+<tr>
+<td>CPU</td>
+<td>8 Core</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>32 GB</td>
+</tr>
+<tr>
+<td>Kibana 看板</td>
+<td>4 Core 16 GB</td>
+</tr>
+<tr>
+<td>磁盘</td>
+<td>2 TB SSD</td>
+</tr>
+</tbody>
+</table>
+<p>上述配置一年的价格将近 19 万。</p>
+<p><img src="https://dbwu.tech/images/optimize/aliyun_efk_1.png" alt="阿里云 - ElasticSearch 价格"></p>
+<p>此外，因为 Kubernetes 中的服务 (Pod) 日志要先传送到 Kafka 等 MQ 作为中转, 然后再转到 ElasticSearch，所以这里还需要加几个 Kafka 实例的费用，日志的数据流大概如下图所示。</p>
+<p><img src="https://dbwu.tech/images/optimize/aliyun_efk_3.png" alt="图片来源: https://medium.com/@emmano3h/a-practical-streaming-data-infrastructure-case-with-fluentd-kafka-kafka-connect-elasticsearch-31609a149563"></p>
+<p>粗略地计算下来，使用 <code>ElasticSearch + Kafka + Kibana</code> 这套技术栈作为日志存储与检测服务，一年的云服务费用大概在 25 万左右，这是单单硬件的费用。</p>
+<h3 id="技术维护">技术维护</h3>
+<p>除了硬件之外，还需要软件的维护费用，包括从日志收集、转发、检索配置、服务可用、数据归档等开发运维工作量，转换为成本也就是人员工资。</p>
+<h2 id="优化方案">优化方案</h2>
+<p>仔细分析上面的问题之后，其实核心就是要解决两个问题: 硬件成本 + 运维费用，因为公司所有业务都是微服务 + Kubernetes 架构体系，同时使用阿里云作为服务厂商，
+要想短期内取得 “脚本增效” 收益并取得可见的效果，显然最好的方案就是站在巨人的肩膀上，避免自己造轮子 (<del>主要确实也没有足够的人力来造轮子</del>)。</p>
+<p>笔者遇到的问题，自然也有很多人都会遇到，大家都会遇到的问题，自然会被云计算服务商的产品经理定位为共性问题，最后对应的产品经过抽象和包装，自然也就应运而生了。</p>
+<h3 id="一站式日志服务">一站式日志服务</h3>
+<p>最终笔者将目标锁定在阿里云提供的开箱即用日志应用 SLS, 下面是官方对 SLS 的介绍。</p>
+<blockquote>
+<p>日志服务 （Simple Log Service，简称 SLS） 是云原生观测分析平台，为 Log/Metric/Trace 等数据提供大规模、低成本、实时平台化服务。
+一站式提供数据采集、加工、分析、告警可视化与投递功能，全面提升研发、运维、运营和安全等场景数字化能力。</p>
+</blockquote>
+<p>优化方案确定之后，迁移的过程还是比较快的，从测试 -&gt; 灰度 -&gt; 生产全面部署，花了 3 周的时间，期间经历了如下工作:</p>
+<ul>
+<li>开通 SLS 日志服务</li>
+<li>创建日志项目，并且关联到对应的 Kubernetes 集群</li>
+<li>创建 测试/灰度/生产 不同环境下的的日志仓库，配置仓库的数据分片、数据存储时长等</li>
+<li>设置单个服务 (数据源) 对应的具体日志仓库</li>
+<li>确认服务 (例如 Deployment) 的日志是否正常传输到对应的日志仓库</li>
+<li>配置日志仓库的数据预处理 (例如 JSON 数据序列展开)</li>
+<li>配置日志仓库的报警提示</li>
+<li>开启日志仓库中的全文索引</li>
+<li>删除日志从收集 -&gt; 中转 -&gt; ElasticSearch 路径中弃用的运维配置</li>
+<li>释放闲置的 Kafka 实例</li>
+<li>释放闲置的 ElasticSearch 服务</li>
+</ul>
+<p>因为涉及到公司的具体业务，迁移细节本文就不详细描述了，考虑清楚整个日志数据流的变化，整体过程还是非常顺利的。</p>
+<h2 id="优化之后">优化之后</h2>
+<p>优化之后的日志数据流如下图所示。</p>
+<p><img src="https://dbwu.tech/images/optimize/aliyun_efk_6.png" alt="图片来源: https://help.aliyun.com/zh/sls/log-collection-o-and-m-management-in-microservices-model"></p>
+<p>接着对比一下优化前后的费用，看看具体的效果。</p>
+<h3 id="服务费用">服务费用</h3>
+<p>这里以前文中对应的 ElasticSearch 集群规模为样本，计算一下使用 SLS 日志服务的对应的价格，日志服务配置如下:</p>
+<ul>
+<li>按量计费</li>
+<li>每日写入日志数据量 100 GB</li>
+<li>保存数据周期为 31 天</li>
+<li>开启冷热数据分离</li>
+<li>开启日志数据结构的全文索引</li>
+</ul>
+<p><img src="https://dbwu.tech/images/optimize/aliyun_efk_2.png" alt="阿里云 - ElasticSearch 价格"></p>
+<h3 id="技术维护-1">技术维护</h3>
+<p>运维成本几乎为 0, 只需要创建仓库并且在 Kubernetes 中的 Deployment 设置日志仓库数据源即可，而且无需担心服务性能、可用性问题，并且还有很多开箱即用的数据处理插件，真正实现 “降本增效”。</p>
+<p><img src="https://dbwu.tech/images/optimize/aliyun_efk_4.png" alt="开箱即用的数据处理插件"></p>
+<hr>
+<p><img src="https://dbwu.tech/images/optimize/aliyun_efk_5.png" alt="日志检索界面"></p>
+<h2 id="小结">小结</h2>
+<p>采用 SLS 日志服务之后，单纯的日志存储与检索即使按年来计算也就在 2000 左右，乍一看，日志服务的成本似乎节省优化了 100 倍，但是与此同时也付出了必要的代价:</p>
+<ul>
+<li>去掉了 ElasticSearch 服务，很多搜索功能无法实现了，如果后期再开启新的业务，还是需要重新购置服务的</li>
+<li>日志功能完成集成到了云服务计算厂商中，深度绑定</li>
+</ul>
+<p>但是好在前文中设定的 5 个优化目标全部完成，又是一次软件设计的 trade off 之旅。</p>
+<blockquote>
+<p>优化工作的本质是面向收益编程。</p>
+</blockquote>
+<p>一篇复盘文章，感觉硬生生地写成了一篇软文？话说回来，日志功能改造完成之后，业务技术栈中 Java 的比例越来越低，感觉在不归路上越走越远 :-)</p>
+<p><img src="https://dbwu.tech/images/gif/ssfd.gif" alt="瑟瑟发抖"></p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/optimize/redis_application_scenarios/">降本增效之应用优化 (一) 缓存</a></li>
+<li><a href="https://dbwu.tech/posts/optimize/big_data_file_export/">降本增效之应用优化 (二) 大报表</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/cluster-administration/system-logs/">Kubernetes 系统日志</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/cluster-administration/logging/">Kubernetes 日志架构</a></li>
+<li><a href="https://www.aliyun.com/product/bigdata/elasticsearch">阿里云 - 检索分析服务 Elasticsearch</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/pod_create/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Pod 设计与实现 - 创建流程</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="降本增效之应用优化 (三) 日志存储与检索"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
