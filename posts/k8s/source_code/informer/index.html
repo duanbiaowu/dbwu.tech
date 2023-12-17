@@ -1,0 +1,1072 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Informer 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Informer 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/informer/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-11-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-11-30T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Informer 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Informer 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2023-11-30</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>Kubernetes 中的 Informer 是客户端组件库中的一种机制，用于监听 Kubernetes 集群中资源对象的变化，并将事件通知给控制器。
+Informer 提供了一种简洁的方式来处理 API Server 发送的事件，并通过开放 API 使开发者能够实时获取资源对象的状态更新并进行对应的操作。</p>
+</blockquote>
+<h3 id="主要功能">主要功能</h3>
+<ul>
+<li>初始化时从 API Server 拉取全量资源并缓存</li>
+<li>同步缓存的资源对象的状态</li>
+<li>监听资源对象变化事件并执行对应的操作，如创建、更新、删除等</li>
+<li>开发者可以基于 Informer API 提供的资源对象变化进行交互，实现自定义的业务逻辑</li>
+</ul>
+<h3 id="应用场景">应用场景</h3>
+<ul>
+<li><strong>控制器</strong>: Kubernetes 中各种控制器 (例如 DeploymentController, CronJobController) 通过 Informer 来监听资源对象变化</li>
+<li><strong>调度器</strong>: Kubernetes 调度器通过 Informer 观察 Node 和 Pod 的状态变化</li>
+<li><strong>Operator</strong>: Operator 作为一种扩展机制，通过 Informer 来监听资源对象变化</li>
+<li><strong>监控</strong>:  通过 Informer 来收集 Metric</li>
+</ul>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 Informer 的实现原理，不同于其他 Kubernetes 组件，Informer 组件位于一个 <a href="https://github.com/kubernetes/client-go/">单独的代码仓库</a>,
+本文以 <code>v0.28.0</code> 版本源代码进行分析。</p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/informer_controller_flow.png" alt="Informer 流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<hr>
+<h2 id="reflector">Reflector</h2>
+<p><code>Reflector</code> 对象负责从 <code>API Server</code> 中监听指定的资源，并将资源变更事件记录到 <code>DeltaFIFO 队列</code> (下文会提到) 中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Reflector <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存储接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// Reflector 对象初始化时被赋值为 DeltaFIFO 队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	store Store
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 资源监听 &amp; 拉取接口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	listerWatcher ListerWatcher
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 每次请求的数据块大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// HTTP Response Header 中的 Transfer-Encoding: chunked
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WatchListPageSize <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 和 API Server 之间使用 stream 流式传输数据 (提升传输效率，节省资源)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    UseWatchList <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="启动-reflector">启动 Reflector</h3>
+<p><code>Reflector.Run</code> 方法启动 <code>Reflector</code>, 开始监听并拉取资源，内部是个无限循环，直到收到参数 stopCh channel 的关闭信号。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">Run</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}) {
+</span></span><span style="display:flex;"><span>	wait.<span style="color:#447fcf">BackoffUntil</span>(<span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err := r.<span style="color:#447fcf">ListAndWatch</span>(stopCh); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			r.<span style="color:#447fcf">watchErrorHandler</span>(r, err)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}, r.backoffManager, <span style="color:#6ab825;font-weight:bold">true</span>, stopCh)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="资源拉取同步入口">资源拉取&amp;同步入口</h2>
+<p><code>Reflector.ListAndWatch</code> 方法会先执行一次资源的全量拉取并记录资源的当前版本，然后使用资源版本去定时监听资源变化并进行必要的同步。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">ListAndWatch</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> err <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> w watch.Interface
+</span></span><span style="display:flex;"><span>	fallbackToList := !r.UseWatchList
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> r.UseWatchList {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建资源变更事件监听对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		w, err = r.<span style="color:#447fcf">watchList</span>(stopCh)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> fallbackToList {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 拉取资源
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		err = r.<span style="color:#447fcf">list</span>(stopCh)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	resyncerrc := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	cancelCh := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#24909d">close</span>(cancelCh)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动一个 goroutine 定时同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> r.<span style="color:#447fcf">startResync</span>(stopCh, cancelCh, resyncerrc)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 监听资源变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> r.<span style="color:#447fcf">watch</span>(w, stopCh, resyncerrc)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="资源拉取">资源拉取</h3>
+<p><code>Reflector.list</code> 方法第一次获取全量资源后，记录资源的版本号并调用 <code>syncWith</code> 方法将事件写入到队列中。</p>
+<p>当资源版本号被记录之后，后续只需要根据版本号获取增量的资源变更事件即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">list</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 请求资源事件时，携带版本号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	options := metav1.ListOptions{ResourceVersion: r.<span style="color:#447fcf">relistResourceVersion</span>()}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	listCh := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	panicCh := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 根据分页对象获取资源事件 “数据块”
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 因为第一次获取数据时版本号是空的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//   所以会获取所有的资源事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		pager := pager.<span style="color:#447fcf">New</span>(pager.<span style="color:#447fcf">SimplePageFunc</span>(<span style="color:#6ab825;font-weight:bold">func</span>(opts metav1.ListOptions) (runtime.Object, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> r.listerWatcher.<span style="color:#447fcf">List</span>(opts)
+</span></span><span style="display:flex;"><span>		}))
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> r.WatchListPageSize != <span style="color:#3677a9">0</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 设置单次请求的数据量大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			pager.PageSize = r.WatchListPageSize
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> options.ResourceVersion != <span style="color:#ed9d13">&#34;&#34;</span> &amp;&amp; options.ResourceVersion != <span style="color:#ed9d13">&#34;0&#34;</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果已经有版本号了，说明进入了增量同步阶段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 自然也就不需要分页了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			pager.PageSize = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 请求获取数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		list, paginatedResult, err = pager.<span style="color:#447fcf">ListWithAlloc</span>(context.<span style="color:#447fcf">Background</span>(), options)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果记录的版本号已经过期 或者 版本号错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 重新发起请求 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isExpiredError</span>(err) || <span style="color:#447fcf">isTooLargeResourceVersionError</span>(err) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新资源最新版本号可用状态为 {不可用}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			r.<span style="color:#447fcf">setIsLastSyncResourceVersionUnavailable</span>(<span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>			list, paginatedResult, err = pager.<span style="color:#447fcf">ListWithAlloc</span>(context.<span style="color:#447fcf">Background</span>(), ...)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">close</span>(listCh)
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 更新资源最新版本号可用状态为 {可用}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r.<span style="color:#447fcf">setIsLastSyncResourceVersionUnavailable</span>(<span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	listMetaInterface, err := meta.<span style="color:#447fcf">ListAccessor</span>(list)
+</span></span><span style="display:flex;"><span>	resourceVersion = listMetaInterface.<span style="color:#447fcf">GetResourceVersion</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 解析资源事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	items, err := meta.<span style="color:#447fcf">ExtractListWithAlloc</span>(list)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 syncWith 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将资源事件写入到队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := r.<span style="color:#447fcf">syncWith</span>(items, resourceVersion); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> fmt.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;unable to sync list result: %v&#34;</span>, err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新资源最新版本号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r.<span style="color:#447fcf">setLastSyncResourceVersion</span>(resourceVersion)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Reflector.syncWith</code> 方法会将给定的数据更新到 <code>DeltaFIFO 队列</code> 中，方法内部只是将参数数据组装为 <code>interface{}</code> 类型的列表，然后调用 <code>DeltaFIFO 队列</code> (下文会提到) 的方法更新即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">syncWith</span>(items []runtime.Object, resourceVersion <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	found := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(items))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, item := <span style="color:#6ab825;font-weight:bold">range</span> items {
+</span></span><span style="display:flex;"><span>		found = <span style="color:#24909d">append</span>(found, item)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> r.store.<span style="color:#447fcf">Replace</span>(found, resourceVersion)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="创建监听对象">创建监听对象</h3>
+<p><code>Reflector.watchList</code> 方法会创建一个监听对象并返回，该对象会和 ApiService 之间建立一个数据流来同步资源变更事件，并调用 <code>watchHandler</code> 方法对变更事件进行对应的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">watchList</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}) (watch.Interface, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建资源监听对象失败时，检测是否可以跳过报错的回调函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	isErrorRetriableWithSideEffectsFn := <span style="color:#6ab825;font-weight:bold">func</span>(err <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isExpiredError</span>(err) || <span style="color:#447fcf">isTooLargeResourceVersionError</span>(err) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新资源最新版本号可用状态为 {不可用}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			r.<span style="color:#447fcf">setIsLastSyncResourceVersionUnavailable</span>(<span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-stopCh:
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		resourceVersion = <span style="color:#ed9d13">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 请求资源事件时，携带版本号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		lastKnownRV := r.<span style="color:#447fcf">rewatchResourceVersion</span>()
+</span></span><span style="display:flex;"><span>		temporaryStore = <span style="color:#447fcf">NewStore</span>(DeletionHandlingMetaNamespaceKeyFunc)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 请求超时时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		timeoutSeconds := <span style="color:#24909d">int64</span>(minWatchTimeout.<span style="color:#447fcf">Seconds</span>() * (rand.<span style="color:#447fcf">Float64</span>() + <span style="color:#3677a9">1.0</span>))
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 生成请求配置对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		options := metav1.ListOptions{
+</span></span><span style="display:flex;"><span>			ResourceVersion:      lastKnownRV,
+</span></span><span style="display:flex;"><span>			AllowWatchBookmarks:  <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>			SendInitialEvents:    pointer.<span style="color:#447fcf">Bool</span>(<span style="color:#6ab825;font-weight:bold">true</span>),
+</span></span><span style="display:flex;"><span>			ResourceVersionMatch: metav1.ResourceVersionMatchNotOlderThan,
+</span></span><span style="display:flex;"><span>			TimeoutSeconds:       &amp;timeoutSeconds,
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		start := r.clock.<span style="color:#447fcf">Now</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建一个监听对象，获取发生变更的资源
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		w, err = r.listerWatcher.<span style="color:#447fcf">Watch</span>(options)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果创建资源监听对象发生了错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//   如果创建资源监听对象失败没有什么影响
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     就直接进入到下一个循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//   否则就返回错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isErrorRetriableWithSideEffectsFn</span>(err) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 调用 watchHandler 方法监听增量事件，然后放入队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		err = <span style="color:#447fcf">watchHandler</span>(start, w, ...)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新资源最新版本号可用状态为 {可用}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r.<span style="color:#447fcf">setIsLastSyncResourceVersionUnavailable</span>(<span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 更新资源最新版本号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r.<span style="color:#447fcf">setLastSyncResourceVersion</span>(resourceVersion)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> w, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="定时同步">定时同步</h3>
+<p><code>Reflector.startResync</code> 方法在一个独立的 <code>goroutine</code> 中定时调用 <code>DeltaFIFO 队列</code> (下文会提到) 的 <code>Resync</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">startResync</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}, cancelCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}, resyncerrc <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	resyncCh, cleanup := r.<span style="color:#447fcf">resyncChan</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">cleanup</span>() 
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-resyncCh:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-stopCh:
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> &lt;-cancelCh:
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 队列同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> r.ShouldResync == <span style="color:#6ab825;font-weight:bold">nil</span> || r.<span style="color:#447fcf">ShouldResync</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> err := r.store.<span style="color:#447fcf">Resync</span>(); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				resyncerrc &lt;- err
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#447fcf">cleanup</span>()
+</span></span><span style="display:flex;"><span>		resyncCh, cleanup = r.<span style="color:#447fcf">resyncChan</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Reflector.watch</code> 方法完成的工作很简单，就是不断轮询请求，然后调用 <code>watchHandler</code> 方法将资源变更事件放入队列，限于篇幅，方法内部的源代码就不做具体分析了。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *Reflector) <span style="color:#447fcf">watch</span>(w watch.Interface, stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}, resyncerrc <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		err = <span style="color:#447fcf">watchHandler</span>(start, w, r.store, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<p><code>watchHandler</code> 方法也就是监听的请求回调处理方法，负责从监听对象的请求结果中获取资源变更事件，然后针对 <code>DeltaFIFO 队列</code> (下文会提到) 进行不同的操作，
+同时会记录的资源的最新版本号。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">watchHandler</span>(start time.Time, w watch.Interface, store Store, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>loop:
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从请求结果 channel 中获取事件数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> event, ok := &lt;-w.<span style="color:#447fcf">ResultChan</span>():
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 获取资源最新版本号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			resourceVersion := meta.<span style="color:#447fcf">GetResourceVersion</span>()
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 根据不同的事件执行不同的操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">switch</span> event.Type {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> watch.Added:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 添加事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				err := store.<span style="color:#447fcf">Add</span>(event.Object)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> watch.Modified:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 修改事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				err := store.<span style="color:#447fcf">Update</span>(event.Object)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> watch.Deleted:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 删除事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				err := store.<span style="color:#447fcf">Delete</span>(event.Object)
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>            ...
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 更新资源最新版本号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">setLastSyncResourceVersion</span>(resourceVersion)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="小结">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/informer_reflector_flow.png" alt="Informer 流程图"></p>
+<p><code>Reflector</code> 启动运行之后，会先执行一次资源对象的全量拉取，通过调用 <code>syncWith</code> 方法将数据更新到 <code>DeltaFIFO 队列</code> 中，然后持续监听资源对象的增量事件 (创建、更新、删除等)，
+并且将事件去重之后更新到 <code>DeltaFIFO 队列</code> 中，最后 <code>DeltaFIFO 队列</code> 中的数据会被消费者取出，执行具体的业务逻辑操作 (细节见下文)。</p>
+<hr>
+<h2 id="资源相关数据类型">资源相关数据类型</h2>
+<h3 id="资源事件类型">资源事件类型</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	Added   DeltaType = <span style="color:#ed9d13">&#34;Added&#34;</span>
+</span></span><span style="display:flex;"><span>	Updated DeltaType = <span style="color:#ed9d13">&#34;Updated&#34;</span>
+</span></span><span style="display:flex;"><span>	Deleted DeltaType = <span style="color:#ed9d13">&#34;Deleted&#34;</span>
+</span></span><span style="display:flex;"><span>	Replaced DeltaType = <span style="color:#ed9d13">&#34;Replaced&#34;</span>
+</span></span><span style="display:flex;"><span>	Sync DeltaType = <span style="color:#ed9d13">&#34;Sync&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><h3 id="资源事件对象">资源事件对象</h3>
+<p><code>Delta</code> 对象表示 {某个资源+变化事件} 的组合。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Delta <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	Type   DeltaType
+</span></span><span style="display:flex;"><span>	Object <span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Deltas []Delta
+</span></span></code></pre></div><h3 id="资源编码">资源编码</h3>
+<p><code>MetaNamespaceKeyFunc</code> 方法将资源对象编码为一个字符串表示，编码后的字符串表示格式为:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>&lt;namespace&gt;/&lt;name&gt;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 例如命名空间为 prod, Deployment 名称为 user_api, 编码后的字符串就表示为</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>prod/user_api
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果命名空为空，就以具体的资源名称为准</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">MetaNamespaceKeyFunc</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) (<span style="color:#6ab825;font-weight:bold">string</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> key, ok := obj.(ExplicitKey); ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">string</span>(key), <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	objName, err := <span style="color:#447fcf">ObjectToName</span>(obj)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#ed9d13">&#34;&#34;</span>, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> objName.<span style="color:#447fcf">String</span>(), <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="deltafifo-队列">DeltaFIFO 队列</h2>
+<p><code>DeltaFIFO</code> 是一个 “生产者/消费者” 模式的队列，这里的生产者是指 <code>Reflector</code> 对象及其相关操作，消费者是指 <code>DeltaFIFO.Pop</code> 方法的调用方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> DeltaFIFO <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 读写锁
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lock sync.RWMutex
+</span></span><span style="display:flex;"><span>	cond sync.Cond
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 存储单个资源的变更事件列表 (Deltas)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这里的 key 是通过 Delta 对象编码的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	items <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]Deltas
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列消费时按照 FIFO (先进先出) 的顺序执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 队列中的元素都是去重的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 字段存储的字符串 key 就是资源对象的编码 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	queue []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 表示是否执行过资源的全量拉取|增量拉取 (也就是是否有生产者写入过数据)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 第一次向队列写入数据时，调用的是 Replace 方法 (由 Reflector.list 方法调用)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 或者调用的是 Delete/Add/Update/AddIfNotPresent 方法 (由前文中的 Reflector.watchHandler 方法调用)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	populated <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 生产者写入数据时递增
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 消费者取出数据时递减
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 等于 0 时就表示队列为空 (事件已经全部同步完成)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	initialPopulationCount <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 用于生成 key 的方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 默认为上面提到的 MetaNamespaceKeyFunc 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	keyFunc KeyFunc
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 已知的 key 列表 (其实指 Indexer)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	knownObjects KeyListerGetter
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列是否已关闭
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	closed <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="队列元素去重">队列元素去重</h3>
+<p>队列元素 (Delta 对象) 的去重操作独立成了一个方法，该方法是一个公共方法，这里先来看下其内部实现。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">dedupDeltas</span>(deltas Deltas) Deltas {
+</span></span><span style="display:flex;"><span>	n := <span style="color:#24909d">len</span>(deltas)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n &lt; <span style="color:#3677a9">2</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> deltas
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	a := &amp;deltas[n-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>	b := &amp;deltas[n-<span style="color:#3677a9">2</span>]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> out := <span style="color:#447fcf">isDup</span>(a, b); out != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果重复元素不为空
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 使用较新的替换掉较旧的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		deltas[n-<span style="color:#3677a9">2</span>] = *out
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> deltas[:n-<span style="color:#3677a9">1</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> deltas
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>isDup</code> 方法用于判断两个 Delta 对象是否一致，如果两个 Delta 对象一致，就返回其中较新的 Delta 对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isDup</span>(a, b *Delta) *Delta {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> out := <span style="color:#447fcf">isDeletionDup</span>(a, b); out != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> out
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>isDeletionDupe</code> 方法检测两个参数 Delta 对象是否都是 Deleted (删除事件) 类型，如果是的话，就返回两个 Delta 对象中较新的一个。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isDeletionDup</span>(a, b *Delta) *Delta {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> b.Type != Deleted || a.Type != Deleted {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> _, ok := b.Object.(DeletedFinalStateUnknown); ok {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> a
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> b
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="插入元素到队列">插入元素到队列</h3>
+<p><code>DeltaFIFO.Add</code> 方法负责将资源对象插入到队列，内部会做去重复操作，仅当元素不存在队列中时才会执行插入操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *DeltaFIFO) <span style="color:#447fcf">Add</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	f.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> f.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 populated 字段状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	f.populated = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> f.<span style="color:#447fcf">queueActionLocked</span>(Added, obj)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DeltaFIFO.queueActionLocked</code> 方法负责具体的入队操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *DeltaFIFO) <span style="color:#447fcf">queueActionLocked</span>(actionType DeltaType, obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取资源的编码 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	id, err := f.<span style="color:#447fcf">KeyOf</span>(obj)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据资源 key 获取对应的资源列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	oldDeltas := f.items[id]
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 直接将参数资源追加到已有列表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newDeltas := <span style="color:#24909d">append</span>(oldDeltas, Delta{actionType, obj})
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 然后去重
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newDeltas = <span style="color:#447fcf">dedupDeltas</span>(newDeltas)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(newDeltas) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 检测对应的资源列表是否存在
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> _, exists := f.items[id]; !exists {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 没有对应的列表，说明队列本身也是空的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 这块逻辑写的有点绕，其实在上面直接 预检测+初始化，代码可读性更高
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			f.queue = <span style="color:#24909d">append</span>(f.queue, id)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新资源列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		f.items[id] = newDeltas
+</span></span><span style="display:flex;"><span>		f.cond.<span style="color:#447fcf">Broadcast</span>()
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 异常状态检测 + 日志
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        ...   
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="插入-不存在的-元素到队列">插入 (不存在的) 元素到队列</h3>
+<p><code>DeltaFIFO.AddIfNotPresent</code> 方法向队列插入元素时，会先检测对应的元素是否存在，只有元素不存在时才会插入到队列中，和刚才的 <code>Add</code> 方法不同，
+该方法用于直接添加 <code>Delta</code> 资源列表数据类型。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *DeltaFIFO) <span style="color:#447fcf">AddIfNotPresent</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	deltas, ok := obj.(Deltas)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	id, err := f.<span style="color:#447fcf">KeyOf</span>(deltas)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	f.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> f.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	f.<span style="color:#447fcf">addIfNotPresent</span>(id, deltas)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *DeltaFIFO) <span style="color:#447fcf">addIfNotPresent</span>(id <span style="color:#6ab825;font-weight:bold">string</span>, deltas Deltas) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 populated 字段状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	f.populated = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> _, exists := f.items[id]; exists {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 写入 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	f.queue = <span style="color:#24909d">append</span>(f.queue, id)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 写入资源列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	f.items[id] = deltas
+</span></span><span style="display:flex;"><span>	f.cond.<span style="color:#447fcf">Broadcast</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="从队列取出元素">从队列取出元素</h3>
+<p><code>DeltaFIFO.Pop</code> 方法负责从队列中消费元素 (Deltas 资源列表)，需要注意的是，该方法为阻塞执行。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (f *DeltaFIFO) <span style="color:#447fcf">Pop</span>(process PopProcessFunc) (<span style="color:#6ab825;font-weight:bold">interface</span>{}, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	f.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> f.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> <span style="color:#24909d">len</span>(f.queue) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> f.closed {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, ErrFIFOClosed
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 阻塞等待其他 goroutine 向队列添加元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			f.cond.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		isInInitialList := !f.<span style="color:#447fcf">hasSynced_locked</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从队列头部取出一个元素 (遵从 FIFO 原则)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里取出的元素是一个 key  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		id := f.queue[<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>		f.queue = f.queue[<span style="color:#3677a9">1</span>:]
+</span></span><span style="display:flex;"><span>		depth := <span style="color:#24909d">len</span>(f.queue)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> f.initialPopulationCount &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 消费者取出数据时递减
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			f.initialPopulationCount--
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 取出 key 对应的资源对象 (Delta) 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		item, ok := f.items[id]
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 删除对应的资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#24909d">delete</span>(f.items, id)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 使用参数 process 方法处理 Deltas
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这里的 process 指的就是下文中的 Controller.HandleDeltas 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		err := <span style="color:#447fcf">process</span>(item, isInInitialList)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> e, ok := err.(ErrRequeue); ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// Deltas 重新入队
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			f.<span style="color:#447fcf">addIfNotPresent</span>(id, item)
+</span></span><span style="display:flex;"><span>			err = e.Err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> item, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="小结-1">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/informer_deltafifo_flow.png" alt="DeltaFIFO 队列流程图"></p>
+<p><code>DeltaFIFO</code> 队列简单来说，就是一个 <code>生产者 -&gt; 消费者</code> 队列，生产者是 <code>Reflector</code>，消费者是 <code>process</code> 处理逻辑方法。
+队列命名中的 <code>FIFO</code> 表示其是一个先进先出结构队列，而 <code>Delta</code> 是一个资源对象的增量事件存储 (Delta 对应的数学符号为 Δ {大写} δ {小写})，
+用来表示资源对象的具体操作类型，例如 Add 创建、Update 更新、Delete 删除等。</p>
+<hr>
+<h2 id="storeindex-索引">StoreIndex 索引</h2>
+<p><code>Index</code> 数据类型中的 key 表示通过索引函数计算出来的值，value 表示对应的结果字符串集合。</p>
+<p><code>Indexers</code> 数据类型中的 key 表示索引函数名称，value 表示索引函数。</p>
+<p><code>Indices</code> 数据类型中的 key 表示索引函数名称，value 表示 <code>Index</code> 数据类型。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Index <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]sets.String
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Indexers <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]IndexFunc
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Indices <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]Index
+</span></span></code></pre></div><p><code>storeIndex</code> 对象表示索引结构。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> storeIndex <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	indexers Indexers
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	indices Indices
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="添加索引">添加索引</h3>
+<p><code>storeIndex.addKeyToIndex</code> 方法用于为给定的 key 构建索引。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (i *storeIndex) <span style="color:#447fcf">addKeyToIndex</span>(key, indexValue <span style="color:#6ab825;font-weight:bold">string</span>, index Index) {
+</span></span><span style="display:flex;"><span>	set := index[indexValue]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> set == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		set = sets.String{}
+</span></span><span style="display:flex;"><span>		index[indexValue] = set
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	set.<span style="color:#447fcf">Insert</span>(key)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="获取索引">获取索引</h3>
+<p><code>storeIndex.getKeysByIndex</code> 方法用于获取索引对应的值。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (i *storeIndex) <span style="color:#447fcf">getKeysByIndex</span>(indexName, indexedValue <span style="color:#6ab825;font-weight:bold">string</span>) (sets.String, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 先获取对应的索引函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	indexFunc := i.indexers[indexName]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> indexFunc == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, fmt.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;Index with name %s does not exist&#34;</span>, indexName)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取对应的 Index 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	index := i.indices[indexName]
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取对应的字符串集合
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> index[indexedValue], <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="更新索引">更新索引</h3>
+<p><code>storeIndex.updateIndices</code> 方法用于更新指定对象的索引，内部的处理逻辑如下:</p>
+<ul>
+<li>如果只传递了新对象，未传递旧对象，会执行创建索引操作</li>
+<li>如果同时传递了新对象和对象，会执行更新索引操作</li>
+<li>如果未传递新对象，只传递了旧对象，会执行创建删除操作</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (i *storeIndex) <span style="color:#447fcf">updateIndices</span>(oldObj <span style="color:#6ab825;font-weight:bold">interface</span>{}, newObj <span style="color:#6ab825;font-weight:bold">interface</span>{}, key <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> oldIndexValues, indexValues []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> err <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历索引函数列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> name, indexFunc := <span style="color:#6ab825;font-weight:bold">range</span> i.indexers {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 计算旧对象的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> oldObj != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			oldIndexValues, err = <span style="color:#447fcf">indexFunc</span>(oldObj)
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			oldIndexValues = oldIndexValues[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 计算新对象的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> newObj != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			indexValues, err = <span style="color:#447fcf">indexFunc</span>(newObj)
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			indexValues = indexValues[:<span style="color:#3677a9">0</span>]
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		index := i.indices[name]
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> index == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			index = Index{}
+</span></span><span style="display:flex;"><span>			i.indices[name] = index
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果新对象和旧对象的索引值一致
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 无需执行任何操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(indexValues) == <span style="color:#3677a9">1</span> &amp;&amp; <span style="color:#24909d">len</span>(oldIndexValues) == <span style="color:#3677a9">1</span> &amp;&amp; indexValues[<span style="color:#3677a9">0</span>] == oldIndexValues[<span style="color:#3677a9">0</span>] {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 删除旧值的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> _, value := <span style="color:#6ab825;font-weight:bold">range</span> oldIndexValues {
+</span></span><span style="display:flex;"><span>			i.<span style="color:#447fcf">deleteKeyFromIndex</span>(key, value, index)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 添加新值的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> _, value := <span style="color:#6ab825;font-weight:bold">range</span> indexValues {
+</span></span><span style="display:flex;"><span>			i.<span style="color:#447fcf">addKeyToIndex</span>(key, value, index)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="删除索引">删除索引</h3>
+<p><code>storeIndex.deleteKeyFromIndex</code> 方法负责删除索引，内部实现就是添加方法 <code>addKeyToIndex</code> 的逆过程实现。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (i *storeIndex) <span style="color:#447fcf">deleteKeyFromIndex</span>(key, indexValue <span style="color:#6ab825;font-weight:bold">string</span>, index Index) {
+</span></span><span style="display:flex;"><span>	set := index[indexValue]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> set == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	set.<span style="color:#447fcf">Delete</span>(key)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果索引值对应的字符串集合已经没有任何元素了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 及时释放对应的索引空间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 避免 map 内存持续增长带来的 “内存泄漏” 问题
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(set) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">delete</span>(index, indexValue)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="小结-2">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/informer_storeindex_flow.png" alt="StoreIndex 流程图"></p>
+<p><code>StoreIndex</code> 对象实现了资源对象的存储索引功能，每次存储索引对象时，通过内部的索引函数计算出索引对象对应的索引值，然后写入到内部的 <code>Indices</code> 对象中，
+简单来说，<code>StoreIndex</code> 对象就是用于存储资源对象并自动完成索引功能的本地存储组件，完成存储之后，对于接下来的查询操作，可以通过索引机制高效获取到对应资源对象。</p>
+<p><code>Reflector</code> 通过监听机制将资源对象变更事件数据传入 <code>DeltaFIFO 队列</code> 之后，经过消费者函数操作之后，将资源对象索引存入到 <code>StoreIndex</code> 对象中，
+当然 <code>StoreIndex</code> 对象只是完成了资源对象的索引功能，资源对象的具体存储由下文中的 <code>threadSafeMap</code> 对象实现。</p>
+<p>通过 <code>StoreIndex</code> 索引对象和 <code>threadSafeMap</code> 对象的配合，可以保证本地拉取到资源对象和 Kubernetes etcd 集群中的资源对象数据一致，
+这样就需要获取指定的资源对象时，就不需要每次都从 API Server 中实时获取，大大降低控制平面节点的负载压力。</p>
+<hr>
+<h2 id="threadsafestore-接口">ThreadSafeStore 接口</h2>
+<p><code>ThreadSafeStore</code> 接口表示索引和资源对象缓存的相关操作，具体的实现由 <code>threadSafeMap</code> 对象来完成。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ThreadSafeStore <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Add</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, obj <span style="color:#6ab825;font-weight:bold">interface</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Update</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, obj <span style="color:#6ab825;font-weight:bold">interface</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Delete</span>(key <span style="color:#6ab825;font-weight:bold">string</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">Get</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) (item <span style="color:#6ab825;font-weight:bold">interface</span>{}, exists <span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">List</span>() []<span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">ListKeys</span>() []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="threadsafemap">threadSafeMap</h3>
+<p><code>threadSafeMap</code> 对象用于维护索引和资源对象，其中索引通过 <code>storeIndex</code> 对象来实现，缓存资源对象使用一个 map 数据结构实现，在进行具体的操作时加锁。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> threadSafeMap <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	lock  sync.RWMutex
+</span></span><span style="display:flex;"><span>	items <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">interface</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 索引通过 storeIndex 对象来实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	index *storeIndex
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="初始化">初始化</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewThreadSafeStore</span>(indexers Indexers, indices Indices) ThreadSafeStore {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;threadSafeMap{
+</span></span><span style="display:flex;"><span>		items: <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">interface</span>{}{},
+</span></span><span style="display:flex;"><span>		index: &amp;storeIndex{
+</span></span><span style="display:flex;"><span>			indexers: indexers,
+</span></span><span style="display:flex;"><span>			indices:  indices,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="curd-操作">CURD 操作</h3>
+<p>就是普通的 map 操作，为了防止并发读写可能引起的错误，方法内部使用了读写锁。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *threadSafeMap) <span style="color:#447fcf">Add</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>	c.<span style="color:#447fcf">Update</span>(key, obj)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *threadSafeMap) <span style="color:#447fcf">Update</span>(key <span style="color:#6ab825;font-weight:bold">string</span>, obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>	c.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> c.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	oldObject := c.items[key]
+</span></span><span style="display:flex;"><span>	c.items[key] = obj
+</span></span><span style="display:flex;"><span>	c.index.<span style="color:#447fcf">updateIndices</span>(oldObject, obj, key)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *threadSafeMap) <span style="color:#447fcf">Delete</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>	c.lock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> c.lock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> obj, exists := c.items[key]; exists {
+</span></span><span style="display:flex;"><span>		c.index.<span style="color:#447fcf">updateIndices</span>(obj, <span style="color:#6ab825;font-weight:bold">nil</span>, key)
+</span></span><span style="display:flex;"><span>		<span style="color:#24909d">delete</span>(c.items, key)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *threadSafeMap) <span style="color:#447fcf">Get</span>(key <span style="color:#6ab825;font-weight:bold">string</span>) (item <span style="color:#6ab825;font-weight:bold">interface</span>{}, exists <span style="color:#6ab825;font-weight:bold">bool</span>) {
+</span></span><span style="display:flex;"><span>	c.lock.<span style="color:#447fcf">RLock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">defer</span> c.lock.<span style="color:#447fcf">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	item, exists = c.items[key]
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> item, exists
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="小结-3">小结</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/informer_thread_safe_map_flow.png" alt="threadSafeMap 流程图"></p>
+<h2 id="控制器">控制器</h2>
+<p>作为控制中心，控制器集成了上文中提到的 Reflector、DeltaFIFO、Indexer、Store 组件，使各组件可以协同工作。</p>
+<h3 id="controller-接口">Controller 接口</h3>
+<p><code>Controller</code> 表示控制器接口，具体的实现由 <code>controller</code> 来完成。</p>
+<blockquote>
+<p>K8s 代码命名约定俗成：大写定义 interface 接口，小写定义具体实现。</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Controller <span style="color:#6ab825;font-weight:bold">interface</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Run 方法主要做两件事情
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   1. 初始化并启动 Reflector, 通过 ListerWatcher 监听变化的资源事件并放入队列中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   2. 不断从队列中获取变化的资源事件，并执行对应的操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">Run</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// HasSynced 的实现委托给了具体的队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 检测同步是否完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">HasSynced</span>() <span style="color:#6ab825;font-weight:bold">bool</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="config-对象">Config 对象</h3>
+<p><code>Config</code> 对象是一个大杂烩配置容器，里面包含了控制器运行逻辑中需要的对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Config <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// DeltaFIFO 作为具体实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Queue
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 资源监听
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ListerWatcher
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列中资源事件处理方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Process ProcessFunc
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 全量同步周期
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	FullResyncPeriod time.Duration
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 是否需要重新同步的检测方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ShouldResync ShouldResyncFunc
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 监听错误处理回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WatchErrorHandler WatchErrorHandler
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 单次请求数据块大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	WatchListPageSize <span style="color:#6ab825;font-weight:bold">int64</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="controller-对象">controller 对象</h3>
+<p><code>controller</code> 对象实现了 <code>Controller</code> 接口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> controller <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	config         Config
+</span></span><span style="display:flex;"><span>	reflector      *Reflector
+</span></span><span style="display:flex;"><span>	reflectorMutex sync.RWMutex
+</span></span><span style="display:flex;"><span>	clock          clock.Clock
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="初始化控制器">初始化控制器</h2>
+<p><code>newInformer</code> 方法用于初始化一个 <code>控制器</code> 实例。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">newInformer</span>(...) Controller {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化一个 DeltaFIFO 队列，注入到 Config 配置对象中 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	fifo := <span style="color:#447fcf">NewDeltaFIFOWithOptions</span>(DeltaFIFOOptions{
+</span></span><span style="display:flex;"><span>		KnownObjects:          clientState,
+</span></span><span style="display:flex;"><span>		EmitDeltaTypeReplaced: <span style="color:#6ab825;font-weight:bold">true</span>,
+</span></span><span style="display:flex;"><span>		Transformer:           transformer,
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cfg := &amp;Config{
+</span></span><span style="display:flex;"><span>		Queue:            fifo,
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">New</span>(cfg)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动控制器">启动控制器</h2>
+<p><code>controller.Run</code> 方法用于处理上下游的业务流程操作，通过启动 <code>Reflector</code> 调用 <code>ListAndWatch</code> 获取全量资源并监听资源变化事件，然后存储到 <code>DeltaFIFO</code> 队列中，
+另一方面，通过 <code>controller.processLoop</code> 方法不断从 <code>DeltaFIFO</code> 队列中获取元素并执行对应的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *controller) <span style="color:#447fcf">Run</span>(stopCh &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动单独的 goroutine 监听关闭 channel 信号
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		&lt;-stopCh
+</span></span><span style="display:flex;"><span>		c.config.Queue.<span style="color:#447fcf">Close</span>()
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化一个 Reflector 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	r := <span style="color:#447fcf">NewReflectorWithOptions</span>(
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> wg wait.Group
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 Reflector.Run 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 具体细节请参考前文中的 [启动 Reflector] 小节
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wg.<span style="color:#447fcf">StartWithChannel</span>(stopCh, r.Run)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 controller.processLoop 消费队列元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wait.<span style="color:#447fcf">Until</span>(c.processLoop, time.Second, stopCh)
+</span></span><span style="display:flex;"><span>	wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="队列消费">队列消费</h2>
+<p><code>controller.processLoop</code> 方法内部是一个无限循环，不断从队列中取出元素，并执行对应的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (c *controller) <span style="color:#447fcf">processLoop</span>() {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 这里配置对象中的回调方法也就是 processDeltas
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		obj, err := c.config.Queue.<span style="color:#447fcf">Pop</span>(<span style="color:#447fcf">PopProcessFunc</span>(c.config.Process))
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>最后来看下队列中元素出队后的回调方法 <code>processDeltas</code>, 方法内部会遍历资源的事件列表，然后根据不同的事件类型执行不同的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">processDeltas</span>(...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历资源事件列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, d := <span style="color:#6ab825;font-weight:bold">range</span> deltas {
+</span></span><span style="display:flex;"><span>		obj := d.Object
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> d.Type {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> Sync, Replaced, Added, Updated:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 资源非删除事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> old, exists, err := clientState.<span style="color:#447fcf">Get</span>(obj); err == <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; exists {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 资源更新事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 先从索引中更新资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> err := clientState.<span style="color:#447fcf">Update</span>(obj); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 调用资源更新回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				handler.<span style="color:#447fcf">OnUpdate</span>(old, obj)
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 资源创建事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 先从索引中创建资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> err := clientState.<span style="color:#447fcf">Add</span>(obj); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 调用资源新增回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				handler.<span style="color:#447fcf">OnAdd</span>(obj, isInInitialList)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> Deleted:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 资源删除事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 先从索引中删除资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> err := clientState.<span style="color:#447fcf">Delete</span>(obj); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 调用资源删除回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			handler.<span style="color:#447fcf">OnDelete</span>(obj)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/k8s/source_code/informer_controller_flow.png" alt="Controller 流程图"></p>
+<h2 id="小结-4">小结</h2>
+<p>Kubernetes 中的 Informer 是 client-go 客户端库中实现的一种机制，它可以监听 Kubernetes 集群中各类资源对象的变更，并将这些变更事件通知发送到控制器，
+并进行对应的数据索引和存储。
+通俗地说，Informer 的关键作用就是充当 Kubernetes API Server 和 <strong>资源控制器</strong> 之间的中间层，类似的工作机制有消息队列、设计模式中的观察者模式等。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/client-go">client-go</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/3157-watch-list#proposal">KEP-3157: allow informers for getting a stream of data instead of chunking.</a></li>
+<li><a href="https://mp.weixin.qq.com/s/-qiB1KilhwtcjI61m_x3jA">如何高效掌控K8s资源变化？K8s Informer实现机制浅析</a></li>
+<li><a href="https://github.com/k8s-club/k8s-club/blob/main/articles/Informer%E6%9C%BA%E5%88%B6%20-%20%E6%A6%82%E8%BF%B0.md">K8s Informer机制概述</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/optimize/remove_efk_from_log_system/"><i class="fa fa-chevron-circle-left"></i> 降本增效之应用优化 (三) 日志存储与检索</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Informer 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
