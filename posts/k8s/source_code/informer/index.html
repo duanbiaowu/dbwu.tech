@@ -431,7 +431,7 @@ Informer 提供了一种简洁的方式来处理 API Server 发送的事件，�
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><hr>
 <h2 id="小结">小结</h2>
-<p><img src="https://dbwu.tech/images/k8s/source_code/informer_reflector_flow.png" alt="Informer 流程图"></p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/informer_reflector_flow.png" alt="Reflector 流程图"></p>
 <p><code>Reflector</code> 启动运行之后，会先执行一次资源对象的全量拉取，通过调用 <code>syncWith</code> 方法将数据更新到 <code>DeltaFIFO 队列</code> 中，然后持续监听资源对象的增量事件 (创建、更新、删除等)，
 并且将事件去重之后更新到 <code>DeltaFIFO 队列</code> 中，最后 <code>DeltaFIFO 队列</code> 中的数据会被消费者取出，执行具体的业务逻辑操作 (细节见下文)。</p>
 <hr>
@@ -1018,6 +1018,8 @@ Informer 提供了一种简洁的方式来处理 API Server 发送的事件，�
         
         </li>
         <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/endpoint_controller/">Kubernetes EndPoint 设计与实现 <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>

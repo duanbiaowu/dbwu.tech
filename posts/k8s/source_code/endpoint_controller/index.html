@@ -1,0 +1,462 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes EndPoint 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes EndPoint 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/endpoint_controller/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-08T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-08T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes EndPoint 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes EndPoint 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2023-12-08</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>EndPoint 的概念和作用在 <a href="https://dbwu.tech/posts/k8s/service/">这篇文章</a> 中已经介绍过了，本文不再赘述，这里使用一张图来回顾一下 Service, EndPoint, Pod 三者之间的关系。</p>
+<p><img src="https://dbwu.tech/images/k8s/service_endpoint_pod.png" alt="Service, EndPoint, Pod 关系图"></p>
+<h3 id="endpointsubset">EndpointSubset</h3>
+<p>EndpointSubset 是一组具有公共端口集的地址，扩展的端点集是 Addresses 和 Ports 的笛卡尔积。</p>
+<p>下面是一个典型的 EndpointSubset 示例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>  Name: <span style="color:#ed9d13">&#34;test&#34;</span>,
+</span></span><span style="display:flex;"><span>  Subsets: [
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>      Addresses: [
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>          <span style="color:#ed9d13">&#34;ip&#34;</span>: <span style="color:#ed9d13">&#34;10.10.1.1&#34;</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>          <span style="color:#ed9d13">&#34;ip&#34;</span>: <span style="color:#ed9d13">&#34;10.10.2.2&#34;</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      ],
+</span></span><span style="display:flex;"><span>      Ports: [
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>          <span style="color:#ed9d13">&#34;name&#34;</span>: <span style="color:#ed9d13">&#34;a&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#ed9d13">&#34;port&#34;</span>: <span style="color:#3677a9">8675</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>          <span style="color:#ed9d13">&#34;name&#34;</span>: <span style="color:#ed9d13">&#34;b&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#ed9d13">&#34;port&#34;</span>: <span style="color:#3677a9">309</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      ]
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>将上面的 Subset 转换为对应的端点集合:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>a: [ 10.10.1.1:8675, 10.10.2.2:8675 ]
+</span></span><span style="display:flex;"><span>b: [ 10.10.1.1:309, 10.10.2.2:309 ]
+</span></span></code></pre></div><h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 EndPoint 的实现原理，EndPoint 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/endpoint/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/endpoint_1.png" alt="EndPoint 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/endpoint_flow.png" alt="EndPoint 控制器执行流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<hr>
+<h2 id="endpointcontroller">EndPointController</h2>
+<p>首先来看看 <code>Endpoints</code> 控制器对象，该对象是实现 Endpoints 功能的核心对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Controller manages selector-based service endpoints.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> Controller <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Service 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	serviceLister corelisters.ServiceLister
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podLister corelisters.PodLister
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// EndPoint 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	endpointsLister corelisters.EndpointsLister
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列中存储发生了变化 (需要同步) 的 Service
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	queue workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="初始化">初始化</h3>
+<p><code>NewEndpointController</code> 方法用于 <code>EndPoint</code> 控制器对象的初始化工作，并返回一个实例化对象，控制器对象同时订阅了 Service, Pod, EndPoint 三种资源的变更事件。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewEndpointController</span>(podInformer ...) *Controller {
+</span></span><span style="display:flex;"><span>	e := &amp;Controller{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 Service informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	serviceInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 增加 Pod informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 增加 EndPoint informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	endpointsInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> e
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动控制器">启动控制器</h2>
+<p>根据控制器的初始化方法 <code>NewEndpointController</code> 的调用链路，可以找到控制器开始启动和执行的地方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cmd/kube-controller-manager/app/core.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startEndpointsController</span>(ctx context.Context, ...) (controller.Interface, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 启动一个单独的 goroutine 来完成 {初始化 &amp;&amp; 运行}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> endpointcontroller.<span style="color:#447fcf">NewEndpointController</span>(
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	).<span style="color:#447fcf">Run</span>(ctx, <span style="color:#24909d">int</span>(controllerContext.ComponentConfig.EndpointController.ConcurrentEndpointSyncs))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="具体逻辑方法">具体逻辑方法</h3>
+<p><code>Controller.Run</code> 方法执行具体的初始化逻辑。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *Controller) <span style="color:#447fcf">Run</span>(ctx context.Context, workers <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// (根据参数配置) 启动多个 goroutine 处理逻辑 (默认为 5 个)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; workers; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">UntilWithContext</span>(ctx, e.worker, e.workerLoopPeriod)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	&lt;-ctx.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Controller.worker</code> 方法本质上就是一个无限循环轮询器，不断从队列中取出 <code>EndPoint</code> 对象，然后进行对应的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *Controller) <span style="color:#447fcf">worker</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内部调用 processNextWorkItem 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> e.<span style="color:#447fcf">processNextWorkItem</span>(ctx) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *Controller) <span style="color:#447fcf">processNextWorkItem</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从队列获取 EndPoint 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	eKey, quit := e.queue.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 syncService 方法同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := e.<span style="color:#447fcf">syncService</span>(ctx, eKey.(<span style="color:#6ab825;font-weight:bold">string</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="endpoint-同步">EndPoint 同步</h2>
+<p><code>Controller</code> 的回调处理方法是 <code>syncService</code> 方法，该方法是 <code>EndPoint</code> 控制器操作的核心方法，通过方法的命名，可以知道 EndPoint 主要关注的对象是 Service。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *Controller) <span style="color:#447fcf">syncService</span>(ctx context.Context, key <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 key 解析出 Service 对象对应的 命名空间和名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	namespace, name, err := cache.<span style="color:#447fcf">SplitMetaNamespaceKey</span>(key)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取 Service 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	service, err := e.serviceLister.<span style="color:#447fcf">Services</span>(namespace).<span style="color:#447fcf">Get</span>(name)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Service 类型为 ExternalName
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> service.Spec.Type == v1.ServiceTypeExternalName {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Service 的标签选择器为 nil
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 这种情况下关联不到 EndPoint 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> service.Spec.Selector == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Service 的标签选择器关联的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pods, err := e.podLister.<span style="color:#447fcf">Pods</span>(service.Namespace).<span style="color:#447fcf">List</span>(labels.<span style="color:#447fcf">Set</span>(service.Spec.Selector).<span style="color:#447fcf">AsSelectorPreValidated</span>())
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化端点集合对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	subsets := []v1.EndpointSubset{}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化已就绪的 EndPoint 对象计数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> totalReadyEps <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化未就绪的 EndPoint 对象计数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> totalNotReadyEps <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, pod := <span style="color:#6ab825;font-weight:bold">range</span> pods {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 Pod 的 IP 未分配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//   或者 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// Pod 的状态已经终止或者正在终止中... 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !endpointsliceutil.<span style="color:#447fcf">ShouldPodBeInEndpoints</span>(pod, service.Spec.PublishNotReadyAddresses) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 实例化一个 EndPointAddress 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 例如
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// {
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//   &#34;ip&#34;: &#34;10.10.1.1&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// }
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		ep, err := <span style="color:#447fcf">podToEndpointAddressForService</span>(service, pod)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		epa := *ep
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(service.Spec.Ports) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> service.Spec.ClusterIP == api.ClusterIPNone {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Headless 模式下，ClusterIP 的值设置为 &#34;None&#34; 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 构建一个新的对象追加到端点集合里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				subsets, totalReadyEps, totalNotReadyEps = <span style="color:#447fcf">addEndpointSubset</span>(logger, subsets, pod, ...)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 遍历 Service 端口对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> service.Spec.Ports {
+</span></span><span style="display:flex;"><span>				servicePort := &amp;service.Spec.Ports[i]
+</span></span><span style="display:flex;"><span>				portNum, err := podutil.<span style="color:#447fcf">FindPort</span>(pod, servicePort)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 根据 Service 端口对象 + 端口号构建一个对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				epp := <span style="color:#447fcf">endpointPortFromServicePort</span>(servicePort, portNum)
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 将构建好的对象追加到端点集合里
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">var</span> readyEps, notReadyEps <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>				subsets, readyEps, notReadyEps = <span style="color:#447fcf">addEndpointSubset</span>(logger, subsets, pod, ...)
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 累加已就绪的 EndPoint 对象计数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				totalReadyEps = totalReadyEps + readyEps
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 累加未就绪的 EndPoint 对象计数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				totalNotReadyEps = totalNotReadyEps + notReadyEps
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算并确定最后的 EndPoint 对象集合 (新的 EndPoint Set)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	subsets = endpoints.<span style="color:#447fcf">RepackSubsets</span>(subsets)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 informer 获取 Service 对象对应的 EndPoint Set
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 也就是当前的 EndPoint Set (旧的 EndPoint Set)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	currentEndpoints, err := e.endpointsLister.<span style="color:#447fcf">Endpoints</span>(service.Namespace).<span style="color:#447fcf">Get</span>(service.Name)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 Service 的资源版本号未设置，就需要创建新的 EndPoints 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	createEndpoints := <span style="color:#24909d">len</span>(currentEndpoints.ResourceVersion) == <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对新的和旧的 EndPoint Set进行排序 + 比较操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 如果新的 Set 和旧的 Set 比较之后，没有任何差异
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">//   并且 Service 的版本号也不需要创建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 直接返回就可以了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !createEndpoints &amp;&amp; ...) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 深度拷贝当前的 EndPoint Set
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newEndpoints := currentEndpoints.<span style="color:#447fcf">DeepCopy</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 重新设置相关的 (最新) 属性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newEndpoints.Subsets = subsets
+</span></span><span style="display:flex;"><span>	newEndpoints.Labels = service.Labels
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> createEndpoints {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 创建新的 EndPoints
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		_, err = e.client.<span style="color:#447fcf">CoreV1</span>().<span style="color:#447fcf">Endpoints</span>(service.Namespace).<span style="color:#447fcf">Create</span>(ctx, newEndpoints, metav1.CreateOptions{})
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 更新已有 EndPoints
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		_, err = e.client.<span style="color:#447fcf">CoreV1</span>().<span style="color:#447fcf">Endpoints</span>(service.Namespace).<span style="color:#447fcf">Update</span>(ctx, newEndpoints, metav1.UpdateOptions{})
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>Controller.syncService</code> 方法的源代码，我们可以看到: <code>EndPoint</code> 对象每次同步时，都会执行如下的操作:</p>
+<ol>
+<li>根据参数 key 获取指定的 Service 对象</li>
+<li>获取 Service 对象的标签选择器关联的 Pod 列表</li>
+<li>通过 Service 和 Pod 列表计算出最新的 EndPoint 对象 (新) 集合</li>
+<li>通过 informer 获取 Service 对象对应的 EndPoint 对象 (旧) 集合</li>
+<li>如果新集合与旧集合对比，没有任何差异，说明不需要更新，直接退出方法即可</li>
+<li>根据 Service 资源版本号确定 EndPoints 对象的操作 (创建或更新) 并执行</li>
+</ol>
+<h2 id="小结">小结</h2>
+<blockquote>
+<p>EndPoint 控制器核心作用是订阅 Service 和 Pod 两类资源的变更事件，计算两者的映射关系集合并记录，最后对计算后的映射关系集合创建/更新响应的 EndPoints 资源。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/k8s/source_code/endpoint_flow.png" alt="EndPoint 控制器执行流程图"></p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/k8s/service/">Kubernetes Service 类型和会话亲和性</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/informer/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Informer 设计与实现</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes EndPoint 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
