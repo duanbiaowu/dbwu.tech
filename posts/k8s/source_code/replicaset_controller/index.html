@@ -1,0 +1,778 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes ReplicaSet 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes ReplicaSet 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/replicaset_controller/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-15T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-15T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes ReplicaSet 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes ReplicaSet 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2023-12-15</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>ReplicaSet 的目的是维护并保证一组的 Pod 在任何时候都处于运行状态，它通常用来保证给定数量的、完全相同的 Pod 的可用性。</p>
+</blockquote>
+<p>ReplicaSet 的作用就是持续监听其关联的 Pod, 在 Pod 发生故障时立即启动新的 Pod, 在 Pod 数量多出定义数量时删除多余的 Pod, 保证 Pod 数量始终位于期望状态。</p>
+<p><strong>需要注意的是</strong>: ReplicaSet 控制器并不会主动创建并运行 Pod, 而是通过创建对应的 Pod 声明并发送到 API Server, 最后由调度器分配 Node 并由 Node 上面的 kubelet 创建并运行指定的 Pod。</p>
+<h3 id="示例">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 controllers/frontend.yaml</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>ReplicaSet<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>frontend<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>guestbook<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">tier</span>:<span style="color:#666"> </span>frontend<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">replicas</span>:<span style="color:#666"> </span><span style="color:#3677a9">3</span><span style="color:#666"> </span><span style="color:#999;font-style:italic"># 副本数量，可以根据实际情况修改</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">selector</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">matchLabels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">tier</span>:<span style="color:#666"> </span>frontend<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">tier</span>:<span style="color:#666"> </span>frontend<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>php-redis<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>gcr.io/google_samples/gb-frontend:v3<span style="color:#666">
+</span></span></span></code></pre></div><p>在 Kubernetes 中执行上面的代码后，会创建 1 个对应的 ReplicaSet 对象和 3 个 Pod 对象。</p>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 ReplicaSet 的实现原理，ReplicaSet 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/replicaset/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/replicaset_1.png" alt="ReplicaSet 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/replicaset_flow.png" alt="replicaset 控制器执行流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<hr>
+<h2 id="replicasetcontroller">ReplicaSetController</h2>
+<p>首先来看看 <code>ReplicaSetController</code> 控制器对象，该对象是实现 ReplicaSet 功能的核心对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// ReplicaSetController 负责将 ReplicaSet 对应的 Pod 调整到定义的期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> ReplicaSetController <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// kubelet 客户端对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 用于执行各项类似 &#34;kubectl ...&#34; 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kubeClient clientset.Interface
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 操作对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 用于对 Pod 进行各项操作，例如创建/删除 等
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podControl controller.PodControlInterface
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 在创建/删除指定数量的副本之后，ReplicaSet 将会临时挂起
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在监听到指定事件后恢复正常
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	burstReplicas <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 同时方便在单元测试中注入 Mock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	syncHandler <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context, rsKey <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 缓存对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 记录每个 ReplicaSet 需要创建/删除的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 每轮同步过程中，对于 创建/删除 操作失败的 Pod 数量，都会记录起来
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   等到下一轮同步时继续执行相关的操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   直到 Pod 数量副本达到期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	expectations *controller.UIDTrackingControllerExpectations
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsLister appslisters.ReplicaSetLister
+</span></span><span style="display:flex;"><span>	rsListerSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podLister corelisters.PodLister
+</span></span><span style="display:flex;"><span>	podListerSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列中存储发生了变化 (需要同步) 的 ReplicaSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	queue workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="初始化">初始化</h3>
+<p><code>NewReplicaSetController</code> 方法用于 <code>ReplicaSetController</code> 控制器对象的初始化工作，并返回一个实例化对象，作为一个基础方法，
+其内部又调用了 <code>NewBaseController</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewReplicaSetController</span>(...) *ReplicaSetController {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">NewBaseController</span>(
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewBaseController</span>(...) *ReplicaSetController {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	rsc := &amp;ReplicaSetController{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 增加 ReplicaSet informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		AddFunc: <span style="color:#6ab825;font-weight:bold">func</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>			rsc.<span style="color:#447fcf">addRS</span>(logger, obj)
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		UpdateFunc: <span style="color:#6ab825;font-weight:bold">func</span>(oldObj, newObj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>			rsc.<span style="color:#447fcf">updateRS</span>(logger, oldObj, newObj)
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		DeleteFunc: <span style="color:#6ab825;font-weight:bold">func</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>			rsc.<span style="color:#447fcf">deleteRS</span>(logger, obj)
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 增加 Pod informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		AddFunc: <span style="color:#6ab825;font-weight:bold">func</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>			rsc.<span style="color:#447fcf">addPod</span>(logger, obj)
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		UpdateFunc: <span style="color:#6ab825;font-weight:bold">func</span>(oldObj, newObj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>			rsc.<span style="color:#447fcf">updatePod</span>(logger, oldObj, newObj)
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		DeleteFunc: <span style="color:#6ab825;font-weight:bold">func</span>(obj <span style="color:#6ab825;font-weight:bold">interface</span>{}) {
+</span></span><span style="display:flex;"><span>			rsc.<span style="color:#447fcf">deletePod</span>(logger, obj)
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 注册回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 默认为 ReplicaSetController 对象的 syncReplicaSet 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在单元测试中，也可以通过参数的注入，完成 Mock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsc.syncHandler = rsc.syncReplicaSet
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> rsc
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动控制器">启动控制器</h2>
+<p>根据控制器的初始化方法 <code>NewReplicaSetController</code> 的调用链路，可以找到控制器开始启动和执行的地方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cmd/kube-controller-manager/app/apps.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startReplicaSetController</span>(ctx context.Context, ...) (controller.Interface, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动一个单独的 goroutine 来完成 {初始化 &amp;&amp; 运行} 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> replicaset.<span style="color:#447fcf">NewReplicaSetController</span>(
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	).<span style="color:#447fcf">Run</span>(ctx, <span style="color:#24909d">int</span>(controllerContext.ComponentConfig.ReplicaSetController.ConcurrentRSSyncs))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="具体逻辑方法">具体逻辑方法</h3>
+<p><code>ReplicaSetController.Run</code> 方法执行具体的初始化逻辑。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (rsc *ReplicaSetController) <span style="color:#447fcf">Run</span>(ctx context.Context, workers <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// (根据参数配置) 启动多个 goroutine 处理逻辑 (默认为 5 个)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; workers; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">UntilWithContext</span>(ctx, rsc.worker, time.Second)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	&lt;-ctx.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>ReplicaSetController.worker</code> 方法本质上就是一个无限循环轮询器，不断从队列中取出 <code>ReplicaSet</code> 对象，然后进行对应的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (rsc *ReplicaSetController) <span style="color:#447fcf">worker</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内部调用 processNextWorkItem 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> rsc.<span style="color:#447fcf">processNextWorkItem</span>(ctx) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (rsc *ReplicaSetController) <span style="color:#447fcf">processNextWorkItem</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从队列获取 ReplicaSet 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 获取到的对象可以编码为一个字符串 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	key, quit := rsc.queue.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用回调方法，默认也就是 syncReplicaSet 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := rsc.<span style="color:#447fcf">syncHandler</span>(ctx, key.(<span style="color:#6ab825;font-weight:bold">string</span>))
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建/删除 Pod 时一切正常
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将当前 ReplicaSet 踢出队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        rsc.queue.<span style="color:#447fcf">Forget</span>(key)
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建/删除 Pod 时出现失败的 ReplicaSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将当前 ReplicaSet 重新放入队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    rsc.queue.<span style="color:#447fcf">AddRateLimited</span>(key)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="replicaset-同步">ReplicaSet 同步</h2>
+<p><code>ReplicaSetController</code> 的回调处理方法默认就是 <code>ReplicaSetController.syncReplicaSet</code> 方法，也就是说，该方法是所有 <code>ReplicaSet</code> 操作的入口方法。</p>
+<p>该方法会根据指定的参数 key 取出对应的 <code>ReplicaSet</code> 对象，并执行其配置执行一系列的同步操作，保证 <code>ReplicaSet</code> 的 Pod 副本数量始终位于期望状态。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (rsc *ReplicaSetController) <span style="color:#447fcf">syncReplicaSet</span>(ctx context.Context, key <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 key 解析出 ReplicaSet 对象对应的 命名空间和名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	namespace, name, err := cache.<span style="color:#447fcf">SplitMetaNamespaceKey</span>(key)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 ReplicaSet 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rs, err := rsc.rsLister.<span style="color:#447fcf">ReplicaSets</span>(namespace).<span style="color:#447fcf">Get</span>(name)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测 ReplicaSet 是否需要同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsNeedsSync := rsc.expectations.<span style="color:#447fcf">SatisfiedExpectations</span>(logger, key)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 ReplicaSet 对应的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 其中包含了已经终止的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allPods, err := rsc.podLister.<span style="color:#447fcf">Pods</span>(rs.Namespace).<span style="color:#447fcf">List</span>(labels.<span style="color:#447fcf">Everything</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 过滤掉已经终止的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	filteredPods := controller.<span style="color:#447fcf">FilterActivePods</span>(logger, allPods)
+</span></span><span style="display:flex;"><span>	filteredPods, err = rsc.<span style="color:#447fcf">claimPods</span>(ctx, rs, selector, filteredPods)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 深度拷贝一个对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在方法内部作为局部变量使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rs = rs.<span style="color:#447fcf">DeepCopy</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 同步 Pod 副本到期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">var</span> manageReplicasErr <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> rsNeedsSync &amp;&amp; rs.DeletionTimestamp == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        manageReplicasErr = rsc.<span style="color:#447fcf">manageReplicas</span>(ctx, filteredPods, rs)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算 ReplicaSet 状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newStatus := <span style="color:#447fcf">calculateStatus</span>(rs, filteredPods, manageReplicasErr)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 同步 ReplicaSet 的状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	updatedRS, err := <span style="color:#447fcf">updateReplicaSetStatus</span>(logger, rsc.kubeClient.<span style="color:#447fcf">AppsV1</span>().<span style="color:#447fcf">ReplicaSets</span>(rs.Namespace), rs, newStatus)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>ReplicaSetController.syncReplicaSet</code> 方法的源代码，我们可以看到: ReplicaSet 每次同步时，都会执行如下的操作，而且每个操作的顺序都是一致的:</p>
+<ol>
+<li>根据参数 key 获取指定的 ReplicaSet 对象</li>
+<li>检测 ReplicaSet 是否需要同步</li>
+<li>获取 ReplicaSet 对应的 Pod 列表</li>
+<li>同步 Pod 副本到期望状态</li>
+<li>计算 ReplicaSet 状态</li>
+</ol>
+<p>有了上面的这个大致的逻辑框架，接下来我们逐个分析对应的单个方法实现即可。</p>
+<hr>
+<h2 id="检测是否需要同步">检测是否需要同步</h2>
+<p><code>SatisfiedExpectations</code> 方法用于检测指定的 <code>ReplicaSet</code> 是否需要同步，如果给定的参数 <code>ReplicaSet</code> 需要执行 创建/删除 状态同步，返回 true, 否则返回 false。</p>
+<p>创建/删除状态计数变化在 <code>ReplicaSet</code> 控制器同步时建立，并在 <code>ReplicaSet</code> 控制器观察到对应的对象变化时更新。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r *ControllerExpectations) <span style="color:#447fcf">SatisfiedExpectations</span>(logger klog.Logger, controllerKey <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果可以获取到 Expectations 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> exp, exists, err := r.<span style="color:#447fcf">GetExpectations</span>(controllerKey); exists {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> exp.<span style="color:#447fcf">Fulfilled</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 这个逻辑没看懂！
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 既然 Expectations 满足期望，也就意味着此时运行的 Pod 数量和期望数量是一致的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 那还同步什么 ?
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> exp.<span style="color:#447fcf">isExpired</span>() {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// Expectations 上次同步时间已失效
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// ReplicaSet 需要同步，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// ReplicaSet 不需要同步，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果发生错误，强制 ReplicaSet 同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建一个新的 ReplicaSet 控制器时，它没有对应的 Expectations 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//   或者
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 一个已有的 ReplicaSet 控制器距离上次同步的时间已经超过同步周期
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这两种情况都需要进行同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果上面的条件全部没有触发到，则需要进行同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>isExpired</code> 方法用于检测 <code>Expectations</code> 对象当前是否处于有效的同步周期内，内部实现也很简单: 判断距离上次同步时间是否已经超过 5 分钟。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>    ExpectationsTimeout = <span style="color:#3677a9">5</span> * time.Minute
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (exp *ControlleeExpectations) <span style="color:#447fcf">isExpired</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> clock.RealClock{}.<span style="color:#447fcf">Since</span>(exp.timestamp) &gt; ExpectationsTimeout
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>isExpired</code> 方法用于检测此时运行的 Pod 数量和期望数量是一致的，内部实现也很简单: 判断需要创建的 Pod 数量和需要删除的 Pod 熟练是否小于等于 0。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (e *ControlleeExpectations) <span style="color:#447fcf">Fulfilled</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> atomic.<span style="color:#447fcf">LoadInt64</span>(&amp;e.add) &lt;= <span style="color:#3677a9">0</span> &amp;&amp; atomic.<span style="color:#447fcf">LoadInt64</span>(&amp;e.del) &lt;= <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="同步-更新-pod-状态">同步 (更新) Pod 状态</h2>
+<p><code>manageReplicas</code> 方法用于检测并更新指定的 <code>ReplicaSet</code> 对象对应的 Pod 副本，当运行的 Pod 数量低于预期数量时，创建新的 Pod,
+当运行的 Pod 数量高于预期数量时，删除多余的 Pod。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (rsc *ReplicaSetController) <span style="color:#447fcf">manageReplicas</span>(ctx context.Context, filteredPods []*v1.Pod, rs *apps.ReplicaSet) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 差异数量 = 当前运行的 Pod 数量 - ReplicaSet 期望 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 差异数量 &gt; 0: 需要删除多余的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 差异数量 &lt; 0: 需要创建的 Pod 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	diff := <span style="color:#24909d">len</span>(filteredPods) - <span style="color:#24909d">int</span>(*(rs.Spec.Replicas))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> diff &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建 diff 个新的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 负负得正
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		diff *= -<span style="color:#3677a9">1</span> 
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> diff &gt; rsc.burstReplicas {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 diff 大于单次最大操作数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 修正 diff 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			diff = rsc.burstReplicas
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新 ReplicaSet 关联的 Expectations 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		rsc.expectations.<span style="color:#447fcf">ExpectCreations</span>(logger, rsKey, diff)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 批量创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//   每次创建成功后，下一轮创建的 Pod 数量以指数级进行增长 (1, 2, 4, 8 ...)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//   参考了 TCP 的 “慢启动” 方式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		successfulCreations, err := <span style="color:#447fcf">slowStartBatch</span>(diff, controller.SlowStartInitialBatchSize, <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>			err := rsc.podControl.<span style="color:#447fcf">CreatePods</span>(ctx, rs.Namespace, &amp;rs.Spec.Template, rs, metav1.<span style="color:#447fcf">NewControllerRef</span>(rs, rsc.GroupVersionKind))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建失败的 Pod 数量 = diff - 创建成功的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 当然，创建失败的 Pod 会在当前的 ReplicaSet 下一次同步时再次创建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> skippedPods := diff - successfulCreations; skippedPods &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; skippedPods; i++ {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 记录更新 ReplicaSet 关联的 Expectations 对象字段: 需要创建的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				rsc.expectations.<span style="color:#447fcf">CreationObserved</span>(logger, rsKey)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>	} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> diff &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 删除 diff 个多余的Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> diff &gt; rsc.burstReplicas {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 如果 diff 大于单次最大操作数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">// 修正 diff 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			diff = rsc.burstReplicas
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 获取 (选择) 需要被删除的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		podsToDelete := <span style="color:#447fcf">getPodsToDelete</span>(filteredPods, relatedPods, diff)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将需要被删除的 Pod 列表的快照记录到 Expectations 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这样我们就可以直接从该对象中获取到 Pod 的删除执行结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		rsc.expectations.<span style="color:#447fcf">ExpectDeletions</span>(logger, rsKey, <span style="color:#447fcf">getPodKeys</span>(podsToDelete))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 这个 channel 设计得很巧妙，接收 error + 信号量 合二为一
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		errCh := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>, diff)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 开始并发删除 Pod, 朴素的实现 :-)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(diff)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> _, pod := <span style="color:#6ab825;font-weight:bold">range</span> podsToDelete {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(targetPod *v1.Pod) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 执行删除 Pod 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> err := rsc.podControl.<span style="color:#447fcf">DeletePod</span>(ctx, rs.Namespace, targetPod.Name, rs); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果 Pod 删除失败了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 就记录到 Expectations 对象中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					podKey := controller.<span style="color:#447fcf">PodKey</span>(targetPod)
+</span></span><span style="display:flex;"><span>					rsc.expectations.<span style="color:#447fcf">DeletionObserved</span>(logger, rsKey, podKey)
+</span></span><span style="display:flex;"><span>					
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 如果 Pod 存在并且删除失败了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 将 error 发送到 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">if</span> !apierrors.<span style="color:#447fcf">IsNotFound</span>(err) {
+</span></span><span style="display:flex;"><span>						errCh &lt;- err
+</span></span><span style="display:flex;"><span>					}
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}(pod)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等待并发删除 Pod 结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">select</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> err := &lt;-errCh:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 不管删除失败的 Pod 数量有多少，它们的 error 都是一致的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 所以直接只需要返回一个 error 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="批量创建-pod">批量创建 Pod</h2>
+<p>真正实现 Pod 的批量创建是在方法 <code>slowStartBatch</code>, 每次创建的 Pod 数量会按照 “指数增长 (从 1 开始)” 规则并发进行，最后返回成功创建的 Pod 数量。</p>
+<p>每轮创建过程中，如果所有的 Pod 都创建成功了，下一轮创建的 Pod 数量就会翻倍，如果其中任意一个 Pod 创建失败了，就直接返回了，
+剩余的没有创建的 Pod 会在 <code>ReplicaSet</code> 下一次同步时再创建。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">slowStartBatch</span>(count <span style="color:#6ab825;font-weight:bold">int</span>, initialBatchSize <span style="color:#6ab825;font-weight:bold">int</span>, fn <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">error</span>) (<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 剩余需要创建的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	remaining := count
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建成功的 Pod 总数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	successes := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 每轮指数增长 (1, 2, 4, 8 ...)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> batchSize := integer.<span style="color:#447fcf">IntMin</span>(remaining, initialBatchSize); batchSize &gt; <span style="color:#3677a9">0</span>; batchSize = integer.<span style="color:#447fcf">IntMin</span>(<span style="color:#3677a9">2</span>*batchSize, remaining) {
+</span></span><span style="display:flex;"><span>		errCh := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>, batchSize)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 开始并发创建 Pod, 朴素的实现 :-)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">var</span> wg sync.WaitGroup
+</span></span><span style="display:flex;"><span>		wg.<span style="color:#447fcf">Add</span>(batchSize)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; batchSize; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">defer</span> wg.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 执行创建 Pod 的回调函数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> err := <span style="color:#447fcf">fn</span>(); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					errCh &lt;- err
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}()
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等待并发创建结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		wg.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 当前这一轮创建成功的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		curSuccesses := batchSize - <span style="color:#24909d">len</span>(errCh)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 累加总数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		successes += curSuccesses
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(errCh) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果有任意一个 Pod 创建失败了，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> successes, &lt;-errCh
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新剩余需要创建的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		remaining -= batchSize
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> successes, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>从上面的源代码可以看到，创建 Pod 的方法并不是固定的，而是通过参数中的 <code>fn</code> 回调参数决定的 (这非常便于单元测试)，根据上下文的代码追踪，
+我们可以看到其注入的回调方法是 <code>RealPodControl.createPods</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r RealPodControl) <span style="color:#447fcf">createPods</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 KubeClient 创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newPod, err := r.KubeClient.<span style="color:#447fcf">CoreV1</span>().<span style="color:#447fcf">Pods</span>(namespace).<span style="color:#447fcf">Create</span>(ctx, pod, metav1.CreateOptions{})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="选择需要删除的-pod">选择需要删除的 Pod</h2>
+<p>删除多余的 Pod 之前，首先要筛选出来需要删除的 Pod 列表，该功能是由 <code>getPodsToDelete</code> 方法来实现的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getPodsToDelete</span>(filteredPods, ...) []*v1.Pod {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果要删除部分 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  那么就需要部分 Pod, 就先进行排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  最后排在前面的 Pod 就是需要删除的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> diff &lt; <span style="color:#24909d">len</span>(filteredPods) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 对 Pod 列表进行预处理，返回包装好的列表 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		podsWithRanks := <span style="color:#447fcf">getPodsRankedByRelatedPodsOnSameNode</span>(filteredPods, relatedPods)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 对 Pod 列表进行排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 具体的排序规则请参考 [Pod 排序规则] 小节
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		sort.<span style="color:#447fcf">Sort</span>(podsWithRanks)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 如果要删除全部 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 直接删除就行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> filteredPods[:diff]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>getPodsRankedByRelatedPodsOnSameNode</code> 方法根据参数 Pod 列表进行排序，并返回包装后 (包含排序值) 的 Pod 列表。
+其中，每个 Pod 对象和排序值对象索引一一对应，排序值表示该 Pod 所在节点上运行的 Pod 数量。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">getPodsRankedByRelatedPodsOnSameNode</span>(podsToRank, relatedPods []*v1.Pod) controller.ActivePodsWithRanks {
+</span></span><span style="display:flex;"><span>	podsOnNode := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, pod := <span style="color:#6ab825;font-weight:bold">range</span> relatedPods {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> controller.<span style="color:#447fcf">IsPodActive</span>(pod) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 累加同一节点下运行的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			podsOnNode[pod.Spec.NodeName]++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 生成和 Pod 列表对应的排序值列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ranks := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#24909d">len</span>(podsToRank))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i, pod := <span style="color:#6ab825;font-weight:bold">range</span> podsToRank {
+</span></span><span style="display:flex;"><span>		ranks[i] = podsOnNode[pod.Spec.NodeName]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回包装的对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> controller.ActivePodsWithRanks{Pods: podsToRank, Rank: ranks, Now: metav1.<span style="color:#447fcf">Now</span>()}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="pod-排序规则">Pod 排序规则</h3>
+<p>通过前文的源代码可以看到，选择需要删除的 Pod 过程中，涉及到对指定 Pod 列表进行排序，那么排序规则是什么呢？
+我们通过返回的 <code>ActivePodsWithRanks</code> 对象代码追踪一下。</p>
+<p><code>ActivePodsWithRanks</code> 实现了标准库的排序接口，其中 <code>Len</code> 和 <code>Swap</code> 方法都很简单，这里着重分析一下比较两个元素的 <code>Less</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ActivePodsWithRanks <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Pods []*v1.Pod
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 排序值列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Rank []<span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 表示比较操作的时间戳
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	Now metav1.Time
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s ActivePodsWithRanks) <span style="color:#447fcf">Len</span>() <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">len</span>(s.Pods)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s ActivePodsWithRanks) <span style="color:#447fcf">Swap</span>(i, j <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	s.Pods[i], s.Pods[j] = s.Pods[j], s.Pods[i]
+</span></span><span style="display:flex;"><span>	s.Rank[i], s.Rank[j] = s.Rank[j], s.Rank[i]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>ActivePodsWithRanks.Less</code> 方法用于比较列表中的两个元素大小，是实现排序的核心方法，方法内部比较两个元素时，会根据多条规则进行检测和对比。
+如果第一个参数索引对应的元素应该被删除，返回 true, 否则返回 false。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (s ActivePodsWithRanks) <span style="color:#447fcf">Less</span>(i, j <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 是否已分配 Node 比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   未分配的 Pod &lt; 已分配的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> s.Pods[i].Spec.NodeName != s.Pods[j].Spec.NodeName &amp;&amp; (<span style="color:#24909d">len</span>(s.Pods[i].Spec.NodeName) == <span style="color:#3677a9">0</span> || <span style="color:#24909d">len</span>(s.Pods[j].Spec.NodeName) == <span style="color:#3677a9">0</span>) {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 运行状态进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   PodPending &lt; PodUnknown &lt; PodRunning
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> podPhaseToOrdinal[s.Pods[i].Status.Phase] != podPhaseToOrdinal[s.Pods[j].Status.Phase] {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 就绪状态进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   Not ready &lt; ready
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> podutil.<span style="color:#447fcf">IsPodReady</span>(s.Pods[i]) != podutil.<span style="color:#447fcf">IsPodReady</span>(s.Pods[j]) {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 删除时的操作成本进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   低成本 &lt; 高成本
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> utilfeature.DefaultFeatureGate.<span style="color:#447fcf">Enabled</span>(features.PodDeletionCost) {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 分布在节点上的数量进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   数量多 &lt; 数量少
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   例如: 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     Pod A 有 3 个副本，分布在了 3 个节点上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     Pod B 有 3 个副本，分布在了 2 个节点上
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//     那么此时应该优先删除 Pod B, 因为其在某个节点上面有重复的副本
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> s.Rank[i] != s.Rank[j] {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 就绪时间进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   empty time &lt; less time &lt; more time
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> podutil.<span style="color:#447fcf">IsPodReady</span>(s.Pods[i]) &amp;&amp; podutil.<span style="color:#447fcf">IsPodReady</span>(s.Pods[j]) {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 中容器的重启次数进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   优先删除容器重启次数高的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">maxContainerRestarts</span>(s.Pods[i]) != <span style="color:#447fcf">maxContainerRestarts</span>(s.Pods[j]) {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据 Pod 创建时间进行比较
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   优先删除创建时间较新的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !s.Pods[i].CreationTimestamp.<span style="color:#447fcf">Equal</span>(&amp;s.Pods[j].CreationTimestamp) {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过上面的排序规则可以看到，<strong>Kubernetes 在删除时会着重考虑 “稳定性更好” 的 Pod, 然后删除 “稳定性较差” 的 Pod</strong>。</p>
+<h2 id="删除-pod">删除 Pod</h2>
+<p>对 Pod 列表排序完成之后，就可以选择出要删除的 Pod 了，最后调用 <code>DeletePod</code> 方法删除即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r RealPodControl) <span style="color:#447fcf">DeletePod</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 KubeClient 删除 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := r.KubeClient.<span style="color:#447fcf">CoreV1</span>().<span style="color:#447fcf">Pods</span>(namespace).<span style="color:#447fcf">Delete</span>(ctx, podID, metav1.DeleteOptions{}); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="小结">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/replicaset_flow.png" alt="replicaset 控制器执行流程图"></p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/endpoint_controller/"><i class="fa fa-chevron-circle-left"></i> Kubernetes EndPoint 设计与实现</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/daemonset_controller/">Kubernetes Daemonset 设计与实现 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes ReplicaSet 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

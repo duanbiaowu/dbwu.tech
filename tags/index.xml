@@ -7,10 +7,28 @@
    <generator>Hugo -- gohugo.io</generator>
    <language>en</language>
    <copyright>codean.net@gmail.com</copyright>
-   <lastBuildDate>Fri, 08 Dec 2023 00:00:00 +0000</lastBuildDate>
+   <lastBuildDate>Mon, 18 Dec 2023 00:00:00 +0000</lastBuildDate>
    
        <atom:link href="https://dbwu.tech/tags/index.xml" rel="self" type="application/rss+xml" />
    
+   
+     <item>
+       <title>Kubernetes Daemonset 设计与实现</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/daemonset_controller/</link>
+       <pubDate>Mon, 18 Dec 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/daemonset_controller/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Kubernetes ReplicaSet 设计与实现</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/replicaset_controller/</link>
+       <pubDate>Fri, 15 Dec 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/replicaset_controller/</guid>
+       <description></description>
+     </item>
    
      <item>
        <title>Kubernetes EndPoint 设计与实现</title>

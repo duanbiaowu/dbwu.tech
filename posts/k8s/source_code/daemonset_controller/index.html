@@ -1,0 +1,798 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Daemonset 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Daemonset 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/daemonset_controller/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-18T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-18T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Daemonset 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Daemonset 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2023-12-18</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>DaemonSet 确保全部节点或者部分节点 (取决于 Pod 的标签和亲和性、污点等特征) 上始终运行一个指定 Pod。</p>
+</blockquote>
+<p>当有新的节点加入集群后，指定的 Pod 就会在新加入的节点上运行，当节点从集群中移除时，指定的 Pod 同样会被回收。</p>
+<p>DaemonSet 的使用方法和最佳实践在 <a href="https://dbwu.tech/posts/k8s/best_practice/base/">这篇文章</a> 中已经介绍过了，这里不再赘述，本文着重从源代码的角度分析一下 DaemonSet 的实现原理。</p>
+<h3 id="示例">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 controllers/daemonset.yaml</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>DaemonSet<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>fluentd-elasticsearch<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">namespace</span>:<span style="color:#666"> </span>kube-system<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">k8s-app</span>:<span style="color:#666"> </span>fluentd-logging<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">selector</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">matchLabels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>fluentd-elasticsearch<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>fluentd-elasticsearch<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>fluentd-elasticsearch<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>k8s.gcr.io/fluentd-elasticsearch:1.20<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">volumeMounts</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>varlog<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">mountPath</span>:<span style="color:#666"> </span>/var/log<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>varlibdockercontainers<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">mountPath</span>:<span style="color:#666"> </span>/var/lib/docker/containers<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">readOnly</span>:<span style="color:#666"> </span><span style="color:#6ab825;font-weight:bold">true</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">tolerations</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#999;font-style:italic"># 容忍度，这里省略，表示在所有节点上创建</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">volumes</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>varlog<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">hostPath</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">path</span>:<span style="color:#666"> </span>/var/log<span style="color:#666">
+</span></span></span></code></pre></div><p>基于 YAML 文件创建 DaemonSet：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl apply -f https://k8s.io/examples/controllers/daemonset.yaml
+</span></span></code></pre></div><p>在 Kubernetes 中执行上面的代码后，会在 <code>kube-system</code> 命名空间下面创建 <code>DaemonSet</code> 资源，并在集群中的所有节点上创建包含 <code>fluentd-elasticsearch</code> 容器的 Pod。</p>
+<p>假设集群中有 3 个节点，对应的拓扑结构如下:</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/daemonset_topology.png" alt="DaemonSet 拓扑结构"></p>
+<hr>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 DaemonSet 的实现原理，DaemonSet 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/daemon/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/daemonset_1.png" alt="DaemonSet 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/daemonset_flow.png" alt="DaemonSet 执行流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<h2 id="daemonsetscontroller">DaemonSetsController</h2>
+<p>首先来看看 <code>DaemonSetsController</code> 控制器对象，该对象是实现 <code>DaemonSet</code> 功能的核心对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// DaemonSetsController 负责将 DaemonSet 对象对应的 Pod 调整到定义的期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> DaemonSetsController <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// kubelet 客户端对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 用于执行各项类似 &#34;kubectl ...&#34; 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kubeClient clientset.Interface
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Pod 操作对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 用于对 Pod 进行各项操作，例如创建/删除 等
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podControl controller.PodControlInterface
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 在创建/删除指定数量的副本之后，DaemonSet 将会临时挂起
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在监听到指定事件后恢复正常
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	burstReplicas <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 同步回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同时方便在单元测试中注入 Mock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	syncHandler <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context, dsKey <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 缓存对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 记录每个 DaemonSet 需要创建/删除的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 每轮同步过程中，对于 创建/删除 操作失败的 Pod 数量，都会记录起来
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">//   等到下一轮同步时继续执行相关的操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">//   直到 Pod 数量副本达到期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	expectations controller.ControllerExpectationsInterface
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// DaemonSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dsLister appslisters.DaemonSetLister
+</span></span><span style="display:flex;"><span>	dsStoreSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podLister corelisters.PodLister
+</span></span><span style="display:flex;"><span>	podStoreSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Node 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeLister corelisters.NodeLister
+</span></span><span style="display:flex;"><span>	nodeStoreSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列中存储发生了变化 (需要同步) 的 DaemonSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	queue workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="初始化">初始化</h2>
+<p><code>NewDaemonSetsController</code> 方法用于 <code>DaemonSetsController</code> 控制器对象的初始化工作，并返回一个实例化对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewDaemonSetsController</span>(...) (*DaemonSetsController, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	dsc := &amp;DaemonSetsController{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 DaemonSets informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	daemonSetInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 增加 Pod informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 Node informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> dsc, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动控制器">启动控制器</h2>
+<p>根据控制器的初始化方法 <code>NewDaemonSetsController</code> 的调用链路，可以找到控制器开始启动和执行的地方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cmd/kube-controller-manager/app/apps.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startDaemonSetController</span>(ctx context.Context, ...) (...) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化 DaemonSetController 对象实例 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dsc, err := daemon.<span style="color:#447fcf">NewDaemonSetsController</span>(
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 启动一个单独的 goroutine 来完成 {初始化 &amp;&amp; 运行}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> dsc.<span style="color:#447fcf">Run</span>(ctx, <span style="color:#24909d">int</span>(controllerContext.ComponentConfig.DaemonSetController.ConcurrentDaemonSetSyncs))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="具体逻辑方法">具体逻辑方法</h3>
+<p><code>DaemonSetsController.Run</code> 方法执行具体的初始化逻辑。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">Run</span>(ctx context.Context, workers <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// (根据参数配置) 启动多个 goroutine 处理逻辑 (默认为 2 个)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; workers; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">UntilWithContext</span>(ctx, dsc.runWorker, time.Second)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	&lt;-ctx.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DaemonSetsController.runWorker</code> 方法本质上就是一个无限循环轮询器，不断从队列中取出 <code>DaemonSet</code> 对象，然后进行对应的操作，
+内部无限循环调用 <code>processNextWorkItem</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">runWorker</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> dsc.<span style="color:#447fcf">processNextWorkItem</span>(ctx) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DaemonSetsController.processNextWorkItem</code> 方法的核心操作就是三板斧: 队列取对象 -&gt; 对象同步 -&gt; 对象放回队列。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">processNextWorkItem</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从队列获取 DaemonSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 获取到的对象可以编码为一个字符串 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dsKey, quit := dsc.queue.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用回调方法，默认也就是 syncDaemonSet 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := dsc.<span style="color:#447fcf">syncHandler</span>(ctx, dsKey.(<span style="color:#6ab825;font-weight:bold">string</span>))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果执行同步的回调方法一切正常
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将当前 DaemonSet 踢出队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		dsc.queue.<span style="color:#447fcf">Forget</span>(dsKey)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果执行同步的回调方法返回 error
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将当前 DaemonSet 重新放入队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dsc.queue.<span style="color:#447fcf">AddRateLimited</span>(dsKey)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="daemonset-同步">DaemonSet 同步</h2>
+<p><code>DaemonSetsController</code> 的回调处理方法默认就是 <code>syncDaemonSet</code> 方法，该方法是所有 <code>DaemonSet</code> 同步操作的入口方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">syncDaemonSet</span>(ctx context.Context, key <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 key 解析出 DaemonSet 对象对应的 命名空间和名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	namespace, name, err := cache.<span style="color:#447fcf">SplitMetaNamespaceKey</span>(key)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取 DaemonSet 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ds, err := dsc.dsLister.<span style="color:#447fcf">DaemonSets</span>(namespace).<span style="color:#447fcf">Get</span>(name)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Node 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeList, err := dsc.nodeLister.<span style="color:#447fcf">List</span>(labels.<span style="color:#447fcf">Everything</span>())
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 DaemonSet 对象的字符串编码表示
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dsKey, err := controller.<span style="color:#447fcf">KeyFunc</span>(ds)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 DaemonSet 对象已经被标记为删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> ds.DeletionTimestamp != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测 DaemonSet 对象是否需要同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !dsc.expectations.<span style="color:#447fcf">SatisfiedExpectations</span>(logger, dsKey) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果不需要同步，只更新状态即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dsc.<span style="color:#447fcf">updateDaemonSetStatus</span>(ctx, ds, nodeList, hash, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 同步 DaemonSet 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err = dsc.<span style="color:#447fcf">updateDaemonSet</span>(ctx, ds, nodeList, hash, dsKey, old)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 DaemonSet 对象的状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	statusErr := dsc.<span style="color:#447fcf">updateDaemonSetStatus</span>(ctx, ds, nodeList, hash, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>DaemonSetController.syncDaemonSet</code> 方法的源代码，我们可以看到: DaemonSet 对象每次同步时，都会执行如下的操作:</p>
+<ol>
+<li>根据参数 key 获取指定的 DaemonSet 对象</li>
+<li>获取所有 Node 列表</li>
+<li>检测 DaemonSet 对象是否需要同步</li>
+<li>同步 DaemonSet</li>
+<li>更新 DaemonSet 状态</li>
+</ol>
+<p>其中，<code>SatisfiedExpectations</code> 方法在 <code>ReplicaSet</code> 实现原理一文中已经做过分析，本文不再赘述。</p>
+<p>有了上面的这个大致的逻辑框架，接下来我们逐个分析对应的单个方法实现即可。</p>
+<hr>
+<h2 id="执行同步入口方法">执行同步入口方法</h2>
+<p><code>DaemonSetsController.updateDaemonSet</code> 方法是 <code>DaemonSet</code> 对象同步的入口方法，如果 <code>DaemonSet</code> 对象需要同步，就调用该方法执行具体操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">updateDaemonSet</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 manage 方法执行同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := dsc.<span style="color:#447fcf">manage</span>(ctx, ds, nodeList, hash)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 DaemonSet 对象需要同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> dsc.expectations.<span style="color:#447fcf">SatisfiedExpectations</span>(klog.<span style="color:#447fcf">FromContext</span>(ctx), key) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 执行滚动更新
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">switch</span> ds.Spec.UpdateStrategy.Type {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> apps.OnDeleteDaemonSetStrategyType:
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> apps.RollingUpdateDaemonSetStrategyType:
+</span></span><span style="display:flex;"><span>			err = dsc.<span style="color:#447fcf">rollingUpdate</span>(ctx, ds, nodeList, hash)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="计算创建删除-pod-列表">计算创建/删除 Pod 列表</h3>
+<p><code>DaemonSetsController.manage</code> 方法用于将 <code>DaemonSet</code> 对象关联的 <code>Pod</code> 调度到指定的 <code>Node</code> 上面运行，在确定需要运行 <code>Pod</code> 列表和 <code>Node</code> 列表之后，
+调用 <code>syncNodes</code> 方法执行具体的同步操作，将应该运行但是尚未运行的 Pod 启动运行，将正在运行但是状态异常 (不需要运行) 的 Pod 删除。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">manage</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Node 和 DaemonSet 关联的 Pod 之间的映射关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeToDaemonPods, err := dsc.<span style="color:#447fcf">getNodesToDaemonPods</span>(ctx, ds, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对于每个 Node 来说
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   1. 遍历 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   2. 如果当前 Pod 不应该运行在该节点上，执行删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   3. 如果当前 Pod 应该运行在该节点上，但是还未运行，那么启动该 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> nodesNeedingDaemonPods, podsToDelete []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, node := <span style="color:#6ab825;font-weight:bold">range</span> nodeList {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 计算当前节点需要创建的 Pod 列表和需要删除的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		nodesNeedingDaemonPodsOnNode, podsToDeleteOnNode := dsc.<span style="color:#447fcf">podsShouldBeOnNode</span>(...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新需要创建的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		nodesNeedingDaemonPods = <span style="color:#24909d">append</span>(nodesNeedingDaemonPods, nodesNeedingDaemonPodsOnNode...)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新需要删除的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		podsToDelete = <span style="color:#24909d">append</span>(podsToDelete, podsToDeleteOnNode...)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 删除因为 {分配到不存在的 Node 上面} 而 {导致无法被调度的} Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   如果 Node 已经不存在了，那么 Pod 将永远不会被调度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   但是因为 Pod 和 Node 之间还有附属关系存在，所以无法被 GC 控制器自动回收
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podsToDelete = <span style="color:#24909d">append</span>(podsToDelete, <span style="color:#447fcf">getUnscheduledPodsWithoutNode</span>(nodeList, nodeToDaemonPods)...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 syncNodes 方法执行同步操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err = dsc.<span style="color:#447fcf">syncNodes</span>(ctx, ds, podsToDelete, nodesNeedingDaemonPods, hash); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="执行同步操作">执行同步操作</h3>
+<p><code>DaemonSetsController.syncNodes</code> 方法用于执行同步操作，根据参数 <code>DaemonSet</code> 对象创建缺少的 <code>Pod</code>, 同时删除多余的 <code>Pod</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">syncNodes</span>(ctx context.Context, ds *apps.DaemonSet ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	createDiff := <span style="color:#24909d">len</span>(nodesNeedingDaemonPods)
+</span></span><span style="display:flex;"><span>	deleteDiff := <span style="color:#24909d">len</span>(podsToDelete)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 修正单次创建操作最大数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> createDiff &gt; dsc.burstReplicas {
+</span></span><span style="display:flex;"><span>		createDiff = dsc.burstReplicas
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 修正单次删除操作最大数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> deleteDiff &gt; dsc.burstReplicas {
+</span></span><span style="display:flex;"><span>		deleteDiff = dsc.burstReplicas
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 DaemonSet 关联的 Expectations 对象 (创建数量、删除数量)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dsc.expectations.<span style="color:#447fcf">SetExpectations</span>(logger, dsKey, createDiff, deleteDiff)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// error channel: 接收 error + 信号量 合二为一
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	errCh := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">error</span>, createDiff+deleteDiff)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 并发创建控制 Wg 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	createWait := sync.WaitGroup{}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取创建 Pod 模板
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	template := util.<span style="color:#447fcf">CreatePodTemplate</span>(ds.Spec.Template, generation, hash)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 开始批量创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   每次创建成功后，下一轮创建的 Pod 数量以指数级进行增长 (1, 2, 4, 8 ...)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   参考了 TCP 的 “慢启动” 方式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	batchSize := integer.<span style="color:#447fcf">IntMin</span>(createDiff, controller.SlowStartInitialBatchSize)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> pos := <span style="color:#3677a9">0</span>; createDiff &gt; pos; batchSize, pos = integer.<span style="color:#447fcf">IntMin</span>(<span style="color:#3677a9">2</span>*batchSize, createDiff-(pos+batchSize)), pos+batchSize {
+</span></span><span style="display:flex;"><span>		errorCount := <span style="color:#24909d">len</span>(errCh)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 并发 goroutine 执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		createWait.<span style="color:#447fcf">Add</span>(batchSize)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := pos; i &lt; pos+batchSize; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(ix <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">defer</span> createWait.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				podTemplate := template.<span style="color:#447fcf">DeepCopy</span>()
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 默认调度器将 Pod 和 Node 绑定时会更新 Pod 的亲和性规则
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				podTemplate.Spec.Affinity = util.<span style="color:#447fcf">ReplaceDaemonSetPodNodeNameNodeAffinity</span>(...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 执行创建 Pod 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				err := dsc.podControl.<span style="color:#447fcf">CreatePods</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 创建 Pod 失败后
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#999;font-style:italic">// 更新 DaemonSet 关联的 Expectations 对象中的字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					dsc.expectations.<span style="color:#447fcf">CreationObserved</span>(logger, dsKey)
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 将 error 发送到 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					errCh &lt;- err
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}(i)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 等待并发执行结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		createWait.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 创建失败的 Pod 数量 = createDiff - 创建成功的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 创建失败的 Pod 会在下一轮同步中从 Expectations 取出继续创建 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		skippedPods := createDiff - (batchSize + pos)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 并发删除控制 Wg 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	deleteWait := sync.WaitGroup{}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 并发 goroutine 执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	deleteWait.<span style="color:#447fcf">Add</span>(deleteDiff)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; deleteDiff; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>(ix <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">defer</span> deleteWait.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 执行删除 Pod 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> err := dsc.podControl.<span style="color:#447fcf">DeletePod</span>(ctx, ds.Namespace, podsToDelete[ix], ds); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 删除 Pod 失败后
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 更新 DaemonSet 关联的 Expectations 对象中的字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				dsc.expectations.<span style="color:#447fcf">DeletionObserved</span>(logger, dsKey)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> !apierrors.<span style="color:#447fcf">IsNotFound</span>(err) {
+</span></span><span style="display:flex;"><span>                    <span style="color:#999;font-style:italic">// 将 error 发送到 channel
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					errCh &lt;- err
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}(i)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待并发执行结束
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	deleteWait.<span style="color:#447fcf">Wait</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 error 打包返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	errors := []<span style="color:#6ab825;font-weight:bold">error</span>{}
+</span></span><span style="display:flex;"><span>	<span style="color:#24909d">close</span>(errCh)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> err := <span style="color:#6ab825;font-weight:bold">range</span> errCh {
+</span></span><span style="display:flex;"><span>		errors = <span style="color:#24909d">append</span>(errors, err)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> utilerrors.<span style="color:#447fcf">NewAggregate</span>(errors)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="创建-pod">创建 Pod</h2>
+<p>从上面的源代码可以看到，创建 <code>Pod</code> 由 <code>RealPodControl.CreatePods</code> 方法完成，该方法内部执行有两个调用链，第一步创建 <code>Pod</code> 和 <code>Node</code> 之间的附属关系，
+第二步通过 <code>KubeClient</code> 创建 <code>Pod</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r RealPodControl) <span style="color:#447fcf">CreatePods</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> r.<span style="color:#447fcf">CreatePodsWithGenerateName</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="第一步">第一步</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r RealPodControl) <span style="color:#447fcf">CreatePodsWithGenerateName</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 Pod 和 Node 的附属关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	pod, err := <span style="color:#447fcf">GetPodFromTemplate</span>(template, controllerObject, controllerRef)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> r.<span style="color:#447fcf">createPods</span>(ctx, namespace, pod, controllerObject)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="第二步">第二步</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r RealPodControl) <span style="color:#447fcf">createPods</span>(ctx context.Context, namespace <span style="color:#6ab825;font-weight:bold">string</span>, pod *v1.Pod, object runtime.Object) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 通过 KubeClient 创建 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newPod, err := r.KubeClient.<span style="color:#447fcf">CoreV1</span>().<span style="color:#447fcf">Pods</span>(namespace).<span style="color:#447fcf">Create</span>(ctx, pod, metav1.CreateOptions{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	..
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="删除-pod">删除 Pod</h2>
+<p>删除 Pod 的调用链路相对简单，直接调用 <code>DeletePod</code> 方法删除即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (r RealPodControl) <span style="color:#447fcf">DeletePod</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 KubeClient 删除 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := r.KubeClient.<span style="color:#447fcf">CoreV1</span>().<span style="color:#447fcf">Pods</span>(namespace).<span style="color:#447fcf">Delete</span>(ctx, podID, metav1.DeleteOptions{}); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="滚动更新">滚动更新</h2>
+<p><code>DaemonSetsController.rollingUpdate</code> 方法用于执行 <code>DaemonSet</code> 对象关联的 <code>Pod</code> 的滚动更新操作，内部流程大致如下:</p>
+<ol>
+<li>获取 DaemonSet, Node, Pod 三者之间的映射关系</li>
+<li>根据 DaemonSet 配置规格信息计算出执行 创建/删除 操作时的几个限制条件参数 (例如 Pod 最大不可用数量)</li>
+<li>根据限制条件计算出需要 创建和删除 的 Pod、Pod 和 Node 之间的附属关系、需要删除的 Node 列表</li>
+<li>调用 syncNodes 方法进行同步</li>
+</ol>
+<p>从上面的流程描述中可以看到，<code>rollingUpdate</code> 只是获取并计算对应的状态，最后的执行操作还是交给 <code>syncNodes</code> 方法来完成，
+为了提高阅读效率，这里直接将计算规则写在了下面的源代码中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">rollingUpdate</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Node 和 DaemonSet 关联的 Pod 之间的映射关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeToDaemonPods, err := dsc.<span style="color:#447fcf">getNodesToDaemonPods</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算 Pod 的升级中最大数量，最大不可用数量，期望调度数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxSurge, maxUnavailable, desiredNumberScheduled, err := dsc.<span style="color:#447fcf">updatedDesiredNodeCounts</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 Pod 最大数量 maxSurge 未设置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在保证 Pod 最大不可用数量的前提下尽可能删除旧的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 最终使 Pod 数量满足期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 这里对 DaemonSet 控制器同步逻辑做如下假设:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   不允许每个节点上面超过一个 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   自动创建新的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   自动处理操作失败的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   删除 Pod 时，不超过最大不可用数量 maxUnavailable
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同时 Pod 满足如下条件:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   新创建的 Pod 的不可用数量必须低于 maxUnavailable
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   如果 Node 上面有运行的旧的 Pod, 则新一轮调度会尽可能不将 Pod 调度在该节点上面
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> maxSurge == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 遍历 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> nodeName, pods := <span style="color:#6ab825;font-weight:bold">range</span> nodeToDaemonPods {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 获取新的 Pod 列表和 旧的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			newPod, oldPod, ok := <span style="color:#447fcf">findUpdatedPodsOnNode</span>(ds, pods, hash)
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> oldPod == <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; newPod == <span style="color:#6ab825;font-weight:bold">nil</span>, oldPod != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; newPod != <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Pod 不可用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				numUnavailable++
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> newPod != <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> !podutil.<span style="color:#447fcf">IsPodAvailable</span>(newPod, ...) {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 虽然 Pod 是新创建的，但是依旧不可用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					numUnavailable++
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Pod 是旧的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">case</span> !podutil.<span style="color:#447fcf">IsPodAvailable</span>(oldPod, ...):
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// Pod 不可用，需要替换为新的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					allowedReplacementPods = <span style="color:#24909d">append</span>(allowedReplacementPods, oldPod.Name)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">case</span> numUnavailable &gt;= maxUnavailable:
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// Pod 不可用数量超出限制了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>                    <span style="color:#999;font-style:italic">// Pod 需要被删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					candidatePodsToDelete = <span style="color:#24909d">append</span>(candidatePodsToDelete, oldPod.Name)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 执行同步操作，创建/删除 对应数量的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 使 Pod 数量满足期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dsc.<span style="color:#447fcf">syncNodes</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// ---------------------------------------------------------------------------------------------- //
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 Pod 最大数量 maxSurge 已经设置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 就将旧的不可用 Pod 删除，然后创建对应数量的新的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 这里对 DaemonSet 控制器同步逻辑做如下假设:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   不允许每个节点上面超过两个 Pod (最多一个新的 Pod, 一个旧的 Pod)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   当节点上面不存在 Pod 时可以创建新的
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   自动处理操作失败的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   删除 Pod 时，不超过最大不可用数量 maxUnavailable
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同时 Pod 满足如下条件:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   一个 Node 上面如果有不可用的 Pod, 那么就可以创建新的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   一个 Node 上面如果新的 Pod 已经创建完成并且状态为可用，那么就可以把旧的 Pod 删除了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> nodeName, pods := <span style="color:#6ab825;font-weight:bold">range</span> nodeToDaemonPods {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 获取新的 Pod 列表和 旧的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		newPod, oldPod, ok := <span style="color:#447fcf">findUpdatedPodsOnNode</span>(ds, pods, hash)
+</span></span><span style="display:flex;"><span>	    
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> oldPod == <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// Node 上面没有 Pod, 直接跳过
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">case</span> newPod == <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">case</span> !podutil.<span style="color:#447fcf">IsPodAvailable</span>(oldPod, ...):
+</span></span><span style="display:flex;"><span>				...
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Node 上面没有任何运行的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 那么该 Node 上面可以直接创建新的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				allowedNewNodes = <span style="color:#24909d">append</span>(allowedNewNodes, nodeName)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>				...
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// Node 上面有一个运行的旧的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 那么可以将该 Node 加入候选节点
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				candidateNewNodes = <span style="color:#24909d">append</span>(candidateNewNodes, nodeName)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">default</span>:
+</span></span><span style="display:flex;"><span>			...
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// Node 上面的 Pod 数量已经超过限制了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 那么将该 Node 加入删除列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//   也就不会有 Pod 被调度到该 Node 上面了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			oldPodsToDelete = <span style="color:#24909d">append</span>(oldPodsToDelete, oldPod.Name)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 执行同步操作，创建/删除 对应数量的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 使 Pod 数量满足期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> dsc.<span style="color:#447fcf">syncNodes</span>(ctx, ds, oldPodsToDelete, newNodesToCreate, hash)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="更新状态">更新状态</h2>
+<p><code>DaemonSetsController.updateDaemonSetStatus</code> 方法用于更新 <code>DaemonSet</code> 对象的相关状态字段，这其中包括:</p>
+<ul>
+<li>期望被调度的 Node 数量</li>
+<li>当前已调度的 Node 数量</li>
+<li>正在非正常运行 Pod (已经运行 Pod, 但是不应该运行 Pod) 的 Node 数量</li>
+<li>正在正常运行 Pod 的 Node 数量</li>
+<li>已经完成滚动升级的 Node 数量</li>
+<li>应该运行 Pod 并且可用的 Node 数量</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dsc *DaemonSetsController) <span style="color:#447fcf">updateDaemonSetStatus</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Node 和 DaemonSet 关联的 Pod 之间的映射关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeToDaemonPods, err := dsc.<span style="color:#447fcf">getNodesToDaemonPods</span>(ctx, ds, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历 Node 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, node := <span style="color:#6ab825;font-weight:bold">range</span> nodeList {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	numberUnavailable := desiredNumberScheduled - numberAvailable
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 DaemonSet 状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err = <span style="color:#447fcf">storeDaemonSetStatus</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当 Pod 的数量不满足期望状态时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 将 DaemonSet 加入队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> ds.Spec.MinReadySeconds &gt; <span style="color:#3677a9">0</span> &amp;&amp; numberReady != numberAvailable {
+</span></span><span style="display:flex;"><span>		dsc.<span style="color:#447fcf">enqueueDaemonSetAfter</span>(ds, time.<span style="color:#447fcf">Duration</span>(ds.Spec.MinReadySeconds)*time.Second)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="小结">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/daemonset_flow.png" alt="DaemonSet 控制器执行流程图"></p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/replicaset_controller/"><i class="fa fa-chevron-circle-left"></i> Kubernetes ReplicaSet 设计与实现</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Daemonset 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
