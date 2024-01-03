@@ -139,6 +139,15 @@
      </item>
    
      <item>
+       <title>Kubernetes 为什么需要 Ingress</title>
+       <link>https://dbwu.tech/posts/k8s/ingress/</link>
+       <pubDate>Fri, 13 Oct 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/ingress/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes 架构 - 控制平面和数据平面</title>
        <link>https://dbwu.tech/posts/k8s/arch/</link>
        <pubDate>Thu, 12 Oct 2023 00:00:00 +0000</pubDate>

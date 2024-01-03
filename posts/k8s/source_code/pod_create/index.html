@@ -150,6 +150,10 @@
 </span></span></span></code></pre></div><p>基于 YAML 文件创建 Pod：</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl apply -f https://k8s.io/examples/pods/simple-pod.yaml
 </span></span></code></pre></div><p>在 Kubernetes 中执行上面的代码后，会创建一个包含容器 <code>nginx</code> 的 Pod, 当然在实际应用中不会直接创建 Pod, 而是会使用 Deployment、Job 等工作负载资源来创建 Pod。</p>
+<h2 id="宏观流程">宏观流程</h2>
+<p>在 Kubernetes 中执行上 Pod yaml 文件时，kubectl 发送请求清单到 API Server, AP Server 将清单中的资源对象存储到 etcd, 然后进入调度流程，
+调度器分配资源对象运行的具体工作节点，节点上面的 Kubelet 通过监听 API Server (Informer) 资源变更，发现有新的 Pod 分配到本节点后 (Pod 的 nodeName 属性)，
+获取并检查 Pod 定义，然后命令 CRI (容器运行时) 来启动 Pod 容器。</p>
 <h2 id="源码说明">源码说明</h2>
 <p>本文着重从源代码的角度分析一下 Pod 的实现原理，Pod 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/kubelet/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
 <p>因为 Pod 主要是由 kubelet 管理和操作 (创建、删除、重启等) 的，所以相关的代码基本集中在 kubelet 目录。</p>
@@ -514,9 +518,12 @@
 后续源代码本文不再分析，感兴趣的读者可以看看 <a href="https://dbwu.tech/posts/k8s/source_code/pause/">Pod 设计与实现</a> 一文中的 <code>Kubernetes Pod 启动流程</code> 小节。</p>
 <h3 id="小节">小节</h3>
 <p><img src="https://dbwu.tech/images/k8s/source_code/pod_create_flow.png" alt="Pod 创建流程图"></p>
+<h2 id="附录">附录</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/k8s-pod-debug-flow.jpeg" alt="Pod Debug 流程图"></p>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://dbwu.tech/posts/k8s/source_code/pause/">Kubernetes Pod 设计与实现 - Pause 容器</a></li>
+<li><a href="https://arthurchiao.art/blog/what-happens-when-k8s-creates-pods-5-zh/">K8s 创建 pod 时，背后发生了什么</a></li>
 </ul>
 
 

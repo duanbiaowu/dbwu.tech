@@ -1,0 +1,303 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes 为什么需要 Ingress - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes 为什么需要 Ingress" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/ingress/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-10-13T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-10-13T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes 为什么需要 Ingress"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes 为什么需要 Ingress</h1>
+
+    
+      
+<p>
+    <span>2023-10-13</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>默认情况下，Kubernetes 集群中的 Service 和 Pod 只能在集群中访问，集群外部需要通过 NodePort 类型的 Service 进行访问，
+而且一般不是直接访问 NodePort 暴露的 Service, 而是通过 LoadBalancer 类型的 Service 转发到 NodePort。</p>
+<p>虽然 LoadBalancer 类型的 Service 可以解决服务发现和负载均衡问题，但是应用时还是会存在一些限制，例如:</p>
+<ul>
+<li>LoadBalancer 仅支持四层负载均衡，不支持七层负载均衡，如果一个应用需要对外开放 N 个服务时，需要为每一个服务都创建一个 LoadBalancer，这会增加开销和管理成本</li>
+<li>LoadBalancer 要求 Kubernetes 集群必要运行在支持 LoadBalancer Cloud Provider 的云计算服务商的环境中</li>
+<li>直接将应用服务暴露会影响后端架构的灵活性</li>
+</ul>
+<p>为了解决上面提到的限制和问题，<strong>可以通过引入 Ingress 来统一应用流量入口</strong>，将集群内服务暴露到集群外部，并且可以自定义服务的访问策略。</p>
+<blockquote>
+<p>Ingress 是用于管理 Kubernetes 集群外部访问集群内部的服务时采用的资源对象，可以对流量进行更灵活和更细粒度的控制，典型的访问方式是 HTTP,
+Ingress 的核心价值在于通过重用单个外部负载均衡器和 IP, 可以为多个 Service 提供服务，简化系统结构的同时降低了基础架构成本。</p>
+</blockquote>
+<p>除此之外，Ingress 还可以提供一些附加功能，例如授权、限流、SSL 等七层协议对应的应用功能。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_5.png" alt="Ingress 拓扑结构"></p>
+<h2 id="路由方式">路由方式</h2>
+<p>Ingress 提供七层负载均衡，作为一种资源，Ingress 包含所有入站请求的匹配规则列表，当客户端流量达到时，Ingress 仅支持用于转发 HTTP(S) 流量的规则。</p>
+<p>常见的 HTTP 路由方式分为基于 Host 和基于 URL, 示例图如下:</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_2.png" alt="基于 Host 的路由方式"></p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_3.png" alt="基于 URL 的路由方式"></p>
+<h2 id="ingress-controller">Ingress Controller</h2>
+<p>Ingress 资源本身不会自动创建负载均衡器，必须要借助 Ingress Controller 才能控制 Kubernetes 集群的进出口流量，所以集群中必须有一个运行的 Ingress Controller，
+Ingress Controller 会根据 Ingress 的定义来管理负载均衡器。</p>
+<p>默认的 Ingress 实现为 Nginx Ingress Controller, 简单来说，可以将其理解为运行在 Pod 的 Nginx 服务器，负责将请求重定向到集群内部的其他 Service,
+作为 “入口”，这个 Nginx 服务器本身也需要暴露在集群之外，典型的方案是通过 Service 中的 LoadBalancer 类型来实现的，如果使用的是云服务提供商，
+直接使用内置的负载均衡方案即可。和 Nginx Ingress Controller 类似，其他类型的 Ingress Controller 实现也是这样实现的。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_6.png" alt="Ingress Controller 拓扑结构"></p>
+<p>除此之外，几乎主流的几个云服务厂商都提供了自己的开源版本 Ingress Controller, 除此之外，开源社区中比较火的是基于 openresty 的实现的 Kong Ingress Controller 和 Apache APISIX Ingress Controller,
+还有基于 Traefik 实现的 Ingress Controller。</p>
+<h3 id="示例">示例</h3>
+<p>下面是一个 Kubernetes Ingress 资源配置示例 yaml 文件:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>networking.k8s.io/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Ingress<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>simple-fanout-example<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">rules</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span>- <span style="color:#6ab825;font-weight:bold">host</span>:<span style="color:#666"> </span>foo.bar.com<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">http</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">paths</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">path</span>:<span style="color:#666"> </span>/foo<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">pathType</span>:<span style="color:#666"> </span>Prefix<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">backend</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">service</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>service1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">port</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span><span style="color:#6ab825;font-weight:bold">number</span>:<span style="color:#666"> </span><span style="color:#3677a9">4200</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">path</span>:<span style="color:#666"> </span>/bar<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">pathType</span>:<span style="color:#666"> </span>Prefix<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">backend</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">service</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>service2<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span><span style="color:#6ab825;font-weight:bold">port</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span><span style="color:#6ab825;font-weight:bold">number</span>:<span style="color:#666"> </span><span style="color:#3677a9">8080</span><span style="color:#666">
+</span></span></span></code></pre></div><p><img src="https://dbwu.tech/images/k8s/source_code/ingress_4.png" alt="yaml 声明文件对应的拓扑图"></p>
+<p>这里以 Nginx Ingress Controller 为例，最终生成的 nginx.conf 配置文件内容如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 代码中的 IP 均为虚拟 IP</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>http {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    upstream service1 {
+</span></span><span style="display:flex;"><span>        server 10.244.0.2:4200;
+</span></span><span style="display:flex;"><span>        keepalive 32;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    upstream service2 {
+</span></span><span style="display:flex;"><span>        server 10.244.0.3:8080;
+</span></span><span style="display:flex;"><span>        keepalive 32;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    server {
+</span></span><span style="display:flex;"><span>        listen 80;
+</span></span><span style="display:flex;"><span>        server_name example.com;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        location /foo {
+</span></span><span style="display:flex;"><span>            proxy_pass http://service1;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        location /bar {
+</span></span><span style="display:flex;"><span>            proxy_pass http://service2;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/0dJMF1pEos5Hn11BgqAkrQ">云原生应用负载均衡选型指南</a></li>
+<li><a href="https://mp.weixin.qq.com/s/B0rpmg9YmvFNjoUJJTrlgg">Kubernetes 集群中流量暴露的几种方案</a></li>
+<li><a href="https://mp.weixin.qq.com/s/FikIXjnW6PuYR5f_Dev8pQ">Nginx Ingress 参数调优</a></li>
+<li><a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/ingress-overview?#section-q2y-15b-q6x">Nginx Ingress Controller</a></li>
+<li><a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/best-practices-for-the-nginx-ingress-controller-2?spm=a2c4g.11186623.0.0.35df5af9Bl3K0H">Nginx Ingress 最佳实践</a></li>
+<li><a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/install-the-nginx-ingress-controller-in-high-load-scenarios#task-2036582">部署高负载场景的 Nginx Ingress Controller</a></li>
+<li><a href="https://ingressbuilder.jetstack.io/">Kubernetes Ingress 可视化编辑器</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/arch/"><i class="fa fa-chevron-circle-left"></i> Kubernetes 架构 - 控制平面和数据平面</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/service/">Kubernetes Service 类型和会话亲和性 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes 为什么需要 Ingress"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
