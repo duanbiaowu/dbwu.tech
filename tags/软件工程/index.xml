@@ -13,6 +13,15 @@
    
    
      <item>
+       <title>Kubernetes Deployment 滚动更新实现原理</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/deployment_controller/</link>
+       <pubDate>Thu, 28 Dec 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/deployment_controller/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes Daemonset 设计与实现</title>
        <link>https://dbwu.tech/posts/k8s/source_code/daemonset_controller/</link>
        <pubDate>Mon, 18 Dec 2023 00:00:00 +0000</pubDate>

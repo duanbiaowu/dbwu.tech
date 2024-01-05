@@ -1,0 +1,719 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Deployment 滚动更新实现原理 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Deployment 滚动更新实现原理" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/deployment_controller/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-28T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-28T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Deployment 滚动更新实现原理"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Deployment 滚动更新实现原理</h1>
+
+    
+      
+<p>
+    <span>2023-12-28</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>一个 Deployment 为 Pod 和 ReplicaSet 提供声明式的更新能力。</p>
+</blockquote>
+<p>生产环境中，通常将无状态应用定义为 Deployment 以便于完成对应的滚动更新、水平扩容、自动回滚等典型业务场景。</p>
+<p><strong>Deployment 本质上是对 ReplicaSet 的升级</strong>，那么为什么不直接使用 ReplicaSet 呢？因为 ReplicaSet 的功能设计比较底层 (或者也可以说比较基础)，
+ReplicaSet 只是为了维护保证一组 Pod 处于运行状态 (只能指定 Pod 的期望副本数量)，无法完成水平扩容等高级特性。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/daemonset_topology.png" alt="Deployment 拓扑结构"></p>
+<h3 id="示例">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 controllers/nginx-deployment.yaml</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx-deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">replicas</span>:<span style="color:#666"> </span><span style="color:#3677a9">3</span><span style="color:#666"> </span><span style="color:#999;font-style:italic"># 副本数量，可以根据实际情况修改</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">selector</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">matchLabels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>nginx:1.14.2<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">ports</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>- <span style="color:#6ab825;font-weight:bold">containerPort</span>:<span style="color:#666"> </span><span style="color:#3677a9">80</span><span style="color:#666">
+</span></span></span></code></pre></div><p>在 Kubernetes 中执行上面的代码后，不仅会创建 1 个 Deployment 对象，还会创建 1 个对应的 ReplicaSet 对象和 3 个 Pod 对象。</p>
+<hr>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 Deployment 的实现原理，Deployment 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/deployment/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/deployment_1.png" alt="Deployment 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/deployment_3.png" alt="Deployment 控制器执行流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<hr>
+<h2 id="deploymentcontroller">DeploymentController</h2>
+<p>首先来看看 <code>DeploymentController</code> 控制器对象，该对象是实现 Deployment 功能的核心对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// DeploymentController 负责将 Deployment 对象对应的 Pod 调整到定义的期望状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">type</span> DeploymentController <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同时方便在单元测试中注入 Mock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	syncHandler <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context, dKey <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Deployment 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dLister appslisters.DeploymentLister
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsLister appslisters.ReplicaSetLister
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podLister corelisters.PodLister
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列中存储发生了变化 (需要同步) 的 Deployment
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	queue workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="初始化">初始化</h3>
+<p><code>NewDeploymentController</code> 方法用于 <code>DeploymentController</code> 控制器对象的初始化工作，并返回一个实例化对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#ed9d13">`NewDeploymentController`</span>(ctx context.Context, ...) (*DeploymentController, ...) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	dc := &amp;DeploymentController{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		queue: workqueue.<span style="color:#447fcf">NewNamedRateLimitingQueue</span>(workqueue.<span style="color:#447fcf">DefaultControllerRateLimiter</span>(), <span style="color:#ed9d13">&#34;deployment&#34;</span>),
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 Deployment informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 ReplicaSet informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 Pod informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 注册回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 默认为 DeploymentController 对象的 syncDeployment 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在单元测试中，也可以通过参数的注入，完成 Mock
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dc.syncHandler = dc.syncDeployment
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> dc, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动控制器">启动控制器</h2>
+<p>根据控制器的初始化方法 <code>NewDeploymentController</code> 的调用链路，可以找到控制器开始启动和执行的地方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cmd/kube-controller-manager/app/apps.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startDeploymentController</span>(ctx context.Context, ...) (...) {
+</span></span><span style="display:flex;"><span>	dc, err := deployment.<span style="color:#447fcf">NewDeploymentController</span>(
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动一个单独的 goroutine 来完成 {初始化 &amp;&amp; 运行}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> dc.<span style="color:#447fcf">Run</span>(ctx, <span style="color:#24909d">int</span>(controllerContext.ComponentConfig.DeploymentController.ConcurrentDeploymentSyncs))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>根据源文件代码可以看到，<code>StatefulSetController</code>、 <code>ReplicaSetController</code> 等控制器的启动方法也在该文件中。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/deployment_2.png" alt="控制器启动-源代码文件"></p>
+<h3 id="具体逻辑方法">具体逻辑方法</h3>
+<p><code>DeploymentController.Run</code> 方法执行具体的初始化逻辑。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">Run</span>(ctx context.Context, workers <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// (根据参数配置) 启动多个 goroutine 处理逻辑 (默认为 5 个)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; workers; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">UntilWithContext</span>(ctx, dc.worker, time.Second)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	&lt;-ctx.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DeploymentController.worker</code> 方法本质上就是一个无限循环轮询器，不断从队列中取出 <code>Deployment</code> 对象，然后进行对应的操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">worker</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内部调用 processNextWorkItem 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> dc.<span style="color:#447fcf">processNextWorkItem</span>(ctx) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">processNextWorkItem</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从队列获取 Deployment
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 获取到的对象可以编码为一个字符串 key
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	key, quit := dc.queue.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用回调方法，默认也就是 syncDeployment 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := dc.<span style="color:#447fcf">syncHandler</span>(ctx, key.(<span style="color:#6ab825;font-weight:bold">string</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="deployment-同步">Deployment 同步</h2>
+<p><code>DeploymentController</code> 的回调处理方法默认就是 <code>DeploymentController.syncDeployment</code> 方法，也就是说，该方法是所有 <code>Deployment</code> 操作的入口方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">syncDeployment</span>(ctx context.Context, key <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 key 解析出 Deployment 对象对应的 命名空间和名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	namespace, name, err := cache.<span style="color:#447fcf">SplitMetaNamespaceKey</span>(key)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Deployment 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	deployment, err := dc.dLister.<span style="color:#447fcf">Deployments</span>(namespace).<span style="color:#447fcf">Get</span>(name)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 深度拷贝一个对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 在方法内部作为局部变量使用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	d := deployment.<span style="color:#447fcf">DeepCopy</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Deployment 对应的 ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	rsList, err := dc.<span style="color:#447fcf">getReplicaSetsForDeployment</span>(ctx, d)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Deployment 对应的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 返回结果会根据 ReplicaSet 进行分组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podMap, err := dc.<span style="color:#447fcf">getPodMapForDeployment</span>(d, rsList)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Deployment 需要删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> d.DeletionTimestamp != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 执行删除操作，然后直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">syncStatusOnly</span>(ctx, d, rsList)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测 Deployment 是否处于暂停 (Pause) 状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err = dc.<span style="color:#447fcf">checkPausedConditions</span>(ctx, d); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 Deployment 处于暂停状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同步状态后直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> d.Spec.Paused {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">sync</span>(ctx, d, rsList)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当前是回滚操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   如果 Deployment 对应的底层 ReplicaSet 使用新的版本更新，那么回滚操作不能重复执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   所以应该确保 Deployment 先清理了历史版本，然后再执行回滚 ues.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">getRollbackTo</span>(d) != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">rollback</span>(ctx, d, rsList)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测 Deployment 是否需要扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	scalingEvent, err := dc.<span style="color:#447fcf">isScalingEvent</span>(ctx, d, rsList)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 同步状态后直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> scalingEvent {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">sync</span>(ctx, d, rsList)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Deployment 有两种更新策略
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">switch</span> d.Spec.Strategy.Type {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> apps.RecreateDeploymentStrategyType:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 1. 全量更新 (先 kill 所有已存在的 Pod, 然后启动新的 Pod)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 这个一般应用场景很少，所以本文直接跳过，不做源代码分析了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">rolloutRecreate</span>(ctx, d, rsList, podMap)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> apps.RollingUpdateDeploymentStrategyType:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 2. 滚动更新
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">rolloutRolling</span>(ctx, d, rsList)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>DeploymentController.syncDeployment</code> 方法的源代码，我们可以看到: Deployment 每次同步时都会执行如下的操作:</p>
+<ol>
+<li>根据参数 key 获取指定的 Deployment</li>
+<li>获取 Deployment 对应的 ReplicaSet 列表和 Pod 列表</li>
+<li>检测并在必要时删除 Deployment</li>
+<li>检测并在必要时暂停 Deployment</li>
+<li>检测并在必要时回滚 Deployment</li>
+<li>检测并在必要时扩容|缩容 Deployment</li>
+<li>检测并在必要时更新 Deployment (滚动更新|全量更新)</li>
+</ol>
+<p>需要注意的是，每次同步时只会有一种操作进行，例如如果执行了扩容操作，那么就不会执行更新操作了，其他类型的操作以此类推。</p>
+<p>有了上面的这个大致的逻辑框架，接下来我们逐个分析对应的单个方法实现即可，限于篇幅，本文主要分析 Deployment 扩容｜缩容、滚动更新、删除这三个操作的具体实现。</p>
+<hr>
+<h2 id="deployment-扩容缩容">Deployment 扩容|缩容</h2>
+<p><code>Deployment</code> 的扩容|缩容操作总共分为 3 步，下面逐个步骤来看看。</p>
+<h3 id="1-检测是否为-扩容缩容-操作">1. 检测是否为 扩容|缩容 操作</h3>
+<p>检测 扩容|缩容 操作主要由 <code>DeploymentController.DeploymentController</code> 方法完成。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">isScalingEvent</span>(ctx context.Context, ...) (<span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取所有新的 ReplicaSet 列表和旧的 ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newRS, oldRSs, err := dc.<span style="color:#447fcf">getAllReplicaSetsAndSyncRevision</span>(ctx, d, rsList, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 所有 ReplicaSet 集合
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allRSs := <span style="color:#24909d">append</span>(oldRSs, newRS)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历所有拥有 Pod 的 ReplicaSet 列表 (rs.Spec.Replicas &gt; 0)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, rs := <span style="color:#6ab825;font-weight:bold">range</span> controller.<span style="color:#447fcf">FilterActiveReplicaSets</span>(allRSs) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 计算期望的 Pod 副本数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		desired, ok := deploymentutil.<span style="color:#447fcf">GetDesiredReplicasAnnotation</span>(logger, rs)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果期望 Pod 副本数量和定义的副本数量不同，就需要扩容操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> desired != *(d.Spec.Replicas) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="2-同步-扩容缩容-操作">2. 同步 扩容|缩容 操作</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">sync</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取所有新的 ReplicaSet 列表和旧的 ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newRS, oldRSs, err := dc.<span style="color:#447fcf">getAllReplicaSetsAndSyncRevision</span>(ctx, d, rsList, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 执行 扩容|缩容 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> err := dc.<span style="color:#447fcf">scale</span>(ctx, d, newRS, oldRSs); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 所有 ReplicaSet 集合
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allRSs := <span style="color:#24909d">append</span>(oldRSs, newRS)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 ReplicaSet 状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">syncDeploymentStatus</span>(ctx, allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="3-具体执行-扩容缩容-操作">3. 具体执行 扩容|缩容 操作</h3>
+<p>为了降低扩容｜缩容过程中可能引发的节点性能故障风险，Kubernetes 不会直接 扩容|缩容 到目标的副本数量，因为这样可能引发 “不可用副本数量急剧增加” 现象，
+所以会逐步按照比例进行，类似滚动升级的设计理念。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">scale</span>(ctx context.Context, deployment *apps.Deployment, newRS *apps.ReplicaSet, oldRSs []*apps.ReplicaSet) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 Deployment 配置的升级模式为滚动升级
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 按照比例伸缩所有 ReplicaSet (包括新的和旧的)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> deploymentutil.<span style="color:#447fcf">IsRollingUpdate</span>(deployment) {
+</span></span><span style="display:flex;"><span>		allRSs := controller.<span style="color:#447fcf">FilterActiveReplicaSets</span>(<span style="color:#24909d">append</span>(oldRSs, newRS))
+</span></span><span style="display:flex;"><span>		allRSsReplicas := deploymentutil.<span style="color:#447fcf">GetReplicaCountForReplicaSets</span>(allRSs)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 初始化 Pod 最大副本数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		allowedSize := <span style="color:#24909d">int32</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> *(deployment.Spec.Replicas) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// Pod 最大副本数量 = Deployment 预期副本数量 + 滚动升级模式 Pod 最大数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//     (也就是说可以创建的超出期望的 Pod 数量)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			allowedSize = *(deployment.Spec.Replicas) + deploymentutil.<span style="color:#447fcf">MaxSurge</span>(*deployment)
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 需要增加伸缩的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		deploymentReplicasToAdd := allowedSize - allRSsReplicas
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> scalingOperation <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> deploymentReplicasToAdd &gt; <span style="color:#3677a9">0</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Pod 数量大于 0，需要扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 对 ReplicaSet 进行排序，让新的 ReplicaSet 靠前，扩容时以新的 ReplicaSet 为基准扩容 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			sort.<span style="color:#447fcf">Sort</span>(controller.<span style="color:#447fcf">ReplicaSetsBySizeNewer</span>(allRSs))
+</span></span><span style="display:flex;"><span>			scalingOperation = <span style="color:#ed9d13">&#34;up&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> deploymentReplicasToAdd &lt; <span style="color:#3677a9">0</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Pod 数量小于 0，需要缩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 对 ReplicaSet 进行排序，让旧的 ReplicaSet 靠前，缩容时先删除旧的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			sort.<span style="color:#447fcf">Sort</span>(controller.<span style="color:#447fcf">ReplicaSetsBySizeOlder</span>(allRSs))
+</span></span><span style="display:flex;"><span>			scalingOperation = <span style="color:#ed9d13">&#34;down&#34;</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// deploymentReplicasAdded 表示已经累计 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 该值不能超过 deploymentReplicasToAdd
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		deploymentReplicasAdded := <span style="color:#24909d">int32</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		nameToSize := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">int32</span>)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 遍历所有 ReplicaSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> allRSs {
+</span></span><span style="display:flex;"><span>			rs := allRSs[i]
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> deploymentReplicasToAdd != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果 ReplicaSet 需要扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 粗略估算出 ReplicaSet 需要的目标副本数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				proportion := deploymentutil.<span style="color:#447fcf">GetProportion</span>(logger, rs, *deployment, deploymentReplicasToAdd, deploymentReplicasAdded)
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新 ReplicaSet 的目标副本数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				nameToSize[rs.Name] = *(rs.Spec.Replicas) + proportion
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新已经累计的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				deploymentReplicasAdded += proportion
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果 ReplicaSet 不需要扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// 那么 ReplicaSet 的目标副本数量就是其定义的期望副本数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				nameToSize[rs.Name] = *(rs.Spec.Replicas)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 遍历所有 ReplicaSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> allRSs {
+</span></span><span style="display:flex;"><span>			rs := allRSs[i]
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果需要增加伸缩的 Pod 数量依然不等于 0 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 也就意味着仍然有 ReplicaSet 需要伸缩
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 此时直接将剩余的伸缩数量给到列表中的第一个 (最新的，因为上面排序过了) ReplicaSet 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> i == <span style="color:#3677a9">0</span> &amp;&amp; deploymentReplicasToAdd != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				leftover := deploymentReplicasToAdd - deploymentReplicasAdded
+</span></span><span style="display:flex;"><span>				nameToSize[rs.Name] = nameToSize[rs.Name] + leftover
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 缩容最小至 0 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">if</span> nameToSize[rs.Name] &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>					nameToSize[rs.Name] = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 逐个 ReplicaSet 进行伸缩
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> _, _, err := dc.<span style="color:#447fcf">scaleReplicaSet</span>(ctx, rs, nameToSize[rs.Name], deployment, scalingOperation); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="deployment-滚动更新">Deployment 滚动更新</h2>
+<p><code>Deployment</code> 的滚动更新操作由 <code>DeploymentController.rolloutRolling</code> 方法完成，内部通过不断对新的 <code>ReplicaSet</code> 进行扩容，
+同时对旧的 <code>ReplicaSet</code> 进行缩容，此消彼长间，直到达到预期的状态。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/deployment_4.png" alt="Deployment 滚动更新"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">rolloutRolling</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取所有新的 ReplicaSet 列表和旧的 ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newRS, oldRSs, err := dc.<span style="color:#447fcf">getAllReplicaSetsAndSyncRevision</span>(ctx, d, rsList, <span style="color:#6ab825;font-weight:bold">true</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 所有 ReplicaSet 集合
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allRSs := <span style="color:#24909d">append</span>(oldRSs, newRS)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 扩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	scaledUp, err := dc.<span style="color:#447fcf">reconcileNewReplicaSet</span>(ctx, allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> scaledUp {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 扩容完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 同步状态后直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">syncRolloutStatus</span>(ctx, allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果无法扩容了，说明此时 Pod 的副本数量 &gt;= 目标数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那么就应该执行缩容操作了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	scaledDown, err := dc.<span style="color:#447fcf">reconcileOldReplicaSets</span>(ctx, allRSs, controller.<span style="color:#447fcf">FilterActiveReplicaSets</span>(oldRSs), newRS, d)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> scaledDown {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 缩容完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 同步状态后直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">syncRolloutStatus</span>(ctx, allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 清理历史 ReplicaSet 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> deploymentutil.<span style="color:#447fcf">DeploymentComplete</span>(d, &amp;d.Status) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> err := dc.<span style="color:#447fcf">cleanupDeployment</span>(ctx, oldRSs, d); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 滚动升级完毕
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同步最终状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">syncRolloutStatus</span>(ctx, allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DeploymentController.reconcileNewReplicaSet</code> 方法用于执行新的 <code>ReplicaSet</code> 的扩容操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">reconcileNewReplicaSet</span>(ctx context.Context, ...) (<span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 ReplicaSet 的副本数量已经达到期望数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 就不需要扩容了，直接返回即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> *(newRS.Spec.Replicas) == *(deployment.Spec.Replicas) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 ReplicaSet 的副本数量大于期望数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 就需要进行缩容操作了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> *(newRS.Spec.Replicas) &gt; *(deployment.Spec.Replicas) {
+</span></span><span style="display:flex;"><span>		scaled, _, err := dc.<span style="color:#447fcf">scaleReplicaSetAndRecordEvent</span>(ctx, newRS, *(deployment.Spec.Replicas), deployment)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> scaled, err
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 到这里执行的才是扩容操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 计算需要扩容的副本数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newReplicasCount, err := deploymentutil.<span style="color:#447fcf">NewRSNewReplicas</span>(deployment, allRSs, newRS)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 同步 ReplicaSet 相关字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 同步之后，剩下的操作就交给 ReplicaSet 控制器了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	scaled, _, err := dc.<span style="color:#447fcf">scaleReplicaSetAndRecordEvent</span>(ctx, newRS, newReplicasCount, deployment)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> scaled, err
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DeploymentController.reconcileOldReplicaSets</code> 方法用于执行旧的 <code>ReplicaSet</code> 的缩容操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">reconcileOldReplicaSets</span>(ctx context.Context, ...) (<span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取旧的 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	oldPodsCount := deploymentutil.<span style="color:#447fcf">GetReplicaCountForReplicaSets</span>(oldRSs)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> oldPodsCount == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果旧的 Pod 数量为 0，说明就不再需要缩容了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 缩容的最小数量为 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果满足以下两个条件中的任意一个，就可以执行缩容操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   1. 旧的 ReplicaSet 中存在不健康的副本，可以直接缩容 (删除) 掉，同时不会增加不可用性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   2. 新的 ReplicaSet 比例已经扩大，此时就可以进一步缩容旧的 ReplicaSet 了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 最大缩容 Pod 副本数量 = 所有 Pod 数量 - 最大不可用数量 - 新启动的 Pod 不可用数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 不仅仅要考虑 最大不可用数量 和 已经创建的 Pod 数量，还要考虑新启动的 Pod 不可用数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这样新启动的 Pod 不可用数量，就会被计算在内，从而不会导致在下一轮缩容操作中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    继续缩减旧的 ReplicaSet 副本，引发不可用性的增高
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 举个例子来说明缩容场景
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   * 当前有 10 个副本
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   * 滚动升级配置中最大不可用数量为 2 个
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   * 新启动的副本为 3 个
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对于条件 1 来说:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   Deployment 更新之后，旧的 ReplicaSet 缩容到 8 个 Pod，同时新的 ReplicaSet 扩容到 5 个 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   假设新的 ReplicaSet 发生故障并且一直不可用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   此时 Pod 总数量为 13, 最小可用数量为 8, ReplicaSet 的不可用 Pod 数量为 5
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   节点故障导致其中一个 ReplicaSet 不可用，但是，13 - 8 - 5 = 0, 所以旧的 ReplicaSet 不能缩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   操作人员 (开发或者运维) 发现故障情况，并且执行回滚操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   新的 ReplicaSet 最大不可用数量为 1, 因此最大可缩容数量 = 13 - 8 - 1 = 4,
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   最后 Pod 的总数量为 9, 随着时间变化，新的 ReplicaSet 最终会将 Pod 数量扩容到 10
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 对于条件 2 来说:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   还是以刚才的场景接着说
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   ...
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   操作人员 (开发或者运维) 发现故障情况，但是不执行回滚操作，而是直接更新 Pod 模板
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">//   这是新的 ReplicaSet 必须从 0 开始创建新的 Pod 了，因为此时已经有 13 个 Pod 了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   但是，新的 ReplicaSet 副本不可用数量同样也是 0, 因此 2 个旧的 ReplicaSet 的副本数量将会缩容 5 个，从 13 个缩减到 8 个
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   这样新的 新的 ReplicaSet 副本就可以直接扩容到 5 个
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取所有 Pod 数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allPodsCount := deploymentutil.<span style="color:#447fcf">GetReplicaCountForReplicaSets</span>(allRSs)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 获取 Pod 的最多不可用数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    maxUnavailable := deploymentutil.<span style="color:#447fcf">MaxUnavailable</span>(*deployment)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算副本最小可用量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	minAvailable := *(deployment.Spec.Replicas) - maxUnavailable
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算新的 ReplicaSet 副本不可用数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newRSUnavailablePodCount := *(newRS.Spec.Replicas) - newRS.Status.AvailableReplicas
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算副本最大缩容数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	maxScaledDown := allPodsCount - minAvailable - newRSUnavailablePodCount
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果最大缩容数量小于等于 0，说明此时不需要缩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接退出即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> maxScaledDown &lt;= <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 清理不可用的 ReplicaSet
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	oldRSs, cleanupCount, err := dc.<span style="color:#447fcf">cleanupUnhealthyReplicas</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 缩容旧的 ReplicaSet, 需要检测最大不可用数量以确保可以正常缩容
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	allRSs = <span style="color:#24909d">append</span>(oldRSs, newRS)
+</span></span><span style="display:flex;"><span>	scaledDownCount, err := dc.<span style="color:#447fcf">scaleDownOldReplicaSetsForRollingUpdate</span>(ctx, ...)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 本次已缩容的数量 = 清理的数量 + 缩容的数量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	totalScaledDown := cleanupCount + scaledDownCount
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> totalScaledDown &gt; <span style="color:#3677a9">0</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="deployment-删除">Deployment 删除</h2>
+<p><code>DeploymentController.syncStatusOnly</code> 方法用于更新 <code>Deployment</code> 的状态，最终真正的删除操作是由 <code>GarbageCollector</code> GC 控制器来完成的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">syncStatusOnly</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取所有新的 ReplicaSet 列表和旧的 ReplicaSet 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	newRS, oldRSs, err := dc.<span style="color:#447fcf">getAllReplicaSetsAndSyncRevision</span>(ctx, d, rsList, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	allRSs := <span style="color:#24909d">append</span>(oldRSs, newRS)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内部调用 syncDeploymentStatus 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> dc.<span style="color:#447fcf">syncDeploymentStatus</span>(ctx, allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>DeploymentController.syncDeploymentStatus</code> 方法用于检测 <code>Deployment</code> 的状态是否为最新的，并在必要时进行同步。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (dc *DeploymentController) <span style="color:#447fcf">syncDeploymentStatus</span>(ctx context.Context, ...) <span style="color:#6ab825;font-weight:bold">error</span> {
+</span></span><span style="display:flex;"><span>	newStatus := <span style="color:#447fcf">calculateStatus</span>(allRSs, newRS, d)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	newDeployment := d
+</span></span><span style="display:flex;"><span>	newDeployment.Status = newStatus
+</span></span><span style="display:flex;"><span>	_, err := dc.client.<span style="color:#447fcf">AppsV1</span>().<span style="color:#447fcf">Deployments</span>(newDeployment.Namespace).<span style="color:#447fcf">UpdateStatus</span>(ctx, newDeployment, metav1.UpdateOptions{})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> err
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>&ndash;</p>
+<h2 id="小结">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/deployment_3.png" alt="Deployment 控制器执行流程图"></p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://draveness.me/kubernetes-deployment/">详解 Kubernetes Deployment 的实现原理</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/daemonset_controller/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Daemonset 设计与实现</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Deployment 滚动更新实现原理"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

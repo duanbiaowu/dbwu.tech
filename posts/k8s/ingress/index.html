@@ -132,7 +132,7 @@
 <p>虽然 LoadBalancer 类型的 Service 可以解决服务发现和负载均衡问题，但是应用时还是会存在一些限制，例如:</p>
 <ul>
 <li>LoadBalancer 仅支持四层负载均衡，不支持七层负载均衡，如果一个应用需要对外开放 N 个服务时，需要为每一个服务都创建一个 LoadBalancer，这会增加开销和管理成本</li>
-<li>LoadBalancer 要求 Kubernetes 集群必要运行在支持 LoadBalancer Cloud Provider 的云计算服务商的环境中</li>
+<li>LoadBalancer 要求 Kubernetes 集群必要运行在支持 LoadBalancer Cloud Provider 的云计算服务商的环境中 (增加成本)</li>
 <li>直接将应用服务暴露会影响后端架构的灵活性</li>
 </ul>
 <p>为了解决上面提到的限制和问题，<strong>可以通过引入 Ingress 来统一应用流量入口</strong>，将集群内服务暴露到集群外部，并且可以自定义服务的访问策略。</p>
@@ -215,6 +215,7 @@ Ingress Controller 会根据 Ingress 的定义来管理负载均衡器。</p>
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h2 id="扩展阅读">扩展阅读</h2>
 <ul>
+<li><a href="https://www.tkng.io/ingress/ingress/">ingress</a></li>
 <li><a href="https://mp.weixin.qq.com/s/0dJMF1pEos5Hn11BgqAkrQ">云原生应用负载均衡选型指南</a></li>
 <li><a href="https://mp.weixin.qq.com/s/B0rpmg9YmvFNjoUJJTrlgg">Kubernetes 集群中流量暴露的几种方案</a></li>
 <li><a href="https://mp.weixin.qq.com/s/FikIXjnW6PuYR5f_Dev8pQ">Nginx Ingress 参数调优</a></li>
