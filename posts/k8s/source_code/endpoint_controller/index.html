@@ -133,7 +133,7 @@
 <p>EndPoint 的概念和作用在 <a href="https://dbwu.tech/posts/k8s/service/">这篇文章</a> 中已经介绍过了，本文不再赘述，这里使用一张图来回顾一下 Service, EndPoint, Pod 三者之间的关系。</p>
 <p><img src="https://dbwu.tech/images/k8s/service_endpoint_pod.png" alt="Service, EndPoint, Pod 关系图"></p>
 <h3 id="endpointsubset">EndpointSubset</h3>
-<p>EndpointSubset 是一组具有公共端口集的地址，扩展的端点集是 Addresses 和 Ports 的笛卡尔积。</p>
+<p>EndpointSubset 是一组具有公共端口集的地址，扩展的端点集是 Addresses (Pod IP 地址) 和 Ports (Service 名称和端口号) 的笛卡尔积。</p>
 <p>下面是一个典型的 EndpointSubset 示例:</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>  Name: <span style="color:#ed9d13">&#34;test&#34;</span>,
 </span></span><span style="display:flex;"><span>  Subsets: [

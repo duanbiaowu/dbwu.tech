@@ -12,6 +12,24 @@
    
    
      <item>
+       <title>Kubernetes CronJob 设计与实现</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/cronjob_controller/</link>
+       <pubDate>Wed, 03 Jan 2024 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/cronjob_controller/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Kubernetes Job 设计与实现</title>
+       <link>https://dbwu.tech/posts/k8s/source_code/job_controller/</link>
+       <pubDate>Tue, 02 Jan 2024 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/k8s/source_code/job_controller/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes Deployment 滚动更新实现原理</title>
        <link>https://dbwu.tech/posts/k8s/source_code/deployment_controller/</link>
        <pubDate>Thu, 28 Dec 2023 00:00:00 +0000</pubDate>

@@ -1,0 +1,552 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes CronJob 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes CronJob 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/cronjob_controller/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-01-03T00:00:00+00:00" />
+<meta property="article:modified_time" content="2024-01-03T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes CronJob 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes CronJob 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2024-01-03</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>CronJob 和 Linux 中的 cron 定时任务机制一样，用于定时任务的编排和运行。</p>
+<p>CronJob 的使用方法和最佳实践在 <a href="https://dbwu.tech/posts/k8s/best_practice/base/">这篇文章</a> 中已经介绍过了，这里不再赘述，本文着重从源代码的角度分析一下 Job 的实现原理。</p>
+<h3 id="示例">示例</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 controllers/job/cronjob.yaml</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>batch/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>CronJob<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>hello<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">schedule</span>:<span style="color:#666"> </span><span style="color:#ed9d13">&#34;* * * * *&#34;</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">jobTemplate</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">            </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>hello<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>busybox:1.28<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span><span style="color:#6ab825;font-weight:bold">imagePullPolicy</span>:<span style="color:#666"> </span>IfNotPresent<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">              </span><span style="color:#6ab825;font-weight:bold">command</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span>- /bin/sh<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span>- -c<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">                </span>- date<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">          </span><span style="color:#6ab825;font-weight:bold">restartPolicy</span>:<span style="color:#666"> </span>OnFailure<span style="color:#666">
+</span></span></span></code></pre></div><p>基于 YAML 文件创建 CronJob：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl apply -f https://k8s.io/examples/application/job/cronjob.yaml
+</span></span></code></pre></div><p>在 Kubernetes 中执行上面的代码后，会创建一个对应的定时任务 CronJob 对象，该对象有一个关联的定时任务 <code>hello</code>, 该任务每分钟执行一次，输出当前时间。</p>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 CronJob 的实现原理，CronJob 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/cronjob/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/cronjob_1.png" alt="CronJob 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p><img src="https://dbwu.tech/images/k8s/source_code/cronjob_flow.png" alt="CronJob 控制器执行流程图"></p>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<hr>
+<h2 id="cronjobcontroller">CronJobController</h2>
+<p><code>Controller</code> 控制器对象是实现 <code>CronJob</code> 功能的核心对象，但是和其他几个常用的控制器命名方式不同，这里使用了一个类似兼容性的命名。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> ControllerV2 <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 队列中存储发生了变化 (需要同步) 的 CronJob 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	queue workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// kubelet 客户端对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 用于执行各项类似 &#34;kubectl ...&#34; 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kubeClient  clientset.Interface
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Job 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobLister     batchv1listers.JobLister
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// CronJob 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cronJobLister batchv1listers.CronJobLister
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="初始化">初始化</h3>
+<p><code>NewControllerV2</code> 方法用于 CronJob 控制器对象的初始化工作，并返回一个实例化对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewControllerV2</span>(ctx context.Context, ...) (*ControllerV2, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	jm := &amp;ControllerV2{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 Job informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 增加 CronJob informer 监听回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cronJobsInformer.<span style="color:#447fcf">Informer</span>().<span style="color:#447fcf">AddEventHandler</span>(cache.ResourceEventHandlerFuncs{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> jm, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动控制器">启动控制器</h2>
+<p>根据控制器的初始化方法 <code>NewControllerV2</code> 的调用链路，可以找到控制器开始启动和执行的地方。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cmd/kube-controller-manager/app/batch.go
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startCronJobController</span>(ctx context.Context, ...) (controller.Interface, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	cj2c, err := cronjob.<span style="color:#447fcf">NewControllerV2</span>(ctx, controllerContext.InformerFactory.<span style="color:#447fcf">Batch</span>().<span style="color:#447fcf">V1</span>().<span style="color:#447fcf">Jobs</span>(),
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 启动一个单独的 goroutine 来完成控制器的 {初始化 &amp;&amp; 运行}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> cj2c.<span style="color:#447fcf">Run</span>(ctx, <span style="color:#24909d">int</span>(controllerContext.ComponentConfig.CronJobController.ConcurrentCronJobSyncs))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>ControllerV2.Run</code> 方法执行控制器具体的启动逻辑。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (jm *ControllerV2) <span style="color:#447fcf">Run</span>(ctx context.Context, workers <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// (根据参数配置) 启动多个 goroutine 处理逻辑
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; workers; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">UntilWithContext</span>(ctx, jm.worker, time.Second)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	&lt;-ctx.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Controller.worker</code> 方法本质上就是一个无限循环轮询器，不断从队列中取出 <code>CronJob</code> 对象，然后进行对应的操作，内部无限循环调用 <code>processNextWorkItem</code> 方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (jm *ControllerV2) <span style="color:#447fcf">worker</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> jm.<span style="color:#447fcf">processNextWorkItem</span>(ctx) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (jm *ControllerV2) <span style="color:#447fcf">processNextWorkItem</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从队列获取 CronJob 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	key, quit := jm.queue.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 和其他几个常用的控制器不同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// CronJob 控制器不是通过字段注入的方式设置同步的回调方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 而是直接调用 sync 方法进行同步
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	requeueAfter, err := jm.<span style="color:#447fcf">sync</span>(ctx, key.(<span style="color:#6ab825;font-weight:bold">string</span>))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> err != <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果同步回调方法执行异常
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 将当前 CronJob 对象重新放入队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		jm.queue.<span style="color:#447fcf">AddRateLimited</span>(key)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> requeueAfter != <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果同步回调方法执行成功
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">//  并且 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// CronJob 对象的下次执行时间不为空
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 第一步: 先将当前 CronJob 对象踢出队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		jm.queue.<span style="color:#447fcf">Forget</span>(key)
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 第二步: 将当前 CronJob 对象延迟放入队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		jm.queue.<span style="color:#447fcf">AddAfter</span>(key, *requeueAfter)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="cronjob-同步">CronJob 同步</h2>
+<p><code>ControllerV2</code> 的回调处理方法是 <code>sync</code> 方法，该方法是所有 <code>CronJob</code> 对象同步操作的入口方法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (jm *ControllerV2) <span style="color:#447fcf">sync</span>(ctx context.Context, cronJobKey <span style="color:#6ab825;font-weight:bold">string</span>) (*time.Duration, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过 key 解析出 CronJob 对象对应的 命名空间和名称
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ns, name, err := cache.<span style="color:#447fcf">SplitMetaNamespaceKey</span>(cronJobKey)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 CronJob 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cronJob, err := jm.cronJobLister.<span style="color:#447fcf">CronJobs</span>(ns).<span style="color:#447fcf">Get</span>(name)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 CronJob 对象关联的 Job 对象列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobsToBeReconciled, err := jm.<span style="color:#447fcf">getJobsToBeReconciled</span>(cronJob)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 深度拷贝一个 CronJob 对象 (用户优化操作)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 拷贝的对象用于计算源对象的所有更新操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	/    并且仅在需要的时候执行一次更新
+</span></span><span style="display:flex;"><span>	cronJobCopy := cronJob.<span style="color:#447fcf">DeepCopy</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 删除完成的 Job
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    updateStatusAfterCleanup := jm.<span style="color:#447fcf">cleanupFinishedJobs</span>(ctx, cronJobCopy, jobsToBeReconciled)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 CronJob 对象下次执行的时间和同步 (更新) 状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	requeueAfter, updateStatusAfterSync, syncErr := jm.<span style="color:#447fcf">syncCronJob</span>(ctx, cronJobCopy, jobsToBeReconciled)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 更新 CronJob 对象状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> updateStatusAfterCleanup || updateStatusAfterSync {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> _, err := jm.cronJobControl.<span style="color:#447fcf">UpdateStatus</span>(ctx, cronJobCopy); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> ...
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 返回下次 CronJob 的下次执行时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> requeueAfter != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> requeueAfter, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, syncErr
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>ControllerV2.sync</code> 方法的源代码，我们可以看到: CronJob 对象每次同步时，都会执行如下的操作:</p>
+<ol>
+<li>根据参数 key 获取指定的 CronJob 对象</li>
+<li>获取 CronJob 对象关联的 Job 对象列表</li>
+<li>删除完成的 Job</li>
+<li>调用 manageJob 方法执行具体的同步操作</li>
+<li>更新 CronJob 对象状态</li>
+</ol>
+<p><strong>为什么 CronJob 对象要和 Job 对象进行关联呢</strong>？显而易见，CronJob 定时任务的具体执行是直接委托给 Job 来执行的。</p>
+<h3 id="执行同步">执行同步</h3>
+<p><code>ControllerV2.syncCronJob</code> 方法根据 CornJob 对象及其关联的 Job 对象执行同步操作，也就是负责具体干活的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (jm *ControllerV2) <span style="color:#447fcf">syncCronJob</span>(ctx context.Context, cronJob *batchv1.CronJob, jobs []*batchv1.Job) (*time.Duration, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 建立 Job Map: 用于快速查找 Job
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	childrenJobs := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[types.UID]<span style="color:#6ab825;font-weight:bold">bool</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历 Job 对象列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, j := <span style="color:#6ab825;font-weight:bold">range</span> jobs {
+</span></span><span style="display:flex;"><span>		childrenJobs[j.ObjectMeta.UID] = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		found := <span style="color:#447fcf">inActiveList</span>(cronJob, j.ObjectMeta.UID)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 Job 不存在于 CronJob 的运行 Job 列表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 并且 Job 还未完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> !found &amp;&amp; !<span style="color:#447fcf">IsJobFinished</span>(j) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 获取 CronJob 对象 (新)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			cjCopy, err := jm.cronJobControl.<span style="color:#447fcf">GetCronJob</span>(ctx, cronJob.Namespace, cronJob.Name)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果此时的 Job 存在于 CronJob 对象的运行 Job 列表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 那就使用新的 CronJob 对象替换掉旧的 CronJob 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">inActiveList</span>(cjCopy, j.ObjectMeta.UID) {
+</span></span><span style="display:flex;"><span>				cronJob = cjCopy
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> found &amp;&amp; <span style="color:#447fcf">IsJobFinished</span>(j) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Job 存在于 CronJob 的运行 Job 列表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 并且 Job 也已经完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			
+</span></span><span style="display:flex;"><span>			_, status := <span style="color:#447fcf">getFinishedStatus</span>(j)
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 从 CronJob 对象的运行 Job 列表中 列表中删除 Job 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">deleteFromActiveList</span>(cronJob, j.ObjectMeta.UID)
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">IsJobFinished</span>(j) {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 Job 已经完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 更细 CronJob 和 Job 的最后完成时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> cronJob.Status.LastSuccessfulTime == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				cronJob.Status.LastSuccessfulTime = j.Status.CompletionTime
+</span></span><span style="display:flex;"><span>				updateStatus = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> j.Status.CompletionTime != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; j.Status.CompletionTime.<span style="color:#447fcf">After</span>(cronJob.Status.LastSuccessfulTime.Time) {
+</span></span><span style="display:flex;"><span>				cronJob.Status.LastSuccessfulTime = j.Status.CompletionTime
+</span></span><span style="display:flex;"><span>				updateStatus = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 遍历 CronJob 的运行 Job 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 如果对应的 Job 已经不复存在，就直接删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 避免因为已经过期的 Job 附属关系而导致 CronJob 一直处于运行状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> _, j := <span style="color:#6ab825;font-weight:bold">range</span> cronJob.Status.Active {
+</span></span><span style="display:flex;"><span>		_, found := childrenJobs[j.UID]
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> found {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 直接尝试从 Api-Sever 中获取 Job (绕过缓存)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 避免 informer 的更新不及时而导致查询不到 Job
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		_, err := jm.jobControl.<span style="color:#447fcf">GetJob</span>(j.Namespace, j.Name)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">switch</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> errors.<span style="color:#447fcf">IsNotFound</span>(err):
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// Job 存在于 CronJob 的运行 Job 列表中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 但是无法查询到
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 此时直接从 CronJob 对象的运行 Job 列表中 列表中删除 Job 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">//   如果 Job 还未过期，就调度一个新的 Pod 重新执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#447fcf">deleteFromActiveList</span>(cronJob, j.UID)
+</span></span><span style="display:flex;"><span>			updateStatus = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">case</span> err != <span style="color:#6ab825;font-weight:bold">nil</span>:
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, updateStatus, err
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// CronJob 对象已经被删除了，直接退出即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> cronJob.DeletionTimestamp != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, updateStatus, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 使用开源的 cron 库解析 CronJob 对象的定时表达式
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// https://github.com/robfig/cron/v3
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sched, err := cron.<span style="color:#447fcf">ParseStandard</span>(<span style="color:#447fcf">formatSchedule</span>(cronJob, jm.recorder))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 计算任务下次执行的时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	scheduledTime, err := <span style="color:#447fcf">nextScheduleTime</span>(logger, cronJob, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果 CronJob 设置了延迟的最后时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   spec.StartingDeadlineSeconds 表示任务如果由于某种原因错过了调度时间，
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   开始该任务的最后截止时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 则启动延迟策略，然后退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	tooLate := <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> cronJob.Spec.StartingDeadlineSeconds != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		tooLate = scheduledTime.<span style="color:#447fcf">Add</span>(time.Second * time.<span style="color:#447fcf">Duration</span>(*cronJob.Spec.StartingDeadlineSeconds)).<span style="color:#447fcf">Before</span>(now)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> tooLate {
+</span></span><span style="display:flex;"><span>		t := <span style="color:#447fcf">nextScheduleTimeDuration</span>(cronJob, now, sched)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> t, updateStatus, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// ------------------------------------------------------------------ //
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// CronJob 的并发行规则
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// Allow（默认): 允许并发任务执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// Forbid:  不允许并发任务执行；如果新 Job 的执行时间到了，
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//          但是老 Job 没有执行完，CronJob 会忽略新 Job 的执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// Replace: 如果新 Job 的执行时间到了，但是老 Job 没有执行完，
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//          CronJob 会用新 Job 替换当前正在运行的老 Job
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 不允许并发执行 Job, 直接退出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> cronJob.Spec.ConcurrencyPolicy == batchv1.ForbidConcurrent &amp;&amp; <span style="color:#24909d">len</span>(cronJob.Status.Active) &gt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> t, updateStatus, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从源代码可以看到，Replace 策略可能会引起资源浪费 (针对幂等型 Job)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如一个老的 Job 还在运行中，并且执行完成度已经 90%
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   此时依然会直接删除 (终止) 该 Job, 等于这 90% 的任务白白浪费了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 当然了，如果是批量型 Job, 例如每次处理 10W 个 MQ 事件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 则不存在这个问题
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> cronJob.Spec.ConcurrencyPolicy == batchv1.ReplaceConcurrent {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 遍历 CronJob 的运行 Job 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 然后逐个删除
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> _, j := <span style="color:#6ab825;font-weight:bold">range</span> cronJob.Status.Active {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 获取当前的 Job 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			job, err := jm.jobControl.<span style="color:#447fcf">GetJob</span>(j.Namespace, j.Name)
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 删除当前的 Job 对象 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !<span style="color:#447fcf">deleteJob</span>(logger, ...) {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>, updateStatus, ...
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			updateStatus = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Job 运行状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobAlreadyExists := <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取 Job 创建模板
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobReq, err := <span style="color:#447fcf">getJobFromTemplate2</span>(cronJob, *scheduledTime)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 Job 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobResp, err := jm.jobControl.<span style="color:#447fcf">CreateJob</span>(cronJob.Namespace, jobReq)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 CronJob 和 Job 的附属关联关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	jobRef, err := <span style="color:#447fcf">getRef</span>(jobResp)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新 CronJob 的运行 Job 列表和最后执行时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cronJob.Status.Active = <span style="color:#24909d">append</span>(cronJob.Status.Active, *jobRef)
+</span></span><span style="display:flex;"><span>	cronJob.Status.LastScheduleTime = &amp;metav1.Time{Time: *scheduledTime}
+</span></span><span style="display:flex;"><span>	updateStatus = <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算 CronJob 的下次执行时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	t := <span style="color:#447fcf">nextScheduleTimeDuration</span>(cronJob, now, sched)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> t, updateStatus, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>ControllerV2.syncCronJob</code> 方法的源代码，我们可以看到其内部的执行同步流程如下:</p>
+<ol>
+<li>获取参数 Job 列表中的每个元素的最新状态并建立 Job Map</li>
+<li>遍历  CronJob 的运行 Job 列表 (List) 并和 Job Map 中对应的 Job 进行对比，根据 Job 的不同状态执行对应的操作</li>
+<li>检测 CronJob 对象是否已经被删除了，如果被删除了，也就不需要所谓的同步操作了，直接退出即可</li>
+<li>计算 CronJob 的下次执行时间，再根据 CronJob 的延迟执行策略设置执行对应的操作</li>
+<li>根据 CronJob 的并发行规则执行对应的操作</li>
+<li>创建 Job</li>
+<li>更新 CronJob 的运行 Job 列表和最后执行时间</li>
+<li>计算 CronJob 的下次执行时间并返回</li>
+</ol>
+<h2 id="小结">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/cronjob_flow.png" alt="CronJob 控制器执行流程图"></p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/job_controller/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Job 设计与实现</a>
+        
+        </li>
+        <li>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes CronJob 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -140,6 +140,29 @@
 <p>三者的关系如下图所示:</p>
 <p><img src="https://dbwu.tech/images/k8s/service_endpoint_pod.png" alt="Service, EndPoint, Pod 关系图"></p>
 <p>上面的图中定义了 2 个 Service, 每个 Service 有 1 个 EndPoint, 每个 EndPoint 包含 3 个 Pod 的网络位置。</p>
+<h3 id="查看-service-代理的-pod">查看 Service 代理的 Pod</h3>
+<p>可以通过 <code>kubectl describe</code> 命令查看 Service 代理了哪些后端 Pod:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ kubectl describe svc svc-name
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Name:              api-demo-svc
+</span></span><span style="display:flex;"><span>Namespace:         default
+</span></span><span style="display:flex;"><span>Labels:            &lt;none&gt;
+</span></span><span style="display:flex;"><span>Annotations:       &lt;none&gt;
+</span></span><span style="display:flex;"><span>Selector:          <span style="color:#40ffff">app</span>=api-demo
+</span></span><span style="display:flex;"><span>Type:              ClusterIP
+</span></span><span style="display:flex;"><span>IP Family Policy:  SingleStack
+</span></span><span style="display:flex;"><span>IP Families:       IPv4
+</span></span><span style="display:flex;"><span>IP:                None
+</span></span><span style="display:flex;"><span>IPs:               None
+</span></span><span style="display:flex;"><span>Port:              api-demo-svc  8080/TCP
+</span></span><span style="display:flex;"><span>TargetPort:        8080/TCP
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 代理的 Pod IP 地址列表</span>
+</span></span><span style="display:flex;"><span>Endpoints:         172.24.102.212:8080,172.24.102.59:8080,172.24.102.23:8080 + <span style="color:#3677a9">2</span> more...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Session Affinity:  None
+</span></span><span style="display:flex;"><span>Events:            &lt;none&gt;
+</span></span></code></pre></div><p>通过输出结果中的 <code>Endpoints</code> 字段，可以看到 Service 代理的后端 Pod IP 地址列表。</p>
 <h3 id="endpointslice">EndpointSlice</h3>
 <p>每个 Service 可以关联一个或多个 Endpoint，随着集群规模的扩增，单个 EndPoint 对象可能会变得非常巨大，当 Service 关联很多服务 Pod 时，
 EndPoint 限制了关联的 Pod 数量，因为 etcd 中存储的对象默认大小限制为 1.5 MB。</p>
@@ -305,6 +328,7 @@ Service 可以随意将 <code>spec.ports.port</code> 端口映射到 <code>spec.
 </span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">clientIP</span>:<span style="color:#666">
 </span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">timeoutSeconds</span>:<span style="color:#666"> </span><span style="color:#3677a9">1800</span><span style="color:#666">  </span><span style="color:#999;font-style:italic"># 设置亲和性 IP 有效时间为 1800 秒</span><span style="color:#666">
 </span></span></span></code></pre></div><p><strong>注意</strong>: 使用亲和性规则可能会导致 Pod 负载不均衡，因为大部分业务场景中，流量的地域特征符合 “2/8 原则”。</p>
+<p><strong>Service 本质上是一个由 kube-proxy 控制的四层负载均衡，在 TCP/IP 协议栈上转发流量，所以提供的功能十分有限，只能根据 IP + Port 做一些简单的判断和组合</strong>。</p>
 <p>如果希望使用 HTTP Header, Token, Cookie 等七层网络字段值作为服务亲和性类型，可以使用 Ingress Controller 提供的会话亲和性功能。</p>
 <h2 id="小结">小结</h2>
 <table>

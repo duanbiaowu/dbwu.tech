@@ -153,9 +153,13 @@ Ingress Controller 会根据 Ingress 的定义来管理负载均衡器。</p>
 <p>默认的 Ingress 实现为 Nginx Ingress Controller, 简单来说，可以将其理解为运行在 Pod 的 Nginx 服务器，负责将请求重定向到集群内部的其他 Service,
 作为 “入口”，这个 Nginx 服务器本身也需要暴露在集群之外，典型的方案是通过 Service 中的 LoadBalancer 类型来实现的，如果使用的是云服务提供商，
 直接使用内置的负载均衡方案即可。和 Nginx Ingress Controller 类似，其他类型的 Ingress Controller 实现也是这样实现的。</p>
-<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_6.png" alt="Ingress Controller 拓扑结构"></p>
+<p>以笔者使用的社区版的 Nginx Ingress Controller 来说，其 Nginx 守护进程容器和 Ingress Controller 容器运行在同一 Pod 中。
+其中 Nginx 负责处理请求，Ingress Controller 负责从 Informer 订阅 Service, EndPoint 资源的变化，并生成对应的 nginx.conf 配置文件，
+最后执行 <code>nginx -s relaod</code> 通知 Nginx 重新加载配置。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_7.png" alt="Ingress Controller 运行时结构"></p>
 <p>除此之外，几乎主流的几个云服务厂商都提供了自己的开源版本 Ingress Controller, 除此之外，开源社区中比较火的是基于 openresty 的实现的 Kong Ingress Controller 和 Apache APISIX Ingress Controller,
 还有基于 Traefik 实现的 Ingress Controller。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/ingress_6.png" alt="Ingress Controller 拓扑结构"></p>
 <h3 id="示例">示例</h3>
 <p>下面是一个 Kubernetes Ingress 资源配置示例 yaml 文件:</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>networking.k8s.io/v1<span style="color:#666">
@@ -213,9 +217,13 @@ Ingress Controller 会根据 Ingress 的定义来管理负载均衡器。</p>
 </span></span><span style="display:flex;"><span>        }
 </span></span><span style="display:flex;"><span>    }
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h2 id="扩展阅读">扩展阅读</h2>
+</span></span></code></pre></div><p>当然，真实业务中的场景和接口和比这个示例复杂得多，笔者曾经在生产中的某条业务线观察到生成的 nginx.conf 配置文件，15 个服务和 100+ 条 Ingress 路由规则，
+生成的 nginx.conf 配置文件大小为 4.3 MB, 这也提示我们要合理地划分微服务以及构建对应的 Ingress 结构。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://www.tkng.io/ingress/ingress/">ingress</a></li>
+<li><a href="https://docs.nginx.com/nginx-ingress-controller/overview/design/">How NGINX Ingress Controller is Designed</a></li>
+<li><a href="https://docs.daocloud.io/en/network/modules/ingress-nginx/proxy/#consistent-hashing-based-load-balancing">Consistent hashing based load balancing</a></li>
 <li><a href="https://mp.weixin.qq.com/s/0dJMF1pEos5Hn11BgqAkrQ">云原生应用负载均衡选型指南</a></li>
 <li><a href="https://mp.weixin.qq.com/s/B0rpmg9YmvFNjoUJJTrlgg">Kubernetes 集群中流量暴露的几种方案</a></li>
 <li><a href="https://mp.weixin.qq.com/s/FikIXjnW6PuYR5f_Dev8pQ">Nginx Ingress 参数调优</a></li>
@@ -223,6 +231,7 @@ Ingress Controller 会根据 Ingress 的定义来管理负载均衡器。</p>
 <li><a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/best-practices-for-the-nginx-ingress-controller-2?spm=a2c4g.11186623.0.0.35df5af9Bl3K0H">Nginx Ingress 最佳实践</a></li>
 <li><a href="https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/install-the-nginx-ingress-controller-in-high-load-scenarios#task-2036582">部署高负载场景的 Nginx Ingress Controller</a></li>
 <li><a href="https://ingressbuilder.jetstack.io/">Kubernetes Ingress 可视化编辑器</a></li>
+<li><a href="https://tech.qimao.com/tui-jian-yin-qing-jie-ru-ingressfang-an/">通过Ingress解决gRPC长连接负载不均衡的问题</a></li>
 </ul>
 
 
