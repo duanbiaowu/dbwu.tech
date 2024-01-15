@@ -131,7 +131,7 @@
 
     <h2 id="概述">概述</h2>
 <p>CronJob 和 Linux 中的 cron 定时任务机制一样，用于定时任务的编排和运行。</p>
-<p>CronJob 的使用方法和最佳实践在 <a href="https://dbwu.tech/posts/k8s/best_practice/base/">这篇文章</a> 中已经介绍过了，这里不再赘述，本文着重从源代码的角度分析一下 Job 的实现原理。</p>
+<p>CronJob 的使用方法和最佳实践在 <a href="https://dbwu.tech/posts/k8s/best_practice/base/">这篇文章</a> 中已经介绍过了，这里不再赘述，本文着重从源代码的角度分析一下 CronJob 的实现原理。</p>
 <h3 id="示例">示例</h3>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 controllers/job/cronjob.yaml</span><span style="color:#666">
 </span></span></span><span style="display:flex;"><span><span style="color:#666">

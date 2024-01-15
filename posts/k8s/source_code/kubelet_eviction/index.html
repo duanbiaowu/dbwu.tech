@@ -1,0 +1,629 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes Pod 驱逐 - 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes Pod 驱逐 - 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/kubelet_eviction/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-21T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-21T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes Pod 驱逐 - 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes Pod 驱逐 - 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2023-12-21</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>kubelet 是每个工作节点上运行的 “代理”，本质上就是一个运行的进程，通过和 API Server 进行通信并进行节点的一系列资源管理，例如常见的管理功能如下。</p>
+<ul>
+<li>节点管理与 Metric 上传</li>
+<li>Pod 管理</li>
+<li>资源监控</li>
+<li>内存控制</li>
+<li>资源压力驱逐</li>
+<li>CRI</li>
+<li>探针管理</li>
+<li>其他</li>
+</ul>
+<p><img src="https://dbwu.tech/images/k8s/source_code/kubelet.png" alt="kubelet 资源管理架构"></p>
+<p>kubelet 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/kubelet/</code> 目录，从 <code>kubelet</code> 子目录可以看到，kubelet 管理的功能也都是以单个模块目录的形式进行划分的，
+例如图中标记出来的 CRI 容器运行时、网络、资源驱逐、容器镜像、探针等管理模块。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/kueblet_1.png" alt="kubelet 源代码目录"></p>
+<h2 id="pod-驱逐">Pod 驱逐</h2>
+<blockquote>
+<p>节点压力驱逐是 kubelet 主动终止 Pod 以回收节点上资源的过程。</p>
+</blockquote>
+<p>kubelet 监控节点的各项资源 (如内存、磁盘空间 等)，当资源的使用超过指定阈值之后，kubelet 会主动驱逐 (Kill) 相关资源关联的 Pod, 避免节点负载过重和资源争用。</p>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 kubelet 驱逐 Pod 的实现过程和原理，功能对应的源代码位于 Kubernetes 项目的 <code>pkg/kubelet/eviction</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/kubelet_2.png" alt="kubelet eviction 源代码目录"></p>
+<hr>
+<h2 id="kubelet">Kubelet</h2>
+<p><code>Kubelet</code> 表示具体的 kubelet 管理功能实现对象，因为对象内部的字段太多，这里只保留部分字段。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Kubelet <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 配置对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kubeletConfiguration kubeletconfiginternal.KubeletConfiguration
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 节点名称 (指代运行所在 Node)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeName        types.NodeName
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 运行时缓存信息 (管理 CRI 相关状态和信息)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	runtimeCache    kubecontainer.RuntimeCache
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 客户端
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kubeClient      clientset.Interface
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 处理并同步 Pod 的相关事件 (Add/Update/Delete 等)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podWorkers PodWorkers
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 节点上面的 Pod 同步周期
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	resyncInterval time.Duration
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 存储和状态管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	podManager kubepod.Manager
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 驱逐管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	evictionManager eviction.Manager
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 容器信息收集
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	cadvisor cadvisor.Interface
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Informer 相关字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	serviceLister serviceLister
+</span></span><span style="display:flex;"><span>	serviceHasSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>	nodeLister corelisters.NodeLister
+</span></span><span style="display:flex;"><span>	nodeHasSynced cache.InformerSynced
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 节点标签
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeLabels <span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 探针管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 探针的实现原理: https://dbwu.tech/posts/k8s/source_code/prober/  
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	probeManager prober.Manager
+</span></span><span style="display:flex;"><span>	livenessManager proberesults.Manager
+</span></span><span style="display:flex;"><span>	startupManager  proberesults.Manager
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 资源垃圾回收管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	containerGC kubecontainer.GC
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 容器镜像管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	imageManager images.ImageGCManager
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 容器日志管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	containerLogManager logs.ContainerLogManager
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 容器运行时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// Container runtime.
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	containerRuntime kubecontainer.Runtime
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 节点 IP
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	nodeIPs []net.IP
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="初始化--启动">初始化 &amp; 启动</h2>
+<p><strong>NewMainKubelet</strong> 方法负责初始化一个 <code>Kubelet</code> 对象并返回。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewMainKubelet</span>(...) (*Kubelet, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	klet := &amp;Kubelet{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化驱逐管理器
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	evictionManager, evictionAdmitHandler := eviction.<span style="color:#447fcf">NewManager</span>(...)
+</span></span><span style="display:flex;"><span>    klet.evictionManager = evictionManager
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> klet, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>Kubelet</code> 对象初始化完成后，调用 <code>Run</code> 方法开始运行。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (kl *Kubelet) <span style="color:#447fcf">Run</span>(updates &lt;-<span style="color:#6ab825;font-weight:bold">chan</span> kubetypes.PodUpdate) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> kl.kubeClient != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 启动异步同步节点状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">Until</span>(kl.syncNodeStatus, kl.nodeStatusUpdateFrequency, wait.NeverStop)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> kl.<span style="color:#447fcf">fastStatusUpdateOnce</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 阻塞初始化&amp;设置 iptables 规则
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> kl.makeIPTablesUtilChains {
+</span></span><span style="display:flex;"><span>		kl.<span style="color:#447fcf">initNetworkUtil</span>()
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动探针管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kl.probeManager.<span style="color:#447fcf">Start</span>()
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 核心调度方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kl.<span style="color:#447fcf">syncLoop</span>(updates, kl)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这里直接省略掉中间冗长的调用链，跳转到驱逐管理器初始化的地方:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (kl *Kubelet) <span style="color:#447fcf">initializeRuntimeDependentModules</span>() {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动驱逐管理器，执行驱逐操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	kl.evictionManager.<span style="color:#447fcf">Start</span>(kl.StatsProvider, ...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="驱逐管理对象">驱逐管理对象</h2>
+<p><code>managerImpl</code> 对象表示 kubelet 驱逐功能的实现对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> managerImpl <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// Pod 驱逐 (Kill) 方法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 典型的 DI (依赖注入) 设计
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	killPodFunc KillPodFunc
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 镜像 GC 实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	imageGC ImageGC
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 容器 GC 实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	containerGC ContainerGC
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 资源类型和对应排序方法的映射关系
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   比如 CPU 资源的排序方法为 A
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//       内存 资源的排序方法为 B
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	signalToRankFunc <span style="color:#6ab825;font-weight:bold">map</span>[evictionapi.Signal]rankFunc
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 回收资源的方法列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	signalToNodeReclaimFuncs <span style="color:#6ab825;font-weight:bold">map</span>[evictionapi.Signal]nodeReclaimFuncs
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 最后同步资源状态时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	lastObservations signalObservations
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内存资源阈值实现 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	thresholdNotifiers []ThresholdNotifier
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 内存资源阈值实现 列表 最后更新时间
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	thresholdsLastUpdated time.Time
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 公开包内私有类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> _ Manager = &amp;managerImpl{}
+</span></span></code></pre></div><h3 id="资源类型">资源类型</h3>
+<p><code>Signal</code> 定义了资源类型，每种资源类型都有对应的排序方法，在 Pod 被驱逐之前会先进行一轮排序来决定最终被驱逐的 Pod。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> Signal <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span></code></pre></div><p>通过源代码的定义可以看到，资源的大类可以分为 <strong>内存型</strong> 和 <strong>存储型</strong> (磁盘使用)，内存型有内存使用情况、进程 ID 可分配数量，存储型有镜像使用空间、容器使用空间等。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">const</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 节点可用内存
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 使用 CGroup 资源限制来计算
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   而不是类似 free -m 的命令，因为 free -m 在容器中不起作用
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   相同的机制原理可以参考之前的文章: https://dbwu.tech/posts/golang_automaxprocs/
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 具体的计算方式可以参考
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// CGroup : https://kubernetes.io/examples/admin/resource/memory-available.sh
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// CGroup V2 版本: https://kubernetes.io/examples/admin/resource/memory-available-cgroupv2.sh
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    SignalMemoryAvailable Signal = <span style="color:#ed9d13">&#34;memory.available&#34;</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 进程 ID 最大上限
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// $ cat /proc/sys/kernel/pid_max
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	SignalPIDAvailable Signal = <span style="color:#ed9d13">&#34;pid.available&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><hr>
+<h2 id="启动入口">启动入口</h2>
+<p><code>managerImpl.Start</code> 方法是驱逐管理对象的启动入口方法，内部会启动异步 goroutine 来实现驱逐管理。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *managerImpl) <span style="color:#447fcf">Start</span>(diskInfoProvider DiskInfoProvider, podFunc ActivePodsFunc, podCleanedUpFunc PodCleanedUpFunc, monitoringInterval time.Duration) {
+</span></span><span style="display:flex;"><span>	thresholdHandler := <span style="color:#6ab825;font-weight:bold">func</span>(message <span style="color:#6ab825;font-weight:bold">string</span>) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将驱逐核心方法 synchronize 包装为参数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		m.<span style="color:#447fcf">synchronize</span>(diskInfoProvider, podFunc)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果使用内核级别的通知机制 (例如 CGroup 资源限制)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> m.config.KernelMemcgNotification {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> _, threshold := <span style="color:#6ab825;font-weight:bold">range</span> m.config.Thresholds {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 仅处理内存通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> threshold.Signal == evictionapi.SignalMemoryAvailable || threshold.Signal == evictionapi.SignalAllocatableMemoryAvailable {
+</span></span><span style="display:flex;"><span>				notifier, err := <span style="color:#447fcf">NewMemoryThresholdNotifier</span>(threshold, m.config.PodCgroupRoot, &amp;CgroupNotifierFactory{}, thresholdHandler)
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">if</span> err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>					klog.<span style="color:#447fcf">InfoS</span>(<span style="color:#ed9d13">&#34;Eviction manager: failed to create memory threshold notifier&#34;</span>, <span style="color:#ed9d13">&#34;err&#34;</span>, err)
+</span></span><span style="display:flex;"><span>				} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>					<span style="color:#999;font-style:italic">// 为每个通知实现单独启动一个 goroutine 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>					<span style="color:#6ab825;font-weight:bold">go</span> notifier.<span style="color:#447fcf">Start</span>()
+</span></span><span style="display:flex;"><span>					m.thresholdNotifiers = <span style="color:#24909d">append</span>(m.thresholdNotifiers, notifier)
+</span></span><span style="display:flex;"><span>				}
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动单独的的 goroutine 负责驱逐管理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// start the eviction manager monitoring
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> <span style="color:#6ab825;font-weight:bold">func</span>() {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 内部是一个无限循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 定期执行 synchronize 方法来完成驱逐过程
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			evictedPods, err := m.<span style="color:#447fcf">synchronize</span>(diskInfoProvider, podFunc)
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> evictedPods != <span style="color:#6ab825;font-weight:bold">nil</span> &amp;&amp; err == <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 阻塞执行 Pod 驱逐 (Kill) 操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				m.<span style="color:#447fcf">waitForPodsCleanup</span>(podCleanedUpFunc, evictedPods)
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 如果发生错误，进入休眠
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				time.<span style="color:#447fcf">Sleep</span>(monitoringInterval)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="核心方法">核心方法</h2>
+<p><code>managerImpl.synchronize</code> 方法是驱逐管理实现的核心方法，内部通过一系列的资源状态对比和判断，最终返回需要被驱逐 (Kill) 的 Pod 列表。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *managerImpl) <span style="color:#447fcf">synchronize</span>(diskInfoProvider DiskInfoProvider, podFunc ActivePodsFunc) []*v1.Pod {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取节点上运行的 Pod 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	activePods := <span style="color:#447fcf">podFunc</span>()
+</span></span><span style="display:flex;"><span>	updateStats := <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取节点的各项资源 (CPU, 内存 ...) 使用情况
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	summary, err := m.summaryProvider.<span style="color:#447fcf">Get</span>(updateStats)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 最后资源阈值的最后更新时间超过 10 秒
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 更新一下各项资源的阈值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> m.clock.<span style="color:#447fcf">Since</span>(m.thresholdsLastUpdated) &gt; notifierRefreshInterval {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 解析各项资源的总量、已使用量 等等 Metric
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	observations, statsFunc := <span style="color:#447fcf">makeSignalObservations</span>(summary)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测各项资源的使用情况是否已经超过阈值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	thresholds = <span style="color:#447fcf">thresholdsMet</span>(thresholds, observations, <span style="color:#6ab825;font-weight:bold">false</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 检测满足驱逐条件的 Pods
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	thresholds = <span style="color:#447fcf">thresholdsMetGracePeriod</span>(thresholdsFirstObservedAt, now)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 加锁更新对象的相关状态字段
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	m.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	m.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 没有需要驱逐的 Pod 时直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(thresholds) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据驱逐优先级对 Pod 进行排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	sort.<span style="color:#447fcf">Sort</span>(<span style="color:#447fcf">byEvictionPriority</span>(thresholds))
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算接下来要驱逐的具体资源对应的 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	thresholdToReclaim, resourceToReclaim, foundAny := <span style="color:#447fcf">getReclaimableThreshold</span>(thresholds)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 使用资源对应的排序方法对要驱逐的资源 Pod 进行排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//   比如根据内存进行排序，使用最多内存的 Pod 先被驱逐掉
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#447fcf">rank</span>(activePods, statsFunc)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 每次最多驱逐一个 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> activePods {
+</span></span><span style="display:flex;"><span>		pod := activePods[i]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 调用 evictPod 方法驱逐 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> m.<span style="color:#447fcf">evictPod</span>(pod, gracePeriodOverride, message, annotations) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> []*v1.Pod{pod}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>通过 <code>managerImpl.synchronize</code> 方法的源代码可以看到: 每次同步时都有一个固定的工作流:</p>
+<ol>
+<li>获取节点上运行的 Pod 列表</li>
+<li>获取节点的各项资源 (CPU, 内存 &hellip;) 使用情况</li>
+<li>获取各项资源的使用阈值</li>
+<li>检测各项资源使用是否已经超过阈值</li>
+<li>检测满足驱逐条件的 Pod 列表</li>
+<li>根据驱逐优先级对要被驱逐的 Pod 进行排序</li>
+<li>调用 evictPod 方法执行 Pod 驱逐操作</li>
+</ol>
+<h3 id="驱逐-pod">驱逐 Pod</h3>
+<p><code>managerImpl.evictPod</code> 方法负责驱逐 Pod。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (m *managerImpl) <span style="color:#447fcf">evictPod</span>(pod *v1.Pod, ...) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 通过调用 managerImpl 对象初始化时 注入的 Pod 驱逐方法，阻塞式驱逐 Pod
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := m.<span style="color:#447fcf">killPodFunc</span>(pod, status, &amp;gracePeriodOverride)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="内存状态通知">内存状态通知</h2>
+<p>上文中提到，驱逐管理对象启动时，可能会采用内核级别的通知机制，这样可以保证 Metric 精度和性能最大化，从源代码文件中看到，目前只实现了内存事件通知。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/kubelet_3.png" alt="kubelet eviction 内核级别通知"></p>
+<h3 id="通知对象">通知对象</h3>
+<p><code>linuxCgroupNotifier</code> 作为事件通知对象，通过命名方式可以看到，该对象只实现了 Linux 上面的事件通知，并且内部使用的是 CGroup 来获取相应的事件。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> linuxCgroupNotifier <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	eventfd  <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	epfd     <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	stop     <span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}
+</span></span><span style="display:flex;"><span>	stopLock sync.Mutex
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 公开包内私有类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">var</span> _ CgroupNotifier = &amp;linuxCgroupNotifier{}
+</span></span></code></pre></div><h3 id="创建通知对象">创建通知对象</h3>
+<p><code>NewCgroupNotifier</code> 方法返回一个完成初始化的 <code>linuxCgroupNotifier</code> 对象，通过执行 CGroup 资源限制操作，以便在资源超过阈值时接收到来自系统的通知。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewCgroupNotifier</span>(path, attribute <span style="color:#6ab825;font-weight:bold">string</span>, threshold <span style="color:#6ab825;font-weight:bold">int64</span>) (CgroupNotifier, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> watchfd, eventfd, epfd, controlfd <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> err <span style="color:#6ab825;font-weight:bold">error</span>
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建监听文件描述符 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	watchfd, err = unix.<span style="color:#447fcf">Open</span>(fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">&#34;%s/%s&#34;</span>, path, attribute), unix.O_RDONLY|unix.O_CLOEXEC, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建控制文件描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	controlfd, err = unix.<span style="color:#447fcf">Open</span>(fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">&#34;%s/cgroup.event_control&#34;</span>, path), unix.O_WRONLY|unix.O_CLOEXEC, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建事件描述符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	eventfd, err = unix.<span style="color:#447fcf">Eventfd</span>(<span style="color:#3677a9">0</span>, unix.EFD_CLOEXEC)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建 epoll 文件描述符 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	epfd, err = unix.<span style="color:#447fcf">EpollCreate1</span>(unix.EPOLL_CLOEXEC)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 关联各文件描述符和资源限制阈值触发通知
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	config := fmt.<span style="color:#447fcf">Sprintf</span>(<span style="color:#ed9d13">&#34;%d %d %d&#34;</span>, eventfd, watchfd, threshold)
+</span></span><span style="display:flex;"><span>	_, err = unix.<span style="color:#447fcf">Write</span>(controlfd, []<span style="color:#24909d">byte</span>(config))
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据已有的文件描述符构建一个新的事件通知对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> &amp;linuxCgroupNotifier{
+</span></span><span style="display:flex;"><span>		eventfd: eventfd,
+</span></span><span style="display:flex;"><span>		epfd:    epfd,
+</span></span><span style="display:flex;"><span>		stop:    <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">chan</span> <span style="color:#6ab825;font-weight:bold">struct</span>{}),
+</span></span><span style="display:flex;"><span>	}, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="监听--读取事件">监听 &amp; 读取事件</h3>
+<p><code>linuxCgroupNotifier.Start</code> 方法负责开始监听事件，并在内部启动一个无限循环不断读取监听到的事件，方法内部并不会处理事件数据，读取到数据之后会立即丢弃。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (n *linuxCgroupNotifier) <span style="color:#447fcf">Start</span>(eventCh <span style="color:#6ab825;font-weight:bold">chan</span>&lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 将 epoll 文件描述符加入到 Linux epoll 机制，监听读取 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	err := unix.<span style="color:#447fcf">EpollCtl</span>(n.epfd, unix.EPOLL_CTL_ADD, n.eventfd, &amp;unix.EpollEvent{
+</span></span><span style="display:flex;"><span>		Fd:     <span style="color:#24909d">int32</span>(n.eventfd),
+</span></span><span style="display:flex;"><span>		Events: unix.EPOLLIN,
+</span></span><span style="display:flex;"><span>	})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 调用 wait 等待事件到达
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		event, err := <span style="color:#447fcf">wait</span>(n.epfd, n.eventfd, notifierRefreshInterval)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		buf := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">byte</span>, eventSize)
+</span></span><span style="display:flex;"><span>		_, err = unix.<span style="color:#447fcf">Read</span>(n.eventfd, buf)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		eventCh &lt;- <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>wait</code> 方法和 epoll 中的 wait 方法一致，用于等待事件，为了避免没有事件时引起调用方长时间阻塞，方法内部设置了超时机制 (10 秒)，
+当接收到事件数据时，返回 true, 否则返回 false。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">wait</span>(epfd, eventfd <span style="color:#6ab825;font-weight:bold">int</span>, timeout time.Duration) (<span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	events := <span style="color:#24909d">make</span>([]unix.EpollEvent, numFdEvents+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	timeoutMS := <span style="color:#24909d">int</span>(timeout / time.Millisecond)
+</span></span><span style="display:flex;"><span>	n, err := unix.<span style="color:#447fcf">EpollWait</span>(epfd, events, timeoutMS)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	..
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, event := <span style="color:#6ab825;font-weight:bold">range</span> events[:n] {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> event.Fd == <span style="color:#24909d">int32</span>(eventfd) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> event.Events&amp;unix.EPOLLHUP != <span style="color:#3677a9">0</span> || event.Events&amp;unix.EPOLLERR != <span style="color:#3677a9">0</span> || event.Events&amp;unix.EPOLLIN != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 三个标识符含义如下
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// EPOLLHUP: 正常情况下不会出现这种情况，如果正好发生了，由调用方处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// EPOLLERR: 就算读取到了 Error, 也可以认为是读取到了事件数据，同样也是由调用方处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// EPOLLIN: 读取到了事件数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/wikimedia/operations-software-kubernetes/blob/master/docs/proposals/kubelet-eviction.md">Kubelet - Eviction Policy</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/node-pressure-eviction/">节点压力驱逐</a></li>
+<li><a href="https://kubernetes.feisky.xyz/concepts/components/kubelet">kubelet</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/kubernetes/node-problem-detector">node-problem-detector</a></li>
+<li><a href="https://learnk8s.io/blog/kubectl-productivity/">Boosting your kubectl productivity</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/daemonset_controller/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Daemonset 设计与实现</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/deployment_controller/">Kubernetes Deployment 滚动更新实现原理 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes Pod 驱逐 - 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
