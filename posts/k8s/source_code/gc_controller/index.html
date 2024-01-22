@@ -1,0 +1,473 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Kubernetes GC 设计与实现 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Kubernetes GC 设计与实现" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/k8s/source_code/gc_controller/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-12-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-25T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Kubernetes GC 设计与实现"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Kubernetes GC 设计与实现</h1>
+
+    
+      
+<p>
+    <span>2023-12-25</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/cloud-native">Cloud Native</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/kubernetes">Kubernetes</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AF%BB%E4%BB%A3%E7%A0%81">读代码</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>Kubernetes 和内置垃圾回收编程语言 (例如 Go, Java) 一样，内部也有垃圾回收机制，用于清理集群中的下列资源:</p>
+<ul>
+<li>终止的 Pod</li>
+<li>已完成的 Job</li>
+<li>附属的主对象已经不存在的对象</li>
+<li>未使用的容器和容器镜像</li>
+<li>StorageClass 回收策略为 Delete 的 PV 卷</li>
+<li>过期的证书签名</li>
+<li>&hellip;</li>
+</ul>
+<p>和编程语言中的 GC 运行机制一样，Kubernetes 中的垃圾回收周期自动执行，集群内每个运行 kubelet 的节点上都会有一个垃圾回收器在运行，
+可以简单将其理解为一个独立运行的进程甚至一个 goroutine, 事实上，Kubernetes 的垃圾回收是以 <strong>控制器资源</strong> 的形式存在和运行的。</p>
+<h3 id="owner-dependent">Owner, Dependent</h3>
+<p>Kubernetes 中被依赖的资源对象称之为 Owner (属主资源), 依赖其他资源的对象称之为 Dependent (依赖资源), 例如我们创建了一个副本数量为 3 的 Deployment。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 官方示例 controllers/nginx-deployment.yaml</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">apiVersion</span>:<span style="color:#666"> </span>apps/v1<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">kind</span>:<span style="color:#666"> </span>Deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx-deployment<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666"></span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">replicas</span>:<span style="color:#666"> </span><span style="color:#3677a9">3</span><span style="color:#666"> </span><span style="color:#999;font-style:italic"># 副本数量，可以根据实际情况修改</span><span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">selector</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">matchLabels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">  </span><span style="color:#6ab825;font-weight:bold">template</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">metadata</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">labels</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">app</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">    </span><span style="color:#6ab825;font-weight:bold">spec</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span><span style="color:#6ab825;font-weight:bold">containers</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">      </span>- <span style="color:#6ab825;font-weight:bold">name</span>:<span style="color:#666"> </span>nginx<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">image</span>:<span style="color:#666"> </span>nginx:1.14.2<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span><span style="color:#6ab825;font-weight:bold">ports</span>:<span style="color:#666">
+</span></span></span><span style="display:flex;"><span><span style="color:#666">        </span>- <span style="color:#6ab825;font-weight:bold">containerPort</span>:<span style="color:#666"> </span><span style="color:#3677a9">80</span><span style="color:#666">
+</span></span></span></code></pre></div><p>那么会产生如下的依赖关系:</p>
+<ul>
+<li>Pod 作为 ReplicaSet 的 Dependent, 它的 Owner 为 ReplicaSet (Deployment 底层实现需要 ReplicaSet)</li>
+<li>ReplicaSet 作为 Owner 的同时也同样作为 Dependent, 它的 Owner 为 Deployment, Dependent 为 3 个依赖它的 Pod</li>
+<li>Deployment 作为 Owner, 它的 Dependent 为依赖的 ReplicaSet</li>
+</ul>
+<p><img src="https://dbwu.tech/images/k8s/source_code/owner_dependent.png" alt="Owner 和 Dependent 依赖关系图"></p>
+<h3 id="回收机制">回收机制</h3>
+<p>默认情况下，垃圾回收采用的是级联删除机制，例如删除 ReplicaSet 资源对象 R1 之后，会删除依赖 R1 资源对象的 Pod 资源对象，
+级联删除有两种类型: <strong>前台级联删除</strong> 和 <strong>后台级联删除</strong>。</p>
+<p><strong>前台级联删除:</strong> 当资源对象进入垃圾回收过程，垃圾回收控制器先删除其全部依赖 (Dependent) 对象，然后删除该资源 (Owner) 对象。</p>
+<p><strong>后台级联删除:</strong> API Server 立即删除该资源 (Owner) 对象，然后由垃圾回收控制器在后台清理其全部依赖 (Dependent) 对象，这是 Kubernetes 默认使用的级联删除方案。</p>
+<h3 id="孤儿资源对象">孤儿资源对象</h3>
+<p>当 Kubernetes 删除某个资源 (Owner) 对象时，其全部依赖 (Dependent) 对象被称作被遗弃的 (Orphaned) 孤儿资源对象，该功能由下文中的 <strong>Finalizer</strong> 来实现。</p>
+<h3 id="finalizer">Finalizer</h3>
+<p>Finalizer 用于防止误操作删除了集群依赖的正常运行资源，Finalizer 可以作为资源对象的属性和资源进行绑定，用于执行资源对象在删除之前的逻辑，
+所有对象在删除之前，其 Finalizer 属性字段必须为 <code>nil</code>, API Server 才会删除该对象，这样就可以防止级联删除了。</p>
+<p>例如，现在试图删除一个正在被多个 Pod 使用的 PersistentVolume (持久卷) 资源，那么该 PersistentVolume 资源不会被理解删除，
+因为 PersistentVolume 资源注册了 Finalizer 。</p>
+<p>除了防止级联删除之外，还可以在资源对象删除之前执行指定的钩子函数，例如在一些场景中只想删除当前资源对象，而不想级联删除其依赖对象，
+这时就可以在该资源对象上注册 OrphanFinalizer, 那么垃圾回收控制器在删除该资源对象之后，会忽略其依赖对象，这样给开发者自定义实现提供了更强的灵活性。</p>
+<h2 id="源码说明">源码说明</h2>
+<p>本文着重从源代码的角度分析一下 ReplicaSet 的实现原理，ReplicaSet 功能对应的源代码位于 Kubernetes 项目的 <code>pkg/controller/garbagecollector/</code> 目录，本文以 Kubernetes <code>v1.28</code> 版本源代码进行分析。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/gc_1.png" alt="GC 源代码目录"></p>
+<h3 id="流程图">流程图</h3>
+<p>下面我们跟着流程图一起看下源代码的具体实现。</p>
+<p><img src="https://dbwu.tech/images/k8s/source_code/gc_flow.png" alt="GC 流程图"></p>
+<hr>
+<h2 id="garbagecollector">GarbageCollector</h2>
+<p><code>GarbageCollector</code> 对象表示垃圾回收控制器，是实现垃圾回收功能的核心对象。</p>
+<p>通过监听 Informer 来获取资源变化并将结果构造为 DAG (有向无环图) 结构，DAG 对象存储了集群中不同资源对象之间的从属关系，当 DAG 发生变化时，
+对应的资源对象可能会被垃圾回收加入到 <code>attemptToDelete</code> 队列，并将对象依赖的对象加入到 <code>attemptToOrphan</code> 队列。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">type</span> GarbageCollector <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// attemptToDelete 队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 存储垃圾回收尝试删除的资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	attemptToDelete workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// attemptToOrphan 队列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 存储垃圾回收尝试删除的资源对象所依赖的对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	attemptToOrphan        workqueue.RateLimitingInterface
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 资源对象 DAG 构造器 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dependencyGraphBuilder *GraphBuilder
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="初始化">初始化</h3>
+<p><code>NewGarbageCollector</code> 方法通过参数对象构造一个新的 <code>GarbageCollector</code> 对象并返回。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">NewGarbageCollector</span>(...) (*GarbageCollector, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	gc := &amp;GarbageCollector{
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	gc.dependencyGraphBuilder = &amp;GraphBuilder{
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> gc, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="启动入口">启动入口</h2>
+<p>垃圾回收的启动入口位于 Kubernetes 项目的 <code>/cmd/kube-controller-manager/app/core.go</code> 文件中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">startGarbageCollectorController</span>(ctx context.Context, ...) (controller.Interface, <span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化 NewGarbageCollector 对象需要的各项参数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 设置垃圾回收需要忽视的资源类型
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	ignoredResources := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[schema.GroupResource]<span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, r := <span style="color:#6ab825;font-weight:bold">range</span> controllerContext.ComponentConfig.GarbageCollectorController.GCIgnoredResources {
+</span></span><span style="display:flex;"><span>		ignoredResources[schema.GroupResource{Group: r.Group, Resource: r.Resource}] = <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 创建一个 NewGarbageCollector 对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	garbageCollector, err := garbagecollector.<span style="color:#447fcf">NewGarbageCollector</span>(
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 获取垃圾回收并发的 goroutine 数量 (默认为 20 个)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	workers := <span style="color:#24909d">int</span>(controllerContext.ComponentConfig.GarbageCollectorController.ConcurrentGCSyncs)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 启动垃圾回收
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> garbageCollector.<span style="color:#447fcf">Run</span>(ctx, workers)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 监听集群内的资源对象变化并同步需要被删除的资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> garbageCollector.<span style="color:#447fcf">Sync</span>(ctx, discoveryClient, <span style="color:#3677a9">30</span>*time.Second)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> garbageCollector, <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>从上面的源代码可以看到，启动垃圾回收器时，调用的核心方法为 <code>GarbageCollector.Run</code> 和 <code>GarbageCollector.Sync</code>。</p>
+<hr>
+<h2 id="开始执行-gc">开始执行 GC</h2>
+<p><code>GarbageCollector.Run</code> 方法作为垃圾回收器的入口方法，主要做两件事情:</p>
+<ol>
+<li>单独启动一个 goroutine 执行资源对象的 DAG 构造和同步</li>
+<li>根据配置启动相应数量的 goroutine 来处理存储将被回收的资源对象的 <code>attemptToDelete</code> 队列</li>
+<li>根据配置启动相应数量的 goroutine 来处理存储将被回收的资源对象所依赖对象的 <code>attemptToOrphan</code> 队列</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (gc *GarbageCollector) <span style="color:#447fcf">Run</span>(ctx context.Context, workers <span style="color:#6ab825;font-weight:bold">int</span>) {
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 启动一个 goroutine 执行 DAG 的构建
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">go</span> gc.dependencyGraphBuilder.<span style="color:#447fcf">Run</span>(ctx)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 等待所有资源对象的 DAG 构建完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> !cache.<span style="color:#447fcf">WaitForNamedCacheSync</span>(<span style="color:#ed9d13">&#34;garbage collector&#34;</span>, ctx.<span style="color:#447fcf">Done</span>(), <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> gc.dependencyGraphBuilder.<span style="color:#447fcf">IsSynced</span>(logger)
+</span></span><span style="display:flex;"><span>	}) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 所有准备工作就绪之后，就可以执行垃圾回收了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据配置启动多个 goroutine 来执行垃圾回收
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; workers; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">UntilWithContext</span>(ctx, gc.runAttemptToDeleteWorker, <span style="color:#3677a9">1</span>*time.Second)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">go</span> wait.<span style="color:#447fcf">Until</span>(<span style="color:#6ab825;font-weight:bold">func</span>() { gc.<span style="color:#447fcf">runAttemptToOrphanWorker</span>(logger) }, <span style="color:#3677a9">1</span>*time.Second, ctx.<span style="color:#447fcf">Done</span>())
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	&lt;-ctx.<span style="color:#447fcf">Done</span>()
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="回收对象队列">回收对象队列</h3>
+<p><code>GarbageCollector.runAttemptToDeleteWorker</code> 方法负责回收队列中要被删除的对象，内部是一个无限循环，通过调用 <code>processAttemptToDeleteWorker</code>
+方法来决定退出的具体条件。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (gc *GarbageCollector) <span style="color:#447fcf">runAttemptToDeleteWorker</span>(ctx context.Context) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> gc.<span style="color:#447fcf">processAttemptToDeleteWorker</span>(ctx) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (gc *GarbageCollector) <span style="color:#447fcf">processAttemptToDeleteWorker</span>(ctx context.Context) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 从队列中取出一个资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	item, quit := gc.attemptToDelete.<span style="color:#447fcf">Get</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 调用 attemptToDeleteWorker 方法实现删除操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 限于篇幅，该方法的实现细节不做具体分析
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	action := gc.<span style="color:#447fcf">attemptToDeleteWorker</span>(ctx, item)
+</span></span><span style="display:flex;"><span>	
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 根据返回值做具体的操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">switch</span> action {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> forgetItem:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 从队列中删除资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		gc.attemptToDelete.<span style="color:#447fcf">Forget</span>(item)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">case</span> requeueItem:
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将资源对象重新入队
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		gc.attemptToDelete.<span style="color:#447fcf">AddRateLimited</span>(item)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h3 id="回收对象依赖队列">回收对象依赖队列</h3>
+<p><strong>回收对象依赖队列</strong> 的处理方法和 <strong>回收对象队列</strong> 方法类似，不同之处只是操作的队列不同和调用的 <strong>资源删除方法</strong> 不同，这里跳过源代码分析。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (gc *GarbageCollector) <span style="color:#447fcf">runAttemptToOrphanWorker</span>(logger klog.Logger) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> gc.<span style="color:#447fcf">processAttemptToOrphanWorker</span>(logger) {
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (gc *GarbageCollector) <span style="color:#447fcf">processAttemptToOrphanWorker</span>(logger klog.Logger) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="同步">同步</h2>
+<p><code>GarbageCollector.Sync</code> 方法是垃圾回收功能实现的另一个核心方法，主要负责定期同步监听的集群中的资源对象，并过滤出需要删除的资源对象。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> (gc *GarbageCollector) <span style="color:#447fcf">Sync</span>(ctx context.Context, ...) {
+</span></span><span style="display:flex;"><span>	    <span style="color:#999;font-style:italic">// 获取可以被回收的资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		newResources, err := <span style="color:#447fcf">GetDeletableResources</span>(logger, discoveryClient)
+</span></span><span style="display:flex;"><span>		
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 检测可回收对象是否发生变化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果没有任何对象发生变化，意味着本轮垃圾回收无需执行
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> reflect.<span style="color:#447fcf">DeepEqual</span>(oldResources, newResources) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 代码执行到这里，说明需要进行一轮垃圾回收操作
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 因为垃圾回收过程中涉及到重建资源 DAG
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">//   所以需要加锁，暂停异步执行的 goroutine
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        gc.workerLock.<span style="color:#447fcf">Lock</span>()
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">defer</span> gc.workerLock.<span style="color:#447fcf">Unlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		attempt := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>		wait.<span style="color:#447fcf">PollImmediateUntilWithContext</span>(ctx, <span style="color:#3677a9">100</span>*time.Millisecond, <span style="color:#6ab825;font-weight:bold">func</span>(ctx context.Context) (<span style="color:#6ab825;font-weight:bold">bool</span>, <span style="color:#6ab825;font-weight:bold">error</span>) {
+</span></span><span style="display:flex;"><span>			attempt++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 每一轮, 重新获取可以被回收的资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> attempt &gt; <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>				newResources, err = <span style="color:#447fcf">GetDeletableResources</span>(logger, discoveryClient)
+</span></span><span style="display:flex;"><span>				
+</span></span><span style="display:flex;"><span>				...
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 同步资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> err := gc.<span style="color:#447fcf">resyncMonitors</span>(logger, newResources); err != <span style="color:#6ab825;font-weight:bold">nil</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 等待所有资源对象的 DAG 构建完成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> !cache.<span style="color:#447fcf">WaitForNamedCacheSync</span>(<span style="color:#ed9d13">&#34;garbage collector&#34;</span>, <span style="color:#447fcf">waitForStopOrTimeout</span>(ctx.<span style="color:#447fcf">Done</span>(), period), <span style="color:#6ab825;font-weight:bold">func</span>() <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> gc.dependencyGraphBuilder.<span style="color:#447fcf">IsSynced</span>(logger)
+</span></span><span style="display:flex;"><span>			}) {
+</span></span><span style="display:flex;"><span>                ...
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>, <span style="color:#6ab825;font-weight:bold">nil</span>
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更换新旧资源对象
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		oldResources = newResources
+</span></span><span style="display:flex;"><span>	}, period)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="小结">小结</h2>
+<p><img src="https://dbwu.tech/images/k8s/source_code/gc_flow.png" alt="GC 流程图"></p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/wikimedia/operations-software-kubernetes/blob/master/docs/proposals/garbage-collection.md">Garbage Collector</a></li>
+<li><a href="https://kubernetes.io/zh-cn/docs/concepts/architecture/garbage-collection/">垃圾回收</a></li>
+</ul>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://blog.tianfeiyu.com/2019/12/28/garbagecollector_controller/">garbage collector controller 源码分析</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/kubelet_eviction/"><i class="fa fa-chevron-circle-left"></i> Kubernetes Pod 驱逐 - 设计与实现</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/source_code/deployment_controller/">Kubernetes Deployment 滚动更新实现原理 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Kubernetes GC 设计与实现"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
