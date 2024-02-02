@@ -115,6 +115,12 @@
     <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
     
     
+    <a class="article-tag" href="https://dbwu.tech/tags/trie-tree">Trie Tree</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/radix-tree">Radix Tree</a>
+    
+    
     <a class="article-tag" href="https://dbwu.tech/tags/go-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90">Go 源码分析</a>
     
     
@@ -1442,6 +1448,7 @@ Radix Tree 的关键思想是利用公共前缀来合并节点，每个节点代
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h3 id="优点-1">优点</h3>
 <p>Radix Tree 通过合并公共前缀来降低存储空间的开销，避免了 Trie Tree 字符串过长和字符集过大时导致的存储空间过多问题，同时公共前缀优化了路径层数，提升了插入、查询、删除等操作效率。</p>
+<p>使用 Radix Tree 可以减少树的层高，同时每个节点上的数据存储通常比 Trie Tree 多，所以程序的 CPU 缓存局部性较好 (一个节点的 path 加载到 CPU 缓存就可以进行多个字符的操作)。</p>
 <h3 id="适用场景-1">适用场景</h3>
 <ul>
 <li>字典和前缀匹配 ：适合用作字典或关联数组的底层数据结构，可以快速找到以给定前缀开头的所有键，例如 Redis 中的某个前缀 key</li>
