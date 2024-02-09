@@ -1,0 +1,403 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>PHP 边边角角 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="PHP 边边角角" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/php_summary/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2020-02-09T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-02-09T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="PHP 边边角角"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>PHP 边边角角</h1>
+
+    
+      
+<p>
+    <span>2020-02-09</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/php">PHP</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="ubuntu-快速安装-php">Ubuntu 快速安装 PHP</h2>
+<h3 id="php-72">PHP 7.2</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>sudo add-apt-repository ppa:ondrej/php &amp;&amp; sudo apt-get update
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 稳定版本</span>
+</span></span><span style="display:flex;"><span>sudo apt-get -y install php7.2
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 开发版：</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># sudo apt-get -y install php7.2-dev</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get install -y php7.2-fpm php7.2-mysql php7.2-curl php7.2-json php7.2-mbstring php7.2-xml php7.2-intl
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get install openssl
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-gd -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-soap -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-gmp -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-odbc -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-pspell -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-bcmath -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-enchant -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-imap -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-ldap -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-opcache -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-readline -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-sqlite3 -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-xmlrpc -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-bz2 -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-interbase -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-pgsql -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-recode -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-sybase -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-xsl -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-cgi -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-dba -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-phpdbg -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-snmp -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-tidy -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-redis -y &amp;&amp; 
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-memcache -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt install php7.2-xdebug -y &amp;&amp; 
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.2-zip -y
+</span></span></code></pre></div><h3 id="php-74">PHP 7.4</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>sudo add-apt-repository ppa:ondrej/php &amp;&amp; sudo apt-get update
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get -y install php7.4
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get install -y php7.4-fpm php7.4-mysql php7.4-curl php7.4-json php7.4-mbstring php7.4-xml php7.4-intl
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get install openssl
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-gd -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-soap -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-gmp -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-odbc -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-pspell -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-bcmath -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-enchant -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-imap -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-ldap -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-opcache -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-readline -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-sqlite3 -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-xmlrpc -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-bz2 -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-interbase -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-pgsql -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-recode -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-sybase -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-xsl -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-cgi -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-dba -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-phpdbg -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-snmp -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-tidy -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-redis -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-memcache -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt install php7.4-xdebug -y &amp;&amp;
+</span></span><span style="display:flex;"><span>sudo apt-get install php7.4-zip -y
+</span></span></code></pre></div><h2 id="php-优点">PHP 优点</h2>
+<ol>
+<li><strong>完善的面向对象编程支持</strong>，主要包括
+<ul>
+<li>namespace 处理命名冲突</li>
+<li>interface 分离实现与接口</li>
+<li>traits 代码混入(mixin)支持</li>
+<li>类型系统 限制函数参数、返回值、类成员的类型</li>
+</ul>
+</li>
+<li><strong>完善的依赖管理体系</strong>，这一点主要由 composer 实现</li>
+<li><strong>支持 FFI</strong>(<a href="https://en.wikipedia.org/wiki/Foreign_function_interface">foreign function interface</a>)，可以很方便的跟各种C语言库（如 TensorFlow）交互，极大地扩展了 PHP 的能力</li>
+<li><strong>更加安全</strong>，主要是引入了更加现代更加安全的密码学类库 <a href="https://github.com/jedisct1/libsodium">libsodium</a></li>
+<li><strong>性能不断提升</strong>，PHP7.4 的性能大约是 PHP5.6 的 3 倍，比 PHP7.0 也快了近 18%, 主要的性能提升来自于 PHP7.0 的 zval 重构，而 PHP7.4 也能过引入 preload 特性进一步加快了代码的执行速度，PHP8.0 将引入 JIT 技术，性能会有更大的提升</li>
+</ol>
+<h2 id="php-不足">PHP 不足</h2>
+<ol>
+<li>不支持泛型。程序员无法限制PHP的数组的成员类型。</li>
+<li>运行时类型检查。PHP的参数类型检查是在代码执行的过程完成的，降低了执行效率。</li>
+<li>不支持多核。PHP虚拟机就是一个C语言的 while 循环，边读取边执行。如果想跑满多核，只能利用多进程或都多线程，多线程存在同步问题，多进程存在IPC问题。</li>
+<li>PHP本身和扩展都使用C语言开发，要想深入理解PHP，单写PHP代码是不够的。这在一定程度上增加了改进PHP的门槛。</li>
+<li>性能相比编译语言依然差很远</li>
+<li>生态</li>
+</ol>
+<h2 id="php7-比-php5-性能提升在哪里">PHP7 比 PHP5 性能提升在哪里</h2>
+<p>1、变量存储字节减小，减少内存占用，提升变量操作速度
+2、改善数组结构，数组元素和 hash 映射表被分配在同一块内存里，降低了内存占用、提升了 cpu 缓存命中率
+3、改进了函数的调用机制，通过优化参数传递的环节，减少了一些指令，提高执行效率</p>
+<h2 id="生命周期">生命周期</h2>
+<ol>
+<li>模块初始化阶段 (Module init)：即调用每个拓展源码中的的 PHP_MINIT_FUNCTION 中的方法初始化模块，进行一些模块所需变量的申请，内存分配等</li>
+<li>请求初始化阶段 (Request init)：即接受到客户端的请求后调用每个拓展的 PHP_RINIT_FUNCTION 中的方法，初始化 PHP 脚本的执行环境</li>
+<li>执行该 PHP 脚本</li>
+<li>请求结束 (Request Shutdown)：这时候调用每个拓展的 PHP_RSHUTDOWN_FUNCTION 方法清理请求现场，并且 Zend Engine 开始回收变量和内存</li>
+<li>关闭模块 (Module shutdown)：Web 服务器退出或者命令行脚本执行完毕退出会调用拓展源码中的 PHP_MSHUTDOWN_FUNCTION 方法</li>
+</ol>
+<h2 id="主流框架请求声明周期">主流框架请求声明周期</h2>
+<ol>
+<li>用户向入口脚本 <code>index.php</code> 发起请求</li>
+<li>入口脚本加载应用配置并创建一个应用实例去处理请求</li>
+<li>应用通过请求组件解析请求的路由</li>
+<li>应用创建一个<a href="https://www.yiichina.com/doc/guide/2.0/structure-controllers">控制器</a>实例去处理请求</li>
+<li>控制器创建一个<a href="https://www.yiichina.com/doc/guide/2.0/structure-controllers">动作</a>实例并针对操作执行过滤器</li>
+<li>如果任何一个过滤器返回失败，则动作取消</li>
+<li>如果所有过滤器都通过，动作将被执行</li>
+<li>动作会加载一个数据模型，或许是来自数据库</li>
+<li>动作会渲染一个视图，把数据模型提供给它</li>
+<li>渲染结果返回给<a href="https://www.yiichina.com/doc/guide/2.0/runtime-responses">响应</a>组件</li>
+<li>响应组件发送渲染结果给用户浏览器</li>
+</ol>
+<h2 id="phpinput-是什么">php://input 是什么</h2>
+<p><code>php://input</code> 是个只读流，用于获取请求体，返回整个 HTTP 请求中，除去 HTTP 头部的全部原始内容，而不管是什么 Content Type（或称为编码方式）。
+相比较之下，$_POST 只支持 application/x-www-form-urlencoded 和 multipart/form-data-encoded 两种 Content Type。
+其中前一种就是简单的 HTML 表单以 method=&ldquo;post&rdquo; 提交时的形式，后一种主要是用于上传文档。因此，对于诸如 application/json 等 Content Type，
+这往往是在 AJAX 场景下使用，那么使用 $_POST 得到的是空的内容，这时就必须使用 php://input。</p>
+<p>相比较于 $HTTP_RAW_POST_DATA ，php://input 无需额外地在 php.ini 中激活 always-populateraw-post-data ，而且对于内存的压力也比较小，
+当编码方式为 multipart/form-data-encoded 时，php://input 是无效的。这种情况一般为上传文档。这 种情况可以使用传统的 $_FILES 或者 Yii 框架中的 yii\web\UploadedFile。</p>
+<h2 id="获取请求头">获取请求头</h2>
+<ul>
+<li>getallheaders()，该方法仅在将 PHP 作为 Apache 的一个模块运行时有效</li>
+<li>http_get_request_headers(), 该方法要求 PHP 启用 HTTP 扩展</li>
+<li>$<em>SERVER 数组的方法，需要遍历整个数组，并将所有以 HTTP</em>* 元素加入到集合中去。并且要将所有 HTTP_HEADER_NAME 转换成 Header-Name 的形式，根据不同的 PHP 环境采用有效的方法来获取请求头部</li>
+</ul>
+<h2 id="502-报错">502 报错</h2>
+<p>问题原因分析：502 bade gateway 一般都是 upstream 出错，对于 PHP，造成 502 的原因常见的就是脚本执行超过 timeout 设置时间或者 timeout 设置过大，导致 PHP 进程长时间不能释放。</p>
+<p>控制 PHP 脚本执行时间的配置有两种：</p>
+<ol>
+<li>php.ini 文件中 max_execution_time (全局配置)</li>
+<li>php-fpm.conf 中 request_terminate_timeout</li>
+</ol>
+<h3 id="如何解决">如何解决</h3>
+<ol>
+<li>适当增大 php 脚本执行时间，通过修改 php.ini 或 php-fpm.conf 来配置</li>
+<li>从根本原因出发，定位 php 脚本， 查出真正导致 php 执行时间过长的原因 (例如 循环嵌套过多，数据库死锁)</li>
+<li>高并发的话考虑 php-fpm.conf 中的 max_children 最大子进程数</li>
+<li>是否启动 php-fpm</li>
+</ol>
+<h2 id="请手动释放你的资源">请手动释放你的资源</h2>
+<p><a href="https://www.laruence.com/2012/07/25/2662.html">点击阅读原文</a></p>
+<h2 id="安全配置">安全配置</h2>
+<ul>
+<li>error_reporting 设置为 Off：不要暴露错误信息给用户，开发的时候可以设置为 ON</li>
+<li>safe_mode 设置为 Off</li>
+<li>register_globals 设置为 Off</li>
+<li>禁用以下函数：system、exec、passthru、shell_exec、proc_open、popen</li>
+<li>open_basedir 设置为 /tmp, 这样可以让 session 信息有存储权限，同时设置单独的网站根目录</li>
+<li>expose_php 设置为 Off</li>
+<li>allow_url_fopen 设置为 Off</li>
+<li>allow_url_include 设置为 Off</li>
+</ul>
+<h2 id="监听方式">监听方式</h2>
+<p>Nginx 中的 fastcgi_pass 为什么有时候是 <code>unix:/tmp/php-fpm.sock</code>，有时候是 <code>127.0.0.1:9000</code> ?</p>
+<blockquote>
+<p>UNIX Domain Socket 是一种 IPC 机制，它不需要经过网络协议栈，不需要打包拆包、计算校验和、维护序号和应答等，而是直接将应用层数据从一个进程拷贝到另一个进程。</p>
+</blockquote>
+<p>两种方式的区别在于:</p>
+<ul>
+<li>UNIX Domain Socket 适用于 PHP 和 Nginx 在同一服务器，不经过协议层和网卡，可以避免数据传输经过 TCP 层造成导致 TIME_WAIT 连接过多的问题</li>
+<li>IP 地址 两种模式都支持 (无论 Nginx 和 PHP 是否位于同一服务器)</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># IP 地址方式:</span>
+</span></span><span style="display:flex;"><span>php-fpm.conf: <span style="color:#40ffff">listen</span> = 127.0.0.1:9000;
+</span></span><span style="display:flex;"><span>nginx.conf:   fastcgi_pass 127.0.0.1:9000;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># UNIX Domain Socket 方式:</span>
+</span></span><span style="display:flex;"><span>php-fpm.conf: <span style="color:#40ffff">listen</span> = /tmp/php-fpm.socknginx.conf;
+</span></span><span style="display:flex;"><span>nginx.conf:   fastcgi_pass  unix:/tmp/php-fpm.sock;
+</span></span></code></pre></div><h2 id="长连接方案">长连接方案</h2>
+<ul>
+<li><a href="https://blog.huoding.com/2018/06/23/673">通过Twemproxy提升PHP/Redis的性能</a></li>
+<li><a href="https://blog.huoding.com/2018/07/09/678">通过ProxySQL提升PHP/MySQL的性能</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MjM5ODYxMDA5OQ==&amp;mid=2651961899&amp;idx=1&amp;sn=536dcd525bd4983635c4fc2cd429046e&amp;chksm=bd2d0ff78a5a86e1d19d1b5b95d1d86cc91971053d93aa89baa620bcc6ee6cf912db7e8cedef&amp;scene=21#wechat_redirect">PHP 长链接</a></li>
+</ul>
+<p>虽然能实现，但是无法克服 PHP 的先天性缺陷，导致请求和响应对应容易出问题。</p>
+<blockquote>
+<p>每个语言都有适用的场景，PHP 目前依旧适用的场景就是管理后台 API + 中小系统 + 大型系统中需要快速迭代并验证的模块功能。</p>
+</blockquote>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://taoshu.in/go/go-is-better-php.html">Go 是更好的 PHP</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/other/interview/"><i class="fa fa-chevron-circle-left"></i> 工程师面试指北</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/tools/mac/">Mac 边边角角 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="PHP 边边角角"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

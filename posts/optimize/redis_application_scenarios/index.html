@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>降本增效之应用优化 (一) 缓存 - 蛮荆</title>
+  <title>降本增效之应用优化 (一) Redis - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="降本增效之应用优化 (一) 缓存" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="降本增效之应用优化 (一) Redis" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/optimize/redis_application_scenarios/" /><meta property="article:section" content="posts" />
@@ -17,7 +17,7 @@
 
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="降本增效之应用优化 (一) 缓存"/>
+<meta name="twitter:title" content="降本增效之应用优化 (一) Redis"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.120.3">
@@ -104,7 +104,7 @@
 
 <article>
 
-    <h1>降本增效之应用优化 (一) 缓存</h1>
+    <h1>降本增效之应用优化 (一) Redis</h1>
 
     
       
@@ -178,7 +178,7 @@
 <h2 id="单个状态值">单个状态值</h2>
 <p>这类应用场景的典型特征是每个用户只需要一个 bit 的标识位，也就是典型的 bitmap 类问题，解决方案也很简单，使用 Redis 内置的 bitmaps 数据结构即可。</p>
 <p><strong>注意</strong>: Redis 中的 bitmaps 最大支持数值为 <code>2^32</code>, 这里假设以用户 ID 作为标识字段，如果用户 ID 大于这个 <code>2^32</code>, 就无法存储了，如何解决这个问题呢？
-只需要稍微变通一下，使用 <code>ID / (2 ^ 32)</code> 的值作为 bucket 桶编号, 然后拼接具体的业务 key 就可以了。</p>
+只需要稍微变通一下，使用 <code>ID / (2 ^ 32)</code> 的值作为 bucket 桶编号, 然后拼接具体的业务 key 就可以了，最后使用 BITCOUNT 命令就可以查询统计结果了。</p>
 <p><img src="https://dbwu.tech/images/optimize/redis_5.png" alt="bucket 对应关系"></p>
 <p>笔者主要优化了以下几个简单的场景:</p>
 <ul>
@@ -186,6 +186,9 @@
 <li>每日签到</li>
 <li>青少年每日防沉迷提醒</li>
 </ul>
+<h2 id="唯一计数器">唯一计数器</h2>
+<p>HyperLogLog 实现的唯一计数器可以大大降低内存使用量，如图所示为记录唯一访客 IP 时，各种数据结构所需的内存量。</p>
+<p><img src="https://dbwu.tech/images/optimize/hyper_log.png" alt=""></p>
 <hr>
 <h2 id="数据组合">数据组合</h2>
 <p>这类应用场景的典型特征是单个接口内部需要跨多个服务进行调用，最后组装数据统一返回，笔者的优化方法为:</p>
@@ -282,7 +285,7 @@
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="降本增效之应用优化 (一) 缓存"
+        data-term="降本增效之应用优化 (一) Redis"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"

@@ -292,6 +292,9 @@
 <p>本小节概括了 Go 语言的 <code>面向对象</code> 特性以及如何使用。<code>封装</code> 通过首字母大小写区分，不需要 <code>public</code> <code>private</code> <code>protected</code>
 等关键字，<code>继承</code> 通过类型嵌套实现，直接从语法层面践行了 <code>组合优于继承</code> 的理念，<code>多态</code> 通过接口实现，从语法层面将接口定义方和接口实现方解耦，
 实现了优秀的 <code>正交性</code> 设计。</p>
+<blockquote>
+<p>“优先考虑组合，而不是继承”，本质上是鼓励开发者在设计接口时做乘法而不是做加法。</p>
+</blockquote>
 <p>在开发过程中，可以直接添加新接口，<strong>已经存在的接口无需改动，已经存在的类型只需实现新接口的方法即可</strong>，
 对于已经存在的函数，可以将函数参数类型扩展成使用 <code>接口类型</code> 的约束性参数。整个系统设计可以持续演进，而不用推翻之前的方案。
 在代码层面，不需要像基于 <code>类</code> 的面向对象语言一样，维护和适应 <code>整个类层次结构</code> 的变化。</p>
@@ -325,6 +328,8 @@
 <section class="post-nav">
     <ul>
         <li>
+        
+            <a href="https://dbwu.tech/posts/network/vxlan/"><i class="fa fa-chevron-circle-left"></i> 为什么需要 VXLAN 网络</a>
         
         </li>
         <li>

@@ -1,0 +1,646 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>Nginx 快速安装优化指南 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="Nginx 快速安装优化指南" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/nginx/install/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-10-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-10-23T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Nginx 快速安装优化指南"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>Nginx 快速安装优化指南</h1>
+
+    
+      
+<p>
+    <span>2018-10-23</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/nginx">Nginx</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <!-- raw HTML omitted -->
+<ul>
+<li><a href="#nginx-%E5%AE%89%E8%A3%85">Nginx 安装</a>
+<ul>
+<li><a href="#%E5%AE%98%E6%96%B9%E4%B8%8B%E8%BD%BD%E7%A8%B3%E5%AE%9A%E7%89%88%E6%9C%AC">官方下载稳定版本</a></li>
+<li><a href="#%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96%E7%8E%AF%E5%A2%83">安装依赖环境</a></li>
+<li><a href="#%E8%A7%A3%E5%8E%8B--%E9%A2%84%E7%BC%96%E8%AF%91">解压 &amp; 预编译</a></li>
+<li><a href="#%E7%BC%96%E8%AF%91%E5%AE%89%E8%A3%85">编译安装</a></li>
+</ul>
+</li>
+<li><a href="#%E4%BC%98%E5%8C%96%E9%85%8D%E7%BD%AE">优化配置</a>
+<ul>
+<li><a href="#%E4%BC%98%E5%8C%96-worker-%E8%BF%9B%E7%A8%8B%E6%95%B0">优化 worker 进程数</a></li>
+<li><a href="#%E7%BB%91%E5%AE%9A-cpu">绑定 CPU</a></li>
+<li><a href="#%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86%E6%A8%A1%E5%9E%8B">事件处理模型</a></li>
+<li><a href="#%E5%8D%95%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%85%81%E8%AE%B8%E7%9A%84%E6%9C%80%E5%A4%A7%E8%BF%9E%E6%8E%A5%E6%95%B0">单个进程允许的最大连接数</a></li>
+<li><a href="#%E5%8D%95%E4%B8%AA%E8%BF%9B%E7%A8%8B%E5%85%81%E8%AE%B8%E7%9A%84%E6%9C%80%E5%A4%A7%E6%96%87%E4%BB%B6%E6%95%B0">单个进程允许的最大文件数</a></li>
+<li><a href="#%E5%BC%80%E5%90%AF%E9%AB%98%E6%95%88%E6%96%87%E4%BB%B6%E4%BC%A0%E8%BE%93%E6%A8%A1%E5%BC%8F">开启高效文件传输模式</a></li>
+<li><a href="#%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6%E6%97%B6%E9%97%B4">连接超时时间</a>
+<ul>
+<li><a href="#%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6%E7%9A%84%E4%BD%9C%E7%94%A8">连接超时的作用</a></li>
+<li><a href="#%E8%BF%9E%E6%8E%A5%E8%B6%85%E6%97%B6%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98">连接超时存在的问题</a></li>
+<li><a href="#%E8%AE%BE%E7%BD%AE%E8%B6%85%E6%97%B6%E6%97%B6%E9%97%B4">设置超时时间</a></li>
+</ul>
+</li>
+<li><a href="#%E9%99%90%E5%88%B6%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6%E7%9A%84%E5%A4%A7%E5%B0%8F">限制上传文件的大小</a></li>
+<li><a href="#gzip-%E5%8E%8B%E7%BC%A9">gzip 压缩</a></li>
+<li><a href="#%E6%96%AD%E7%82%B9%E7%BB%AD%E4%BC%A0">断点续传</a></li>
+<li><a href="#expires-%E7%BC%93%E5%AD%98%E6%9C%9F%E9%99%90">expires 缓存期限</a></li>
+<li><a href="#%E9%85%8D%E7%BD%AE%E9%98%B2%E7%9B%97%E9%93%BE">配置防盗链</a></li>
+<li><a href="#server-%E4%BB%A3%E7%A0%81%E5%9D%97">server 代码块</a></li>
+<li><a href="#location-%E4%BB%A3%E7%A0%81%E5%9D%97">location 代码块</a></li>
+<li><a href="#%E5%85%A8%E5%B1%80%E5%8F%98%E9%87%8F">全局变量</a></li>
+</ul>
+</li>
+<li><a href="#%E5%AE%89%E5%85%A8%E9%85%8D%E7%BD%AE">安全配置</a>
+<ul>
+<li><a href="#%E9%9A%90%E8%97%8F%E7%89%88%E6%9C%AC%E5%8F%B7">隐藏版本号</a></li>
+<li><a href="#%E4%BF%AE%E6%94%B9%E9%BB%98%E8%AE%A4%E7%94%A8%E6%88%B7">修改默认用户</a></li>
+<li><a href="#%E6%97%A5%E5%BF%97%E5%88%87%E5%89%B2">日志切割</a></li>
+<li><a href="#robotstxt-%E6%9C%BA%E5%99%A8%E4%BA%BA%E5%8D%8F%E8%AE%AE">robots.txt 机器人协议</a></li>
+</ul>
+</li>
+<li><a href="#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86">反向代理</a>
+<ul>
+<li><a href="#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1">负载均衡</a>
+<ul>
+<li><a href="#%E5%8A%A0%E6%9D%83%E8%BD%AE%E8%AF%A2">加权轮询</a></li>
+<li><a href="#ip-hash">IP Hash</a></li>
+<li><a href="#url-hash">Url hash</a></li>
+<li><a href="#%E6%9C%80%E5%B0%8F%E8%BF%9E%E6%8E%A5">最小连接</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<!-- raw HTML omitted -->
+<h1 id="nginx-安装">Nginx 安装</h1>
+<h3 id="官方下载稳定版本">官方下载稳定版本</h3>
+<p>官方下载地址: <a href="https://nginx.org/en/download.html">https://nginx.org/en/download.html</a></p>
+<h3 id="安装依赖环境">安装依赖环境</h3>
+<ol>
+<li>安装 gcc 环境用于编译</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>yum install gcc-c++
+</span></span></code></pre></div><ol start="2">
+<li>安装 PCRE 库用于解析正则表达式</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>yum install -y pcre pcre-devel
+</span></span></code></pre></div><ol start="3">
+<li>安装 zlib 用于压缩和解压缩</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>yum install -y zlib zlib-devel
+</span></span></code></pre></div><ol start="4">
+<li>安装 SSL 用于 https</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>yum install -y openssl openssl-devel
+</span></span></code></pre></div><h3 id="解压--预编译">解压 &amp; 预编译</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>tar -zxvf nginx-1.16.1.tar.gz
+</span></span></code></pre></div><p>编译之前，先创建 Nginx 工作目录，如果不创建，在启动 nginx 的过程中会报错。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>mkdir -p /var/nginx 
+</span></span></code></pre></div><p>在 Nginx 工作目录输入如下命令进行配置，目的是为了创建 Makefile 文件。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>./configure <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--prefix=/usr/local/nginx <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--pid-path=/var/run/nginx/nginx.pid <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--lock-path=/var/lock/nginx.lock <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--error-log-path=/var/log/nginx/error.log <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--http-log-path=/var/log/nginx/access.log <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--with-http_gzip_static_module <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--http-client-body-temp-path=/var/nginx/client <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--http-proxy-temp-path=/var/nginx/proxy <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--http-fastcgi-temp-path=/var/nginx/fastcgi <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--http-uwsgi-temp-path=/var/nginx/uwsgi <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--http-scgi-temp-path=/var/nginx/scgi <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--with-http_ssl_module
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/nginx/nginx_install_1.png" alt=""></p>
+<p>然后开始安装 HTTPS 证书:</p>
+<p>将 SSL 证书 <code>*.crt</code> 和私钥 <code>*.key</code> 文件拷贝到 <code>/usr/local/nginx/conf</code> 目录中，修改配置文件，新增监听 443 端口:</p>
+<pre tabindex="0"><code>server {
+    listen       443;
+    server_name  www.example.com;
+    # 开启 ssl
+    ssl     on;
+    # 配置 ssl 证书
+    ssl_certificate      example.com.crt;
+    # 配置证书秘钥
+    ssl_certificate_key  example.com.key;
+    # ssl 会话cache
+    ssl_session_cache    shared:SSL:1m;
+    # ssl会话超时时间
+    ssl_session_timeout  5m;
+    # 配置加密套件，写法遵循 openssl 标准
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        proxy_pass backend_service_name;
+        index  index.html index.htm;
+    }
+}
+</code></pre><h3 id="编译安装">编译安装</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>make
+</span></span><span style="display:flex;"><span>make install
+</span></span></code></pre></div><p>安装完成之后，可以进入 sib 目录执行相关操作。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 启动 Nginx</span>
+</span></span><span style="display:flex;"><span>$ nginx
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 停止 Nginx</span>
+</span></span><span style="display:flex;"><span>$ /nginx -s stop
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 重新加载配置</span>
+</span></span><span style="display:flex;"><span>$ nginx -s reload
+</span></span></code></pre></div><hr>
+<h1 id="优化配置">优化配置</h1>
+<h2 id="优化-worker-进程数">优化 worker 进程数</h2>
+<p>Nginx 有 master 和 worker 两种进程，master 进程用于管理 worker 进程，worker 进程用于 Nginx 服务，参数 <code>worker_processes</code> 表示需要启动的进程数量 (默认为 1)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置为 auto 自动匹配进程数</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>worker_processes auto;
+</span></span></code></pre></div><h2 id="绑定-cpu">绑定 CPU</h2>
+<p>默认情况下，Nginx 的多个进程有可能运行在某一个 CPU 或 CPU 的某一核上，导致 Nginx 进程使用硬件的资源不均，因此绑定 Nginx 进程到不同的 CPU 上是为了充分利用硬件的多 CPU 多核资源。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>worker_processes 4;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 为每个进程分配一个 CPU 核 </span>
+</span></span><span style="display:flex;"><span>worker_cpu_affinity <span style="color:#3677a9">0001</span> <span style="color:#3677a9">0010</span> <span style="color:#3677a9">0100</span> 1000;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 自动分配</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># worker_cpu_affinity auto;</span>
+</span></span></code></pre></div><h2 id="事件处理模型">事件处理模型</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Linux 使用 epoll IO 多路复用模型</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>events {
+</span></span><span style="display:flex;"><span>  use epoll;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>当然也可以不指定事件处理模型，Nginx 会自动选择最佳的事件处理模型。</p>
+<h2 id="单个进程允许的最大连接数">单个进程允许的最大连接数</h2>
+<p>控制 Nginx 单个进程允许的最大连接数的参数为 worker_connections，这个参数要根据服务器性能和内存使用量来调整。</p>
+<p>进程的最大连接数受 Linux 系统进程打开的最大文件数的限制，只有执行了 &ldquo;ulimit -HSn 65535&rdquo; 之后，worker_connections 才能生效。</p>
+<p>连接数包括代理服务器的连接、客户端的连接等，Nginx 总并发连接数 = worker_processes * worker_connections, 测试完之后记得根据不同业务场景进行压测并调整。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置单个进程允许的最大连接数为 65536</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>worker_processes 65535;
+</span></span></code></pre></div><h2 id="单个进程允许的最大文件数">单个进程允许的最大文件数</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置单个进程打开的最大文件数为 65535 </span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>worker_rlimit_nofile 65535;    
+</span></span></code></pre></div><h2 id="开启高效文件传输模式">开启高效文件传输模式</h2>
+<p>sendfile 参数用于开启文件的高效传输模式，该参数实际上是激活了 sendfile() 功能。</p>
+<p>sendfile() 是作用于两个文件描述符之间的数据拷贝函数，这个拷贝操作是在内核之中的，被称为 &ldquo;零拷贝&rdquo; 。sendfile 比 read 和 write 函数要高效得多，因为 read 和 write 函数要把数据拷贝到应用层再进行操作。</p>
+<p>tcp_nopush 参数用于激活 Linux 上的 TCP_CORK socket 选项，尽可能发送大块的数据，减少数据包的数量，此选项仅仅当开启 sendfile 时才生效，
+tcp_nopush 参数可以把 http response header 和文件的开始部分放在一个文件里发布，以减少网络报文段的数量。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>sendfile on;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>tcp_nopush on;
+</span></span></code></pre></div><h2 id="连接超时时间">连接超时时间</h2>
+<h3 id="连接超时的作用">连接超时的作用</h3>
+<ul>
+<li>将无用的连接设置为尽快超时，可以保护服务器的系统资源（CPU、内存、磁盘）</li>
+<li>当连接很多时，及时断掉那些建立好的但又长时间不做事的连接，以减少其占用的服务器资源</li>
+<li>如果黑客攻击，会不断地和服务器建立连接，因此设置连接超时以防止大量消耗服务器的资源</li>
+<li>如果用户请求了动态服务，则 Nginx 就会建立连接，请求 FastCGI 服务以及后端数据库服务，设置连接超时，使得在用户容忍的时间内返回数据</li>
+</ul>
+<h3 id="连接超时存在的问题">连接超时存在的问题</h3>
+<ul>
+<li>服务器建立新连接是要消耗资源的，因此，连接超时时间不宜设置得太短，否则会造成并发很大，导致服务器瞬间无法响应用户的请求</li>
+<li>有些 PHP 站点会希望设置成短连接，因为 PHP 程序建立连接消耗的资源和时间相对要少些</li>
+<li>有些 Java 站点会希望设置成长连接，因为 Java 程序建立连接消耗的资源和时间要多一些，这是由语言的运行机制决定的</li>
+</ul>
+<h3 id="设置超时时间">设置超时时间</h3>
+<ul>
+<li>keepalive_timeout：用于设置客户端连接保持会话的超时时间，超过这个时间服务器会关闭该连接</li>
+<li>client_header_timeout：用于设置读取客户端请求头数据的超时时间，如果超时客户端还没有发送完整的 header 数据，服务器将返回 &ldquo;Request time out (408)&rdquo; 错误</li>
+<li>client_body_timeout：用于设置读取客户端请求主体数据的超时时间，如果超时客户端还没有发送完整的主体数据，服务器将返回 &ldquo;Request time out (408)&rdquo; 错误</li>
+<li>send_timeout：用于指定响应客户端的超时时间，如果超过这个时间，客户端没有任何活动，Nginx 将会关闭连接</li>
+<li>tcp_nodelay：默认情况下当数据发送时，内核并不会马上发送，可能会等待更多的字节组成一个数据包，这样可以提高 I/O 性能，但是，在每次只发送很少字节的业务场景中，使用 tcp_nodelay 功能，等待时间会比较长</li>
+</ul>
+<h2 id="限制上传文件的大小">限制上传文件的大小</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>client_max_body_size 128M;
+</span></span></code></pre></div><p>如果客户端文件超过 128MB, 就会收到 413 的错误响应码。</p>
+<h2 id="gzip-压缩">gzip 压缩</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 开启 gzip 压缩功能</span>
+</span></span><span style="display:flex;"><span>gzip on;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置允许压缩的页面最小字节数，页面字节数从 header 头的 Content-Length 中获取。默认值是 0，表示不管页面多大都进行压缩。</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 建议设置成大于 1K，如果小于 1K 可能会越压越大</span>
+</span></span><span style="display:flex;"><span>gzip_min_length 1k;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 压缩缓存区大小。表示申请 4 个单位的位 16K 的内存作为压缩结果流缓存，</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 默认值是申请与原始数据大小相同的内存空间来存储 gzip 压缩结构</span>
+</span></span><span style="display:flex;"><span>gzip_buffers <span style="color:#3677a9">4</span> 16k;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 压缩版本 (默认 1.1)，用于设置识别 HTTP 协议版本，默认是 1.1，目前大部分浏览器都支持 GZIP 解压，使用默认即可</span>
+</span></span><span style="display:flex;"><span>gzip_http_version 1.1;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 压缩比率。用来指定 gzip 压缩比，1 压缩比最小，处理速度最快；9 压缩比最大，传输速度快，但处理最慢，也比较消耗 CPU 资源</span>
+</span></span><span style="display:flex;"><span>gzip_comp_level 2;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 用来指定压缩的类型</span>
+</span></span><span style="display:flex;"><span>gzip_types text/plain text/css text/xml application/javascript;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># vary header 支持。该选项可以让前端的缓存服务器缓存经过 gzip 压缩的页面，例如用 Squid 缓存经过 Nginx 压缩的数据</span>
+</span></span><span style="display:flex;"><span>gzip_vary on;
+</span></span></code></pre></div><p><strong>需要注意的是</strong>: 图片和视频文件在启用压缩前需要二次确认，因为这些文件大多数都已经被压缩过了，如果再次压缩可能会适得其反。</p>
+<h2 id="断点续传">断点续传</h2>
+<p>视频等大文件可以多线程加载，支持断点续传并提高性能。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>  location ~ ^/(mp4|avi/m3u8) {
+</span></span><span style="display:flex;"><span>    add_header Access-Control-Allow-Origin *;
+</span></span><span style="display:flex;"><span>    add_header Accept-Ranges bytes;
+</span></span><span style="display:flex;"><span>    root /var/www/...;
+</span></span><span style="display:flex;"><span>    access_log off;
+</span></span><span style="display:flex;"><span>    expires 30d;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="expires-缓存期限">expires 缓存期限</h2>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    location / {
+</span></span><span style="display:flex;"><span>        proxy_pass http://tomcats;
+</span></span><span style="display:flex;"><span>            expires 10s;      <span style="color:#999;font-style:italic"># 浏览器缓存10秒钟</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">#expires @22h30m  # 在晚上10点30的时候过期</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">#expires -1h      # 缓存在一小时前时效</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">#expires epoch    # 不设置缓存</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">#expires off      # 缓存关闭，浏览器自己控制缓存</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">#expires max      # 最大过期时间</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="配置防盗链">配置防盗链</h2>
+<p>主要通过请求的 Referer 头部来确定。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    location ~* .*<span style="color:#ed9d13">\.</span>(gif|jpg|ico|png|css|svg|js)$ {
+</span></span><span style="display:flex;"><span>        valid_referers none blocked  *.example.com;
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> (<span style="color:#40ffff">$invalid_referer</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#6ab825;font-weight:bold">return</span> 403;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 合法请求</span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>更好的做法是使用 map 模块或 ngx_http_referer_module 模块来实现，这样可以避免使用 if 语句可能引发的问题。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>map <span style="color:#40ffff">$http_referer</span> <span style="color:#40ffff">$invalid_referer</span> {
+</span></span><span style="display:flex;"><span>    default 1;
+</span></span><span style="display:flex;"><span>    <span style="color:#ed9d13">&#34;~*^https?://(www\.)?example\.com&#34;</span> 0;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    location ~ <span style="color:#ed9d13">\.</span>(jpg|jpeg|png|gif)$ {
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> (<span style="color:#40ffff">$invalid_referer</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#6ab825;font-weight:bold">return</span> 403;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 合法请求</span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上面的配置通过使用 map 模块，将引用者与合法的域名进行匹配，这样可以更加灵活地配置防盗链规则。</p>
+<h2 id="server-代码块">server 代码块</h2>
+<p>server 代码块位于 http 代码块内部，可以添加多个 server，每一个 server 都可以用来配置一个虚拟主机。也就是说，每一个 server 代表了一个虚拟服务器的配置信息。</p>
+<p>server 中的主要配置有：</p>
+<ul>
+<li>listen 虚拟主机监听的端口</li>
+<li>server_name 虚拟主机的域名或 IP 地址，可以配置多个（用空格隔开）</li>
+<li>root 虚拟主机的根目录</li>
+<li>index 虚拟主机的首页，也可以用 location 代码块来配置</li>
+<li>access_log 虚拟主机的访问日志</li>
+<li>error_log 虚拟主机的错误日志</li>
+<li>error_page 错误页面</li>
+</ul>
+<h2 id="location-代码块">location 代码块</h2>
+<p>location 代码块位于 server 代码块内部，用于配置虚拟主机的 URI，每一个 server 可以配置多个 location, 根据不同的 URI 配置来处理不同的请求。</p>
+<h2 id="全局变量">全局变量</h2>
+<ul>
+<li>$args #这个变量等于请求行中的参数</li>
+<li>$content_length #请求头中的 Content-length 字段</li>
+<li>$content_type #请求头中的 Content-Type 字段</li>
+<li>$document_root #当前请求在 root 指令中指定的值</li>
+<li>$host #请求主机头字段，否则为服务器名称</li>
+<li>$http_user_agent #客户端 agent 信息</li>
+<li>$http_cookie #客户端 cookie 信息</li>
+<li>$limit_rate #这个变量可以限制连接速率</li>
+<li>$request_body_file #客户端请求主体信息的临时文件名</li>
+<li>$request_method #客户端请求的动作，通常为 GET 或 POST</li>
+<li>$remote_addr #客户端的 IP 地址</li>
+<li>$remote_port #客户端的端口</li>
+<li>$remote_user #已经经过 Auth Basic Module 验证的用户名</li>
+<li>$request_filename #当前请求的文件路径，由 root 或 alias 指令与 URI 请求生成</li>
+<li>$query_string #与$args 相同</li>
+<li>$scheme #HTTP 方法（如 http，https）</li>
+<li>$server_protocol #请求使用的协议，通常是 HTTP/1.0 或 HTTP/1.1</li>
+<li>$server_addr #服务器地址，在完成一次系统调用后可以确定这个值</li>
+<li>$server_name #服务器名称</li>
+<li>$server_port #请求到达服务器的端口号</li>
+<li>$request_uri #包含请求参数的原始 URI，不包含主机名，如：”/foo/bar.php?arg=baz”</li>
+<li>$uri #不带请求参数的当前 URI，$uri 不包含主机名，如”/foo/bar.html”</li>
+<li>$document_uri #与$uri 相同</li>
+</ul>
+<h1 id="安全配置">安全配置</h1>
+<h2 id="隐藏版本号">隐藏版本号</h2>
+<p><img src="https://dbwu.tech/images/nginx/nginx_1.png" alt="图片来源: 网络"></p>
+<h2 id="修改默认用户">修改默认用户</h2>
+<p>首先查看 Nginx 服务对应的默认用户：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>grep <span style="color:#ed9d13">&#39;#user&#39;</span> nginx.conf.default
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/nginx/nginx_2.png" alt="图片来源: 网络"></p>
+<ol>
+<li>为 Nginx 创建新用户</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>useradd nginx -s /sbin/nologin -M <span style="color:#999;font-style:italic"># 不需要有系统登录权限，应当禁止其登录能力</span>
+</span></span></code></pre></div><ol start="2">
+<li>配置 Nginx 刚创建的用户</li>
+</ol>
+<p>第一种是直接修改配置文件参数，将默认的 <code>#user nobody;</code> 修改为如下内容：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>user nginx nginx;
+</span></span></code></pre></div><p>第二种方法 (推荐使用) 为直接在编译 Nginx 软件的时候指定编译的用户名和组，这样无论配置文件中是否加参数，用户都是 nginx (固定的)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>./configure <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--user=nginx <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--group=nginx <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--prefix=/usr/local/nginx-1.18.0 <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--with-http_v2_module <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--with-http_ssl_module <span style="color:#ed9d13">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ed9d13"></span>--with-http_stub_status_module
+</span></span></code></pre></div><h2 id="日志切割">日志切割</h2>
+<p>创建一个 runlog.sh 文件，按天切割</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 日志文件路径</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">LOGPATH</span>=/usr/local/nginx/logs/access.log
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">BASEPATH</span>=/usr/local/nginx/logs/access/<span style="color:#6ab825;font-weight:bold">$(</span>date -d yesterday +%Y%m<span style="color:#6ab825;font-weight:bold">)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mkdir -p <span style="color:#40ffff">$BASEPATH</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">BACKUP</span>=<span style="color:#40ffff">$BASEPATH</span>/<span style="color:#6ab825;font-weight:bold">$(</span>date -d yesterday +%Y%m%d<span style="color:#6ab825;font-weight:bold">)</span>.access.log
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mv <span style="color:#40ffff">$LOGPATH</span> <span style="color:#40ffff">$BACKUP</span>
+</span></span><span style="display:flex;"><span>touch <span style="color:#40ffff">$LOGPATH</span>
+</span></span><span style="display:flex;"><span>/usr/local/nginx/sbin/nginx -s reopen
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/nginx/nginx_4.png" alt="图片来源: 网络"></p>
+<p>日志切割脚本配合定时任务，每天 0 点切割一次</p>
+<pre tabindex="0"><code>0 0 * * * sh /usr/local/nginx/logs/runlog.sh
+</code></pre><p><img src="https://dbwu.tech/images/nginx/nginx_5.png" alt="图片来源: 网络"></p>
+<h2 id="robotstxt-机器人协议">robots.txt 机器人协议</h2>
+<p>通过 Robots 协议告诉搜索引擎 (爬虫) 哪些页面可以抓取，哪些页面不能抓取。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#40ffff">location</span> = /robots.txt {
+</span></span><span style="display:flex;"><span>        <span style="color:#24909d">alias</span> /path/to/your/robots.txt;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># robots.txt 文件内容</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>User-agent: *
+</span></span><span style="display:flex;"><span>Disallow: /private/
+</span></span><span style="display:flex;"><span>Disallow: /restricted/
+</span></span></code></pre></div><p>Robots.txt 文件指示所有爬虫（User-agent: *）不应该爬取 /private/ 和 /restricted/ 路径下的所有内容。</p>
+<h1 id="反向代理">反向代理</h1>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>upstream [proxyName] {
+</span></span><span style="display:flex;"><span>    server 192.168.1.173:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.174:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.175:8080;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># proxy_cache_path 设置缓存保存的目录的位置</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># keys_zone设置共享内以及占用的空间大小</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># mas_size 设置缓存最大空间</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># inactive 缓存过期时间，错过此时间自动清理</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># use_temp_path 关闭零时目录</span>
+</span></span><span style="display:flex;"><span>proxy_cache_path /usr/local/nginx/upsteam_cache <span style="color:#40ffff">keys_zone</span>=mycache:5m <span style="color:#40ffff">max_size</span>=1g <span style="color:#40ffff">inactive</span>=8h <span style="color:#40ffff">use_temp_path</span>=off;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>    listem  80;
+</span></span><span style="display:flex;"><span>    server_name www.tomcats.com;
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 开启并使用缓存</span>
+</span></span><span style="display:flex;"><span>    proxy_cache mycache;
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 针对200和304响应码的缓存过期时间</span>
+</span></span><span style="display:flex;"><span>    proxy_cache_valid <span style="color:#3677a9">200</span> <span style="color:#3677a9">304</span> 8h;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    location / {
+</span></span><span style="display:flex;"><span>        proxy_pass backend_service_name;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="负载均衡">负载均衡</h2>
+<h3 id="加权轮询">加权轮询</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>upstream [proxyName] {
+</span></span><span style="display:flex;"><span>    server 192.168.1.173:8080 <span style="color:#40ffff">weight</span>=1;
+</span></span><span style="display:flex;"><span>    server 192.168.1.174:8080 <span style="color:#40ffff">weight</span>=5;
+</span></span><span style="display:flex;"><span>    server 192.168.1.175:8080 <span style="color:#40ffff">weight</span>=2;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="ip-hash">IP Hash</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>upstream [proxyName] {
+</span></span><span style="display:flex;"><span>    ip_hash
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    server 192.168.1.173:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.174:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.175:8080;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>使用注意</strong>: 不能把后端服务器直接移除，只能标记 down。</p>
+<h3 id="url-hash">Url hash</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>upstream [proxyName] {
+</span></span><span style="display:flex;"><span>    <span style="color:#24909d">hash</span> <span style="color:#40ffff">$request_url</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    server 192.168.1.173:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.174:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.175:8080;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="最小连接">最小连接</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>upstream [proxyName] {
+</span></span><span style="display:flex;"><span>    least_conn;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    server 192.168.1.173:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.174:8080;
+</span></span><span style="display:flex;"><span>    server 192.168.1.175:8080;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/system_design/principles/"><i class="fa fa-chevron-circle-left"></i> System Design Principles</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/database/mysql_ops_sql/">MySQL 运维 SQL 备忘 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="Nginx 快速安装优化指南"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

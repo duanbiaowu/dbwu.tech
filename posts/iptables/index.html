@@ -127,7 +127,11 @@
 <blockquote>
 <p>iptables 是一个配置 Linux 内核防火墙的命令行工具，它基于内核的包过滤框架（packet filtering framework） netfilter, 主要用于管理数据包过滤和 NAT 规则。</p>
 </blockquote>
-<p><img src="https://dbwu.tech/images/Netfilter-packet-flow.svg.png" alt="图片来源: https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg"></p>
+<p><img src="https://dbwu.tech/images/network/Netfilter-packet-flow.png" alt="图片来源: https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg"></p>
+<p>如图所示:</p>
+<p>绿色背景的方框，表示表（table）, 用来管理链，Linux 支持 4 种表，包括 filter（用于过滤）、nat（用于 NAT）、mangle（用于修改分组数据） 和 raw（用于原始数据包）。</p>
+<p>白色背景方框，表示链（chain）, 用来管理具体的 iptables 规则，每个表中可以包含多条链 filter 表中，内置 INPUT、OUTPUT 和 FORWARD nat 表中，内置 PREROUTING、POSTROUTING、OUTPUT。</p>
+<p>灰色背景方框，表示连接跟踪模块通过内核中的连接跟踪表（也就是哈希表），记录网络连接的状态，是 iptables 状态过滤（-m state）和 NAT 的实现基础。</p>
 <p><code>iptables</code> 与协议栈内有包过滤功能的 hook 交 互来完成工作。这些内核 hook 构成了 <code>netfilter</code> 框架。<strong>每个进入网络系统的包（接收或发送）在经过协议栈时都会触发这些 hook，
 程序可以通过注册 hook 函数的方式在一些关键路径上处理网络流量</strong>。<code>iptables</code> 相关的内核模块在这些 hook 点注册了处理函数，因此可以通过配置 <code>iptables</code> 规则来使得网络流量符合防火墙规则。</p>
 <blockquote>

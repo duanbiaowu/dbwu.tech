@@ -265,7 +265,7 @@
      </item>
    
      <item>
-       <title>降本增效之应用优化 (一) 缓存</title>
+       <title>降本增效之应用优化 (一) Redis</title>
        <link>https://dbwu.tech/posts/optimize/redis_application_scenarios/</link>
        <pubDate>Thu, 07 Sep 2023 00:00:00 +0000</pubDate>
        
@@ -495,6 +495,15 @@
        <pubDate>Wed, 10 May 2023 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/goland_best_practice/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>互联网开发与金庸武学</title>
+       <link>https://dbwu.tech/posts/other/jywx/</link>
+       <pubDate>Tue, 09 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/other/jywx/</guid>
        <description></description>
      </item>
    
@@ -1009,6 +1018,87 @@
        
        <guid>https://dbwu.tech/posts/golang_oop/</guid>
        <description>Go 语言如何实现封装、继承、多态等面向对象的特性？</description>
+     </item>
+   
+     <item>
+       <title>为什么需要 VXLAN 网络</title>
+       <link>https://dbwu.tech/posts/network/vxlan/</link>
+       <pubDate>Thu, 12 Jan 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/vxlan/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>为什么需要 VLAN 网络</title>
+       <link>https://dbwu.tech/posts/network/vlan/</link>
+       <pubDate>Thu, 05 Jan 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/vlan/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Mac 边边角角</title>
+       <link>https://dbwu.tech/posts/tools/mac/</link>
+       <pubDate>Wed, 11 Nov 2020 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/tools/mac/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>PHP 边边角角</title>
+       <link>https://dbwu.tech/posts/php_summary/</link>
+       <pubDate>Sun, 09 Feb 2020 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/php_summary/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>工程师面试指北</title>
+       <link>https://dbwu.tech/posts/other/interview/</link>
+       <pubDate>Wed, 01 Jan 2020 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/other/interview/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Git 边边角角</title>
+       <link>https://dbwu.tech/posts/tools/git/</link>
+       <pubDate>Mon, 11 Nov 2019 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/tools/git/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>MySQL 运维 SQL 备忘</title>
+       <link>https://dbwu.tech/posts/database/mysql_ops_sql/</link>
+       <pubDate>Sat, 16 Mar 2019 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/database/mysql_ops_sql/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Nginx 快速安装优化指南</title>
+       <link>https://dbwu.tech/posts/nginx/install/</link>
+       <pubDate>Tue, 23 Oct 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/nginx/install/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>System Design Principles</title>
+       <link>https://dbwu.tech/posts/system_design/principles/</link>
+       <pubDate>Fri, 16 Feb 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/system_design/principles/</guid>
+       <description></description>
      </item>
    
  </channel>

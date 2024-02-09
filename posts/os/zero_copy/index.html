@@ -274,7 +274,15 @@
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>	fmt.<span style="color:#447fcf">Printf</span>(<span style="color:#ed9d13">&#34;写入字节数: %d&#34;</span>, n)
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h2 id="扩展阅读">扩展阅读</h2>
+</span></span></code></pre></div><h2 id="附录">附录</h2>
+<h3 id="宏内核和微内核">宏内核和微内核</h3>
+<h4 id="1-宏内核">1. 宏内核</h4>
+<p>宏内核是将操作系统功能作为一个紧密结合的整体放到内核，由于各模块共享信息，因此有很高的性能。</p>
+<h4 id="2-微内核">2. 微内核</h4>
+<p>由于操作系统不断复杂，因此将一部分操作系统功能移出内核，从而降低内核的复杂性。移出的部分根据分层的原则划分成若干服务，相互独立。</p>
+<p>在微内核结构下，操作系统被划分成小的、定义良好的模块，只有微内核这一个模块运行在内核态，其余模块运行在用户态，因为需要频繁地在用户态和核心态之间进行切换，所以会有一定的性能损失。</p>
+<p><a href="../../images/os/core_type.png">内核类型</a></p>
+<h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://medium.com/swlh/why-kafka-is-so-fast-bde0d987cd03">Why Kafka Is so Fast</a></li>
 <li><a href="https://developer.ibm.com/articles/j-zerocopy/">Efficient data transfer through zero copy</a></li>

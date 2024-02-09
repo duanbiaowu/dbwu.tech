@@ -1,0 +1,451 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>为什么需要 VXLAN 网络 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="为什么需要 VXLAN 网络" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/vxlan/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-01-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-01-12T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="为什么需要 VXLAN 网络"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>为什么需要 VXLAN 网络</h1>
+
+    
+      
+<p>
+    <span>2023-01-12</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p><strong>VXLAN (Virtual Extensible LAN)</strong> 是一种网络虚拟化技术，主要用于解决传统数据中心网络面临的可伸缩性和灵活性的问题。通过在已有网络基础上创建一个逻辑上的 Overlay 覆盖网络，实现了跨物理网络的虚拟局域网（VLAN）扩展。</p>
+<h2 id="解决了哪些问题-">解决了哪些问题 ?</h2>
+<h3 id="突破-vlan-数量限制">突破 VLAN 数量限制</h3>
+<p><img src="https://dbwu.tech/images/network/vlan_vid.png" alt="VLAN 标志符"></p>
+<p>传统的 VLAN 使用 12 位的标志符作为虚拟网络的区分标识，最多可以提供 2^12 = 4096 个虚拟网络，这对于大型数据中心和多租户需求来说是远远不够的。</p>
+<p><img src="https://dbwu.tech/images/network/vxlan_vid.png" alt="VXLAN 标志符"></p>
+<p>VXLAN 使用 24 位的标志符作为虚拟网络的区分标识，最多可以提供 1600万+ (2^24 = 16777216) 个虚拟网络，极大地扩展了网络的规模。</p>
+<p>虽然 VXLAN 可以提供更多的虚拟网络，但是它并不会完全取代 VLAN, 例如在大型数据中心，可能会同时使用这两种网络标准，使用 VXLAN 将租户进行隔离，同时单个租户可以基于其 VXLAN 创建内部的 VLAN。</p>
+<h3 id="提升网络虚拟化的可扩展性">提升网络虚拟化的可扩展性</h3>
+<p>VXLAN 将网络虚拟化推到三层网络，减少了二层网络中的广播风暴问题，提高了网络的可伸缩性，(当然这个功能使用 VLAN 也可以实现)。</p>
+<h3 id="跨子网通信">跨子网通信</h3>
+<p>传统的 VLAN 基于二层网络通信，虚拟机无法跨越不同的子网通信，而 VXLAN 基于三层网络通信，可以将二层网络的数据封装之后进行传输，实现跨子网的虚拟机通信。</p>
+<p><img src="https://dbwu.tech/images/network/vxlan_cross_subnet.png" alt="图片来源: https://info.support.huawei.com/info-finder/encyclopedia/zh/VXLAN.html"></p>
+<h3 id="减少-mac-表消耗">减少 MAC 表消耗</h3>
+<p>VXLAN 采用采用隧道传输机制，交换机 (一般位于机架顶部) 无须在 MAC 表中记录虚拟机的信息，这样可以使二层网络保持低资源消耗，避免交换机的 MAC 表溢出。</p>
+<h3 id="充分利用网络路径">充分利用网络路径</h3>
+<p>STP (Spanning Tree Protocol) 是一种用于防止网络中发生环路的协议，但它的作用是通过选择一条活跃路径，而将其他冗余路径阻塞，从而确保网络拓扑是无环的。</p>
+<p><img src="https://dbwu.tech/images/network/vxlan_stp_1.png" alt="图片来源: https://www.cisco.com/c/zh_cn/support/docs/lan-switching/spanning-tree-protocol/10556-16.html"></p>
+<p>传统的的基于 STP 的 VLAN 部署中可能遇到的一个问题: 如果每个 VLAN 都独立运行 STP，可能导致网络路径的浪费。这是因为 STP 对于整个交换网络来说是全局的，而不是基于单个 VLAN 的。
+因此，STP 将会为整个交换网络选择一条活跃路径，并将其他冗余路径阻塞，而这种选择是基于整个网络而不是基于单个 VLAN。</p>
+<p>VXLAN 的数据包是封装到 UDP 通过三层网络传输和转发的，可以有效使用所有的网络路径。</p>
+<p><img src="https://dbwu.tech/images/network/vxlan_stp_2.png" alt="图片来源: https://www.cisco.com/c/zh_cn/support/docs/lan-switching/spanning-tree-protocol/10556-16.html"></p>
+<h3 id="虚拟机迁移">虚拟机迁移</h3>
+<p>传统的 VLAN 中的虚拟机在迁移之前，需要在目标子网上面重新配置 VLAN，而 VXLAN 允许虚拟网络横跨物理网络的子网，避免虚拟机跨越三层网络，使得虚拟机可以在不同的 IP 子网中移动而不受限制，减少了迁移复杂性。</p>
+<p>例如，当虚拟机所在宿主机因为故障或其他原因需要停机维护时，就需要将虚拟机迁移到其他宿主机中，为了保证业务的可持续性服务，迁移过程中虚拟机的 IP 地址不能发生变化，
+VXLAN 保证只要虚拟机迁移后仍然处于同一个二层网络，就不需要改变 IP 地址。</p>
+<h3 id="多租户环境增强">多租户环境增强</h3>
+<p>VXLAN 支持多租户环境，使得不同租户的数据可以在同一物理网络基础上独立传输，并允许 IP 地址空间重叠，避免了流量数据泄露和潜在的安全隐患，此外还可以使用差异化的服务质量 (QoS) 策略和服务级别协议 (SLA) 配置网段。</p>
+<hr>
+<h2 id="实现原理">实现原理</h2>
+<p>本质上就是参考了 OSI 网络模型的设计中数据封装和转发，<strong>VxLAN 使用虚拟隧道端点（Virtual Tunnel End Point、VTEP）设备对服务器发出和收到的数据包进行二次封装和拆包，
+将原本在二层网络传输的 以太帧 封装到网络四层的 UDP 数据包中</strong>，同时加入自定义的 VXLAN 协议 Header 首部。这样就可以在已有的网络基础上跨越各类设备通信，包括防火墙和路由器。</p>
+<h3 id="传输协议">传输协议</h3>
+<p>VXLAN 使用网络层的 IP 协议 + 传输层的 UDP 协议完成传输，通过定义一个数据封装格式，在原始的二层网络数据包之前加上 VXLAN Header, 然后放入 UDP 和 IP 数据包中，
+这样就完成了基于三层网络建立的二层网络隧道。</p>
+<h3 id="头部格式">头部格式</h3>
+<p><img src="https://dbwu.tech/images/network/vxlan_header_2.png" alt="VXLAN 头部格式"></p>
+<p>由 8 个字节组成，包括标志位、VNI 标志符和其他控制信息，这种紧凑的头部设计有助于降低额外的网络开销。</p>
+<ul>
+<li><strong>标志位 (Flags)</strong>: 8 比特，用于标识 VXLAN 头部的特性，目前只使用了最低位（bit 0），该位为 &ldquo;I&rdquo; 比特，表示 VXLAN 包是否包含附加的 VXLAN 标头</li>
+<li><strong>保留位 (Reserved)</strong>: 24 比特，保留用于将来扩展协议时使用</li>
+<li><strong>VXLAN 网络标识符 (VNI - VXLAN Network Identifier)</strong>: 24 比特，用于标识 VXLAN 网络的唯一标识符，每个 VXLAN 网络都应该有一个唯一的 VNI (也就是用一个数字标识一个虚拟网络)</li>
+<li><strong>原始以太网帧 (Original L2 Frame)</strong>: 用于携带实际的网络数据包，也就是封装在 VXLAN 头部中的原始以太网帧</li>
+</ul>
+<p>VXLAN 头部设置完成之后，会被层层封装: UDP -&gt; IP -&gt; MAC, 如图所示，最终形成的数据包会通过三层网络发出。</p>
+<ul>
+<li><strong>Outer UDP Header</strong>: 封装 原始二层以太帧 + VXLAN Header, 源 VXLAN 端口号通常是动态随机分配的，目的 VXLAN 端口号通常固定为 4789</li>
+<li><strong>Outer IP Header</strong>: 封装 IP Header, 由 VTEP 设备完成，也就是 <strong>源 IP 地址 (VTEP 的 IP 地址)</strong> 和 <strong>目的 IP 地址 (对端 VTEP 的 IP 地址)</strong></li>
+<li><strong>Outer MAC Header</strong>: 封装 MAC Header, 由 VTEP 设备完成，也就是 <strong>源 MAC 地址 (VTEP 的 MAC 地址)</strong> 和 <strong>目的 MAC 地址 (下一跳的网络(路由)设备 MAC 地址)</strong></li>
+</ul>
+<h3 id="vtep">VTEP</h3>
+<p><img src="https://dbwu.tech/images/network/vtep.png" alt="图片来源: https://blogs.salleurl.edu/en/data-center-interconnect"></p>
+<p><strong>VTEP (VXLAN Tunnel Endpoint) 是 VXLAN 的关键组件，负责将 VXLAN 虚拟网络数据包进行封装和解封装，VTEP 既可以是网络物理设备 (交换机) 也可以是虚拟设备 (普通服务器通过软件实现的，例如 KVM)</strong>。</p>
+<p><strong>每个 VTEP 设备都会被分配一个独立的 IP 地址和一个 VNI 标志</strong>，用于标识该设备在物理网络中的位置，这个 IP 地址通常是在 VTEP 设备的物理接口或逻辑接口上配置的。
+该 IP 地址在 VXLAN 报文头部中被使用，便于在数据包封装和解封的过程中识别出 <strong>源 VTEP 和目标 VTEP</strong>。两个 VTEP 设备之间会创建无状态隧道用于传输数据。</p>
+<blockquote>
+<p>VXLAN 独立于底层的物理网络拓扑，反过来，两个 VTEP 之间的底层 IP 网络也独立于 VXLAN。</p>
+</blockquote>
+<p>由于 VXLAN 封装在 UDP 数据包内，因此它们可以在任何能够传输 UDP 数据包的网络上运行，只需要保证 UDP 数据报可以从封装 VTEP 转发到解封装 VTEP 即可，底层网络节点之间的物理布局和地理距离并不重要。</p>
+<h3 id="封装和解封装过程">封装和解封装过程</h3>
+<p><img src="https://dbwu.tech/images/network/vtep_flow.png" alt="图片来源: https://blogs.salleurl.edu/en/data-center-interconnect"></p>
+<h4 id="发送端封装">发送端封装</h4>
+<p>当一个主机 (物理主机或虚拟机) 要发送数据包到另一个主机时，VTEP 设备负责将原始的以太网帧封装到 VXLAN 数据报文中，封装的过程包括在原始帧上加上 VXLAN Header，
+其中包含 <strong>VXLAN 网络标识符 (VNI)，以及 源 VTEP 和目标 VTEP 的 IP 地址信息</strong>，这样原始帧就变为一个 VXLAN 帧。</p>
+<h4 id="接收端解封装">接收端解封装</h4>
+<p><strong>接收端的目标 VTEP 通过解析 VXLAN Header，识别出 VXLAN 网络标识符 (VNI)，并将原始帧从 VXLAN 封装报文中解析出来</strong>。
+然后目标 VTEP 将原始帧发送到目标主机 (物理主机或虚拟机) ，这个解封装的过程允许跨物理网络的虚拟机进行通信，因为基于三层网络的 VXLAN 提供了一种逻辑隔离和扩展机制。</p>
+<p>通过数据包封装和解封装，<strong>底层网络所做的转换工作对于通信的双方来说是透明的</strong>。</p>
+<hr>
+<h2 id="通信过程">通信过程</h2>
+<p>转载声明：本小节内容主要来源于 <a href="https://support.huawei.com/enterprise/zh/doc/EDOC1100087027/f10c6c1d">这篇文章</a>, 笔者在自己理解的基础之上对排版和文字进行部分修改。</p>
+<h3 id="网络拓扑结构">网络拓扑结构</h3>
+<p><img src="https://dbwu.tech/images/network/vxlan_demo_1.png" alt="图片来源: https://support.huawei.com/enterprise/zh/doc/EDOC1100087027/f10c6c1d"></p>
+<p>如图所示，虚拟机 (VM_A)、虚拟机 (VM_B) 、虚拟机 (VM_C) 同属一个子网: 10.1.1.0/24, 并且同属一个 VNI/5000，此时 VM_A 想与 VM_C 进行通信，
+这中间的通信过程是什么样的呢？下面跟着流程图一起看来下。</p>
+<p>为了方便展示和联系上下文，下文中的设备名称和地址等直接使用简写，例如</p>
+<ul>
+<li>VM_A 表示虚拟机 A</li>
+<li>MAC_B 表示虚拟机 B 的 MAC 地址</li>
+<li>IP_C 表示虚拟机 C 的 IP 地址</li>
+<li>VTEP_1 表示编号为 1 的 VTEP 设备</li>
+</ul>
+<h3 id="arp-请求报文转发流程">ARP 请求报文转发流程</h3>
+<p>由于是首次进行通信，VM_A 上没有 VM_C 的 MAC 地址，所以会发送 ARP 广播请求 VM_C 的 MAC 地址。</p>
+<p><img src="https://dbwu.tech/images/network/vxlan_demo_2.png" alt="图片来源: https://support.huawei.com/enterprise/zh/doc/EDOC1100087027/f10c6c1d"></p>
+<p><strong>1. VM_A 发送 ARP 广播请求报文</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源 MAC 地址</td>
+<td>MAC_A</td>
+</tr>
+<tr>
+<td>目的 MAC 地址</td>
+<td><code>FF:FF:FF:FF:FF:FF</code></td>
+</tr>
+<tr>
+<td>源 IP 地址</td>
+<td>IP_A</td>
+</tr>
+<tr>
+<td>目的 IP 地址</td>
+<td>IP_C</td>
+</tr>
+</tbody>
+</table>
+<p><strong>2. VTEP_1 封装 ARP 请求报文</strong></p>
+<p>VTEP_1 收到 ARP 请求报文之后，会依次进行如下工作:</p>
+<ul>
+<li>根据二层子接口上的配置判断请求报文需要进入 VXLAN 隧道</li>
+<li>确定请求报文所属广播域，也就确定了报文所属 VNI</li>
+<li>学习 VM_A 的 <code>MAC_A + VNI + Port</code> (二层子接口对应的物理接口) 的映射关系，并记录在 MAC 表中</li>
+<li>对请求报文进行封装，封装之后的报文如下</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源 MAC 地址</td>
+<td>VTEP_1 的 MAC 地址</td>
+</tr>
+<tr>
+<td>目的 MAC 地址</td>
+<td><code>网络中下一跳设备的 MAC 地址</code></td>
+</tr>
+<tr>
+<td>源 IP 地址</td>
+<td>VTEP_1 的 IP 地址</td>
+</tr>
+<tr>
+<td>目的 IP 地址</td>
+<td>对端 VTEP 设备的 IP 地址 (也就是 VTEP_2, VTEP_3 的 IP 地址)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>需要注意的是</strong>: 实际场景中，对端 VTEP 设备可能有 N 个，那么就会发出 N 个封装后的报文请求。</p>
+<p><strong>3. ARP 请求报文解封装</strong></p>
+<p>请求报文到达 VTEP_2, VTEP_3 之后，两者会依次进行如下工作:</p>
+<ul>
+<li>对报文进行解封装，得到 VM_A 的原始 ARP 请求报文</li>
+<li>学习 VM_A 的 <code>MAC_A + VNI + 对端 VTEP_1 IP 地址</code> 的映射关系，并记录在各自的 MAC 表中</li>
+<li>根据二层子接口上的配置对报文进行处理，并在各自对应的二层域内进行广播</li>
+<li>VM_B 和 VM_C 接收到 VM_A 的原始 ARP 请求报文之后，比较目的 IP 地址是否为自己的 IP 地址</li>
+<li><strong>VM_B 发现目的 IP 地址不是自己，直接将请求报文丢弃</strong>，没有后文了 &hellip;</li>
+<li><strong>VM_C 发现目的 IP 地址是自己，学习 VM_A 的 MAC_A + IP 并记录在 ARP 缓存表中，并且对 VM_A 的 ARP 请求做出应答</strong></li>
+</ul>
+<p>从 VM_A 上发出的原始 ARP 请求报文经过层层封装和转发，终于到达了目的地 VM_C，这<strong>中间经过了一次广播 (或多播, 取决于具体的配置)</strong>，因为 VTEP 设备有自动学习的能力，
+所以请求沿途经过和到达的 VTEP 设备都将各自需要的映射信息记录在各自的 MAC 表中。</p>
+<p>接下来，我们看看 VM_C 是如何应答 VM_A 的 ARP 请求的。</p>
+<h3 id="arp-响应报文转发流程">ARP 响应报文转发流程</h3>
+<p><img src="https://dbwu.tech/images/network/vxlan_demo_3.png" alt="图片来源: https://support.huawei.com/enterprise/zh/doc/EDOC1100087027/f10c6c1d"></p>
+<p><strong>1. VM_C 发出应答报文</strong></p>
+<p>因为 VM_C 已经学习了 VM_A 的 MAC + IP 记录，所以 <strong>ARP 应答报文为单播</strong>。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源 MAC 地址</td>
+<td>MAC_C</td>
+</tr>
+<tr>
+<td>目的 MAC 地址</td>
+<td>MAC_A</td>
+</tr>
+<tr>
+<td>源 IP 地址</td>
+<td>IP_C</td>
+</tr>
+<tr>
+<td>目的 IP 地址</td>
+<td>IP_A</td>
+</tr>
+</tbody>
+</table>
+<p>通过报文我们可以看到，VM_C 的应答报文 和 VM_A 的请求报文正好反过来。</p>
+<p><strong>2. VTEP_3 封装 ARP 应答报文</strong></p>
+<p>VTEP_3 收到 ARP 应答报文之后，会依次进行如下工作:</p>
+<ul>
+<li>根据二层子接口上的配置判断请求报文需要进入 VXLAN 隧道，识别报文所属 VNI</li>
+<li>学习 VM_C 的 <code>MAC_A + VNI + Port</code> (二层子接口对应的物理接口) 的映射关系，并记录在 MAC 表中</li>
+<li>对应答报文进行封装，封装之后的报文如下</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>源 MAC 地址</td>
+<td>VTEP_3 的 MAC 地址</td>
+</tr>
+<tr>
+<td>目的 MAC 地址</td>
+<td><code>网络中下一跳设备的 MAC 地址</code></td>
+</tr>
+<tr>
+<td>源 IP 地址</td>
+<td>VTEP_3 的 IP 地址</td>
+</tr>
+<tr>
+<td>目的 IP 地址</td>
+<td>VTEP_1 的 IP 地址</td>
+</tr>
+</tbody>
+</table>
+<p><strong>3. ARP 应答报文解封装</strong></p>
+<p>ARP 应答报文到达 VTEP_1 之后，会依次进行如下工作:</p>
+<ul>
+<li>对报文进行解封装，得到 VM_C 的原始 ARP 应答报文</li>
+<li>学习 VM_C 的 <code>MAC_C + VNI + 对端 VTEP_3 IP 地址</code> 的映射关系，并记录在 MAC 表中</li>
+<li>VTEP_1 将应答报文发送给 VM_A</li>
+<li><strong>VM_A 学习 VM_C 的 MAC_A + IP 并记录在 ARP 缓存表中</strong></li>
+</ul>
+<p>到了这里，从 VM_A 发起的 ARP 请求到应答通信过程就结束了，因为 VM_A 和 VM_C 都学习到了对方的 MAC + IP 地址，后续两者之间的通信会直接采用单播。</p>
+<h3 id="小结">小结</h3>
+<p>在 VM_A 和 VM_C 的整个通信过程中，只有发出一次广播 (或多播, 取决于具体的配置)，得益于 VTEP 设备的自动学习能力，后续的报文都是通过单播直接发送的。
+可以想象，如果 VTEP 设备没有自动学习能力的话，在 VTEP 数量很多的情况下，依然会产生 ARP 广播风暴问题。
+除了本文提到的广播 (多播) 学习模式外，还可以通过 SDN 模式的分布式控制中心来管理整个 VXLAN 网络，限于笔者工作经验和篇幅，本文不再展开，感兴趣的读者可以自行查找相关资料。</p>
+<p>限于篇幅，本文只介绍同一子网内 VXLAN 的通信过程，对于<strong>不同子网 VXLAN 的通信过程，本质上就是在不同的 VTEP 设备之间加入了网关，以及不同子网使用不同的 VNI</strong>,
+报文的封装、转发、解封装、MAC 学习等机制和同一子网内通信机制是类似的，相信读者可以在前文的基础上理解具体的差异。</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc7348">Virtual eXtensible Local Area Network (VXLAN)</a></li>
+<li><a href="https://www.juniper.net/us/en/research-topics/what-is-vxlan.html">What is VXLAN?</a></li>
+<li><a href="https://thisbridgeistheroot.com/blog/how-does-vxlan-work-and-why-is-it-being-used-everywhere">What is VXLAN and why is it being used EVERYWHERE?</a></li>
+<li><a href="https://support.huawei.com/enterprise/zh/doc/EDOC1100087027/f10c6c1d?idPath=24030814%7C21782165%7C21782239%7C252837181">什么是VXLAN</a></li>
+<li><a href="https://cizixs.com/2017/09/28/linux-vxlan/">linux 上实现 vxlan 网络</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/vlan/"><i class="fa fa-chevron-circle-left"></i> 为什么需要 VLAN 网络</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_oop/">Go 的面向对象编程 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="为什么需要 VXLAN 网络"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

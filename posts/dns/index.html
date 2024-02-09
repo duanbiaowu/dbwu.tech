@@ -316,6 +316,8 @@ Linux系统里面，<code>DNS</code> 服务器的 IP 地址保存在 <code>/etc/
 </span></span><span style="display:flex;"><span>$ dig +short ns stackexchange.com
 </span></span></code></pre></div><h2 id="八dns-的记录类型">八、DNS 的记录类型</h2>
 <p>域名与 IP 之间的对应关系，称为 &ldquo;记录&rdquo;（record）。根据使用场景，&ldquo;记录&quot;可以分成不同的类型（type），前面已经看到了有 <code>A</code> 记录和 <code>NS</code> 记录。</p>
+<p>域名系统是分层次的，一些 DNS 服务器位于顶层，当查询（域名） IP 时，路由或 ISP 提供连接 DNS 服务器的信息。较底层的 DNS 服务器缓存映射，
+它可能会因为 DNS 传播延时而失效。DNS 结果可以缓存在浏览器或操作系统中一段时间，时间长短取决于 <a href="https://en.wikipedia.org/wiki/Time_to_live">存活时间 TTL</a>。</p>
 <p>常见的 DNS 记录类型如下。</p>
 <ul>
 <li><strong>A</strong>：地址记录（Address），返回域名指向的 IP 地址。</li>
@@ -397,7 +399,8 @@ Linux系统里面，<code>DNS</code> 服务器的 IP 地址保存在 <code>/etc/
 </ul>
 <h2 id="转载声明">转载声明</h2>
 <p>本文转载自 <a href="http://www.ruanyifeng.com/blog/2016/06/dns.html">DNS 原理入门</a>，笔者在文字描述和图片排版上略作修改。</p>
-<h2 id="小结">小结</h2>
+<h2 id="附录">附录</h2>
+<h3 id="dns-流程">DNS 流程</h3>
 <p>下面是笔者补充的部分，简述下 <code>DNS</code> 的流程。</p>
 <p><img src="https://dbwu.tech/images/dns_2.png" alt="图片来源: https://aws.amazon.com/cn/route53/what-is-dns/"></p>
 <ul>
@@ -414,12 +417,57 @@ Linux系统里面，<code>DNS</code> 服务器的 IP 地址保存在 <code>/etc/
 <li><code>Local DNS</code> 缓存这个 IP 地址，并且返回给浏览器</li>
 <li>浏览器和返回的 IP 地址建立 TCP 连接，发送 HTTP 报文</li>
 </ul>
-<h2 id="如何自建-dns-服务器">如何自建 DNS 服务器</h2>
+<h3 id="dns-预加载">DNS 预加载</h3>
+<p>DNS 查询需要个 RTT 时间，在浏览器级别、系统级别都有一层 DNS 缓存，之前解析过的可以直接从本机缓存获取，以减少延迟。</p>
+<p>Web 标准提供了一种 DNS 预解析技术，因为服务器是知道页面即将会发生哪些请求的，那我们可以在页面顶部，插入 <code>&lt;link rel=&quot;dns-prefetch&quot; href=&quot;//host/&quot;&gt;</code>，让浏览器先解析一下这个域名。后续扫到同域的请求，就可以直接从 DNS 缓存获取了。</p>
+<p>此外 Web 标准也提供 <code>prefetch，prerender</code> 的预加载技术。prefectch 会在浏览器空闲的时候，向所提供的链接发起请求，而 prerender 不仅会请求，还会帮你在后台渲染页面。
+如果在一个页面中，你知道用户有很大概率去点某个链接，可以尝试把这个链接加到 prefetch 或 prerender，那么用户点击时就会秒开这个页面了。</p>
+<h3 id="迭代查询和递归查询">迭代查询和递归查询</h3>
+<blockquote>
+<p>递归查询时，过程查询的递交者变化。
+迭代查询时，过程查询的递交者不变，关键在于查询主体。</p>
+</blockquote>
+<p>对于递归查询来说，只知道某个 DNS 服务器解析了 example.com，并不关系这中间的过程是如何实现的 (黑盒模式，甩手掌柜)。</p>
+<p>对于迭代查询来说，客户端先查到根服务器的地址，再从根服务器查到权威服务器，然后从权威服务器一直向下查询 &hellip;, 直到返回最终的解析结果 (白盒模式，亲力亲为)。</p>
+<p>使用 <code>dig</code> 命令时，加上 <code>+trace</code> 参数可以强制采用迭代查询:</p>
+<p><img src="https://dbwu.tech/images/network/dig_trace.png" alt="dig 迭代查询示例"></p>
+<h3 id="如何自建-dns-服务器">如何自建 DNS 服务器</h3>
 <ul>
 <li>在自己的服务器上 (例如 10.0.0.1) 构建一个 <code>DNS</code> 服务 (可以理解为一个软件，支持 <code>DNS</code> 协议，就像 Nginx 支持 HTTP 协议)</li>
 <li>在域名系统管理后台，新增一条 CNAME 记录，将域名的解析转交给 10.0.0.1</li>
 <li>10.0.0.1 可以自定义返回各个域名对应的 IP 地址，实现自定义 <code>DNS</code> 服务器</li>
 </ul>
+<h3 id="dns-安全问题">DNS 安全问题</h3>
+<h4 id="放大攻击">放大攻击</h4>
+<p><img src="https://dbwu.tech/images/network/dig_attack_1.png" alt="DNS 放大攻击"></p>
+<p><img src="https://dbwu.tech/images/network/dig_attack_2.png" alt="DNS 放大攻击"></p>
+<p>如图所示为执行 <code>dig ANY isc.org</code> 命令解析 isc.org 时抓的包，可见 6 号包发出去的请求只有 25 字节，而 11 号包收到的回复却能达到 3111 字节，回复数据被放大了 124 倍。</p>
+<p>假如在 6 号包里伪造一个想要攻击的源地址，那该地址就会莫名收到 DNS 服务器 3111 字节的回复，利用这个放大效应，只要控制少量计算机 (肉鸡) 就能把一个大网站攻击瘫痪。</p>
+<h4 id="httpdns">HTTPDNS</h4>
+<blockquote>
+<p>HTTPDNS 本质上是通过 HTTP 完成对 DNS 版本的 “服务发现”。</p>
+</blockquote>
+<p>使用 HTTPDNS 取代常规的 DNS 解析。这是很多移动应用会选择的方法，使用 HTTP 协议绕过链路中的 DNS 服务器，可以避免域名劫持问题。</p>
+<h5 id="工作原理">工作原理</h5>
+<ol>
+<li>应用请求: 移动设备或应用通过发送 HTTP 请求来获取特定域名的 IP 地址</li>
+<li>DNS 解析服务器: HTTPDNS 解析服务器接收到请求后，会根据请求中的域名信息进行解析</li>
+<li>返回 IP 地址: 解析服务器将域名对应的 IP 地址通过 HTTP 返回给移动设备或应用</li>
+<li>缓存机制: HTTPDNS 通常会在解析服务器中设置缓存机制，以减少对真实 DNS 服务器的请求次数 (提升性能)</li>
+</ol>
+<h5 id="优点和使用场景">优点和使用场景</h5>
+<ol>
+<li>避免 DNS 污染: HTTPDNS 通过使用 HTTP 绕过了 DNS 被污染返回错误的 IP 地址问题</li>
+<li>负载均衡和性能优化: HTTPDNS 可以根据网络状况和用户位置，动态地返回最优的 IP 地址</li>
+<li>灵活性： HTTPDNS 域名解析的结果由服务器端控制 (类似 SDN 的思路)，可以灵活地配置和调整 IP 地址</li>
+<li>移动网络优化: HTTPDNS 可以适应不同的移动网络环境，提供稳定的用户体验</li>
+</ol>
+<h3 id="gslb">GSLB</h3>
+<p>基于 DNS 的全局负载均衡 GSLB (Global Server Load Balancing), 不仅为服务提供了负载均衡和高可用的功能，还可以在多个地理位置或数据中心之间进行负载均衡，确保用户的请求被发送到最合适的服务器。</p>
+<p><img src="../images/network/gslb.png" alt=""></p>
+<p>在 DNS 解析域名的同时使用负载均衡算法计算服务器 IP 地址。大型网站基本使用了 DNS 做为第一级负载均衡手段，然后在内部使用其它方式做第二级负载均衡。也就是说，域名解析的结果为内部的负载均衡服务器 IP 地址。</p>
+<p><strong>优点</strong>： DNS 能够根据地理位置进行域名解析，返回离用户最近的服务器 IP 地址。</p>
+<p><strong>缺点</strong>： 由于 DNS 具有多级结构，每一级的域名记录都可能被缓存，当下线一台服务器需要修改 DNS 记录时，需要过很长一段时间才能生效。</p>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://scoolor.github.io/2018/11/10/dns-udp-tcp/">为什么 DNS 同时使用 TCP 和 UDP</a></li>

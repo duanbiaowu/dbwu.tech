@@ -1453,6 +1453,38 @@
 <li>G 的关联问题: <code>G</code> 优先放入绑定的本地 <code>P</code> 队列, 其次放入全局队列，最小化锁争用</li>
 <li>全局锁问题: <code>G</code> 优先放入绑定的本地 <code>P</code> 队列, 其次放入全局队列，最小化锁争用</li>
 </ol>
+<h3 id="goroutine-调度时机">goroutine 调度时机</h3>
+<p>下面的场景可能会触发 Scheduler 重新调度。</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>使用关键字 go</td>
+<td>go 创建一个新的 goroutine，Go scheduler 可能会调度</td>
+</tr>
+<tr>
+<td>GC</td>
+<td>由于执行 GC 工作的 goroutine 也需要在 M 上运行，因此肯定会发生调度</td>
+</tr>
+<tr>
+<td>syscall</td>
+<td>当 goroutine 进行系统调用时，会阻塞 M，所以它会被调度走，同时一个新的 goroutine 会被调度过来</td>
+</tr>
+<tr>
+<td>Gosched</td>
+<td>调用  runtime.Gosched() 方法</td>
+</tr>
+<tr>
+<td>内部同步访问</td>
+<td>atomic，mutex，channel 操作等会使 goroutine 阻塞，因此会被调度走，等待条件满足后（例如其他 goroutine 解锁了）还会被调度过来继续运行</td>
+</tr>
+</tbody>
+</table>
 <h2 id="小结-2">小结</h2>
 <p><img src="https://dbwu.tech/images/GMP_2.png" alt="GMP 调度概览图"></p>
 <p>本文主要对 <code>GMP</code> 调度中涉及到的五个部分做了代码分析:</p>
