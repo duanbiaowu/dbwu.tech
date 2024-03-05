@@ -949,6 +949,15 @@
      </item>
    
      <item>
+       <title>LeetCode 位运算刷题模板</title>
+       <link>https://dbwu.tech/posts/algorithm/leetcode_bit_pattern/</link>
+       <pubDate>Thu, 16 Feb 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/algorithm/leetcode_bit_pattern/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>如何设计一个无状态应用</title>
        <link>https://dbwu.tech/posts/cloudnative/how_to_design_stateless_app/</link>
        <pubDate>Thu, 16 Feb 2023 00:00:00 +0000</pubDate>

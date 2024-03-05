@@ -1,0 +1,440 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>LeetCode 位运算刷题模板 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="LeetCode 位运算刷题模板" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/leetcode_bit_pattern/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-02-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-02-16T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LeetCode 位运算刷题模板"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>LeetCode 位运算刷题模板</h1>
+
+    
+      
+<p>
+    <span>2023-02-16</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>打开 LeetCode 官网，根据标签筛选题目，可以看到 “位运算” 相关的题目一共有 226 道题，如果我们逐个题目全部刷完，要投入相当可观的时间精力，
+而且因为位运算类型题目并不是高频考题，所以更聪明的方式是掌握核心考点，了解常考题目，以最小的时间投入换取更大的刷题效率回报。</p>
+<p><img src="https://dbwu.tech/images/algorithm/leetcode_bit_manipulation.png" alt="LeetCode 运运算相关题目数量"></p>
+<p>当面试中出现 “位运算” 相关题目时，大部分情况下，主考官的考点绝对不是使用位运算来实现各种奇技淫巧，而是考察求职者对于位运算的基础掌握情况，
+也就是常见的 <strong>AND</strong>, <strong>OR</strong>, <strong>XOR</strong>, <strong>Complement</strong>, <strong>位移</strong> 操作，确认了刷题目标，我们就可以将刷题策略 (方法) 简化为三步：</p>
+<ol>
+<li>熟练掌握常用位运算 (夯实基础)</li>
+<li>筛选出 LeetCode 中和 “位运算” 相关的高频考题，分析每个题的核心考点 (触类旁通)</li>
+<li>提炼核心考点并根据题目进行分类，深入理解并掌握每种题型并形成模板，理想情况下，看到题目时，可以快速进行分类并套用对应的模板解题 (举一反三)</li>
+</ol>
+<h2 id="笔者经验">笔者经验</h2>
+<p>笔者只刷过简单和中等难度的 “位运算” 题目，其中 70% 简单题，30% 的中等题，代码基本都在 10 行以内，对于困难级别的题目，虽然标签中有 “位运算”，
+但是如果使用位运算来解题的话，代码复杂度会很高，因为这类题目的考点并非 “位运算”，而是其他方面的知识点考察，例如贪心、回溯、DFS 等，只是恰好可以使用 “位运算” 来解题。</p>
+<p>如果读者时间精力有限的话，针对这类困难的 “位运算” 相关题目，不建议研究位运算的解法，而是应该尝试从其他方向解题。</p>
+<p>此外，如上文中提到的，真正的面试中，“位运算” 并非高频考题，所以笔者认为正确的或者说更有价值的选择应该是时间投入到更高频的题目上，例如二叉树类、链表类、排序类题目。
+下面笔者就自己的刷题经验，做一个简单的分享。</p>
+<hr>
+<h2 id="统计位-1-的个数">统计位 1 的个数</h2>
+<p>几乎 30% “位运算” 相关的题都是此题的衍生题，所以这里直接提炼出一个通用解题模板，遇到类似题目时，直接套模板即可。</p>
+<h3 id="原题">原题</h3>
+<p><strong>191 题. 位 1 的个数</strong></p>
+<p>编写一个函数，输入是一个无符号整数（以二进制串的形式），返回其二进制表达式中数字位数为 &lsquo;1&rsquo; 的个数（也被称为汉明重量）。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>输入：n = <span style="color:#3677a9">00000000000000000000000000001011</span>
+</span></span><span style="display:flex;"><span>输出：3
+</span></span><span style="display:flex;"><span>解释：输入的二进制串 <span style="color:#3677a9">00000000000000000000000000001011</span> 中，共有三位为 <span style="color:#ed9d13">&#39;1&#39;</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>输入：n = <span style="color:#3677a9">00000000000000000000000010000000</span>
+</span></span><span style="display:flex;"><span>输出：1
+</span></span><span style="display:flex;"><span>解释：输入的二进制串 <span style="color:#3677a9">00000000000000000000000010000000</span> 中，共有一位为 <span style="color:#ed9d13">&#39;1&#39;</span>
+</span></span></code></pre></div><h3 id="模板">模板</h3>
+<p><img src="https://dbwu.tech/images/algorithm/remove_right_bit2.png" alt="去掉最右边的 1 - 执行过程"></p>
+<p>下面的方法可以计算出一个数字的二进制表示中位为 1 的个数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">onesCount</span>(num <span style="color:#6ab825;font-weight:bold">uint32</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 累计器初始值设置为 0 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    cnt := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> num != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 每次去掉二进制表示中最右边的 1 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 过程可以参考上面的示例图
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        num &amp;= num - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 增加累计结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        cnt++
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 返回累计结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">return</span> cnt
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="衍生题目">衍生题目</h3>
+<p>有了上面的模板之后，我们在遇到相关衍生题目时，就可以直接套用模板，然后快速解题。</p>
+<h4 id="338-题-比特位计数"><strong>338 题. 比特位计数</strong></h4>
+<p>给你一个整数 n ，对于 0 &lt;= i &lt;= n 中的每个 i ，计算其二进制表示中 1 的个数 ，返回一个长度为 n + 1 的数组 ans 作为答案。</p>
+<p>解题思路: 也就是计算从 0 到 n 之间，每个数字中的位为 1 的个数，直接套用模板加循环即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 伪代码实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">countBits</span>(num <span style="color:#6ab825;font-weight:bold">int</span>) []<span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    res: = <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>,num+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt;= num; i++{
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 逐个计算数字的二进制表示中 1 的个数 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        res[i] = <span style="color:#447fcf">onesCount</span>(i)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="762-题-二进制表示中质数个计算置位"><strong>762 题. 二进制表示中质数个计算置位</strong></h4>
+<p>给你两个整数 left 和 right ，在闭区间 [left, right] 范围内，统计并返回 计算置位位数为质数 的整数个数。</p>
+<p>解题思路：和刚才的题目类似，只是多加了一层判断是否为质数的处理逻辑，直接套用模板加循环即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 伪代码实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">countPrimeSetBits</span>(left <span style="color:#6ab825;font-weight:bold">int</span>, right <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> res <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> ; left &lt;= right; left++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#447fcf">isPrime</span>(<span style="color:#447fcf">onesCount</span>(<span style="color:#24909d">uint32</span>(left))) {
+</span></span><span style="display:flex;"><span>			res++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 判断一个数字是否为质数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isPrime</span>(x <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="0506-题-整数转换"><strong>0506 题. 整数转换</strong></h4>
+<p>整数转换。编写一个函数，确定需要改变几个位才能将整数 A 转成整数 B 。</p>
+<p>解题思路：A 需要转换多少位才可以变为 B, 换个角度也就是计算 A 和 B 的异或结果中，有多少位为 1 的个数，依然直接套用模板即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 伪代码实现
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">convertInteger</span>(A <span style="color:#6ab825;font-weight:bold">int</span>, B <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">onesCount</span>( <span style="color:#24909d">uint32</span>( A ^ B) )
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="2220-题-转换数字的最少位翻转次数"><strong>2220 题. 转换数字的最少位翻转次数</strong></h4>
+<p>给你两个整数 start 和 goal ，请你返回将 start 转变成 goal 的 最少位翻转 次数，虽然换了名称和描述，但是上面的题本质就是一个题。</p>
+<hr>
+<h2 id="出现-n-次的数字">出现 N 次的数字</h2>
+<p>这是一个非常经典的 “位运算” 问题，虽然使用哈希和桶方案可以简单快速解决，但是此类题目一般会有空间复杂度要求，如果在面试中遇到此类题目，那么考点百分百是位运算。</p>
+<h3 id="原题-1">原题</h3>
+<p><strong>137 题. 只出现一次的数字</strong></p>
+<p>给你一个 非空 整数数组 nums ，除了某个元素只出现一次以外，其余每个元素均出现三次。找出那个只出现了一次的元素。</p>
+<p>你必须设计并实现线性时间复杂度的算法来解决此问题，且该算法只使用常量额外空间。</p>
+<h3 id="模板-1">模板</h3>
+<p>想要从位运算的角度来解题，我们首先来分析一下给定不同参数的情况下，每个参数的二进制表示形式，然后尝试从中找到一些规律。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [2, 2, 3, 2]
+</span></span><span style="display:flex;"><span>输出：3
+</span></span></code></pre></div><p>将参数分别转换为二进制表示形式:</p>
+<p><img src="https://dbwu.tech/images/algorithm/params_to_bit.png" alt="参数的二进制表示形式"></p>
+<p>通过上图可以看到，只出现一次的数字 3 包含 2 个二进制位为 1，其中只有一个位和其他三个数字不同，根据这个规律，可以将参数数组中的所有元素逐个计算每个二进制为 1 的个数 (Sum 操作)，并对 3 进行取模 (Mod 操作)，得到如下结果:</p>
+<p><strong>因为除了只出现一次的数字，其他数字全部出现了三次，其中每个二进制位只会有两种结果: 0 或者 1</strong>:</p>
+<ul>
+<li>0 表示只出现 1 次的数字，该二进制位为 0</li>
+<li>1 表示只出现 1 次的数字，该二进制位为 1</li>
+</ul>
+<p>那么最终计算出来每个二进制位上面的数字，转换为十进制数字之后，也就是题目的答案：只出现了一次的数字。</p>
+<p><img src="https://dbwu.tech/images/algorithm/params_to_bit_result.png" alt="参数的二进制表示计算结果"></p>
+<p>通过上图可以看到，最终的二进制表示就是题目的答案。</p>
+<p>那么如何实现上面的 “逐个计算并保存” 转化为具体的代码呢？一个直观的方法使用一个数组存储表示所有元素每个二进制位取模 3 之后的结，但是这样实现有两个弊端：</p>
+<ol>
+<li>浪费空间，如果结果是 64 bit 的数字，那么就需要长度为 64 的数组用于存储每个二进制位的值</li>
+<li>计算复杂，需要先将每个二进制位的值 （0|1） 存入数组对应的位置，然后在将数组中所有元素整个转换为一个具体的十进制数字。</li>
+</ol>
+<p>但是其实有一个时间和空间都更加高效的方案: <strong>位运算中的位移</strong>，我们只需要声明一个结果变量，然后在计算出每个二进制位时，设置该结果变量对应的二进制位值即可。</p>
+<p><img src="https://dbwu.tech/images/algorithm/params_to_bit_result_2.png" alt="最终结果的二进制表示"></p>
+<p>下面是对应的伪代码实现。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">singleNumber</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 除了结果数字外，其他数字出现的次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    cnt := <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 只需要声明一个变量作为结果返回值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    res := <span style="color:#24909d">int32</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 这里以 32 位数字为例
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 如果是 64 位数字，直接换成 64 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">32</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> sum <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 逐个计算数组中所有元素当前二进制位为 1 的个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> _, num := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>			sum += <span style="color:#24909d">int32</span>(num) &gt;&gt; i &amp; <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 使用二进制位为 1 的个数取模其他数字出现的次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 然后左移改变结果 (答案) 数字对应的二进制位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		res |= (sum % cnt) &lt;&lt; i
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">int</span>(res)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="衍生题目-1">衍生题目</h3>
+<p>模板：给你一个 非空 整数数组 nums <strong>，除了某个元素只出现一次以外，其余每个元素均出现 M 次</strong>。找出那个只出现了一次的元素。</p>
+<p>通用代码 (只需要将 cnt 改为其他元素出现的次数即可):</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">singleNumber</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 除了结果数字外，其他数字出现的次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    cnt := <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 例如其他元素出现了 4 次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// cnt := 4
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 例如其他元素出现了 5 次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// cnt := 5
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 例如其他元素出现了 6 次
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// cnt := 6
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 只需要声明一个变量作为结果返回值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    res := <span style="color:#24909d">int32</span>(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 这里以 32 位数字为例
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 如果是 64 位数字，直接换成 64 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; <span style="color:#3677a9">32</span>; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">var</span> sum <span style="color:#6ab825;font-weight:bold">int32</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 逐个计算数组中所有元素当前二进制位为 1 的个数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> _, num := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>			sum += <span style="color:#24909d">int32</span>(num) &gt;&gt; i &amp; <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic">// 使用二进制位为 1 的个数取模其他数字出现的次数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>        <span style="color:#999;font-style:italic">// 然后左移改变结果 (答案) 数字对应的二进制位
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		res |= (sum % cnt) &lt;&lt; i
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">int</span>(res)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="477-题-汉明距离总和"><strong>477 题. 汉明距离总和</strong></h4>
+<p>给你一个整数数组 nums，请你计算并返回 nums 中任意两个数之间 汉明距离的总和 。</p>
+<p>解题思路：类似上面的解题方案，分别计算出数组中所有元素在不同二进制位上面的差异总值，最后累加即可。</p>
+<hr>
+<h2 id="清除最右侧为-1-的位">清除最右侧为 1 的位</h2>
+<p><img src="https://dbwu.tech/images/algorithm/remove_right_1.png" alt="清除最右侧为 1 的位 - 执行过程"></p>
+<p>单次清除转为代码为:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#24909d">println</span>(<span style="color:#3677a9">14</span> &amp; (<span style="color:#3677a9">14</span>-<span style="color:#3677a9">1</span>))
+</span></span></code></pre></div><h3 id="模板-2">模板</h3>
+<p>如果需要清除数字中全部的 1 (也就是变为 0)，需要的次数:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">numberOfSteps</span>(num <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> res <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> num != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		num &amp;= num - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		res++
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="衍生题目-2">衍生题目</h3>
+<h4 id="1342-题-将数字变成-0-的操作次数"><strong>1342 题. 将数字变成 0 的操作次数</strong></h4>
+<p>解题思路: 直接套用模板即可。</p>
+<h4 id="201-题-数字范围按位与"><strong>201 题. 数字范围按位与</strong></h4>
+<p>给你两个整数 left 和 right ，表示区间 [left, right] ，返回此区间内所有数字 按位与 的结果（包含 left 、right 端点）。</p>
+<p>解题思路： 遍历参数范围区间，每次取代最大数字最右边为 1 的位，直接套用模板即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">rangeBitwiseAnd</span>(left <span style="color:#6ab825;font-weight:bold">int</span>, right <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> left &lt; right {
+</span></span><span style="display:flex;"><span>        right &amp;= right-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> right
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="231-题-2-的幂"><strong>231 题. 2 的幂</strong></h4>
+<p>给你一个整数 n，请你判断该整数是否是 2 的幂次方。如果是，返回 true ；否则，返回 false 。</p>
+<p>解题思路：</p>
+<ol>
+<li>先看看 2 的幂的数字，都有什么特征？</li>
+</ol>
+<ul>
+<li>2 = 0010</li>
+<li>4 = 0100</li>
+<li>8 = 1000</li>
+<li>16 = 0001 0000</li>
+</ul>
+<ol start="2">
+<li>特征就是每个数字的二进制表示中，只有 1 个二进制位的值为 1</li>
+<li>不管这个二进制位在多少位，<strong>都可以视为最右边</strong>，所以只需要将数字最右边位为 1 去掉，然后判断其是否等于 0 即可，如果等于 2 就必然是 2 的幂次</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isPowerOfTwo</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> n &gt; <span style="color:#3677a9">0</span> &amp;&amp; n &amp; (n-<span style="color:#3677a9">1</span>) == <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/algorithm/bit_operations/">LeetCode 刷题必懂位运算</a></li>
+<li><a href="https://dbwu.tech/posts/algorithm/xor/">异或计算的妙用</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/cloudnative/how_to_design_stateless_app/"><i class="fa fa-chevron-circle-left"></i> 如何设计一个无状态应用</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_pprof/">Go pprof 从入门到精通 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="LeetCode 位运算刷题模板"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
