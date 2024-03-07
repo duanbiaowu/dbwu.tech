@@ -507,6 +507,15 @@
      </item>
    
      <item>
+       <title>为什么 Redis 6.0 引入多线程模型？</title>
+       <link>https://dbwu.tech/posts/redis/why_redis_use_multi_threading_model/</link>
+       <pubDate>Wed, 03 May 2023 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/redis/why_redis_use_multi_threading_model/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes 应用最佳实践 - 金丝雀发布</title>
        <link>https://dbwu.tech/posts/k8s/best_practice/canary_release/</link>
        <pubDate>Mon, 01 May 2023 00:00:00 +0000</pubDate>

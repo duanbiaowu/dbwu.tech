@@ -248,6 +248,9 @@
     <loc>https://dbwu.tech/posts/other/jywx/</loc>
     <lastmod>2023-05-09T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/posts/redis/why_redis_use_multi_threading_model/</loc>
+    <lastmod>2023-05-03T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/k8s/best_practice/canary_release/</loc>
     <lastmod>2023-05-01T00:00:00+00:00</lastmod>
   </url><url>
