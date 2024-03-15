@@ -1,0 +1,420 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>LeetCode Hash 刷题模板 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="LeetCode Hash 刷题模板" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/leetcode_hash_pattern/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-15T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-15T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LeetCode Hash 刷题模板"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>LeetCode Hash 刷题模板</h1>
+
+    
+      
+<p>
+    <span>2023-03-15</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="数学概念">数学概念</h2>
+<blockquote>
+<p>在数学中，单射（injection）、满射（surjection）和双射（bijection）是描述函数之间关系的重要概念，通常用于描述两个集合之间的映射关系。</p>
+</blockquote>
+<h3 id="单射">单射</h3>
+<p>对于集合 A 中的每个不同的元素，在集合 B 中都有唯一的映射元素。</p>
+<p><img src="https://dbwu.tech/images/algorithm/injection.png" alt="单射但非满射"></p>
+<h3 id="满射">满射</h3>
+<p>对于集合 A 中的每个不同的元素，在集合 B 中都至少有一个的映射元素。</p>
+<p><img src="https://dbwu.tech/images/algorithm/surjection.png" alt="满射但非单射"></p>
+<h3 id="双射">双射</h3>
+<p>同时满足单射和满射, 对于集合 A 中的每个不同的元素，在集合 B 中都有唯一的映射元素，同时，对于集合 B 中的每个不同的元素，在集合 A 中都有唯一的映射元素，也就是集合 A 和 集合 B 中的元素是一一对应的。</p>
+<p><img src="https://dbwu.tech/images/algorithm/bijection.png" alt="双射"></p>
+<h2 id="哈希类型题目">哈希类型题目</h2>
+<blockquote>
+<p>将 Hash 类题目从本质进行分类，基本可以分为单射、满射、双射映射问题。</p>
+</blockquote>
+<p>Hash 类型题目应该是所有题型中最简单的了，尤其是使用 Go 写过业务代码之后，这种体验应该会更深 ~ 单纯的 Hash 类型题目基本都是简单类题目，所以整体的刷题体验还是很愉快的。</p>
+<p>但是有一个比较踩坑的地方在于：虽然很多题目都可以使用 Hash 来开始暴力解题，但是这些题目的考点都不在 Hash 上面，毕竟 Hash 带来的额外空间开销是不可忽视的，和位运算一样，Hash 也属于低频考题，如果面试中遇到的题目除了 Hash 之外想不到其他解题方法，可以先使用 Hash 给出题解答案，然后根据面试官的反馈来确定下一步。</p>
+<h2 id="golang-set">Golang Set</h2>
+<p>Go 语言中没有内置的 Set 数据类型，所以遇到需要使用 Set 的场景，需要自定义一个实现，下面给出一个通用的模板。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 集合初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>set := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">int</span>]<span style="color:#6ab825;font-weight:bold">struct</span>{})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 向集合插入一些数据
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>    set[nums[i]] = <span style="color:#6ab825;font-weight:bold">struct</span>{}{}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 查找某个元素是否存在于集合中
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">if</span> _, ok := set[v-<span style="color:#3677a9">1</span>]; ok {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>}	
+</span></span></code></pre></div><hr>
+<h2 id="空间使用技巧">空间使用技巧</h2>
+<p>如果题目参数给出了数值范围，例如纯小写字母、纯大写字母，这时候可以使用对应长度数组代替 Map, 提升细微的时间效率和空间效率，下面列举了一些典型的使用场景。</p>
+<h3 id="参数由任意小写-大写-字母组成">参数由任意小写 (大写) 字母组成</h3>
+<p>可以直接定义一个长度为 26 的数组来充当 Map 数据类型：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>m := [<span style="color:#3677a9">26</span>]<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span></code></pre></div><h3 id="参数由任意-ascii-字符组成">参数由任意 ASCII 字符组成</h3>
+<p>可以直接定义一个长度为 128 的数组来充当 Map 数据类型：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>m := [<span style="color:#3677a9">128</span>]<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span></code></pre></div><h3 id="参数由任意-0---9-数字组成">参数由任意 0 - 9 数字组成</h3>
+<p>可以直接定义一个长度为 10 的数组来充当 Map 数据类型：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>m := [<span style="color:#3677a9">10</span>]<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span></code></pre></div><h2 id="-典型题目">💡 典型题目</h2>
+<p>前文中提到，Hash 类型题目基本可以归类为单射、满射、双射映射问题，那么<strong>解题过程中唯一需要确认的就是：输入集合是什么？输出集合是什么？</strong>
+大多数问题直接套用这个模板即可，解题过程就和写业务代码差不多。</p>
+<h3 id="1-两数之和">1. 两数之和</h3>
+<p>给定一个整数数组 nums 和一个整数目标值 target，请你在该数组中找出 和为目标值 target  的那 两个 整数，并返回它们的数组下标。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 示例来自：https://leetcode.cn</span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [2,7,11,15], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">9</span>
+</span></span><span style="display:flex;"><span>输出：[0,1]
+</span></span><span style="display:flex;"><span>解释：因为 nums[0] + nums[1] == <span style="color:#3677a9">9</span> ，返回 [0, 1] 。
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [3,2,4], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">6</span>
+</span></span><span style="display:flex;"><span>输出：[1,2]
+</span></span><span style="display:flex;"><span>示例 3：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [3,3], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">6</span>
+</span></span><span style="display:flex;"><span>输出：[0,1]
+</span></span></code></pre></div><p><strong>快速套模板</strong>：</p>
+<ul>
+<li>确定题型：这是一个根据输出集合求解输入集合的问题</li>
+<li>输出集合：参数数组元素集合 (只要集合不为空就存在题目要求的解)</li>
+<li>输入集合：参数 target - 参数数组各元素的差 形成的集合</li>
+</ul>
+<p><img src="https://dbwu.tech/images/algorithm/hash_pattern_1.png" alt="图解快速套模板"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">TwoSum</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) []<span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	m := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">int</span>]<span style="color:#6ab825;font-weight:bold">int</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i, num := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> diff, ok := m[target-num]; ok {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> []<span style="color:#6ab825;font-weight:bold">int</span>{diff, i}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		m[num] = i
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> []<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="2-赎金信">2. 赎金信</h3>
+<p>给你两个字符串：ransomNote 和 magazine ，判断 ransomNote 能不能由 magazine 里面的字符构成。</p>
+<p>如果可以，返回 true ；否则返回 false 。magazine 中的每个字符只能在 ransomNote 中使用一次。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 示例来自：https://leetcode.cn</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：ransomNote = <span style="color:#ed9d13">&#34;a&#34;</span>, <span style="color:#40ffff">magazine</span> = <span style="color:#ed9d13">&#34;b&#34;</span>
+</span></span><span style="display:flex;"><span>输出：false
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：ransomNote = <span style="color:#ed9d13">&#34;aa&#34;</span>, <span style="color:#40ffff">magazine</span> = <span style="color:#ed9d13">&#34;ab&#34;</span>
+</span></span><span style="display:flex;"><span>输出：false
+</span></span><span style="display:flex;"><span>示例 3：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：ransomNote = <span style="color:#ed9d13">&#34;aa&#34;</span>, <span style="color:#40ffff">magazine</span> = <span style="color:#ed9d13">&#34;aab&#34;</span>
+</span></span><span style="display:flex;"><span>输出：true
+</span></span></code></pre></div><p><strong>快速套模板</strong>：</p>
+<ul>
+<li>确定题型：求解两个字符串是否为满射</li>
+<li>输出集合：参数 magazine 字符串</li>
+<li>输入集合：参数 ransomNote 字符串</li>
+</ul>
+<p><img src="https://dbwu.tech/images/algorithm/hash_pattern_2.png" alt="图解快速套模板"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">canConstruct</span>(ransomNote <span style="color:#6ab825;font-weight:bold">string</span>, magazine <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>    m := [<span style="color:#3677a9">26</span>]<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> _, char := <span style="color:#6ab825;font-weight:bold">range</span> magazine {
+</span></span><span style="display:flex;"><span>        m[char-<span style="color:#ed9d13">&#39;a&#39;</span>]++
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> _, char := <span style="color:#6ab825;font-weight:bold">range</span> ransomNote {
+</span></span><span style="display:flex;"><span>        m[char-<span style="color:#ed9d13">&#39;a&#39;</span>]--
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> m[char-<span style="color:#ed9d13">&#39;a&#39;</span>] &lt; <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="3-同构字符串">3. 同构字符串</h3>
+<p>给定两个字符串 s 和 t ，判断它们是否是同构的。</p>
+<p>如果 s 中的字符可以按某种映射关系替换得到 t ，那么这两个字符串是同构的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 示例来自：https://leetcode.cn</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：s = <span style="color:#ed9d13">&#34;egg&#34;</span>, <span style="color:#40ffff">t</span> = <span style="color:#ed9d13">&#34;add&#34;</span>
+</span></span><span style="display:flex;"><span>输出：true
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：s = <span style="color:#ed9d13">&#34;foo&#34;</span>, <span style="color:#40ffff">t</span> = <span style="color:#ed9d13">&#34;bar&#34;</span>
+</span></span><span style="display:flex;"><span>输出：false
+</span></span><span style="display:flex;"><span>示例 3：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：s = <span style="color:#ed9d13">&#34;paper&#34;</span>, <span style="color:#40ffff">t</span> = <span style="color:#ed9d13">&#34;title&#34;</span>
+</span></span><span style="display:flex;"><span>输出：true
+</span></span></code></pre></div><p><strong>快速套模板</strong>：</p>
+<ul>
+<li>确定题型：求解两个字符串是否为双射，函数为字符串中每个字符的位置对应</li>
+<li>输出集合：参数 s 中每个字符出现的位置</li>
+<li>输入集合：参数 t 中每个字符出现的位置</li>
+</ul>
+<p><img src="https://dbwu.tech/images/algorithm/hash_pattern_3.png" alt="图解快速套模板"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isIsomorphic</span>(s <span style="color:#6ab825;font-weight:bold">string</span>, t <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	sMap := [<span style="color:#3677a9">128</span>]<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span><span style="display:flex;"><span>	tMap := [<span style="color:#3677a9">128</span>]<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 只需要记录连续字符的位置相对性
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> s {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> sMap[s[i]] != tMap[t[i]] {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> sMap[s[i]] == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#999;font-style:italic">// 更新字符位置为最新索引 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				<span style="color:#999;font-style:italic">// i + 1 是为了避免 map value 默认值为 0 引起的错误
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>				sMap[s[i]] = i + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>				tMap[t[i]] = i + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="4-单词规律">4. 单词规律</h3>
+<p>给定一种规律 pattern 和一个字符串 s ，判断 s 是否遵循相同的规律。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic">## 示例来自：https://leetcode.cn</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例1:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">pattern</span> = <span style="color:#ed9d13">&#34;abba&#34;</span>, <span style="color:#40ffff">s</span> = <span style="color:#ed9d13">&#34;dog cat cat dog&#34;</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#24909d">true</span>
+</span></span><span style="display:flex;"><span>示例 2:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入:pattern = <span style="color:#ed9d13">&#34;abba&#34;</span>, <span style="color:#40ffff">s</span> = <span style="color:#ed9d13">&#34;dog cat cat fish&#34;</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#24909d">false</span>
+</span></span><span style="display:flex;"><span>示例 3:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">pattern</span> = <span style="color:#ed9d13">&#34;aaaa&#34;</span>, <span style="color:#40ffff">s</span> = <span style="color:#ed9d13">&#34;dog cat cat dog&#34;</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#24909d">false</span>
+</span></span></code></pre></div><p><strong>快速套模板</strong>：</p>
+<ul>
+<li>确定题型：求解两个字符串中是否为双射，函数为单个字符和多个字符的的位置对应</li>
+<li>输出集合：参数字符串 pattern</li>
+<li>输入集合：参数字符串 s</li>
+</ul>
+<p><img src="https://dbwu.tech/images/algorithm/hash_pattern_4.png" alt="图解快速套模板"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">wordPattern</span>(pattern <span style="color:#6ab825;font-weight:bold">string</span>, s <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 双射解题
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	wordToChar := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">string</span>]<span style="color:#6ab825;font-weight:bold">byte</span>)
+</span></span><span style="display:flex;"><span>	charToWord := <span style="color:#24909d">make</span>(<span style="color:#6ab825;font-weight:bold">map</span>[<span style="color:#6ab825;font-weight:bold">byte</span>]<span style="color:#6ab825;font-weight:bold">string</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	words := strings.<span style="color:#447fcf">Split</span>(s, <span style="color:#ed9d13">&#34; &#34;</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(pattern) != <span style="color:#24909d">len</span>(words) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i, word := <span style="color:#6ab825;font-weight:bold">range</span> words {
+</span></span><span style="display:flex;"><span>		char := pattern[i]
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果不满足双射条件，直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> wordToChar[word] &gt; <span style="color:#3677a9">0</span> &amp;&amp; wordToChar[word] != char {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(charToWord[char]) &gt; <span style="color:#3677a9">0</span> &amp;&amp; charToWord[char] != word {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		wordToChar[word] = char
+</span></span><span style="display:flex;"><span>		charToWord[char] = word
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div>
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_panic_recover/"><i class="fa fa-chevron-circle-left"></i> 为什么 recover 必须在 defer 中调用？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/best_practice/init_container/">Kubernetes 应用最佳实践 - init 容器和钩子函数 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="LeetCode Hash 刷题模板"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
