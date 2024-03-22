@@ -1,0 +1,853 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>LeetCode 双指针 刷题模板 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="LeetCode 双指针 刷题模板" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/leetcode_two_points_pattern/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-22T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LeetCode 双指针 刷题模板"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>LeetCode 双指针 刷题模板</h1>
+
+    
+      
+<p>
+    <span>2023-03-22</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>双指针，顾名思义，就是使用两个指针来解决算法题。LeetCode 中的双指针类型题目属于比较基础的算法题，一般是简单难度，少部分是中等难度，通常出现在数组、字符串、链表相关题目中。<strong>双指针类型的题目一般都会要求在 数组/字符串等 参数上面原地移动/变换，所以不能使用额外的空间来解题</strong>。双指针属于高频笔试题，尤其是快慢指针、左右指针两种类型，必须熟练掌握。</p>
+<h3 id="类型和命名建议">类型和命名建议</h3>
+<p>合理的命名方式可以提高代码可读性，解决算法题的同时还可以将思路直观地展示出来。</p>
+<h4 id="1-快慢指针">1. 快慢指针</h4>
+<p>最经典的双指针使用场景，例如 <a href="https://mp.weixin.qq.com/s/9T_e_Qv04QD88KoFPcbQow">之前这篇文章</a> 中，使用快慢指针模板快速优雅解决链表相关算法题。</p>
+<p>一般情况下，快慢指针的固定命名:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>快指针:  fast
+</span></span><span style="display:flex;"><span>慢指针:  slow
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/fast_slow_point_demo.png" alt="快慢指针示例"></p>
+<h4 id="2-左右指针">2. 左右指针</h4>
+<p>通常用于解决数组或字符串问题，其中:</p>
+<ul>
+<li>左指针通常指向数组下标 0 ，字符串的开始位置</li>
+<li>右指针通常指向数组下标 N-1 (其中 N 为数组长度)，字符串的结束位置</li>
+</ul>
+<p>一般情况下，左右指针的固定命名:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>左指针:  left
+</span></span><span style="display:flex;"><span>右指针:  right
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/two_points_1.png" alt="左右指针示例"></p>
+<h4 id="3-无序指针">3. 无序指针</h4>
+<p>如果两个指针没有任何语义和逻辑顺序，只是用于指向不同的地址，也可以直接简单命名。</p>
+<p>例如在 合并两个有序链表 这道题中，可以使用两个无序指针分别指向链表 1 和链表 2:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>指针 1: p1
+</span></span><span style="display:flex;"><span>指针 2: p2
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/two_points_2.png" alt="无序指针示例"></p>
+<h4 id="4-头尾指针">4. 头尾指针</h4>
+<p>这种场景中，两个指针每次移动的位置不一样，可能移动也可能原地不动 (所以单纯应用角度分析的话，<strong>头尾双指针 属于 快慢双指针的子集</strong>)，例如使用数组使用的环形队列数据结构。</p>
+<p>一般情况下，头尾指针的固定命名:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>头指针 1: head
+</span></span><span style="display:flex;"><span>尾指针 2: tail
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/two_points_3.png" alt="头尾指针示例"></p>
+<h2 id="常见错误">常见错误</h2>
+<p>下面列举使用双指针解题过程中常见的错误和 Bug 原因。</p>
+<h3 id="移动错误">移动错误</h3>
+<p>常见的错误包括：</p>
+<ul>
+<li>数组/字符串指针索引访问越界、边界判断未处理</li>
+<li>数组/字符串指针索引移动方向错误</li>
+<li>数组/字符串指针索引步长增长错误</li>
+</ul>
+<h3 id="指针初始化问题">指针初始化问题</h3>
+<ul>
+<li>链表指针未初始化指向，直接访问错误</li>
+<li>空数组/空字符串直接访问越界</li>
+</ul>
+<h3 id="死循环">死循环</h3>
+<ul>
+<li>快慢指针的终止条件设置错误</li>
+<li>循环队列的终止条件设置错误</li>
+</ul>
+<h3 id="滑动窗口">滑动窗口</h3>
+<p>对于滑动窗口类型的题目，通常使用两个指针维护窗口的左右边界，然后根据题目要求移动窗口。需要注意的是，窗口的大小可能会变化，因此要准备调整窗口的大小和位置。</p>
+<hr>
+<h2 id="-快慢双指针">💡 快慢双指针</h2>
+<p>快慢双指针的经典使用场景在 <a href="https://mp.weixin.qq.com/s/9T_e_Qv04QD88KoFPcbQow">之前这篇文章</a> 中已经做过讲解，本文不再赘述。</p>
+<h2 id="-头尾双指针">💡 头尾双指针</h2>
+<p>头尾双指针的典型使用场景是：</p>
+<ul>
+<li><strong>头指针</strong> 作为数组/字符串的遍历索引，从起始位置遍历到结束位置</li>
+<li><strong>尾指针</strong> 作为条件指针，每次移动 0 个位置或 1 个位置，并在满足题目逻辑条件时更新返回值，或者自身作为最终返回值</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 模板代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Solution</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    tail := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> head := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// do something
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		...
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> tail
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>此外可以根据参数快速进行边界类检测，比如数组元素去重类问题，可以先看数组长度，少于 2 时直接返回参数的数组长度:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(nums) &lt; <span style="color:#3677a9">2</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">len</span>(nums)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>再比如字符串的匹配类问题，如果子字符串长度比匹配字符串长度还要长，直接返回 -1:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(source) &lt; <span style="color:#24909d">len</span>(target) {
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h4 id="1-原地删除元素"><strong>1. 原地删除元素</strong></h4>
+<p>给你一个 非严格递增排列 的数组 nums ，请你 原地 删除重复出现的元素，使每个元素 只出现一次 ，返回删除后数组的新长度。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例 - 1</span>
+</span></span><span style="display:flex;"><span>输入：nums = [1,1,2]
+</span></span><span style="display:flex;"><span>输出：2, <span style="color:#40ffff">nums</span> = [1,2]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例 - 2</span>
+</span></span><span style="display:flex;"><span>输入：nums = [0,0,1,1,1,2,2,3,3,4]
+</span></span><span style="display:flex;"><span>输出：5, <span style="color:#40ffff">nums</span> = [0,1,2,3,4]
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义头指针为 head, 尾指针为 tail</li>
+<li>head 作为遍历数组索引，但是下标从 1 开始 (因为下标为 0 的元素有可能就是重复的)</li>
+<li>tail 作为更新元素去重的索引</li>
+<li>最终返回 tail 指针 (tail + 1 表示去重之后的新数组长度, 因为数组的下标从 0 开始)</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">removeDuplicates</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    tail := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> head := <span style="color:#3677a9">1</span>; head &lt; <span style="color:#24909d">len</span>(nums); head++ {
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> nums[head] != nums[tail] {
+</span></span><span style="display:flex;"><span>            tail++
+</span></span><span style="display:flex;"><span>            nums[tail] = nums[head]
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> tail + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/removeDuplicates.png" alt="原地删除元素 - 执行过程"></p>
+<h4 id="2-移除元素"><strong>2. 移除元素</strong></h4>
+<p>给你一个数组 nums 和一个值 val，你需要 原地 移除所有数值等于 val 的元素，并返回移除后数组的新长度。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例 - 1</span>
+</span></span><span style="display:flex;"><span>输入：nums = [3, 2, 2, 3], <span style="color:#40ffff">val</span> = <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>输出：2, <span style="color:#40ffff">nums</span> = [2, 2]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例 - 2</span>
+</span></span><span style="display:flex;"><span>输入：nums = [0,1,2,2,3,0,4,2], <span style="color:#40ffff">val</span> = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>输出：5, <span style="color:#40ffff">nums</span> = [0,1,3,0,4]
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义头指针为 head, 尾指针为 tail</li>
+<li>head 作为遍历数组索引</li>
+<li>tail 作为更新 <strong>数组中值不等于 val</strong>的索引</li>
+<li>最终返回 tail 指针</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">removeElement</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, val <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    tail := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> head := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> nums[head] != val {
+</span></span><span style="display:flex;"><span>            nums[tail] = nums[head]
+</span></span><span style="display:flex;"><span>            tail++
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> tail
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/removeElement.png" alt="移除元素 - 执行过程"></p>
+<h4 id="3-判断子序列"><strong>3. 判断子序列</strong></h4>
+<p>给定字符串 s 和 t ，判断 s 是否为 t 的子序列。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>输入：s = <span style="color:#ed9d13">&#34;abc&#34;</span>, <span style="color:#40ffff">t</span> = <span style="color:#ed9d13">&#34;ahbgdc&#34;</span>
+</span></span><span style="display:flex;"><span>输出：true
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>输入：s = <span style="color:#ed9d13">&#34;axc&#34;</span>, <span style="color:#40ffff">t</span> = <span style="color:#ed9d13">&#34;ahbgdc&#34;</span>
+</span></span><span style="display:flex;"><span>输出：false
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义头指针为 head, 尾指针为 tail</li>
+<li>head 作为遍历字符串 t 的索引</li>
+<li>tail 作为更新 <strong>子字符串 s 中当前需要检测字符</strong>的索引</li>
+<li>最终返回 tail 指针</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isSubsequence</span>(s <span style="color:#6ab825;font-weight:bold">string</span>, t <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>   <span style="color:#999;font-style:italic">// 如果子字符串为空，就必然属于子集合
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>   <span style="color:#999;font-style:italic">// (Tips: 空字符串也属于子集合之一)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>   sLen, tLen := <span style="color:#24909d">len</span>(s), <span style="color:#24909d">len</span>(t)
+</span></span><span style="display:flex;"><span>   tail, head := <span style="color:#3677a9">0</span>, <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>   <span style="color:#6ab825;font-weight:bold">for</span> tail &lt; sLen &amp;&amp; head &lt; tLen {
+</span></span><span style="display:flex;"><span>   	<span style="color:#6ab825;font-weight:bold">if</span> s[tail] == t[head] {
+</span></span><span style="display:flex;"><span>   		tail++
+</span></span><span style="display:flex;"><span>   	}
+</span></span><span style="display:flex;"><span>   	head++
+</span></span><span style="display:flex;"><span>   }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>   <span style="color:#6ab825;font-weight:bold">return</span> tail == sLen
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/isSubsequence2.png" alt="判断子序列 - 执行过程"></p>
+<h4 id="4-找出字符串中第一个匹配项的下标"><strong>4. 找出字符串中第一个匹配项的下标</strong></h4>
+<p>给你两个字符串 haystack 和 needle ，请你在 haystack 字符串中找出 needle 字符串的第一个匹配项的下标（下标从 0 开始）。如果 needle 不是 haystack 的一部分，则返回  -1 。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：haystack = <span style="color:#ed9d13">&#34;sadbutsad&#34;</span>, <span style="color:#40ffff">needle</span> = <span style="color:#ed9d13">&#34;sad&#34;</span>
+</span></span><span style="display:flex;"><span>输出：0
+</span></span><span style="display:flex;"><span>解释：<span style="color:#ed9d13">&#34;sad&#34;</span> 在下标 <span style="color:#3677a9">0</span> 和 <span style="color:#3677a9">6</span> 处匹配。
+</span></span><span style="display:flex;"><span>第一个匹配项的下标是 <span style="color:#3677a9">0</span> ，所以返回 <span style="color:#3677a9">0</span> 。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：haystack = <span style="color:#ed9d13">&#34;leetcode&#34;</span>, <span style="color:#40ffff">needle</span> = <span style="color:#ed9d13">&#34;leeto&#34;</span>
+</span></span><span style="display:flex;"><span>输出：-1
+</span></span><span style="display:flex;"><span>解释：<span style="color:#ed9d13">&#34;leeto&#34;</span> 没有在 <span style="color:#ed9d13">&#34;leetcode&#34;</span> 中出现，所以返回 -1 。
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义头指针为 head, 尾指针为 tail</li>
+<li>head 作为遍历字符串 haystack 的索引</li>
+<li>tail 作为更新 <strong>子字符串 needle 中当前需要检测字符</strong>的索引</li>
+<li>最终返回 tail 指针</li>
+</ul>
+<p><strong>需要注意的是:</strong> 不需要遍历到整个 haystack 字符串，只需要遍历匹配 haystack 字符串减去子字符串 needle 的长度即可，因为再往后面扫描也不可能匹配到了，而且还会引发下标访问越界问题。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">strStr</span>(haystack <span style="color:#6ab825;font-weight:bold">string</span>, needle <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>    n, m := <span style="color:#24909d">len</span>(haystack), <span style="color:#24909d">len</span>(needle)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 例如 haystack = &#34;helloworld&#34;, needle = &#34;abc&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 那么 head 指针最终只需要到 r 即可
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 只需要遍历到 len(haystack) - len(needle)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">for</span> head := <span style="color:#3677a9">0</span>; head &lt;= n-m; head++ {
+</span></span><span style="display:flex;"><span>        tail := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">for</span> ; tail &lt; m; tail++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 任意字符不匹配，直接从 haystack 的下个字符再次进行匹配
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#6ab825;font-weight:bold">if</span> haystack[head+tail] != needle[tail] {
+</span></span><span style="display:flex;"><span>                <span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> tail == m {
+</span></span><span style="display:flex;"><span>            <span style="color:#6ab825;font-weight:bold">return</span> head
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/strStr.png" alt="找出字符串中第一个匹配项的下标 - 执行过程"></p>
+<hr>
+<h2 id="-左右双指针">💡 左右双指针</h2>
+<p>左右双指针的典型使用场景是：</p>
+<ul>
+<li><strong>左指针</strong> 从数组/字符串的起始位置开始向后遍历，直到和右指针相遇</li>
+<li><strong>右指针</strong> 从数组/字符串的结束位置开始向前遍历，直到和左指针相遇</li>
+</ul>
+<h4 id="1-验证回文串"><strong>1. 验证回文串</strong></h4>
+<p>给你一个字符串 s，如果它是 回文串。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">s</span> = <span style="color:#ed9d13">&#34;A man, a plan, a canal: Panama&#34;</span>
+</span></span><span style="display:flex;"><span>输出：true
+</span></span><span style="display:flex;"><span>解释：<span style="color:#ed9d13">&#34;amanaplanacanalpanama&#34;</span> 是回文串。
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：s = <span style="color:#ed9d13">&#34;race a car&#34;</span>
+</span></span><span style="display:flex;"><span>输出：false
+</span></span><span style="display:flex;"><span>解释：<span style="color:#ed9d13">&#34;raceacar&#34;</span> 不是回文串。
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义左指针为 left, 右指针为 right</li>
+<li>left 指针从左向右开始遍历，每次移动 1 个位置 (不包括无效字符的位置)</li>
+<li>right 指针从右向左开始遍历，每次移动 1 个位置 (不包括无效字符的位置)</li>
+<li>如果遍历过程中，left 和 right 指向的字符不相等，直接返回 false</li>
+<li>如果 left 和 right 两个指针相遇或者循环结束，说明字符串为回文字符串</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isPalindrome</span>(s <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	s = strings.<span style="color:#447fcf">ToLower</span>(s)
+</span></span><span style="display:flex;"><span>	left, right := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(s)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 左右指针未相遇时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 比较当前左右指针指向的字符是否相等
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> left &lt; right {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// left 指针从左向右开始遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> left &lt; right &amp;&amp; !<span style="color:#447fcf">isChar</span>(s[left]) {
+</span></span><span style="display:flex;"><span>			left++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// right 指针从右向左开始遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> left &lt; right &amp;&amp; !<span style="color:#447fcf">isChar</span>(s[right]) {
+</span></span><span style="display:flex;"><span>			right--
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果遍历过程中，left 和 right 指向的字符不相等，直接返回 false
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> s[left] != s[right] {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// left 每次移动 1 个位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		left++
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// right 每次移动 1 个位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		right--
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 辅助方法，判断字符是否为有效的比较字符
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">isChar</span>(c <span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> (c &gt;= <span style="color:#ed9d13">&#39;a&#39;</span> &amp;&amp; c &lt;= <span style="color:#ed9d13">&#39;z&#39;</span>) || (c &gt;= <span style="color:#ed9d13">&#39;0&#39;</span> &amp;&amp; c &lt;= <span style="color:#ed9d13">&#39;9&#39;</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/isPalindrome.png" alt="验证回文串 - 执行过程"></p>
+<h4 id="2-有序数组的平方"><strong>2. 有序数组的平方</strong></h4>
+<p>给你一个按 非递减顺序 排序的整数数组 nums，返回 每个数字的平方 组成的新数组，要求也按 非递减顺序 排序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [-4,-1,0,3,10]
+</span></span><span style="display:flex;"><span>输出：[0,1,9,16,100]
+</span></span><span style="display:flex;"><span>解释：平方后，数组变为 [16,1,0,9,100]
+</span></span><span style="display:flex;"><span>排序后，数组变为 [0,1,9,16,100]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [-7,-3,2,3,11]
+</span></span><span style="display:flex;"><span>输出：[4,9,9,49,121]
+</span></span></code></pre></div><p>解题思路：</p>
+<p>虽然数组有序，但是数组中包含了负数，负数平方可能大于正数平方，例如数组 <code>[-10, 1, 2, 5]</code> 中最小的负数平方之后大于最大的正数，而且题目要求使用复杂度为 O(N) 的算法来解决，这也就意味着不能对数组进行排序。也就是说，<strong>在计算出元素平方值的同时就要将其插入到新的排序数组中</strong>。</p>
+<p>数组中包含了负数和整数，我们可以定义两个指针，分别指向数组的起始位置和结束位置 (也就是最小的负数和最大的整数)，然后比较两者的平方值，并将其中较大者（也就是数组所有元素平方后的最大值）放入数组，<strong>需要注意的是</strong>：放入平方值元素的时候，应该放入新数组末尾位置，然后更新对应的左右指针位置，以此类推，放入第二个、第三个 &hellip; 第 N 个排序平方值元素。</p>
+<p>快速套模板:</p>
+<ul>
+<li>定义左指针为 left, 右指针为 right, 返回值数组 res</li>
+<li>此外定义一个索引指针 index, 用于更新返回值数组 res 的当前插入位置</li>
+<li>left 指针从左向右开始遍历</li>
+<li>right 指针从右向左开始遍历</li>
+<li>比较当前 left 和 right 指向的两个值的平方值，并将较大的平方值插入到 res 返回值数组</li>
+<li>如果 left 指向的平方值大，left 向后移动 1 个位置</li>
+<li>如果 right 指向的平方值大，right 向前移动 1 个位置</li>
+<li>每次插入元素后，更新 index 索引指针</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">sortedSquares</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) []<span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 数组有序，但是负数平方可能大于正数平方
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 例如 [-10, 1, 2, 5] 最小的负数平方之后大于最大的正数
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以新数组从后往前插入元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 左右双指针，根据平方后数值大小选择前进 OR 后退
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 每次比较左右两个数，即使出现负数也 OK, 因为负数越小，其平方值越大
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	n := <span style="color:#24909d">len</span>(nums)
+</span></span><span style="display:flex;"><span>	res := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n)
+</span></span><span style="display:flex;"><span>	left, right := <span style="color:#3677a9">0</span>, n-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> index := right; index &gt;= <span style="color:#3677a9">0</span>; index-- {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 比较当前 left 和 right 指向的两个值的平方值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 并将较大的平方值插入到 res 返回值数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> x, y := nums[left]*nums[left], nums[right]*nums[right]; x &gt; y {
+</span></span><span style="display:flex;"><span>			res[index] = x
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 left 指向的平方值大，left 向后移动 1 个位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			left++
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			res[index] = y
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果 right 指向的平方值大，right 向前移动 1 个位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			right--
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/sortedSquares.png" alt="有序数组的平方 - 执行过程"></p>
+<h4 id="3-两数之和-ii"><strong>3. 两数之和 II</strong></h4>
+<p>给你一个下标从 1 开始的整数数组 numbers ，该数组已按 非递减顺序排列  ，请你从数组中找出满足相加之和等于目标数 target 的两个数。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：numbers = [2,7,11,15], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">9</span>
+</span></span><span style="display:flex;"><span>输出：[1,2]
+</span></span><span style="display:flex;"><span>解释：2 与 <span style="color:#3677a9">7</span> 之和等于目标数 <span style="color:#3677a9">9</span> 。因此 <span style="color:#40ffff">index1</span> = 1, <span style="color:#40ffff">index2</span> = <span style="color:#3677a9">2</span> 。返回 [1, 2] 。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：numbers = [2,3,4], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">6</span>
+</span></span><span style="display:flex;"><span>输出：[1,3]
+</span></span><span style="display:flex;"><span>解释：2 与 <span style="color:#3677a9">4</span> 之和等于目标数 <span style="color:#3677a9">6</span> 。因此 <span style="color:#40ffff">index1</span> = 1, <span style="color:#40ffff">index2</span> = <span style="color:#3677a9">3</span> 。返回 [1, 3] 。
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义左指针为 left, 右指针为 right</li>
+<li>left 指针从左向右开始遍历，每次移动 1 个位置</li>
+<li>right 指针从右向左开始遍历，每次移动 1 个位置</li>
+<li>遍历过程中，比较当前 left 和 right 指向的两个元素之和 sum 和目标值 target，如果相等，直接返回 left 和 right 两个指针索引值 (题目要求数组下标从 1 开始，所以指针返回前 + 1)</li>
+<li>如果 sum 大于 target, 说明需要减小当前 sum, 此时将右指针向前移动 1 位 (因为数组是有序的，移动之后再次 left 和 right 再次相加，sum 会减小)</li>
+<li>如果 sum 小于 target, 说明需要增大当前 sum, 此时将左指针向后移动 1 位 (因为数组是有序的，移动之后再次 left 和 right 再次相加，sum 会增大)</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">twoSum</span>(numbers []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) []<span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	res := []<span style="color:#6ab825;font-weight:bold">int</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> left, right := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(numbers)-<span style="color:#3677a9">1</span>; left &lt; right; {
+</span></span><span style="display:flex;"><span>		sum := numbers[left] + numbers[right]
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> sum == target {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 题目声明下标从 1 开始，所以这里将两个索引各加 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> []<span style="color:#6ab825;font-weight:bold">int</span>{left + <span style="color:#3677a9">1</span>, right + <span style="color:#3677a9">1</span>}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> sum &gt; target {
+</span></span><span style="display:flex;"><span>			right--
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			left++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/twoSum.png" alt="两数之和 II - 执行过程"></p>
+<h4 id="4-盛最多水的容器"><strong>4. 盛最多水的容器</strong></h4>
+<p>给定一个长度为 n 的整数数组 height 。有 n 条垂线，第 i 条线的两个端点是 (i, 0) 和 (i, height[i]) 。
+找出其中的两条线，使得它们与 x 轴共同构成的容器可以容纳最多的水。返回容器可以储存的最大水量。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maxArea.png" alt="容器能够容纳水的最大值为 49"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：[1,8,6,2,5,4,8,3,7]
+</span></span><span style="display:flex;"><span>输出：49 
+</span></span><span style="display:flex;"><span>解释：图中垂直线代表输入数组 [1,8,6,2,5,4,8,3,7]。
+</span></span><span style="display:flex;"><span>在此情况下，容器能够容纳水（表示为蓝色部分）的最大值为 49。
+</span></span></code></pre></div><p>解题思路:</p>
+<p>题目要求计算出一个最大平面区域，这个区域可以看作一个矩形，矩形的长度是 X 轴左右两个指针的间距，宽度是 Y 轴左右两
+个指针中的较小值。</p>
+<p>快速套模板:</p>
+<ul>
+<li>定义左指针为 left, 右指针为 right</li>
+<li>left 指针从左向右开始遍历，每次移动 1 个位置</li>
+<li>right 指针从右向左开始遍历，每次移动 1 个位置</li>
+<li>以 left 和 right 的间距作为当前矩形的长度</li>
+<li>以 left 和 right 中的较小值作为当前矩形的宽度</li>
+<li>如果 left 小于 right, 说明向后移动左指针，可能会得到更大的矩形面积，移动 left 指针</li>
+<li>如果 left 大于等于 right, 说明向前移动右指针，可能会得到更大的矩形面积，移动 right 指针</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maxArea</span>(height []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	left, right := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(height)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	res := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> left &lt; right {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 表示当前矩形的长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		width := right - left
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 表示当前矩形的宽度 (低水位)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		low := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> height[left] &lt; height[right] {
+</span></span><span style="display:flex;"><span>			low = height[left]
+</span></span><span style="display:flex;"><span>			left++
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			low = height[right]
+</span></span><span style="display:flex;"><span>			right--
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新已知的最大矩形
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		res = <span style="color:#24909d">max</span>(res, width*low)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">max</span>(x, y <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &gt; y {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> x
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> y
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/maxArea2.png" alt="容器能够容纳水的最大值为 49"></p>
+<hr>
+<h2 id="-无序双指针">💡 无序双指针</h2>
+<p>如果需要使用双指针解题，但是两个指针没有任何语义和逻辑顺序，只是用于指向不同的地址，那么可以使用无序指针。</p>
+<h4 id="1-合并两个有序数组"><strong>1. 合并两个有序数组</strong></h4>
+<p>给你两个按 非递减顺序 排列的整数数组 nums1 和 nums2，另有两个整数 m 和 n ，分别表示 nums1 和 nums2 中的元素数目。
+请你 合并 nums2 到 nums1 中，使合并后的数组同样按 递增顺序 排列。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums1 = [1,2,3,0,0,0], <span style="color:#40ffff">m</span> = 3, <span style="color:#40ffff">nums2</span> = [2,5,6], <span style="color:#40ffff">n</span> = <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>输出：[1,2,2,3,5,6]
+</span></span><span style="display:flex;"><span>解释：需要合并 [1,2,3] 和 [2,5,6] 。
+</span></span><span style="display:flex;"><span>合并结果是 [1,2,2,3,5,6] ，其中斜体加粗标注的为 nums1 中的元素。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums1 = [1], <span style="color:#40ffff">m</span> = 1, <span style="color:#40ffff">nums2</span> = [], <span style="color:#40ffff">n</span> = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>输出：[1]
+</span></span><span style="display:flex;"><span>解释：需要合并 [1] 和 [] 。
+</span></span><span style="display:flex;"><span>合并结果是 [1] 。
+</span></span></code></pre></div><p>解题思路：</p>
+<p>通过观察题目给的参数和用例可以看到，nums1 数组的后半部分是空的 (全部由 0 填充)，因为 nums1 数组的容量要足够容纳 nums1 和 nums2 的所有元素，所以反过来看，可以从后向前扫描，每次取两个数组中较大的数字放在 nums1 数组的末尾，然后索引递减。</p>
+<p>快速套模板:</p>
+<ul>
+<li>定义两个无序指针 p1, p2</li>
+<li>此外还需要定义一个索引指针 index，表示后向前更新数组元素时的当前索引</li>
+<li>p1 指针从右向左开始遍历数组 nums1</li>
+<li>p2 指针从右向左开始遍历数组 nums2</li>
+<li>单次遍历过程中，取出 p1 和 p2 中的较大值，放入索引指针 index 当前指向的位置</li>
+<li>如果 p1 指针指向的值更大，p1 指针向左移动 1 个位置，反之 p2 指针向左移动 1 个位置</li>
+<li>将索引指针向左移动 1 个位置</li>
+<li>循环结束后，处理一下数组 nums2 可能存在的边界情况</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">merge</span>(nums1 []<span style="color:#6ab825;font-weight:bold">int</span>, m <span style="color:#6ab825;font-weight:bold">int</span>, nums2 []<span style="color:#6ab825;font-weight:bold">int</span>, n <span style="color:#6ab825;font-weight:bold">int</span>)  {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 三个指针都是从右向左移动
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    index := m+n-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>    p1, p2 := m-<span style="color:#3677a9">1</span>, n-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> p1 &gt;= <span style="color:#3677a9">0</span> &amp;&amp; p2 &gt;= <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> nums1[p1] &gt; nums2[p2] {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// p1 指向的值更大
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            nums1[index] = nums1[p1]
+</span></span><span style="display:flex;"><span>            p1--
+</span></span><span style="display:flex;"><span>        } <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// p2 指向的值更大
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            nums1[index] = nums2[p2]
+</span></span><span style="display:flex;"><span>            p2--
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        index--
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic">// 题目假设 nums1 的空间大小等于 m + n
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 这样它就有足够的空间保存来自 nums2 的元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以这里 p2 存在两种情况
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 	(1) == 0 说明两个数组中最小的元素在 nums1，无需调整
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//  (2) &gt;  0 说明两个数组中最小的元素在 nums2，仅调整 nums2 中剩余元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#6ab825;font-weight:bold">for</span> p2 &gt;= <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>        nums1[index] = nums2[p2]
+</span></span><span style="display:flex;"><span>        index--
+</span></span><span style="display:flex;"><span>        p2--
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/mergeSortedArray.png" alt="合并两个有序数组 - 执行过程"></p>
+<h4 id="2-汇总区间"><strong>2. 汇总区间</strong></h4>
+<p>给定一个  无重复元素 的 有序 整数数组 nums 。返回 恰好覆盖数组中所有数字 的 最小有序 区间范围列表 。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [0,1,2,4,5,7]
+</span></span><span style="display:flex;"><span>输出：[<span style="color:#ed9d13">&#34;0-&gt;2&#34;</span>,<span style="color:#ed9d13">&#34;4-&gt;5&#34;</span>,<span style="color:#ed9d13">&#34;7&#34;</span>]
+</span></span><span style="display:flex;"><span>解释：区间范围是：
+</span></span><span style="display:flex;"><span>[0,2] --&gt; <span style="color:#ed9d13">&#34;0-&gt;2&#34;</span>
+</span></span><span style="display:flex;"><span>[4,5] --&gt; <span style="color:#ed9d13">&#34;4-&gt;5&#34;</span>
+</span></span><span style="display:flex;"><span>[7,7] --&gt; <span style="color:#ed9d13">&#34;7&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [0,2,3,4,6,8,9]
+</span></span><span style="display:flex;"><span>输出：[<span style="color:#ed9d13">&#34;0&#34;</span>,<span style="color:#ed9d13">&#34;2-&gt;4&#34;</span>,<span style="color:#ed9d13">&#34;6&#34;</span>,<span style="color:#ed9d13">&#34;8-&gt;9&#34;</span>]
+</span></span><span style="display:flex;"><span>解释：区间范围是：
+</span></span><span style="display:flex;"><span>[0,0] --&gt; <span style="color:#ed9d13">&#34;0&#34;</span>
+</span></span><span style="display:flex;"><span>[2,4] --&gt; <span style="color:#ed9d13">&#34;2-&gt;4&#34;</span>
+</span></span><span style="display:flex;"><span>[6,6] --&gt; <span style="color:#ed9d13">&#34;6&#34;</span>
+</span></span><span style="display:flex;"><span>[8,9] --&gt; <span style="color:#ed9d13">&#34;8-&gt;9&#34;</span>
+</span></span></code></pre></div><p>快速套模板:</p>
+<ul>
+<li>定义两个无序指针 p1, p2</li>
+<li>p1 指针从左向右开始遍历</li>
+<li>p2 指针从左向右开始遍历</li>
+<li>单次遍历过程中，将 p2 指向 p1 当前位置，p1 继续内部循环向前扫描，直到遇到非连续元素结束循环</li>
+<li>将 p2 和 p1 指向的元素加入到结果集中</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">summaryRanges</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) []<span style="color:#6ab825;font-weight:bold">string</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> res []<span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> p1, n := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums); p1 &lt; n; {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// p2 指向 p1 的当前位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		p2 := p1
+</span></span><span style="display:flex;"><span>		p1++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 只要元素是连续的，p1 指针继续向前扫描
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> p1 &lt; n &amp;&amp; nums[p1] == nums[p1-<span style="color:#3677a9">1</span>]+<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>			p1++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		s := strconv.<span style="color:#447fcf">Itoa</span>(nums[p2])
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 p2 和 p1 不是连续元素
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 说明区间发生了合并
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> p2 &lt; p1-<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>			s += <span style="color:#ed9d13">&#34;-&gt;&#34;</span> + strconv.<span style="color:#447fcf">Itoa</span>(nums[p1-<span style="color:#3677a9">1</span>])
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		res = <span style="color:#24909d">append</span>(res, s)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/summaryRanges.png" alt="汇总区间 - 执行过程"></p>
+<hr>
+<h2 id="-三指针">💡 三指针</h2>
+<p>双指针除了前文中提到几种常用的类型外，还有一种衍生类型: 多指针，比如下面的这个三指针问题。</p>
+<h4 id="1-三数之和"><strong>1. 三数之和</strong></h4>
+<p>给你一个整数数组 nums ，判断是否存在三元组 [nums[i], nums[j], nums[k]] 满足 i != j、i != k 且 j != k ，同时还满足 nums[i] + nums[j] + nums[k] == 0 。请你返回所有和为 0 且不重复的三元组。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [-1,0,1,2,-1,-4]
+</span></span><span style="display:flex;"><span>输出：[[-1,-1,2],[-1,0,1]]
+</span></span><span style="display:flex;"><span>解释：
+</span></span><span style="display:flex;"><span>nums[0] + nums[1] + nums[2] = (-1) + <span style="color:#3677a9">0</span> + <span style="color:#40ffff">1</span> = <span style="color:#3677a9">0</span> 。
+</span></span><span style="display:flex;"><span>nums[1] + nums[2] + nums[4] = <span style="color:#3677a9">0</span> + <span style="color:#3677a9">1</span> + (-1) = <span style="color:#3677a9">0</span> 。
+</span></span><span style="display:flex;"><span>nums[0] + nums[3] + nums[4] = (-1) + <span style="color:#3677a9">2</span> + (-1) = <span style="color:#3677a9">0</span> 。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>不同的三元组是 [-1,0,1] 和 [-1,-1,2] 。
+</span></span><span style="display:flex;"><span>注意，输出的顺序和三元组的顺序并不重要。
+</span></span></code></pre></div><p>解题思路:</p>
+<p>虽然题目要求的是计算出所有三元组，但是我们可以将其 “降维” 到双指针问题:</p>
+<p><strong>对于数组中的每个元素 X，找出另外两个元素，要求这两个元素的和为 0 - X</strong>。</p>
+<p>这就是前文中提到过的原题了: 两数之和 II，可以使用左右双指针来快速解题，但是因为题目给出的数组是无序的，所以为了满足左右双指针的应用条件，需要先对数组进行排序。</p>
+<p>快速套模板:</p>
+<ul>
+<li>定义三个指针 first second third</li>
+<li>first 指针从左向右开始遍历，作为最外层循环</li>
+<li>second 和 third 充当左右双指针，作为内层循环查找和为 <code>0 - nums[first]</code> 的两个值 ，其中:
+<ul>
+<li>second 指针指向 first + 1 的位置，从左向右开始遍历</li>
+<li>third 指针指向数组的末尾位置，从右向左开始遍历</li>
+<li>如果当前 second 和 third 指向的两个值的和为 <code>0 - nums[first]</code>, 将三个指针指向的当前元素加入到结果集中</li>
+</ul>
+</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">threeSum</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) [][]<span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	n := <span style="color:#24909d">len</span>(nums)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 先对数组进行排序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>	sort.<span style="color:#447fcf">Ints</span>(nums)
+</span></span><span style="display:flex;"><span>	res := <span style="color:#24909d">make</span>([][]<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> first := <span style="color:#3677a9">0</span>; first &lt; n; first++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 需要和上一次枚举的数不相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> first &gt; <span style="color:#3677a9">0</span> &amp;&amp; nums[first] == nums[first-<span style="color:#3677a9">1</span>] {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 内部循环就是一个典型的左右双指针代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 对应的指针初始指向数组的最右端
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		third := n - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 查找的目标值是 0 - 当前外层元素 (nums[first])
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 也就是 -1 * nums[first] 
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		target := -<span style="color:#3677a9">1</span> * nums[first]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> second := first + <span style="color:#3677a9">1</span>; second &lt; n; second++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 需要和上一次枚举的数不相同
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> second &gt; first+<span style="color:#3677a9">1</span> &amp;&amp; nums[second] == nums[second-<span style="color:#3677a9">1</span>] {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 需要保证 second 的指针在 third 的指针的左侧
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">for</span> second &lt; third &amp;&amp; nums[second]+nums[third] &gt; target {
+</span></span><span style="display:flex;"><span>				third--
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果指针重合，随着 second 后续的增加
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 就不会有满足 first+second+third=0 &amp;&amp; second&lt;third 的 third 了，可以退出循环
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> second == third {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">break</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> nums[second]+nums[third] == target {
+</span></span><span style="display:flex;"><span>				res = <span style="color:#24909d">append</span>(res, []<span style="color:#6ab825;font-weight:bold">int</span>{nums[first], nums[second], nums[third]})
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/threeSum.png" alt="三数之和 - 执行过程"></p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/http_evolution/"><i class="fa fa-chevron-circle-left"></i> HTTP1 到 HTTP3 的工程优化</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_design_patterns/">Go 语言内置的设计模式 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="LeetCode 双指针 刷题模板"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
