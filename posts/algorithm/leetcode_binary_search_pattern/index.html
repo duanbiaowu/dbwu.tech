@@ -1,0 +1,538 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>LeetCode Binary Search 刷题模板 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="LeetCode Binary Search 刷题模板" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/leetcode_binary_search_pattern/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-03-31T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-03-31T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LeetCode Binary Search 刷题模板"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>LeetCode Binary Search 刷题模板</h1>
+
+    
+      
+<p>
+    <span>2023-03-31</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>从应用的角度进行分析，二分查找属于 “双指针” 类型子集，即使有了虽然有了标准的二分查找算法模板，但是 LeetCode 上面的二分查找相关题目不会让你直接套模板，依然需要在二分查找的基础之上 <strong>学习新的技巧</strong>: 巧妙的边界处理、题型变换 (如何将题型变换为二分查找)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// Go 语言实现的二分查找算法
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">binarySearch</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	low, hi := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt;= hi {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 防止两数相加时溢出
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] == target {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> mid
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> nums[mid] &gt; target {
+</span></span><span style="display:flex;"><span>			hi = mid - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>珠玉在前</strong>，本文尝试在二分算法的技术上，从实用主义出发，通过刷题提升解题的速度，通过图解算法过程加深二分查找算法的理解。</p>
+<blockquote>
+<p>二分查找，算法模板代码是基础，边界判断是玄学。</p>
+</blockquote>
+<hr>
+<h2 id="-典型题目">💡 典型题目</h2>
+<h3 id="1-搜索插入位置">1. 搜索插入位置</h3>
+<p>给定一个排序数组和一个目标值，在数组中找到目标值，并返回其索引。如果目标值不存在于数组中，返回它将会被按顺序插入的位置。
+请必须使用时间复杂度为 O(log n) 的算法。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">nums</span> = [1,3,5,6], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">5</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>示例 2:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">nums</span> = [1,3,5,6], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#3677a9">1</span>
+</span></span></code></pre></div><p>题目是在有序数组中查找位置，并且要求算法时间复杂度为 O(N log N), 基本上就是告诉你要使用二分查找算法解题。</p>
+<p><strong>翻译后:</strong> 在一个有序数组中找到第一个大于等于 target 的索引位置。</p>
+<p>直接将二分查找的算法的返回值修改一下，就是解题答案：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">searchInsert</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	low, hi := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt;= hi {
+</span></span><span style="display:flex;"><span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] == target {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 找到目标值后直接返回索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">return</span> mid
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> nums[mid] &gt;= target {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// target 在数组的左半部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			hi = mid - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// target 在数组的右半部分
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果没有找到目标值，直接将左边界返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为此时的数组以 low 位置切分为两部分：
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 1. 左半部分的元素全部比 nums[low] 小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 2. 右半部分的元素全部比 nums[low] 大
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 索引 low 正好就是插入 target 目标元素的位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">return</span> low
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/searchInsert.png" alt="搜索插入位置 - 执行过程"></p>
+<h3 id="2-搜索二维矩阵">2. 搜索二维矩阵</h3>
+<p>给你一个整数 target ，如果 target 在矩阵中，返回 true ；否则，返回 false 。</p>
+<p><img src="https://dbwu.tech/images/algorithm/search_in_matrix.jpeg" alt="图片来源: https://leetcode.cn/"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例 1 </span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">target</span> = 3, 返回 <span style="color:#24909d">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例 2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">target</span> = 13, 返回 <span style="color:#24909d">false</span>
+</span></span></code></pre></div><p>解题思路:</p>
+<p>虽然题目中给的参数数据结构是矩阵，其实也就是二维数组，并且该二维数组是逐行逐列递增的，<strong>将其扁平化之后就是一个有序的一维数组</strong>，然后就可以套用二分查找算法来解题了。</p>
+<p><img src="https://dbwu.tech/images/algorithm/searchMatrix.png" alt="矩阵扁平化为一维数组"></p>
+<p><strong>唯一需要注意的是:</strong> 二分查找过程中，需要将一维数组索引转化为对应矩阵（二维数组）的坐标。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 将矩阵每一行拼接在上一行的末尾，则会得到一个升序数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 可以在该数组上二分查找
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">searchMatrix</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">bool</span> {
+</span></span><span style="display:flex;"><span>	rows := <span style="color:#24909d">len</span>(matrix)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 边界处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> rows == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	cols := <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 一维数组的长度等于矩阵的行数量 * 列数量 - 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 因为数组下标从 0 开始
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	low, hi := <span style="color:#3677a9">0</span>, rows*cols-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt;= hi {
+</span></span><span style="display:flex;"><span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 将索引转换为具体的矩阵坐标
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		val := matrix[mid/cols][mid%cols]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> val == target {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">true</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> <span style="color:#6ab825;font-weight:bold">if</span> val &lt; target {
+</span></span><span style="display:flex;"><span>			low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			hi = mid - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#6ab825;font-weight:bold">false</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/searchMatrix2.png" alt="搜索二维矩阵 - 执行过程"></p>
+<h3 id="3-寻找峰值">3. 寻找峰值</h3>
+<p>给你一个整数数组 nums，找到峰值元素并返回其索引。数组可能包含多个峰值，在这种情况下，返回 任何一个峰值 所在位置即可。
+峰值元素是指其值严格大于左右相邻值的元素。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [1,2,3,1]
+</span></span><span style="display:flex;"><span>输出：2
+</span></span><span style="display:flex;"><span>解释：3 是峰值元素，你的函数应该返回其索引 2。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [1,2,1,3,5,6,4]
+</span></span><span style="display:flex;"><span>输出：1 或 <span style="color:#3677a9">5</span> 
+</span></span><span style="display:flex;"><span>解释：你的函数可以返回索引 1，其峰值元素为 2；
+</span></span><span style="display:flex;"><span>     或者返回索引 5， 其峰值元素为 6。
+</span></span></code></pre></div><p>解题思路:</p>
+<p>我们可以 <strong>在二分查找算法的基础上略微修改</strong>：每个二分查找过程中不再是查找具体的 target, 而是直接使用当前的 “中间元素” 为基准进行对比:</p>
+<ul>
+<li>如果当前 “中间元素” 大于紧跟其后的元素，<strong>说明当前元素后面的元素不是峰值元素</strong>，此时可能存在两种情况:
+<ol>
+<li>当前元素是一个峰值元素</li>
+<li>当前元素的左侧存在峰值元素</li>
+<li>无论两种情况中的哪一种，直接将指向右侧边界的 hi 指针指向当前元素索引</li>
+</ol>
+</li>
+<li>如果当前 “中间元素” 小于等于紧跟其后的元素，<strong>说明当前元素后面存在峰值元素</strong>, 直接将指向左侧边界的 low 指针指向当前元素索引 + 1</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">findPeakElement</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	low, hi := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt; hi {
+</span></span><span style="display:flex;"><span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果 mid 较大，则左侧存在峰值，high = m
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 如果 mid + 1 较大，则右侧存在峰值，low = mid + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] &gt; nums[mid+<span style="color:#3677a9">1</span>] {
+</span></span><span style="display:flex;"><span>			hi = mid
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> low
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>注意题解代码中和标准二分查找模板的细节差异，但从出题的角度分析，笔者认为这道题并没有前两道题有价值。</p>
+<p><img src="https://dbwu.tech/images/algorithm/findPeakElement.png" alt="寻找峰值 - 执行过程"></p>
+<h3 id="4-搜索旋转排序数组">4. 搜索旋转排序数组</h3>
+<p>整数数组 nums 按升序排列，数组中的值 互不相同 。</p>
+<p>给你 旋转后 的数组 nums 和一个整数 target ，如果 nums 中存在这个目标值 target ，则返回它的下标，否则返回 -1 。</p>
+<p><img src="https://dbwu.tech/images/algorithm/search-in-rotated-sorted-array.png" alt="数组旋转示例"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [4,5,6,7,0,1,2], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>输出：4
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [4,5,6,7,0,1,2], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>输出：-1
+</span></span></code></pre></div><p>通过分析几个旋转后的数组图片，你会发现这道题本质上还是二分查找题，将旋转后的数组规律进行总结：</p>
+<p><strong>将旋转后的数组一分为二，其中一定有一个数组是有序的，另一个可能是有序数组，也能是部分有序的数组</strong>。</p>
+<p>所以需要对标准的二分查找需要进行调整，具体来说:</p>
+<ol>
+<li>如果当前元素正好等于要查找的目标元素 target, 直接返回当前元素的索引</li>
+<li>如果以当前元素将数组分为两部分:
+<ul>
+<li>如果左半部分的所有元素都是有序的
+<ul>
+<li>如果要查找的元素所在于左半部分，将二分范围缩小到左半部分</li>
+<li>否则将二分范围缩小到右半部分</li>
+</ul>
+</li>
+<li>如果左半部分的所有元素不是有序的
+<ul>
+<li>如果要查找的元素所在于右半部分，将二分范围缩小到右半部分</li>
+<li>否则将二分范围缩小到左半部分</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">search</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	low, hi := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt;= hi {
+</span></span><span style="display:flex;"><span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] == target {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">return</span> mid
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 如果[low, mid - 1] 是有序数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 且 target 的大小满足 ([nums[low],nums[mid]) 则将搜索范围缩小至 [low, mid - 1]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 否则在 [mid + 1, hi] 中寻找
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 通过区间左右两端的数字来确认该区间是否有序
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[low] &lt;= nums[mid] {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> nums[low] &lt;= target &amp;&amp; target &lt; nums[mid] {
+</span></span><span style="display:flex;"><span>				hi = mid - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] &lt; target &amp;&amp; target &lt;= nums[hi] {
+</span></span><span style="display:flex;"><span>				low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>				hi = mid - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/search-in-rotated-sorted-array2.png" alt="数组旋转查找指定值 - 执行过程"></p>
+<h3 id="5-寻找旋转排序数组中的最小值">5. 寻找旋转排序数组中的最小值</h3>
+<p>给你一个元素值 互不相同 的数组 nums ，它原来是一个升序排列的数组，并按上述情形进行了多次旋转。请你找出并返回数组中的 最小元素 。</p>
+<p>依然是旋转数组，沿袭前面第 4 题的思路：</p>
+<p><strong>将旋转后的数组一分为二，其中一定有一个数组是有序的，另一个可能是有序数组，也能是部分有序的数组</strong>。</p>
+<p>直接套用二分搜索模板: 每次二分搜索过程中取出中间元素: 如果中间元素小于右边界元素，说明最小元素位于左半部分，否则说明最小元素位于右半部分。</p>
+<p>下面举一个简单的小例子来说明这个过程:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 源数组</span>
+</span></span><span style="display:flex;"><span>[0, 1, 2, 4, 5, 6, 7]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 若旋转 4 次，则可以得到 </span>
+</span></span><span style="display:flex;"><span>[4, 5, 6, 7, 0, 1, 2]
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 此时中间元素为 7, 大于右边界的元素 2，所以最小元素位于右半部分</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 若旋转 7 次，则可以得到</span>
+</span></span><span style="display:flex;"><span>[0, 1, 2, 4, 5, 6, 7]
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 此时中间元素为 4, 大于右边界的元素 7，所以最小元素位于左半部分</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">findMin</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	low, hi := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt; hi {
+</span></span><span style="display:flex;"><span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] &lt; nums[hi] {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 为什么 high = mid, 而不是 high = mid-1 ?
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 因为 nums[mid] 有可能就是最小值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 示例: {4, 5, 1, 2, 3}
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 如果 high = mid - 1，则丢失了最小值 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			hi = mid
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 为什么 low = mid + 1, 而不是 low = mid ?
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 因为 nums[mid] 不可能是最小值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 因为如果 nums[mid] 是最小值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 那么其会满足上面的表达式: nums[mid] &lt; nums[hi]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 代码就不会执行到这里了
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> nums[low]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/find-minimum-in-rotated-sorted-array.png" alt="数组旋转查找最小值 - 执行过程"></p>
+<hr>
+<h2 id="-变通题目">💡 变通题目</h2>
+<h3 id="1-在排序数组中查找元素的第一个和最后一个位置">1. 在排序数组中查找元素的第一个和最后一个位置</h3>
+<p>给你一个按照非递减顺序排列的整数数组 nums，和一个目标值 target。请你找出给定目标值在数组中的开始位置和结束位置。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [5,7,7,8,8,10], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">8</span>
+</span></span><span style="display:flex;"><span>输出：[3,4]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [5,7,7,8,8,10], <span style="color:#40ffff">target</span> = <span style="color:#3677a9">6</span>
+</span></span><span style="display:flex;"><span>输出：[-1,-1]
+</span></span></code></pre></div><p>表面看这是一道二分查找题，先找出目标元素 target 的第一个出现位置，然后找出最后一个出现位置，但是参数给出的是整数数组，所以其实可以将题目转换一下：</p>
+<ol>
+<li><strong>查找目标元素 target 的插入位置</strong></li>
+<li><strong>查找目标元素 target+1 的插入位置</strong>，该位置正好就是 target 的最后一个出现位置</li>
+</ol>
+<p>寻找目标元素插入位置，就是前文中的原题 (连套模板代码都不需要了，直接复制粘贴即可)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">searchRange</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) []<span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 查找目标元素 target 的插入位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	left := <span style="color:#447fcf">search</span>(nums, target)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 查找目标元素 target+1 的插入位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 该位置正好就是 target 的最后一个出现位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	right := <span style="color:#447fcf">search</span>(nums, target+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 边界处理
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> left == <span style="color:#24909d">len</span>(nums) || nums[left] != target {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> []<span style="color:#6ab825;font-weight:bold">int</span>{-<span style="color:#3677a9">1</span>, -<span style="color:#3677a9">1</span>}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> []<span style="color:#6ab825;font-weight:bold">int</span>{left, right - <span style="color:#3677a9">1</span>}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 寻找目标元素插入位置
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 前文中的原题
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">search</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, target <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	low, hi := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(nums)-<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> low &lt;= hi {
+</span></span><span style="display:flex;"><span>		mid := low + (hi-low)&gt;&gt;<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">if</span> nums[mid] &gt;= target {
+</span></span><span style="display:flex;"><span>			hi = mid - <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		} <span style="color:#6ab825;font-weight:bold">else</span> {
+</span></span><span style="display:flex;"><span>			low = mid + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> low
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="2-数字-k-在数组中出现频次">2. 数字 k 在数组中出现频次</h3>
+<p>给定一个长度为 n 的升序数组和一个非负数整数 k ，要求统计 k 在数组中出现的次数。</p>
+<p><img src="https://dbwu.tech/images/algorithm/k_count_in_array.png" alt="数字出现频次"></p>
+<p>该题和上一道题本质上是同一道题，只需要稍微变换下：</p>
+<ol>
+<li><strong>查找目标元素 target 的插入位置</strong></li>
+<li><strong>查找目标元素 target+1 的插入位置</strong>，该位置正好就是 target 的最后一个出现位置</li>
+</ol>
+<blockquote>
+<p>出现频次 = 最后出现位置 - 第一次出现位置</p>
+</blockquote>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/golang_reflect/"><i class="fa fa-chevron-circle-left"></i> Go 的反射与三大定律</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/k8s/best_practice/affinity_and_taint_toleration/">Kubernetes 应用最佳实践 - 亲和性和污点容忍度 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="LeetCode Binary Search 刷题模板"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
