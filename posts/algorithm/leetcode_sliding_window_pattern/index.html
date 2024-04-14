@@ -1,0 +1,338 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>LeetCode Sliding Window 刷题模板 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="LeetCode Sliding Window 刷题模板" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/leetcode_sliding_window_pattern/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-04-10T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-04-10T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LeetCode Sliding Window 刷题模板"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>LeetCode Sliding Window 刷题模板</h1>
+
+    
+      
+<p>
+    <span>2022-04-10</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="-概述">📖 概述</h2>
+<p>滑动窗口（Sliding Window）是一种用于解决数组/字符串相关问题的常见技巧，通过维护一个大小可以伸缩的窗口来执行具体操作，随着窗口在数组/字符串上移动，根据窗口的变化来执行具体的操作。</p>
+<h3 id="刷题模板">刷题模板</h3>
+<p>滑动窗口算法执行的基本步骤:</p>
+<ol>
+<li>初始化左指针 left 和右指针 right，并且初始化结果变量</li>
+<li>移动右指针，<strong>扩大窗口大小</strong>，直到满足特定条件 (窗口内的元素满足某种条件 或 达到数组/字符串的末尾)</li>
+<li>移动左指针，<strong>缩小窗口大小</strong> (直到不再满足特定条件) <strong>同时更新结果变量</strong></li>
+<li>重复步骤 2 和 3，直到右指针达到数组/字符串的末尾</li>
+</ol>
+<p>下面是一个典型的滑动窗口执行过程示例:</p>
+<p><img src="https://dbwu.tech/images/algorithm/sliding_window.png" alt="滑动窗口执行过程示例"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 滑动窗口刷题代码模板
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">slidingWindow</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化左右指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	left, right := <span style="color:#3677a9">0</span>, <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化结果变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	result := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 迭代右指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> right &lt; <span style="color:#24909d">len</span>(nums) {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新窗口状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 移动左指针，收缩窗口大小，更新结果变量
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新右指针，扩大窗口大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> result
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="-典型题目">💡 典型题目</h2>
+<h3 id="1-长度最小的子数组">1. 长度最小的子数组</h3>
+<p>给定一个含有 n 个正整数的数组和一个正整数 target 。</p>
+<p>找出该数组中满足其总和大于等于 target 的长度最小的 连续子数组 [numsl, numsl+1, &hellip;, numsr-1, numsr] ，并返回其长度。如果不存在符合条件的子数组，返回 0 。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来源: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：target = 7, <span style="color:#40ffff">nums</span> = [2,3,1,2,4,3]
+</span></span><span style="display:flex;"><span>输出：2
+</span></span><span style="display:flex;"><span>解释：子数组 [4,3] 是该条件下的长度最小的子数组。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：target = 4, <span style="color:#40ffff">nums</span> = [1,4,4]
+</span></span><span style="display:flex;"><span>输出：1
+</span></span></code></pre></div><p><strong>解题思路:</strong></p>
+<ol>
+<li>初始化左指针 left 和右指针 right，并且初始化结果最小长度</li>
+<li>移动右指针，<strong>扩大窗口大小</strong>，直到满足特定条件 (窗口内的元素和大于等于目标参数 或 达到数组的末尾)</li>
+<li>移动左指针，<strong>缩小窗口大小</strong> (窗口内的元素和小于目标参数) <strong>同时更新结果变量</strong></li>
+<li>重复步骤 2 和 3，直到右指针达到数组的末尾</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">minSubArrayLen</span>(target <span style="color:#6ab825;font-weight:bold">int</span>, nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化最小长度为数组长度 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	minLen := <span style="color:#24909d">len</span>(nums) + <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	sum, left := <span style="color:#3677a9">0</span>, <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 移动右指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> right := <span style="color:#6ab825;font-weight:bold">range</span> nums {
+</span></span><span style="display:flex;"><span>		sum += nums[right]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 找到符合条件的子数组时，开始收缩窗口大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> sum &gt;= target {
+</span></span><span style="display:flex;"><span>			minLen = <span style="color:#24909d">min</span>(minLen, right-left+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			sum -= nums[left]
+</span></span><span style="display:flex;"><span>			left++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果最小长度依然等于数组长度 + 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 说明数组中不存在符合条件的子数组
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> minLen &gt; <span style="color:#24909d">len</span>(nums) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> minLen
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">min</span>(x, y <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &lt; y {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> x
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> y
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/minSubArrayLen.png" alt="长度最小的子数组 - 代码执行过程"></p>
+<h3 id="2-无重复字符的最长子串">2. 无重复字符的最长子串</h3>
+<p>给定一个字符串 s ，请你找出其中不含有重复字符的 最长子串 的长度。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来源: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">s</span> = <span style="color:#ed9d13">&#34;abcabcbb&#34;</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#3677a9">3</span> 
+</span></span><span style="display:flex;"><span>解释: 因为无重复字符的最长子串是 <span style="color:#ed9d13">&#34;abc&#34;</span>，所以其长度为 3。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入: <span style="color:#40ffff">s</span> = <span style="color:#ed9d13">&#34;bbbbb&#34;</span>
+</span></span><span style="display:flex;"><span>输出: <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>解释: 因为无重复字符的最长子串是 <span style="color:#ed9d13">&#34;b&#34;</span>，所以其长度为 1。
+</span></span></code></pre></div><p><strong>解题思路:</strong></p>
+<ol>
+<li>初始化左指针 left 和右指针 right，并且初始化结果最小长度，同时维护一个 Map 作为窗口内的重复字符检测</li>
+<li>移动右指针，<strong>扩大窗口大小</strong>，直到满足特定条件 (窗口内的元素出现重复 或 达到字符串的末尾)</li>
+<li>移动左指针，<strong>缩小窗口大小</strong> (窗口内的元素没有重复) <strong>同时更新结果变量</strong>.</li>
+<li>重复步骤 2 和 3，直到右指针达到字符串的末尾</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">lengthOfLongestSubstring</span>(s <span style="color:#6ab825;font-weight:bold">string</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 题目声明字符串 s 由英文字母、数字、符号和空格组成
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所以这里使用一个长度为 256 的数组来模拟 Map 功能
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">var</span> win [<span style="color:#3677a9">256</span>]<span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	res, n := <span style="color:#3677a9">0</span>, <span style="color:#24909d">len</span>(s)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 声明左右指针
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> left, right := <span style="color:#3677a9">0</span>, <span style="color:#3677a9">0</span>; right &lt; n; right++ {
+</span></span><span style="display:flex;"><span>		c := s[right]
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新窗口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		win[c]++
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 遇到重复的字符时，开始收缩窗口大小
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#6ab825;font-weight:bold">for</span> win[c] &gt; <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>			win[s[left]]--
+</span></span><span style="display:flex;"><span>			left++
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 更新已知的最大窗口
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		res = <span style="color:#24909d">max</span>(res, right-left+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> res
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/lowestCommonAncestor.png" alt="无重复字符的最长子串 - 代码执行过程"></p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/leetcode_dfs_pattern/"><i class="fa fa-chevron-circle-left"></i> LeetCode DFS 刷题模板</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/leetcode_binary_tree_pattern/">LeetCode Binary Tree 刷题模板 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="LeetCode Sliding Window 刷题模板"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
