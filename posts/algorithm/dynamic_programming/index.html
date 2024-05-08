@@ -1,0 +1,405 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>动态规划简明教程 - 1 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="动态规划简明教程 - 1" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/dynamic_programming/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-06-05T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-06-05T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="动态规划简明教程 - 1"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>动态规划简明教程 - 1</h1>
+
+    
+      
+<p>
+    <span>2022-06-05</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92">动态规划</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="-概述">📖 概述</h2>
+<blockquote>
+<p>在计算机科学中，动态规划（Dynamic Programming，简称 DP）是一种解决复杂问题的方法，通过将问题分解成更小的子问题，并保存子问题的解来避免重复计算。</p>
+</blockquote>
+<h3 id="三个关键特征">三个关键特征</h3>
+<p>下面以 Fibonacci (斐波那契数列) 问题为例，说明动态规划的三个关键特征。</p>
+<p><strong>1. 重叠子问题</strong></p>
+<p>指在解决问题的过程中需要多次解决相同的子问题，虽然该性质并不是动态规划的使用必要条件，但如果没有该性质，动态规划相比其他算法就不具备明显优势。</p>
+<p>计算 Fibonacci 数列时，存在大量的重叠子问题，即同一个 Fibonacci 数列中的某些数字可能会在不同的计算路径中重复出现。</p>
+<p><img src="https://dbwu.tech/images/algorithm/fib_tree.png" alt="Fibonacci 重叠子问题"></p>
+<p>例如计算 F(5) 时需要计算 F(4) 和 F(3)，而计算 F(4) 时也需要计算 F(3)，这样就会导致 F(3) 这个子问题被重复计算了。</p>
+<p><strong>2. 最优子结构</strong></p>
+<p>指问题的最优解可以通过子问题的最优解来构造。</p>
+<p><img src="https://dbwu.tech/images/algorithm/fib_demo.png" alt="Fibonacci 最优子结构"></p>
+<p>假设需要计算 <code>第 N 个</code> Fibonacci 数字，可以先计算出该问题的子问题: 也就是 <code>第 N - 1</code> 和 <code>第 N - 2</code> 个 Fibonacci 数字，而第 <code>第 N - 1</code> 个 Fibonacci 数字又可以通过 <code>第 N - 2</code> 和 <code>第 N - 3</code> 个 Fibonacci 数字计算得出，可以自顶向下不停递推，直到达到最基本的情况 (N = 0 和 N = 1 时)。因此，Fibonacci 问题具有最优子结构，每个 Fibonacci 数字可以通过其子问题最优解来构造。</p>
+<p><strong>3. 无后效性</strong></p>
+<blockquote>
+<p>对于一个问题当前状态的解，只与问题之前的状态有关，不会受到问题后续 (下一步) 状态的影响。</p>
+</blockquote>
+<blockquote>
+<p>对于一个问题后续 (下一步) 的解，只与问题当前的状态有关，不会受到问题之前状态的影响。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/algorithm/fib_demo.png" alt="Fibonacci 无后效性"></p>
+<p>假设需要计算 <code>第 3 个</code> Fibonacci 数字，只需要知道  <code>第 2 个</code> 和 <code>第 1 个</code> Fibonacci 数字，不需要知道 <code>第 3 个</code> 之后的其他 Fibonacci 数字。</p>
+<h3 id="状态转移方程">状态转移方程</h3>
+<blockquote>
+<p>设计正确的状态转移方程是解决动态规划问题的前提。</p>
+</blockquote>
+<p>状态转移顺序的核心是要保证在计算当前问题的解时，所有它依赖的更小子问题的解都已经被正确地计算出来。</p>
+<p>动态规划的子问题分解属于自顶向下的思想，因此在解题时可以按照 <code>暴力搜索 -&gt; 记忆化搜索 -&gt; 动态规划搜索</code> 的顺序来实现代码，这样循序渐进地优化更符合我们的思考过程，也可以降低我们从一开始直接推导状态转移方程的心理压力。</p>
+<p>将问题的解表示为一个二维或多维数组，数组中的每个元素对应问题的一个状态，通过填表的方式逐步计算并存储问题的解。首先确定问题的状态表示方式并创建一个状态转移表，然后根据问题的状态转移方程，逐个填写表格中的元素值，直到得到原问题的解。</p>
+<h3 id="算法步骤">算法步骤</h3>
+<ol>
+<li><strong>定义问题状态</strong>：将原问题分解成更小的子问题，并定义问题的状态，通常需要考虑状态的维度和含义</li>
+<li><strong>状态转移方程</strong>：根据问题的最优子结构性质，确定问题状态之间的转移关系，也就是如何从一个状态转移到另一个状态</li>
+<li><strong>初始化</strong>：初始化问题的边界状态，建立状态转移表 (例如一个二维数组)，是将问题的边界情况单独处理 (和递归过程中的递归结束条件、边界处理一样)</li>
+<li><strong>计算子问题</strong>：按照状态转移方程计算子问题的状态，并保存中间结果</li>
+<li><strong>计算原问题</strong>：通过逐步子问题的解，最终计算出原问题的解</li>
+</ol>
+<p>对应的伪代码如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">dp</span>(n, m <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 定义状态
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>    <span style="color:#999;font-style:italic">// 这里使用二维数组来表示子问题的解
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	state := <span style="color:#24909d">make</span>([][]<span style="color:#6ab825;font-weight:bold">int</span>, n+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> state {
+</span></span><span style="display:flex;"><span>		state[i] = <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, m+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt;= n; i++ {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt;= m; j++ {
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">1</span>; i &lt;= n; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">1</span>; j &lt;= m; j++ {
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic">// 4. 计算子问题并保存中间结果
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            <span style="color:#999;font-style:italic">// 这里要用到状态转移方程
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>            ... 
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> state[n][m]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="-实现过程优化">💡 实现过程优化</h2>
+<p>为了帮助读者理解动态规划的优化过程，这里以 Fibonacci (斐波那契数列) 问题为例，按照 <code>暴力搜索 -&gt; 记忆化搜索 -&gt; 动态规划搜索</code> 的顺序来实现代码，展现三种不同的实现方式之间的性能差异、以及<strong>代码实现如何从自顶向下转换为自底向上</strong>。</p>
+<p>Fibonacci 状态转移方程:</p>
+<p>$$
+\begin{align*}
+\left{
+\begin{array}{ll}
+F(0) &amp;= 0 \
+F(1) &amp;= 1 \
+F(n) &amp;= F(n-1) + F(n-2)
+\end{array}
+\right.
+\end{align*}
+$$</p>
+<h3 id="1-暴力搜索">1. 暴力搜索</h3>
+<p>暴力搜索就是将状态转移方程直观地转换为 “自顶向下” 的递归代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fib</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n &lt;= <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> n
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">fib</span>(n-<span style="color:#3677a9">1</span>) + <span style="color:#447fcf">fib</span>(n-<span style="color:#3677a9">2</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>暴力搜索实现简单背后的代价是算法时间复杂度很高，对于数字 N, 递归执行的深度为 N, 时间复杂度为 O(2^N)，数字 N 越大，指数变化呈爆炸增长。</p>
+<p><img src="https://dbwu.tech/images/algorithm/fib_tree.png" alt="Fibonacci 递归展开"></p>
+<p><strong>时间复杂度呈指数增长是因为 “重叠子问题” 导致的</strong>，例如图中所示的，计算 Fib(8) 时会递归计算 Fib(7) 和 Fib(6), 然后计算 Fib(7) 时会递归计算 Fib(6) 和 Fib(5), 其中 Fib(6) 被重复计算了，以此类推，递归层数越深，重叠子问题导致的重复计算就会越多。</p>
+<h3 id="2-记忆化搜索">2. 记忆化搜索</h3>
+<p>记忆化搜索和暴力搜索一样，也属于 “自顶向下” 的递归实现，但是会额外增加一个备忘录 (Memo, 一般使用 HashMap 作为数据结构实现) 来保存已经计算过的问题解，避免重复计算。</p>
+<p>通过递归调用解决子问题时，首先检查备忘录中是否已经存在该子问题的解，如果存在，直接返回即可，否则就计算子问题的解，并在计算完成后将解记录到备忘录中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fib</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	memo := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> memo {
+</span></span><span style="display:flex;"><span>		memo[i] = -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">fibMem</span>(n, memo)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fibMem</span>(n <span style="color:#6ab825;font-weight:bold">int</span>, memo []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n &lt;= <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> n
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> memo[n] != -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> memo[n]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	memo[n] = <span style="color:#447fcf">fibMem</span>(n-<span style="color:#3677a9">1</span>, memo) + <span style="color:#447fcf">fibMem</span>(n-<span style="color:#3677a9">2</span>, memo)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> memo[n]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>从暴力搜索优化到记忆化搜索之后，程序性能会发生质的变化，因为暴力搜索中所有的重复计算全部优化成为一次计算。</p>
+<p><img src="https://dbwu.tech/images/algorithm/fib_memo_tree.png" alt="Fibonacci 记忆化搜索展开"></p>
+<h3 id="3-动态规划">3. 动态规划</h3>
+<p>动态规划是一种 “自底向上” 的方法，尝试从最小的问题开始，逐步构建问题的解，通过循环迭代的方式，首先解决最小的问题，然后将解保存起来，然后利用已经解决的子问题逐步解决规模更大的子问题，直到解决原问题。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fib</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n &lt;= <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> n
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	dp := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	dp[<span style="color:#3677a9">0</span>], dp[<span style="color:#3677a9">1</span>] = <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">2</span>; i &lt;= n; i++ {
+</span></span><span style="display:flex;"><span>		dp[i] = dp[i-<span style="color:#3677a9">1</span>] + dp[i-<span style="color:#3677a9">2</span>]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> dp[n]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/fib_dp.png" alt="Fibonacci 动态规划展开"></p>
+<p>和记忆化搜索一样，动态规划也通过存储中间结果来避免重复计算，但是动态规划采用循环迭代来实现，相比记忆化搜索的递归实现，<strong>省去了递归过程中的函数调用和额外的堆栈分配与释放带来的开销</strong>，所以性能和内存占用优于记忆化搜索。</p>
+<h4 id="状态压缩优化">状态压缩优化</h4>
+<p>在 “状态转移表” 的基础上进行空间优化，通常是将多维数组压缩为一维数组甚至少数几个变量，节省内存空间。通过状态之间的转移关系和依赖关系，只保留状态变化过程中的必要变量，并利用这些变量来表示问题的解空间并逐步求解，<strong>这种空间优化技巧一般被称为 “滚动变量” 或 “滚动数组”</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">fib</span>(n <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n &lt;= <span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> n
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	prev, cur := <span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">2</span>; i &lt;= n; i++ {
+</span></span><span style="display:flex;"><span>		prev, cur = cur, prev+cur
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> cur
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/fib_dp2.png" alt="Fibonacci 动态规划状态压缩展开"></p>
+<h3 id="基准测试">基准测试</h3>
+<p>为了更加直观地体现出动态规划的算法优势，下面对 Fibonacci 数列的三种实现 <code>暴力搜索</code>、<code>记忆化搜索</code>、<code>动态规划</code> 做一个简陋的的基准测试。</p>
+<p>为了节省基准测试运行时间，将 Fibonacci 数固定为 20。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 暴力搜索基准测试
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkFibBruteForce</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; b.N; i++ {
+</span></span><span style="display:flex;"><span>		_ = <span style="color:#447fcf">fibBruteForce</span>(<span style="color:#3677a9">20</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 记忆化搜索基准测试
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkFibMem</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; b.N; i++ {
+</span></span><span style="display:flex;"><span>		_ = <span style="color:#447fcf">fibMem</span>(<span style="color:#3677a9">20</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 动态规划基准测试
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkFibDp</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; b.N; i++ {
+</span></span><span style="display:flex;"><span>		_ = <span style="color:#447fcf">fibDp</span>(<span style="color:#3677a9">20</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 动态规划状态压缩优化基准测试
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">BenchmarkFibDpOpt</span>(b *testing.B) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; b.N; i++ {
+</span></span><span style="display:flex;"><span>		_ = <span style="color:#447fcf">fibDpOpt</span>(<span style="color:#3677a9">20</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>运行上面的基准测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -bench=. -benchmem
+</span></span></code></pre></div><p>基准测试输出如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>goos: linux
+</span></span><span style="display:flex;"><span>goarch: amd64
+</span></span><span style="display:flex;"><span>BenchmarkFibBruteForce-8           <span style="color:#3677a9">39777</span>             <span style="color:#3677a9">29989</span> ns/op               <span style="color:#3677a9">0</span> B/op          <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkFibMem-8                <span style="color:#3677a9">7660668</span>               147.7 ns/op           <span style="color:#3677a9">176</span> B/op          <span style="color:#3677a9">1</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkFibDp-8                <span style="color:#3677a9">15572442</span>                69.73 ns/op          <span style="color:#3677a9">176</span> B/op          <span style="color:#3677a9">1</span> allocs/op
+</span></span><span style="display:flex;"><span>BenchmarkFibDpOpt-8             <span style="color:#3677a9">180644320</span>                7.205 ns/op           <span style="color:#3677a9">0</span> B/op          <span style="color:#3677a9">0</span> allocs/op
+</span></span><span style="display:flex;"><span>PASS
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/dp_benchmark.png" alt="基准测试结果"></p>
+<p>根据基准测试的输出结果，我们可以看到:</p>
+<ol>
+<li>从暴力搜索优化到记忆化搜索，性能提升了 200 倍，同时内存分配增加</li>
+<li>从记忆化搜索优化到动态规划，性能提升了 2 倍，内存使用不变</li>
+<li>动态规划使用状态压缩优化之后，性能再次提升了将近 10 倍，同时内存分配降为 0</li>
+</ol>
+<hr>
+<h2 id="小结">小结</h2>
+<p>本文以 Fibonacci 问题为例，描述了动态规划的基本概念和特征，并且对比了动态规划自顶向下 (暴力搜索、记忆化搜索) 和自底向上的两种实现方式和性能差异，接下来，笔者会从 LeetCode 中选择一些经典的动态规划题目进行练习和讲解，帮助读者巩固和提高动态规划算法技巧。</p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/leetcode_backtrack_pattern/"><i class="fa fa-chevron-circle-left"></i> LeetCode 回溯 刷题模板</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/vlan/">为什么需要 VLAN 网络 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="动态规划简明教程 - 1"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

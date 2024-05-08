@@ -787,15 +787,6 @@
      </item>
    
      <item>
-       <title>LeetCode Hash 刷题模板</title>
-       <link>https://dbwu.tech/posts/algorithm/leetcode_hash_pattern/</link>
-       <pubDate>Wed, 15 Mar 2023 00:00:00 +0000</pubDate>
-       
-       <guid>https://dbwu.tech/posts/algorithm/leetcode_hash_pattern/</guid>
-       <description></description>
-     </item>
-   
-     <item>
        <title>为什么 recover 必须在 defer 中调用？</title>
        <link>https://dbwu.tech/posts/golang_panic_recover/</link>
        <pubDate>Mon, 13 Mar 2023 00:00:00 +0000</pubDate>
@@ -1066,6 +1057,15 @@
      </item>
    
      <item>
+       <title>动态规划简明教程 - 1</title>
+       <link>https://dbwu.tech/posts/algorithm/dynamic_programming/</link>
+       <pubDate>Sun, 05 Jun 2022 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/algorithm/dynamic_programming/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>LeetCode 回溯 刷题模板</title>
        <link>https://dbwu.tech/posts/algorithm/leetcode_backtrack_pattern/</link>
        <pubDate>Mon, 30 May 2022 00:00:00 +0000</pubDate>
@@ -1152,6 +1152,15 @@
        <pubDate>Thu, 17 Mar 2022 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/algorithm/leetcode_stack_pattern/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>LeetCode Hash 刷题模板</title>
+       <link>https://dbwu.tech/posts/algorithm/leetcode_hash_pattern/</link>
+       <pubDate>Tue, 15 Mar 2022 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/algorithm/leetcode_hash_pattern/</guid>
        <description></description>
      </item>
    
@@ -1251,6 +1260,15 @@
        <pubDate>Tue, 16 Jan 2018 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/hardware/latency/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>Linux 快捷键</title>
+       <link>https://dbwu.tech/posts/linux/shortcut_keys/</link>
+       <pubDate>Tue, 09 Feb 2016 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/linux/shortcut_keys/</guid>
        <description></description>
      </item>
    
