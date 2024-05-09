@@ -1,0 +1,539 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>HTTP 鲜为人知的细节 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="HTTP 鲜为人知的细节" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/http/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-02-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-02-16T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="HTTP 鲜为人知的细节"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>HTTP 鲜为人知的细节</h1>
+
+    
+      
+<p>
+    <span>2018-02-16</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="连接类型">连接类型</h2>
+<p><img src="https://dbwu.tech/images/network/http_conn_type.png" alt=""></p>
+<h3 id="1-短连接与长连接">1. 短连接与长连接</h3>
+<p>当浏览器访问一个包含多张图片的 HTML 页面时，除了请求访问的 HTML 页面资源，还会请求图片资源。如果每进行一次 HTTP 通信就要新建一个 TCP 连接，那么开销会很大。</p>
+<p>长连接只需要建立一次 TCP 连接就能进行多次 HTTP 通信。</p>
+<ul>
+<li>从 HTTP/1.1 开始默认是长连接的，如果要断开连接，需要由客户端或者服务器端提出断开，使用 <code>Connection : close</code></li>
+<li>在 HTTP/1.1 之前默认是短连接的，如果需要使用长连接，则使用 <code>Connection : Keep-Alive</code></li>
+</ul>
+<p>长连接的好处在于减少了 TCP 连接的重复建立和断开所造成的额外开销，减轻了服务器端的负载。另外，减少开销的那部分时间，使 HTTP 请求和响应能够更早地结束，这样 Web 页面的显示速度也就相应提高了，<strong>在 HTTP/1.1 中，所有的连接默认都是长连接</strong>。</p>
+<h3 id="2-pipelining">2. Pipelining</h3>
+<p>默认情况下，HTTP 请求是按顺序发出的，下一个请求只有在当前请求收到响应之后才会被发出。由于受到网络延迟和带宽的限制，在下一个请求被发送到服务器之前，可能需要等待很长时间。</p>
+<p>流水线是在同一条长连接上连续发出请求，而不用等待响应返回，这样可以减少延迟。</p>
+<blockquote>
+<p>持久化依然是顺序请求，管道化可以并发请求。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/http_conn_type_2.png" alt="图片来源: 图解 HTTP"></p>
+<hr>
+<h2 id="request-method">Request Method</h2>
+<h3 id="幂等">幂等</h3>
+<p>一个 HTTP 方法是 <a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Idempotent">幂等</a> 的，指的是: 相同的请求被执行一次与连续执行多次的效果是一样的，服务器的状态也是一样的。换句话说就是，幂等方法不应该具有副作用。</p>
+<p>例如 <code>GET</code> 请求方法是幂等的，连续调用多次，客户端接收到的结果都是一样的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>GET https://dbwu.tech/
+</span></span></code></pre></div><p>例如 <code>POST</code> 请求方法不是幂等的，如果调用多次，就会增加多行记录。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>POST https://dbwu.tech/   -&gt; 新增 <span style="color:#3677a9">1</span> 条记录
+</span></span><span style="display:flex;"><span>POST https://dbwu.tech/   -&gt; 新增 <span style="color:#3677a9">2</span> 条记录
+</span></span><span style="display:flex;"><span>POST https://dbwu.tech/   -&gt; 新增 <span style="color:#3677a9">3</span> 条记录
+</span></span></code></pre></div><p>同样，<code>DELETE</code> 请求方法也是幂等的，即使不同的请求接收到的状态码不一样。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>DELETE https://dbwu.tech/1024   -&gt; 记录已删除
+</span></span><span style="display:flex;"><span>DELETE https://dbwu.tech/1024   -&gt; <span style="color:#3677a9">404</span> (因为记录已删除)
+</span></span><span style="display:flex;"><span>DELETE https://dbwu.tech/1024   -&gt; <span style="color:#3677a9">404</span> (因为记录已删除)
+</span></span></code></pre></div><h3 id="安全">安全</h3>
+<p>一个 HTTP 方法是 <code>安全</code> 的，指的是: 这个方法不会修改服务端的数据。也就是说，这是一个对服务端数据只读操作的方法。</p>
+<blockquote>
+<p>所有安全的方法都是幂等的，但并非所有幂等方法都是安全的。</p>
+</blockquote>
+<h3 id="请求方法列表">请求方法列表</h3>
+<table>
+<thead>
+<tr>
+<th>动词</th>
+<th>描述</th>
+<th>幂等</th>
+<th>安全性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td>请求指定的资源</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>POST</td>
+<td>发送数据给服务器. 请求主体的类型由 Content-Type 首部指定</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td>创建或者替换目标资源</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td>对资源进行部分修改</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td>删除指定的资源</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>HEAD</td>
+<td>请求资源的头部信息, 并且这些头部与 HTTP GET方法请求时返回的一致</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>OPTIONS</td>
+<td>用于获取目的资源所支持的通信选项</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h3 id="putpost">PUT &amp;&amp; POST</h3>
+<p><code>PUT</code> 与 <code>POST</code> 方法的区别在于，<code>PUT</code> 方法是幂等的，调用一次与连续调用多次是等价的（即没有副作用），而连续调用多次 <code>POST</code> 方法可能会有副作用 (比如将一个订单重复提交多次)。</p>
+<hr>
+<h2 id="不常见请求方法">不常见请求方法</h2>
+<p>下面列出几个属于 HTTP 协议，但是几乎用不到的请求方法。</p>
+<h3 id="trace">TRACE</h3>
+<p><code>TRACE</code> 方法是让 Web 服务器端将之前的请求通信环回给客户端的方法。</p>
+<p><img src="https://dbwu.tech/images/network/http_trace.png" alt="图片来源: 图解 HTTP"></p>
+<p>发送请求时，在 Max-Forwards 首部字段中填入数值，每经过一个服务器端就将该数字减1，当数值刚好减到 0 时，就停止继续传输，最后接收到请求的服务器端则返回状态码 200 OK 的响应。</p>
+<p><img src="https://dbwu.tech/images/network/http_trace_2.png" alt="图片来源: 图解 HTTP"></p>
+<p>从应用角度来看，<code>TRACE</code> 方法可以理解为 HTTP 协议提供的 “链路追踪” 功能，当然，现在链路追踪已经被标准化为 <a href="https://opentelemetry.io/">OpenTelemetry</a>。</p>
+<p>客户端通过 TRACE 方法可以查询发送出去的请求是怎样被加工修改/篡改的，这是因为: 请求想要连接到源目标服务器可能会通过代理中转，TRACE 方法就是用来确认连接过程中发生的一系列操作。但是，TRACE 方法不是常见的方法，再加上它容易引发 XST（Cross-SiteTracing，跨站追踪）攻击，所以实际开发中不会被用到 (读者当个八卦看看就行)。</p>
+<h3 id="connect">CONNECT</h3>
+<p><code>CONNECT</code> 方法要求在与代理服务器通信时建立隧道，实现用隧道协议进行 TCP 通信。主要使用 SSL（Secure Sockets Layer，安全套接层）和 TLS（Transport Layer Security，传输层安全，也就是 SSL 的继任者）协议把通信内容加密后经网络隧道传输。</p>
+<p><img src="https://dbwu.tech/images/network/http_connect.png" alt="图片来源: 图解 HTTP"></p>
+<hr>
+<h2 id="get--post-差异">GET &amp; POST 差异</h2>
+<p><code>GET</code> 请求用于获取资源，而 <code>POST</code> 请求用于传输实体主体。</p>
+<h3 id="参数编码">参数编码</h3>
+<p>GET 和 POST 请求都能使用额外的参数，但是 GET 的参数是以查询字符串出现在 URL 中，而 POST 的参数存储在实体主体中，不能因为 POST 参数存储在实体主体中就认为它的安全性更高，因为照样可以通过一些抓包工具（Fiddler）查看。</p>
+<p>因为 URL 只支持 ASCII 码，因此 GET 的参数中如果存在中文等字符就需要先进行编码，例如 <code>中文</code> 会转换为 <code>%E4%B8%AD%E6%96%87</code>，而空格会转换为 <code>%20</code>，POST 参数支持标准字符集。</p>
+<h3 id="参数长度限制">参数长度限制</h3>
+<p>此外，GET 请求在 URL 中传送的参数是有长度限制的，而 POST 请求没有，具体的限制 <a href="https://stackoverflow.com/questions/812925/what-is-the-maximum-possible-length-of-a-query-string">可以点击这个链接</a>。</p>
+<p>如果 GET 请求数据既超过浏览器限制长度，同时也超过服务器限制长度，多数就会截掉超出的长度且并没任何警告，一些服务器也许会发送一个 <code>414</code> 响应码 (Status Request URI Too Long)。最佳实践: 遵从 RESTFul 设计规范，保持 GET 请求参数的短小精悍。</p>
+<h3 id="参数保留">参数保留</h3>
+<p>GET 请求参数会被完整保留在浏览器历史记录里，而 POST 请求中的参数不会被保留。</p>
+<h3 id="xmlhttprequest">XMLHttpRequest</h3>
+<p>为了阐述 POST 和 GET 的另一个区别，需要先了解 XMLHttpRequest：</p>
+<p>XMLHttpRequest 是一个浏览器 API，它为客户端提供了在客户端和服务器之间传输数据的功能。通过提供了一个通过 URL 来获取数据的简单方式，并且不会使整个页面刷新，使得网页只更新一部分页面而不会打扰到用户，转换为应用 API, 也就是前端中大量用到的 AJAX。</p>
+<ul>
+<li>在使用 XMLHttpRequest 发送 POST 请求时，浏览器会先发送 Header 再发送 Data, 但并不是所有浏览器会这么做 (例如 FireFox)</li>
+<li>在使用 XMLHttpRequest 发送 GET 请求时，Header 和 Data 会一起发送</li>
+</ul>
+<p>也就是说，GET 产生一个 TCP 数据包，POST 产生两个 TCP 数据包 (先询问 -&gt; 100 continue -&gt; 发送数据)。</p>
+<p><code>100 Continue</code> 的作用: HTTP 客户端应用程序有一个实体的主体部分要发送服务器，但希望在发送之前，确认服务器是否会接受这个实体。</p>
+<p>如果客户端在向服务器发送一个实体，并愿意在发送实体之前等待 <code>100 Continue</code> 响应，那么客户端就要发送一个携带了值为 <code>Expect: 100 Continue</code> 的请求头, 如果客户端没有发送实体，就不应该发送 <code>Expect: 100 Continue</code> 的请求头，避免服务器误认为客户端要发送一个实体。</p>
+<p>对于 POST 请求来说，浏览器先发送 Header，服务器响应 <code>100 continue</code>，浏览器再发送 Data，服务器响应 200 OK。</p>
+<p>如果服务器收到一条带有 <code>Expect: 100 Continue</code> 的请求头，它会用 <code>100 Continue</code> 或一条错误码来进行响应，服务器永远也不应该向没有发送 <code>100 Continue</code> 期望的客户端发送 <code>100 Continue</code> 状态码。</p>
+<hr>
+<h2 id="statuscode">StatusCode</h2>
+<h3 id="http11-警告码">HTTP/1.1 警告码</h3>
+<p><img src="https://dbwu.tech/images/network/http1_code.png" alt="图片来源: 图解 HTTP"></p>
+<h3 id="206">206</h3>
+<blockquote>
+<p>返回指定资源的部分内容 (RFC 9110, 15.3.7)。</p>
+</blockquote>
+<p>接收到附带 Range 请求头时，服务器会在处理请求之后返回状态码为 <code>206</code> (Partial Content) 的响应，无法处理该范围请求时，则会返回状态码 200 OK 的响应和资源全部内容。</p>
+<p>在实现类似 <code>断点续传</code>，<code>分片 (小文件) 下载</code> 功能时，会使用到这个状态码。</p>
+<p><img src="https://dbwu.tech/images/network/42windows-live-writer-understanding-head-http204-and-http206_f0d4-image_18-png-png.png" alt="分片下载响应示例"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 请求示例</span>
+</span></span><span style="display:flex;"><span>GET /largefile.txt HTTP/1.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Host: example.com
+</span></span><span style="display:flex;"><span>Range: <span style="color:#40ffff">bytes</span>=0-499
+</span></span><span style="display:flex;"><span>Accept-Ranges: bytes
+</span></span><span style="display:flex;"><span>If-Range: <span style="color:#ed9d13">&#34;123456789&#34;</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 响应示例</span>
+</span></span><span style="display:flex;"><span>HTTP/1.1 <span style="color:#3677a9">206</span> Partial Content
+</span></span><span style="display:flex;"><span>Content-Range: bytes 0-499/123456
+</span></span><span style="display:flex;"><span>Content-Length: <span style="color:#3677a9">500</span>
+</span></span><span style="display:flex;"><span>Content-Type: text/plain
+</span></span><span style="display:flex;"><span>[response body: bytes 0-499 of the resource]
+</span></span></code></pre></div><h3 id="3xx-重定向">3XX 重定向</h3>
+<ul>
+<li>301 永久重定向</li>
+<li>302 临时重定向</li>
+</ul>
+<p>302 和 303 状态码有着相同的功能，但 303 状态码明确表示客户端应当采用 GET 方法获取资源，这点与 302 状态码有区别。</p>
+<p>当 301、302、303响应状态码返回时，几乎所有的浏览器都会把 POST 改成 GET，并删除请求报文内的主体，之后请求会自动再次发送，但其实 301、302标准是禁止将 POST 方法改变成 GET 方法的。</p>
+<p><strong>307 会遵照浏览器标准，不会从 POST 请求变成 GET 请求。</strong></p>
+<h3 id="503">503</h3>
+<p>响应头 <code>Retry-After</code> 告知客户端应该在多久之后再次发送请求，主要配合 503 (Service Unavailable) ，或 3xx (Redirect) 状态码一起返回。</p>
+<hr>
+<h2 id="避免重定向">避免重定向</h2>
+<p>访问 HTTP 站点，然后 (重定向) 跳转到 HTTPS，<strong>重定向意味着要重新发起请求</strong>。</p>
+<p>为了避免这种跳转，可以用 <strong>HSTS (HTTP Strict Transport Security) 策略</strong>，就是告诉浏览器，以后访问这个站点时，必须使用 HTTPS 协议来访问，让浏览器帮忙做转换，而不是请求到了服务器后，才知道要转换，只需要在响应头部加上 <code>Strict-Transport-Security: max-age=31536000</code> 。</p>
+<h2 id="缓存控制-cache-control">缓存控制 Cache-Control</h2>
+<h3 id="禁止缓存">禁止缓存</h3>
+<p>no-store 指令规定不能对请求或响应的任何一部分进行缓存。</p>
+<p><code>Cache-Control: no-store</code></p>
+<h3 id="强制确认缓存">强制确认缓存</h3>
+<p>no-cache 指令规定缓存服务器需要先向源服务器验证缓存资源的有效性，只有当缓存资源有效时才能使用该缓存对客户端的请求进行响应。</p>
+<p><code>Cache-Control: no-cache</code></p>
+<h3 id="私有缓存和公共缓存">私有缓存和公共缓存</h3>
+<p>private 指令规定了将资源作为私有缓存，只能被单独用户使用，一般存储在用户浏览器中。</p>
+<p><code>Cache-Control: private</code></p>
+<p>public 指令规定了将资源作为公共缓存，可以被多个用户使用，一般存储在代理服务器中。</p>
+<p><code>Cache-Control: public</code></p>
+<h3 id="缓存过期机制">缓存过期机制</h3>
+<p>max-age 指令出现在响应报文，表示缓存资源在缓存服务器中保存的时间，如果缓存资源的缓存时间小于该指令指定的时间，那么就可以使用该缓存。</p>
+<p><code>Cache-Control: max-age=3600</code></p>
+<p>表示响应在被接收后可以被缓存 1 小时。</p>
+<p><code>Cache-Control: max-age=0</code></p>
+<p>表示响应在被接收后立即过期，不应该被缓存。</p>
+<p>Expires 首部字段可以用于告知缓存服务器该资源什么时候会过期。</p>
+<p><code>Expires: Wed, 04 Jul 2018 08:26:05 GMT</code></p>
+<ul>
+<li>在 HTTP/1.1 中，会优先处理 max-age 指令</li>
+<li>在 HTTP/1.0 中，max-age 指令会被忽略</li>
+</ul>
+<h3 id="缓存验证">缓存验证</h3>
+<p><img src="https://dbwu.tech/images/network/http_etag.png" alt="图片来源: 图解 HTTP"></p>
+<p>需要先了解 ETag 首部字段的含义，它是资源的唯一标识，URL 不能唯一表示资源，例如 <code>https://dbwu.tech/</code> 有中文和英文两个资源，只有 ETag 才能对这两个资源进行唯一标识。</p>
+<p><code>ETag: &quot;82e22293907ce725faf67773957acd12&quot;</code></p>
+<p>可以将缓存资源的 ETag 值放入 If-None-Match 首部，服务器收到该请求后，判断缓存资源的 ETag 值和资源的最新 ETag 值是否一致，如果一致则表示缓存资源有效，返回 304 Not Modified。</p>
+<p><code>If-None-Match: &quot;82e22293907ce725faf67773957acd12&quot;</code></p>
+<p>Last-Modified 首部字段也可以用于缓存验证，它包含在源服务器发送的响应报文中，指示源服务器对资源的最后修改时间。但是它是一种弱校验器，因为只能精确到一秒，所以它通常作为 ETag 的备用方案。如果响应首部字段里含有这个信息，客户端可以在后续的请求中带上 If-Modified-Since 来验证缓存。服务器只在所请求的资源在给定的日期时间之后对内容进行过修改的情况下才会将资源返回，状态码为 200 OK。如果请求的资源从那时起未经修改，那么返回一个不带有实体主体的 304 Not Modified 响应报文。</p>
+<p><code>Last-Modified: Wed, 21 Oct 2015 07:28:00 GMT</code></p>
+<p><code>If-Modified-Since: Wed, 21 Oct 2015 07:28:00 GMT</code></p>
+<h3 id="缓存最佳实践">缓存最佳实践</h3>
+<p>服务端大部分响应在响应头中应该携带 Last-Modified, ETag, Vary, Date 信息，客户端可以在随后请求这些资源的时候，
+在请求头中使用 If-Modified-Since, If-None-Match 等请求头来确认资源是否经过修改，如果资源没有进行过修改，那么就可以响应 304 Not Modified 并且不在响应实体中返回任何内容。</p>
+<ol>
+<li>客户端第一次访问服务端请求数据，服务端返回响应数据 (缓存有效期 60 秒)</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl -i https://dbwu.tech/
+</span></span><span style="display:flex;"><span>HTTP/1.1 <span style="color:#3677a9">200</span> OK
+</span></span><span style="display:flex;"><span>Cache-Control: public, max-age=<span style="color:#3677a9">60</span>
+</span></span><span style="display:flex;"><span>Date: Thu, <span style="color:#3677a9">05</span> Jul <span style="color:#3677a9">2018</span> 15:31:30 GMT
+</span></span><span style="display:flex;"><span>Vary: Accept, Authorization
+</span></span><span style="display:flex;"><span>ETag: <span style="color:#ed9d13">&#34;644b5b0155e6404a9cc4bd9d8b1ae730&#34;</span>
+</span></span><span style="display:flex;"><span>Last-Modified: Thu, <span style="color:#3677a9">05</span> Jul <span style="color:#3677a9">2018</span> 15:31:30 GMT
+</span></span></code></pre></div><ol start="2">
+<li>客户端第二次访问服务端请求数据，服务端返回 304 和缓存数据</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl -i https://dbwu.tech/ -H <span style="color:#ed9d13">&#34;If-Modified-Since: Thu, 05 Jul 2018 15:31:30 GMT&#34;</span>
+</span></span><span style="display:flex;"><span>HTTP/1.1 <span style="color:#3677a9">304</span> Not Modified
+</span></span><span style="display:flex;"><span>Cache-Control: public, max-age=<span style="color:#3677a9">60</span>
+</span></span><span style="display:flex;"><span>Date: Thu, <span style="color:#3677a9">05</span> Jul <span style="color:#3677a9">2018</span> 15:31:45 GMT
+</span></span><span style="display:flex;"><span>Vary: Accept, Authorization
+</span></span><span style="display:flex;"><span>Last-Modified: Thu, <span style="color:#3677a9">05</span> Jul <span style="color:#3677a9">2018</span> 15:31:30 GMT
+</span></span></code></pre></div><ol start="3">
+<li>客户端第三次访问服务端请求数据，服务端依然返回 304 和缓存数据 (因为缓存有效期 60 秒)</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl -i https://dbwu.tech/ -H <span style="color:#ed9d13">&#39;If-None-Match: &#34;644b5b0155e6404a9cc4bd9d8b1ae730&#34;&#39;</span>
+</span></span><span style="display:flex;"><span>HTTP/1.1 <span style="color:#3677a9">304</span> Not Modified
+</span></span><span style="display:flex;"><span>Cache-Control: public, max-age=<span style="color:#3677a9">60</span>
+</span></span><span style="display:flex;"><span>Date: Thu, <span style="color:#3677a9">05</span> Jul <span style="color:#3677a9">2018</span> 15:31:55 GMT
+</span></span><span style="display:flex;"><span>Vary: Accept, Authorization
+</span></span><span style="display:flex;"><span>ETag: <span style="color:#ed9d13">&#34;644b5b0155e6404a9cc4bd9d8b1ae730&#34;</span>
+</span></span><span style="display:flex;"><span>Last-Modified: Thu, <span style="color:#3677a9">05</span> Jul <span style="color:#3677a9">2018</span> 15:31:30 GMT
+</span></span></code></pre></div><h3 id="可缓存">可缓存</h3>
+<p>如果要对服务端响应进行缓存，需要满足以下条件：</p>
+<ul>
+<li>请求报文的 HTTP 方法本身是可缓存的，包括 GET 和 HEAD，但是 PUT 和 DELETE 不可缓存，POST 在大多数情况下也是不可缓存的 (非幂等语义)</li>
+<li>响应报文的状态码是可缓存的，包括：200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501</li>
+<li>响应报文的 Cache-Control 字段没有禁止缓存</li>
+</ul>
+<hr>
+<h2 id="代理">代理</h2>
+<p>代理服务器的基本行为就是接收客户端发送的请求，然后转发给其他服务器，代理不改变请求 URI，会直接发送给前方持有资源的目标服务器。</p>
+<p><img src="https://dbwu.tech/images/network/http_proxy.png" alt="图片来源: 图解 HTTP"></p>
+<h3 id="正向代理">正向代理</h3>
+<p><img src="https://dbwu.tech/images/network/http_proxy_1.png" alt=""></p>
+<blockquote>
+<p>正向代理，即代理客户端的请求。</p>
+</blockquote>
+<p>正向代理是一个位于客户端和原始服务器之间的服务器，为了从原始服务器取得内容，客户端向代理发送一个请求并指定目标服务器，然后代理向原始服务器转发请求并将获得的响应内容返回给客户端。客户端必须要进行一些特别的设置才能使用正向代理，换句话说，用户察觉得到正向代理的存在。</p>
+<h4 id="作用">作用：</h4>
+<ul>
+<li>访问客户端原本无法访问的服务器 (VPN)</li>
+<li>网络提速 (游戏加速器)</li>
+<li>缓存</li>
+<li>客户端访问授权</li>
+<li>隐藏客户端信息</li>
+</ul>
+<h3 id="反向代理">反向代理</h3>
+<p><img src="https://dbwu.tech/images/network/http_proxy_2.png" alt=""></p>
+<blockquote>
+<p>反代理，即代理服务器的响应。</p>
+</blockquote>
+<p>反向代理是一种可以集中地调用内部服务，并提供统一接口给公共客户的 web 服务器，来自客户端的请求先被反向代理服务器转发到可响应请求的服务器，然后代理再把服务器的响应结果返回给客户端。反向代理一般位于内部网络中，用户察觉不到其存在。</p>
+<p>代理服务器来接受 Internet 上的连接请求，然后将请求转发给内部网络上的服务器；并将从服务器上得到的结果返回给 Internet 上请求连接的客户端，此时代理服务器对外就表现为一个服务器。</p>
+<h4 id="作用-1">作用：</h4>
+<ul>
+<li>负载均衡</li>
+<li>过配置缓存功能加速 Web 请求：可以缓存真实 Web 服务器上的某些静态资源，减轻真实 Web 服务器的负载压力</li>
+<li>增加安全性:  保护和隐藏原始资源服务器，屏蔽黑名单中的 IP，限制每个客户端的连接数</li>
+<li>提高可扩展性和灵活性: 客户端只能看到反向代理服务器的 IP，这使你可以增减服务器或者修改它们的配置</li>
+<li>本地终结 SSL 会话: 解密传入请求，加密服务器响应，这样后端服务器就不必完成这些潜在的高成本的操作</li>
+<li>免除了在每个后端服务器上安装 <a href="https://en.wikipedia.org/wiki/X.509">X.509</a> 证书的需要</li>
+<li>压缩: 压缩服务器响应</li>
+<li>缓存: 直接返回命中的缓存结果</li>
+<li>静态内容: 直接提供静态内容
+<ul>
+<li>HTML/CSS/JS</li>
+<li>图片</li>
+<li>视频</li>
+<li>等等</li>
+</ul>
+</li>
+</ul>
+<h4 id="带来的问题">带来的问题</h4>
+<ul>
+<li>引入反向代理会增加系统的复杂度</li>
+<li>单独一个反向代理服务器仍可能发生单点故障，配置多台反向代理服务器（如实现 <a href="https://en.wikipedia.org/wiki/Failover">故障转移</a>）会进一步增加复杂度</li>
+</ul>
+<h4 id="负载均衡器与反向代理">负载均衡器与反向代理</h4>
+<ul>
+<li>当你有多个服务器时，部署负载均衡器非常有用。通常，负载均衡器将流量路由给一组功能相同的服务器上</li>
+<li>即使只有一台 Web 服务器或者应用服务器时，反向代理也有用</li>
+<li>NGINX 和 HAProxy 等解决方案可以同时支持第七层反向代理和负载均衡</li>
+</ul>
+<hr>
+<h2 id="http-隧道">HTTP 隧道</h2>
+<blockquote>
+<p>HTTP tunnel 是 HTTP/1.1 中引入的一个功能，主要为了解决明文的 HTTP Proxy 无法代理跑在 TLS 中的流量（也就是 HTTPS ）的问题，同时提供了作为任意流量的 TCP 通道的能力。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/tunneling-dgram.png" alt=""></p>
+<p>由于 CONNECT 请求报文还是 HTTP 方式，所以也可以跑在 TLS 里，也就是说: <strong>客户端和代理服务器之间有一个 TLS 层，在这个 TLS 层里面包含着客户端和远端服务器的 TLS 层</strong>。这样当代理服务器需要用户名密码验证，而验证方式又是 Basic 时，就可以通过 TLS 来保护代理服务器请求时，报文中的明文用户名密码。</p>
+<p>HTTP/1.1 语法如下：</p>
+<p><img src="https://dbwu.tech/images/network/epub_32517945_374.jpg" alt=""></p>
+<p>HTTP/2 语法如下：</p>
+<p><img src="https://dbwu.tech/images/network/epub_32517945_375.jpg" alt=""></p>
+<p>为什么需要 HTTP tunnel？可以看看 <a href="https://www.zhihu.com/question/21955083/answer/142736329">这篇文章</a>。</p>
+<hr>
+<h2 id="websockets">WebSockets</h2>
+<p>对于较小的消息 (数据) 传输，WebSocket 会比 HTTP 更加高效，因为省去了 HTTP 首部的开销，而且 WebSocket 支持全双工通信。对于实时类要求较高的场景，通常使用 WebSocket 替换 HTTP。</p>
+<h3 id="http-和-websocket-的比较">HTTP 和 WebSocket 的比较</h3>
+<p><img src="https://dbwu.tech/images/network/http_with_socket.png" alt="HTTP 和 WebSocket 的比较"></p>
+<h3 id="从-http-升级连接到-websockets">从 HTTP 升级连接到 WebSockets</h3>
+<ol>
+<li>直接发送普通的 HTTP GET 请求</li>
+<li>在请求头中包含升级（Upgrade Header）到 WebSocket 协议</li>
+</ol>
+<p><img src="https://dbwu.tech/images/network/epub_32517945_379.jpg" alt="客户端请求"></p>
+<p><img src="https://dbwu.tech/images/network/epub_32517945_380.jpg" alt="服务器响应"></p>
+<h3 id="从-http2-升级连接到-websockets">从 HTTP/2 升级连接到 WebSockets</h3>
+<blockquote>
+<p>在整个通信过程中，只会有一个 TCP 连接存在，它承载了任意数量的双向数据流 (Stream)。</p>
+</blockquote>
+<p>HTTP/2 需要升级整个 HTTP 连接 (也就是 TCP 连接上所有的数据流，这完全没有必要)，因为仅需要一个单独的数据流来负责 WebSockets 数据传输就可以了，所以方法和 HTTP/1 略微不同:</p>
+<p><img src="https://dbwu.tech/images/network/epub_32517945_381.jpg" alt="客户端请求"></p>
+<p><img src="https://dbwu.tech/images/network/epub_32517945_382.jpg" alt="服务器响应"></p>
+<p>WebSocket (单独的) 数据流建立完成之后，可以在该流的两个方向上传输 WebSocket 数据，该连接上的其他数据流可以继续处理 HTTP 请求，当然，可以继续使用类似方式继续建立其他 WebSocket 通信，甚至其他的协议。</p>
+<hr>
+<h2 id="跨域问题及其解决方案">跨域问题及其解决方案</h2>
+<p><img src="https://dbwu.tech/images/network/cross_domain.png" alt="跨域问题及其解决方案"></p>
+<p>上述思维导图免费下载: <a href="https://www.processon.com/view/link/65c223109d45c83bfb5b0b6e">https://www.processon.com/view/link/65c223109d45c83bfb5b0b6e</a> 访问密码：9IX9</p>
+<hr>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://book.douban.com/subject/25863515/">图解 HTTP</a></li>
+<li><a href="https://book.douban.com/subject/32171641/">HTTP/2 in Action</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/system_design/principles/"><i class="fa fa-chevron-circle-left"></i> System Design Principles</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/nginx/install/">Nginx 快速安装优化指南 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="HTTP 鲜为人知的细节"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
