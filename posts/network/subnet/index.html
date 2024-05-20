@@ -1,0 +1,396 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: 公网/子网 地址是如何分类的？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: 公网/子网 地址是如何分类的？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/subnet/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-09-10T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-09-10T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: 公网/子网 地址是如何分类的？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: 公网/子网 地址是如何分类的？</h1>
+
+    
+      
+<p>
+    <span>2017-09-10</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概念">概念</h2>
+<p>在计算机网络中，子网（Subnet）是将一个大的 IP 地址空间划分成若干个较小的网络单元的过程。每个子网都有一个唯一的子网标识符（Subnet ID）和一个子网掩码（Subnet Mask），用于确定子网的范围和边界。</p>
+<h3 id="ip-地址组成">IP 地址组成</h3>
+<blockquote>
+<p>IP 地址 = 网络号 + 主机号</p>
+</blockquote>
+<p><strong>网络号</strong> 表示主机 (或路由设备) 所连接到的网络，网络地址表示其属于互联网的哪个网络。</p>
+<p><strong>主机号</strong> 表示主机 (或路由设备) 属于该网络中的哪一台主机。</p>
+<p>例如 IP 地址 <code>192.168.1.100/24</code> 中，前 24 位表示 (192.168.1) 网络部分，后 8 位 (100) 表示主机部分。</p>
+<h2 id="子网掩码">子网掩码</h2>
+<blockquote>
+<p>子网掩码表示网络号与主机号之间的边界。</p>
+</blockquote>
+<p>子网掩码和 IP 地址一样分成 4 个部分、由十进制表示，例如网络部分的长度为 24 位，子网掩码则为 255.255.255.0。但是和 IP 地址不同的是，当使用二进制表示时，子网掩码一定是以连续的 1 开始，以连续的 0 结束。</p>
+<h3 id="子网范围">子网范围</h3>
+<p>由于 IPv4 中地址枯竭的问题，RFC 专门定义了只在内部网络中使用的 IP 地址，也就是子网 (内网) 地址，每个地址分类提供了不同的子网地址范围，
+<strong>网络部分相同的 IPv4 地址可以认为它们归属同一子网</strong>。</p>
+<p>IP 私有地址并没有什么特别的结构，只不过是将公有地址中没有被分配的一部分拿出来，规定这部分地址只能在内网使用而已。</p>
+<h3 id="cidr">CIDR</h3>
+<p>CIDR（Classless Inter-Domain Routing，无类别域间路由）基于可变长子网掩码进行任意长度的 IP 地址前缀，也就是说，主机部分也可以是任意长度。</p>
+<p>表示方法:</p>
+<p>$$
+前缀地址/前缀长度
+$$</p>
+<p>例如：<code>192.168.1.0/24</code>, 前缀地址是 IP 地址的开头部分，前缀长度是一个从 0 到 32 的整数，表示网络前缀的位数。</p>
+<p>子网掩码：前缀长度是 24，所以子网掩码是 255.255.255.0
+网络地址：192.168.1.0
+广播地址：将主机对应的比特位全置为 1，即 192.168.1.255
+可用主机地址范围：从 192.168.1.1 到 192.168.1.254（减去网络地址和广播地址），也就是 254 个主机地址</p>
+<hr>
+<h2 id="三类地址">三类地址</h2>
+<p>IPv4 地址中前三类 (A, B, C) 公网地址网络部分与主机部分都是已经分配好的。</p>
+<h3 id="a-类">A 类</h3>
+<ul>
+<li>地址范围: <code>1.0.0.0 ~ 126.255.255.255</code></li>
+<li>网络部分: 8 位</li>
+<li>主机部分: 24 位</li>
+<li>子网范围: <code>10.0.0.0 ~ 10.255.255.255 (10.0.0.0/8)</code></li>
+<li>子网掩码: 255.0.0.0</li>
+<li>应用场景: 大规模网络</li>
+</ul>
+<p>最大网络数量:</p>
+<p>$$
+2^7 - 2 = 126
+$$</p>
+<p>每个网络最大主机数量:</p>
+<p>$$
+2^24 - 2 = 16,777,214
+$$</p>
+<h4 id="为什么网络数量是-126-">为什么网络数量是 126 ?</h4>
+<blockquote>
+<p>A 类地址的特征: 第一个字节的最高位（即最左边的位）始终为 0 (用于标记 A 类)，后面的 7 位用于网络号。</p>
+</blockquote>
+<p>但是有两个特殊的网络:</p>
+<ul>
+<li><code>0.0.0.0</code> 表示默认路由或未知地址</li>
+<li><code>127.0.0.1</code> 表示本地环回地址</li>
+</ul>
+<p>所以 A 类地址的网络地址有效范围就等于: <code>01000000</code> (1) 到 <code>01111110</code>（126）。</p>
+<h4 id="为什么主机数量要减去-2-">为什么主机数量要减去 2 ?</h4>
+<p>因为 <code>1.0.0.0</code> 表示当前的网络地址，<code>126.255.255.255</code> 表示该网络的广播地址。</p>
+<p>网络地址是该子网的第一个地址，表示网络本身，而广播地址是该子网的最后一个地址，用于向该子网中的所有设备发送广播消息，所以在该子网中，这两个地址不能被分配给任何设备使用。</p>
+<h3 id="b-类">B 类</h3>
+<ul>
+<li>地址范围: <code>128.0.0.0 ~ 191.255.255.255</code></li>
+<li>网络部分: 16 位</li>
+<li>主机部分: 16 位</li>
+<li>子网范围: <code>172.16.0.0 ~ 172.31.255.255 (172.16.0.0/12)</code></li>
+<li>子网掩码: 255.255.0.0</li>
+<li>应用场景: 中等规模网络</li>
+</ul>
+<p>最大网络数量:</p>
+<p>$$
+2^14 - 1 = 16383
+$$</p>
+<p>每个网络最大主机数量:</p>
+<p>$$
+2^16 - 2 = 65534
+$$</p>
+<h4 id="为什么网络数量是-16383-">为什么网络数量是 16383 ?</h4>
+<blockquote>
+<p>B 类地址的特征: 第一个字节的最高前两位（即最左边的两位）始终为 10 (用于标记 B 类)，后面的 14 位用于网络号。</p>
+</blockquote>
+<p>所以 B 类地址的网络地址有效范围就等于: <code>10000000</code> (128) 到 <code>10111111</code>（191）。</p>
+<p>但是实际上地址 <code>128.0.0.0</code> 不做分配，实际分配的是 <code>128.1.0.0</code>, 第一个可用网络地址为 <code>128.1</code>, 所以网络数量要在 2^14 的基础上再减去 1, 也就是 16383。</p>
+<h4 id="为什么主机数量要减去-2--1">为什么主机数量要减去 2 ?</h4>
+<p>因为 <code>128.0.0.0</code> 表示当前的网络地址，<code>191.255.255.255</code> 表示该网络的广播地址。</p>
+<h3 id="c-类">C 类</h3>
+<ul>
+<li>地址范围: <code>192.0.0.0 ~ 223.255.255.255</code></li>
+<li>网络部分: 24 位</li>
+<li>主机部分: 8 位</li>
+<li>子网范围: <code>192.168.0.0 ~ 192.168.255.255 (192.168.0.0/16)</code></li>
+<li>子网掩码: 255.255.255.0</li>
+<li>应用场景: 小型规模网络</li>
+</ul>
+<p>最大网络数量:</p>
+<p>$$
+2^21 - 1 = 2,097,151
+$$</p>
+<p>每个网络最大主机数量:</p>
+<p>$$
+2^8 - 2 = 254
+$$</p>
+<h4 id="为什么网络数量是-2097151-">为什么网络数量是 2,097,151 ?</h4>
+<blockquote>
+<p>C 类地址的特征: 第一个字节的最高前三位（即最左边的前三位）始终为 110 (用于标记 C 类)，后面的 21 位用于网络号。</p>
+</blockquote>
+<p>所以 C 类地址的网络地址有效范围就等于: <code>11000000</code> (192) 到 <code>11011111</code>（223）。</p>
+<p>但是实际上地址 <code>192.0.0.0</code> 不做分配，实际分配的是 <code>192.0.1.0</code>, 第一个可用网络地址为 <code>192.0.1</code>, 所以网络数量要在 2^21 的基础上再减去 1, 也就是 2,097,151。</p>
+<h4 id="为什么主机数量要减去-2--2">为什么主机数量要减去 2 ?</h4>
+<p>因为 <code>192.0.0.0</code> 表示当前的网络地址，<code>223.255.255.255</code> 表示该网络的广播地址。</p>
+<h3 id="d-类地址">D 类地址</h3>
+<ul>
+<li>地址范围: <code>224.0.0.0 ~ 239.255.255.255</code></li>
+<li>应用场景: 多播</li>
+</ul>
+<p>D 类地址没有传统意义上的网络号和主机号的概念，因为它们不用于传统的单播通信，同时，D 类地址也没有子网掩码，因为其不涉及子网划分，多播用来标识一个多播组，而不是特定的网络和主机。</p>
+<h3 id="e-类地址">E 类地址</h3>
+<ul>
+<li>地址范围: <code>240.0.0.0 ~ 255.255.255.255</code></li>
+<li>应用场景: 实验和未来用途，没有在常规通信中使用</li>
+</ul>
+<p>E 类地址也没有传统的网络号和主机号的概念，因为它们是保留的，不用于实际网络通信。</p>
+<hr>
+<h2 id="特殊地址">特殊地址</h2>
+<blockquote>
+<p>主机号部分的比特全部为 0 时表示整个子网。</p>
+<p>主机号部分的比特全部为 1 时表示向子网中的所有设备发送广播。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/epub_907755_56.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<h3 id="0000">0.0.0.0</h3>
+<p>有的教材上注明: A 类地址的范围是 0.0.0.0 ~ 127.255.255.255，但是 0.0.0.0 用于表示默认路由或未知地址 (一般表示当前主机)，不属于有效的 A 类地址范围。</p>
+<p>在 Linux 中使用 <code>ping</code> 0.0.0.0 时，地址会被解析到本地环回地址 127.0.0.1, 所以实际的应答就是 127.0.0.1。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 测试环境: Ubuntu 18.04</span>
+</span></span><span style="display:flex;"><span>$ ping 0.0.0.0        
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>PING 0.0.0.0 (127.0.0.1) 56(84) bytes of data.
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 127.0.0.1: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">64</span> <span style="color:#40ffff">time</span>=0.032 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 127.0.0.1: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">64</span> <span style="color:#40ffff">time</span>=0.026 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 127.0.0.1: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">3</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">64</span> <span style="color:#40ffff">time</span>=0.021 ms
+</span></span><span style="display:flex;"><span>^C
+</span></span><span style="display:flex;"><span>--- 0.0.0.0 ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> received, 0% packet loss, <span style="color:#24909d">time</span> 2077ms
+</span></span><span style="display:flex;"><span>rtt min/avg/max/mdev = 0.021/0.026/0.032/0.006 ms
+</span></span></code></pre></div><p>那么，0.0.0.0 用于表示默认路由，又该如何理解呢？</p>
+<p>简单来说，如果主机需要通信的目标设备 IP 地址和自己不在同一网段，就可以使用这条默认路由 (网关)，让网关将自己的数据包转发出去。例如一个家庭中所有网络设备的网关都是其连接的路由器 (光猫)。</p>
+<h3 id="127001">127.0.0.1</h3>
+<p>本地环回地址 (保留地址)，一般作为本地开发测试使用。</p>
+<h3 id="255255255255">255.255.255.255</h3>
+<p>255.255.255.255 表示当前子网的广播地址。</p>
+<hr>
+<h2 id="如何判断哪些-ip-位于同一子网中">如何判断哪些 IP 位于同一子网中？</h2>
+<p>下面哪些 IP 地址位于同一子网中？</p>
+<ol>
+<li>192.168.78.36/29</li>
+<li>192.168.78.42/29</li>
+<li>192.168.78.41/29</li>
+<li>192.168.78.45/29</li>
+<li>192.168.78.48/29</li>
+</ol>
+<p>当前子网掩码长度为 29, 最长掩码长度为 32, 所以每个子网中的主机数量 (IP 地址) 为:</p>
+<p>$$
+2^{(32-29)} = 2^3 = 8
+$$</p>
+<p>将上面 5 个 IP 地址的主机位 (最后 1 位) 除以 8，即可得到该 IP 地址对应的子网网段。</p>
+<ol>
+<li>36 / 8 = 4</li>
+<li>42 / 8 = 5</li>
+<li>41 / 8 = 5</li>
+<li>45 / 8 = 5</li>
+<li>48 / 8 = 6</li>
+</ol>
+<p>所以第 2, 3, 4 个 IP 地址位于同一子网。</p>
+<hr>
+<h2 id="为什么需要子网">为什么需要子网?</h2>
+<blockquote>
+<p>子网（Subnet）的存在主要是为了更有效地管理和使用 IP 地址。</p>
+</blockquote>
+<ol>
+<li>IP 地址管理: 子网允许网络管理员将一个大的 IP 地址空间划分为若干个小的子网，每个子网包含一定数量的 IP 地址。这样可以更灵活地分配 IP 地址，提高地址的利用率，并且方便对 IP 地址进行管理和维护。</li>
+<li>隔离和安全: 子网可以根据网络拓扑、安全策略等需求进行划分，不同子网之间可以进行隔离，提高网络的安全性。例如，内部子网和外部子网可以根据防火墙规则进行访问控制，限制不同网络之间的通信。</li>
+<li>性能优化: 合理划分子网可以减少广播域的大小，降低广播和多播的传播范围，减少网络拥塞和冲突，提高网络性能。</li>
+<li>灵活性和可扩展性: 子网划分可以根据实际需求进行调整和扩展，灵活适应不同规模和需求的网络环境。新增设备或子网时，可以通过调整子网划分来满足新的需求，而无需更改整个网络结构。</li>
+</ol>
+<hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Classful_network">Classful network </a></li>
+<li><a href="https://blog.csdn.net/kzadmxz/article/details/73658168">IP地址分类</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jAITB4o1nnO5M2wt0hDqjw">地主儿子的房间号码 - 有趣的小例子讲解子网掩码</a></li>
+<li><a href="https://www.meridianoutpost.com/resources/articles/IP-classes.php">The Five IPv4 Classes - Quick Reference</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/shortcut_keys/"><i class="fa fa-chevron-circle-left"></i> Linux 快捷键</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/how-dhcp-works/">网络基础: DHCP 是如何工作的？ <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: 公网/子网 地址是如何分类的？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

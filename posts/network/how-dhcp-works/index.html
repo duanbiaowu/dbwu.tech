@@ -1,0 +1,286 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: DHCP 是如何工作的？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: DHCP 是如何工作的？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/how-dhcp-works/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-09-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-09-16T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: DHCP 是如何工作的？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: DHCP 是如何工作的？</h1>
+
+    
+      
+<p>
+    <span>2017-09-16</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>DHCP（Dynamic Host Configuration Protocol，动态主机配置协议）是为主机（客户端）自动配置 IP 地址、子网、DNS 服务器、默认网关等信息的网络协议。</p>
+</blockquote>
+<p>虽然 DHCP 依赖于其他协议（如 ARP、UDP 和 IP），但它自身不属于任何一层，而是工作在应用层。</p>
+<p>当客户端尝试自动从 DHCP服务器 (例如路由器) 处获取 IP 地址时，如果手动设置每台计算机的 IP 地址，过程会非常麻烦，而且必须考虑到不能分配重复的IP 地址，而使用 DHCP 则可以指定分配的 IP 地址所在的范围，并且自动完成在该范围内的 IP 地址分配，同时也可以自动为默认网关分配地址。</p>
+<p><img src="https://dbwu.tech/images/network/v4-460px-Configure-a-Router-to-Use-DHCP-Step-12.jpg" alt="Mac 自动配置 IP"></p>
+<p><img src="https://dbwu.tech/images/network/windows_dhcp.png" alt="Windows 自动配置 IP"></p>
+<p>除了技术原因之外，DHCP 的最大价值在于帮助 “非专业用户” 提供自动化管理的操作体验，想象一下：有多少用户知道 IP 地址、子网掩码、网关等一系列专业术语并且可以完成手动配置呢？</p>
+<h3 id="三个功能">三个功能</h3>
+<p>几乎所有类型的路由器 (包括家用路由器) 都支持 DHCP, <strong>路由器的 DHCP 功能主要分为三个方面</strong>:</p>
+<ol>
+<li>作为 DHCP 服务器为客户端分配 IP 地址</li>
+<li>作为 DHCP 客户端从其他 DHCP 服务器中获取 IP 地址</li>
+<li>在 DHCP 服务器和客户端之间完成中继广播消息</li>
+</ol>
+<p>当一台新设备连接到家用路由器时，上述三个功能都会执行到。</p>
+<h2 id="连接过程">连接过程</h2>
+<p><img src="https://dbwu.tech/images/network/epub_26211960_294.jpg" alt="图片来源: 图解网络硬件(三轮贤一)"></p>
+<ol>
+<li>客户端在网段内广播 DISCOVER 消息</li>
+<li>DHCP 服务器在网络内广播 OFFER 消息</li>
+<li>客户端在网络内广播 REQUEST 消息</li>
+<li>在接收 ACK 消息后，客户端就能使用所分配的 IP 地址（10.1.1.5）</li>
+</ol>
+<p>下面展开来说下这个过程中的一些细节:</p>
+<ul>
+<li>假设主机 A（客户端）最开始没有 IP 地址以及其它信息，那么就需要先使用 DHCP 来获取</li>
+<li>主机生成一个 DHCP 请求报文，并将这个报文放入: <code>目的端口 67</code> 和 <code>源端口 68</code> 的 UDP 报文段中</li>
+<li>将该报文段放入: <code>广播 IP 目的地址(255.255.255.255)</code> 和 <code>源 IP 地址（0.0.0.0）</code> 的 IP 数据报中</li>
+<li>将该数据报放入 MAC 帧中，帧目的地址 <code>FF:FF:FF:FF:FF:FF</code>，通过二层交换机广播到所有连接的设备</li>
+<li>连接在交换机的 DHCP 服务器 (也可以是连接到光猫上的家用路由器) 收到广播帧之后，不断地向上分解得到 IP 数据报、UDP 报文段、DHCP 请求报文，之后生成 DHCP ACK 报文，该报文包含以下信息：IP 地址、DNS 服务器的 IP 地址、默认网关路由器的 IP 地址和子网掩码，然后将该报文被放入 UDP 报文段中，再把 UDP 报文段放入 IP 数据报中，最后放入 MAC 帧中</li>
+<li>Mac 帧的目的地址是请求主机 A 的 MAC 地址，因为交换机具有自学习能力，之前主机 A 发送广播帧之后，顺带就记录了 MAC 地址和其转发接口的 <code>交换表项</code>，因此现在交换机知道应该向哪个接口发送该 Mac 帧</li>
+<li>主机收到 Mac 帧后，不断分解得到 DHCP 报文，之后就配置它的 IP 地址、子网掩码和 DNS 服务器的 IP 地址，并在其 IP 转发表中安装默认网关</li>
+</ul>
+<p><img src="https://dbwu.tech/images/network/dhcp_demo.png" alt="DHCP 请求报文示例"></p>
+<h2 id="静态分配">静态分配</h2>
+<p><img src="https://dbwu.tech/images/network/static_ip.png" alt="手动分配静态 IP 地址"></p>
+<p>手动配置好 IP 地址之后，依然会执行上面的连接过程，只不过发起的请求报文不同而已。</p>
+<p>例如主机 A 将自己的 IP 地址配置为 192.168.20.10, 那么发起的 DHCP 请求报文中的 <code>请求 IP 地址</code> 就是 192.168.20.10, 剩下的连接过程和动态获取 IP 地址过程一样。</p>
+<hr>
+<h2 id="地址分配">地址分配</h2>
+<h3 id="分配顺序">分配顺序</h3>
+<p>DHCP 服务器需要从 IP 地址池中为客户端分配一个 IP 地址，具体的顺序如下:</p>
+<ol>
+<li>DHCP 服务器上已配置，指定客户端的 MAC 地址静态绑定的 IP 地址</li>
+<li>客户端发送的 DISCOVER 请求报文中指定的 IP 地址</li>
+<li>DHCP 服务器的 IP 地址池中查找 “Expired” 状态的 IP 地址，也就是租期到期的 IP 地址</li>
+<li>DHCP 服务器的 IP 地址池中查找 “Idle” 状态的 IP 地址，也就是空闲的 IP 地址</li>
+<li>如果上述步骤均未找到可分配的 IP 地址，DHCP 服务器地址池依次回收租期到期状态的（Expired）和处于冲突状态（Conflict）的 IP 地址，回收后如果找到可用的 IP 地址，分配给客户端，否则，客户端等待 DHCP 服务器应答超时后，重新发送 DISCOVER 请求报文来申请 IP 地址</li>
+</ol>
+<h3 id="静态-ip">静态 IP</h3>
+<p>对于客户端申请静态 IP (已经指定了 IP 地址) 的请求报文，DHCP 服务器收到请求之后，会先检查该 IP 是否已经分配，如果已经分配给其他主机，直接回复 NACK 消息拒绝。</p>
+<p><img src="https://dbwu.tech/images/network/IPv4-DHCP-DNS-Ping-1024x546.png" alt="DHCP 服务器检测 IP 是否已经分配"></p>
+<p>除了客户端申请静态 IP 地址外，网络管理员也可以通过 DHCP 服务器静态分配机制来分配 IP, 避免客户端手动配置错误的情况。</p>
+<h3 id="确认分配">确认分配</h3>
+<p>那么如何确认指定的 IP 是否已经分配了呢？DHCP 服务器只需要 <code>ping</code> 一下申请的 IP 地址即可。</p>
+<p>对于申请动态 IP (没有指定了 IP 地址) 的请求报文，DHCP 服务器只需要找一个没有使用的 IP 地址返回就可以了。</p>
+<hr>
+<h2 id="地址冲突">地址冲突</h2>
+<p>假设当前主机 A 已经通过 DHCP 获取到 IP: 192.168.20.10。</p>
+<p>那么当主机 A 休眠时，无法回复 Ping，DHCP 服务器就会认为该 IP 地址没有被使用，于是将 192.168.20.10 分配给其他主机，等到主机 A 休眠结束后，IP 地址就与主机 B 发生了冲突。</p>
+<p>如果主机 A 是关机而非休眠的话，是否会产生 IP 地址冲突呢？</p>
+<p><strong>不会</strong>，因为当主机 A 开机时，首先要完成 TCP/IP 模块的初始化，在配置其静态 IP 192.168.20.10 时，会发三次 ARP 消息 (目的: 确认有没有主机在使用 IP 192.168.20.10)，如果有其他主机使用了这个 IP, 主机 A 就会收到对应的回复，也就不会继续使用这个 IP 地址了。</p>
+<hr>
+<h2 id="地址回收">地址回收</h2>
+<p>DHCP 服务器的 IP 地址池中会指定 IP 地址的租期，如果客户端发送的 DISCOVER 报文中携带了期望租期，服务器会将 客户端的期望租期 与 分配 IP 的租期 进行比较，选择其中时间较短的租期分配给客户端。</p>
+<h3 id="1-租期到期和续期">1. 租期到期和续期</h3>
+<p>如果客户端希望租期到期后，继续使用当前的 IP 地址，需要更新 IP 地址的租期。</p>
+<ol>
+<li>当客户端 IP 地址租期剩余 50% 时，会以单播的方式向 DHCP 服务器发送 REQUEST 请求报文，请求更新 IP 地址租期，如果收到 ACK 报文，租期更新成功（即租期重新从 0 开始计算），如果收到 NAK 报文，则向 DHCP 服务器重新发送 DISCOVER 报文请求新的 IP 地址</li>
+<li>当客户端 IP 地址租期剩余 87.5% 时，如果还未收到 DHCP 服务器的应答报文，客户端会以广播的方式向 DHCP 服务器发送 REQUEST 报文 (为什么这里是广播呢？ 因为收不到 DHCP 服务器的应答，说明 DHCP 服务器可能已经发生变更)，请求更新 IP 地址租期，如果收到 ACK 报文，租期更新成功（即租期重新从 0 开始计算），如果收到 NAK 报文，则向 DHCP 服务器重新发送 DISCOVER 报文请求新的 IP 地址</li>
+<li>如果租期到期时，都没有收到 DHCP 服务器的应答，客户端停止使用当前 IP 地址，重新发送 DISCOVER 报文请求新的 IP 地址</li>
+</ol>
+<h3 id="2-手动释放">2. 手动释放</h3>
+<p>客户端在租期到期之前，如果不想再使用当前的 IP 地址 (例如笔记本电脑从宿舍移动到了教室)，客户端会向 DHCP 服务器发送 RELEASE 请求报文，通知 DHCP 服务器释放 IP 地址的租期，便于该 IP 地址后续被其他客户端继续使用。</p>
+<h3 id="3-超时和断线">3. 超时和断线</h3>
+<p>如前文中提到的，当客户端因为休眠和断线 (例如网线被拔掉) 而无法响应 DHCP 服务器的检测时，DHCP 服务器将回收该客户端的 IP 地址。</p>
+<hr>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://info.support.huawei.com/info-finder/encyclopedia/zh/DHCP.html">DHCP</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/subnet/"><i class="fa fa-chevron-circle-left"></i> 网络基础: 公网/子网 地址是如何分类的？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/how-arp-works/">网络基础: ARP 是如何工作的？ <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: DHCP 是如何工作的？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

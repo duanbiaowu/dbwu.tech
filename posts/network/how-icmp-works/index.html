@@ -1,0 +1,363 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: ICMP 是如何工作的？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: ICMP 是如何工作的？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/how-icmp-works/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-09-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-09-30T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: ICMP 是如何工作的？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: ICMP 是如何工作的？</h1>
+
+    
+      
+<p>
+    <span>2017-09-30</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<blockquote>
+<p>因特网控制报文协议 ICMP（Internet Control Message Protocol）是一个差错报告机制，属于 TCP/IP 协议簇中的一个重要子协议。通常被 IP 层或更高层协议（TCP/UDP）使用，属于网络层协议，主要用于在 IP 主机和路由器之间传递控制消息，用于报告主机是否可达、路由是否可用等。</p>
+</blockquote>
+<p>ICMP 控制消息虽然并不传输具体的数据，但是对于收集各种网络信息、诊断和排除各种网络故障以及指定数据的传递具有至关重要的作用。</p>
+<p>日常开发中很多常用的网络工具，其底层实现都使用到了 <code>ICMP</code> 协议，例如 <code>ping</code> 和 <code>traceroute</code>。</p>
+<h3 id="为什么需要-icmp-">为什么需要 ICMP ?</h3>
+<p>在数据传输过程中，网络层的 IP 协议提供 “尽力而为” 的传输服务 (也就是不保证数据包一定会被送达)，如果要使传输过程变得可靠，就要使用传输层的 TCP 协议来实现。IP 协议不会在目标主机是否收到数据进行验证、无法进行流量控制和差错控制，因此在数据包的传输过程中难免产生各种错误。</p>
+<p>ICMP 就是为了更有效地转发 IP 数据报和提高数据传输成功的机会，<strong>虽然封装在 IP 数据报中，但是依然属于网络层协议</strong>。</p>
+<p><img src="https://dbwu.tech/images/network/icmp_1.png" alt="ICMP 报文格式"></p>
+<p>当网路中的数据包传输出现问题时，主机/设备就可以使用 ICMP 向上层协议报告异常和具体的差错情况，然后上层协议就可以判断通信是否正确，以及进行必要的流量控制和差错控制。</p>
+<hr>
+<h2 id="icmp-如何工作-">ICMP 如何工作 ?</h2>
+<p>ICMP 是一个差错报告机制，所以只需要做一件事情: <strong>当数据报的处理过程出现差错时，向 源主机/设备 返回具体的错误就可以了</strong>，其他一律不管。</p>
+<p>源主机/设备 收到 ICMP 差错报告后，虽然无法判断差错是由哪个中间网络设备所引起的 (因为 IP 数据包中只有源端和目标端，没有记录数据包在网络中传输的全部路径)，但是可以根据 ICMP 差错报文来确定错误的类型，以及确定接下来如何更有效地重发失败的数据包。</p>
+<p><img src="https://dbwu.tech/images/network/icmp_1.png" alt="ICMP 报文格式"></p>
+<h3 id="icmp-报文类型">ICMP 报文类型</h3>
+<blockquote>
+<p>不同的 “类型 + 代码” 组合表示不同的 ICMP 报文类型，每一个 ICMP 报文作为 IP 数据包的数据部分被封装在 IP 数据包内部。</p>
+</blockquote>
+<p>ICMP 规定了各种类型的消息，除了请求和应答外，还有数据包在转发和接收过程中可能遇到的各种错误。</p>
+<p><img src="https://dbwu.tech/images/network/epub_907755_232.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>例如当主机或路由器无法将数据包送达目标地址时，会发送 <code>Destination Unreachable</code> 错误应答给源主机，造成这个问题可能有如下的原因:</p>
+<ol>
+<li>网络不可达: 路由器无法确定到达目标主机的路径，可能因为路由表中不存在到达目标网络的路由，或者路由器无法到达指定网络</li>
+<li>主机不可达: 路由器无法直接到达目标主机，可能因为目标主机关闭了连接，或者目标主机已离线</li>
+<li>端口不可达: 目标主机上没有程序监听目标端口</li>
+<li>协议不可达: 目标主机上无法处理数据包指定的协议</li>
+</ol>
+<h3 id="不会产生-icmp-差错的场景">不会产生 ICMP 差错的场景</h3>
+<ol>
+<li>ICMP 差错报文不会产生 ICMP 差错报文 (类似递归)，主要为了防止 ICMP 消息的无限产生和传递，但是 ICMP 查询报文可能会产生 ICMP 差错报文</li>
+<li>目的地址是广播地址或多播地址的 IP 数据报文</li>
+<li>ICMP 不是 IP 数据分片的 “第一片”</li>
+<li>源地址不是单个主机的数据包 (例如 0.0.0.0 默认地址、127.0.0.1 环回地址、广播地址、多播地址)</li>
+</ol>
+<hr>
+<h2 id="ping">ping</h2>
+<p><code>ping</code> 是 ICMP 的一个经典应用，主要用来测试两台主机之间的连通性，通过 ICMP 的 Echo 的报文来确定:</p>
+<ol>
+<li>目标设备是否可达</li>
+<li>与远程主机的通信往返延迟 RTT</li>
+<li>数据报文的丢失情况 (丢包)</li>
+</ol>
+<h3 id="实现原理">实现原理</h3>
+<p><code>ping</code> 命令的实现原理: 通过向目标主机发送 ICMP Echo 请求报文，目的主机收到之后会发送 Echo 回答报文，ping 会根据时间和成功响应的次数估算出数据包往返时间以及丢包率。</p>
+<h3 id="wireshark-抓包">Wireshark 抓包</h3>
+<p>先启动 Wireshark 软件，然后执行 ping 命令。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 发送 5 次 ping 请求</span>
+</span></span><span style="display:flex;"><span>$ ping -c <span style="color:#3677a9">5</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 本机 IP: 192.168.3.200</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 应答如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (104.21.71.166) 56(84) bytes of data.
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">53</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">168</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">53</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">166</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">3</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">53</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">166</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">4</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">53</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">169</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">5</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">53</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">169</span> ms
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span> packets transmitted, <span style="color:#3677a9">5</span> received, 0% packet loss, <span style="color:#24909d">time</span> 8594ms
+</span></span><span style="display:flex;"><span>rtt min/avg/max/mdev = 166.858/168.176/169.432/1.153 ms
+</span></span></code></pre></div><p>在 Wireshark 软件操作界面中通过 icmp 关键字，将对应的数据包过滤出来:</p>
+<p><img src="https://dbwu.tech/images/network/icmp_3.png" alt="5 个 ping 请求和应答数据包"></p>
+<p>通过对比 ping 命令的输出和 Wireshark 的抓包数据，可以看到请求和应答顺序都是可以一一对应的。</p>
+<p>在 ICMP 请求抓包数据中，数据报的 Type 字段为 8, 表示这是一条 ICMP Echo 请求报文。</p>
+<p><img src="https://dbwu.tech/images/network/icmp_4.png" alt="ICMP 请求报文示例"></p>
+<p>在 ICMP 应答抓包数据中，数据报的 Type 字段为 8, 表示这是一条 ICMP Reply 应答报文。</p>
+<p><img src="https://dbwu.tech/images/network/icmp_5.png" alt="ICMP 应答报文示例"></p>
+<hr>
+<h2 id="traceroute">traceroute</h2>
+<p>traceroute 是 ICMP 的另一个经典应用，用来跟踪一个数据包从源设备到目标设备的传输信息，通常用于诊断网络问题和查找数据包传输路径。</p>
+<h3 id="实现原理-1">实现原理</h3>
+<p>traceroute 不仅支持 ICMP 协议，还支持 TCP, UDP 协议，本文使用 ICMP 来说明其工作流程和抓包实验，其他协议的工作原理也是类似的，感兴趣的读者可以自行尝试。</p>
+<ol>
+<li>发送 UDP 数据包: 源设备向目标设备发送一系列 ICMP 报文，初始 TTL (Time To Live) 设置为 1 (默认情况下，单个 TTL 值会发送 3 个相同的包)</li>
+<li>路由器处理: 第一个路由器收到 ICMP 报文后，检测 TTL, TTL 等于 1, 然后将其减 1, TTL 等于 0, 路由器将数据包丢掉，然后发送 ICMP 超时 (Time Exceeded) 报文给源设备</li>
+<li>累计处理：源设备收到 ICMP 超时报文之后，将 TTL 设置为 2, 然后发送新的 ICMP 报文</li>
+<li>路由器再次处理: 第一个路由器收到 ICMP 报文后，检测 TTL, TTL 等于 2, 然后将其减 1, TTL 等于 1, 接着转发到第二个路由器，第二个路由器收到 ICMP 报文后，检测 TTL, TTL 等于 1, 然后将其减 1, TTL 等于 0, 第二个路由器将数据包丢掉，然后发送 ICMP 超时 (Time Exceeded) 报文给源设备</li>
+<li>重复第 2 - 4 步，直到数据包到达目标设备 (这时目标设备会发送 ICMP 应答报文给源设备) 或者到达路由最大跳跃数量 (通常为 30)</li>
+<li>这时源设备就可以知道: 到达目标设备所经过的路由器 IP 地址以及每个路由器的往返时间</li>
+</ol>
+<p>我们可以将 traceroute 命令的整个执行策略概括为: <strong>步步为营</strong>，每次向前走一步，直到到达目标或者发生错误，通过命令输出的数据包传输路径，可以很快找到网络故障的位置。</p>
+<p>菜单栏中的 Statistics -&gt; Flow Graph，选择 “Limit to display filter”，将 Flow type 设置为 “TCP Flows”：</p>
+<h3 id="wireshark-抓包-1">Wireshark 抓包</h3>
+<p>先启动 Wireshark 软件，然后执行 traceroute（路由追踪）的原理及实现 命令。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 指定使用 ICMP 协议</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 因为很多 Linux 系统默认使用 UDP 协议</span>
+</span></span><span style="display:flex;"><span>$ traceroute --icmp  dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 本机 IP: 192.168.3.200</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 应答如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>traceroute to dbwu.tech (172.67.147.110), <span style="color:#3677a9">30</span> hops max, <span style="color:#3677a9">60</span> byte packets
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">1</span>  DESKTOP-IU99KUS (172.26.208.1)  0.217 ms  0.176 ms  0.187 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">2</span>  192.168.3.1 (192.168.3.1)  6.730 ms  6.728 ms  6.726 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">3</span>  100.64.0.1 (100.64.0.1)  10.613 ms  10.611 ms  10.608 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">4</span>  * * 10.224.23.13 (10.224.23.13)  10.591 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">5</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">6</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">7</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">8</span>  * 202.97.54.54 (202.97.54.54)  31.306 ms  31.293 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">9</span>  202.97.83.162 (202.97.83.162)  179.562 ms  179.560 ms  179.558 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">10</span>  * * *
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">11</span>  172.70.94.2 (172.70.94.2)  172.700 ms  172.696 ms  172.693 ms
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>在 Wireshark 软件操作界面中通过 icmp 关键字，将对应的数据包过滤出来:</p>
+<p><img src="https://dbwu.tech/images/network/icmp_7_2.png" alt="traceroute 请求和应答数据包"></p>
+<p>从抓包到数据包可以看到，每发送 3 个 ICMP 包，TTL 的值会自动加 1, 与 ICMP 请求报文对应的，就是传输过程中的中间设备返回的 ICMP 超时应答 (图中背景为黑色的部分)。</p>
+<p>可以从中间挑几个数据包，看看对应的 TTL 值:</p>
+<p><img src="https://dbwu.tech/images/network/icmp_8_2.png" alt="TTL 为 1 的 ICMP 异常数据包"></p>
+<!-- raw HTML omitted -->
+<p><img src="https://dbwu.tech/images/network/icmp_9_2.png" alt="TTL 为 2 的 ICMP 异常数据包"></p>
+<!-- raw HTML omitted -->
+<p><img src="https://dbwu.tech/images/network/icmp_10_2.png" alt="TTL 为 8 的 ICMP 异常数据包"></p>
+<h3 id="其他">其他</h3>
+<p>数据包在传输过程中，有的路由器会隐藏自己的位置，不让 ICMP Timeout 的消息通过，结果就是 traceroute 的结果输出中，在隐
+藏的路由器的那一跳上始终会显示星号。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ traceroute --tcp -p <span style="color:#3677a9">80</span> -n google.com
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>traceroute to google.com (93.46.8.90), <span style="color:#3677a9">30</span> hops max, <span style="color:#3677a9">60</span> byte packets
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">1</span>  172.26.208.1  0.332 ms  0.315 ms  0.308 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">2</span>  192.168.3.1  3.925 ms  3.919 ms  3.914 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">3</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">4</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">5</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">6</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">7</span>  202.97.53.142  26.462 ms 202.97.94.198  25.753 ms *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">8</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">9</span>  202.97.40.70  184.716 ms 202.97.55.150  184.693 ms 202.97.40.70  184.685 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">10</span>  * * *
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">30</span>  * * *
+</span></span></code></pre></div><hr>
+<h2 id="icmp-洪泛攻击">ICMP 洪泛攻击</h2>
+<p>ICMP 协议没有验证机制，所以很容易被用于进行网络攻击，目前最常见的是 <strong>ICMP 洪泛攻击:</strong> 攻击者在短时间内向目标设备发送大量的 ICMP 虚假报文，导致设备忙于应答虚假报文，无法应答正常报文。</p>
+<p><img src="https://dbwu.tech/images/network/icmp_13.png" alt="图片来源: https://info.support.huawei.com/info-finder/encyclopedia/zh/ICMP.html"></p>
+<p>ICMP 泛洪攻击具体可分为带宽 DOoS 攻击和端口扫描攻击（针对连接的 DOoS 攻击）两类。</p>
+<h3 id="带宽-doos-攻击">带宽 DOoS 攻击</h3>
+<p>攻击者发送大量伪造的 ICMP Echo 请求报文，交换机、路由器等网络设备的 CPU 需要响应这种报文，会占用大量的带宽和 CPU 资源，这种 DOoS 攻击和其他 DOoS 攻击一样，消耗设备的资源而使得设备无法提供正常服务。</p>
+<h3 id="连接-doos-攻击">连接 DOoS 攻击</h3>
+<p>攻击者发送大量的端口扫描报文，交换机需要回应大量的 ICMP 目标不可达报文，这种攻击既消耗系统的资源，同时攻击者能够很轻易获得设备对外开放的端口，然后可以针对这些端口进行攻击，可以影响所有 IP 设备的网络连接。</p>
+<hr>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://info.support.huawei.com/info-finder/encyclopedia/zh/ICMP.html">ICMP</a></li>
+</ul>
+<h2 id="扩展工具">扩展工具</h2>
+<ul>
+<li><a href="http://www.traceroute.org/">traceroute.org</a></li>
+<li><a href="https://www.pingplotter.com/">Network Visibility Anywhere</a></li>
+<li><a href="https://ping.chinaz.com/dbwu.tech">在线 ping</a></li>
+<li><a href="https://tool.chinaz.com/tracert?type=9D36ADCF-5BD1-4F0B-8F9D-165368A760BC&amp;host=dbwu.tech">在线路由追踪</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/how-arp-works/"><i class="fa fa-chevron-circle-left"></i> 网络基础: ARP 是如何工作的？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/what-is-ddos/">网络基础: 什么是 DDoS ? <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: ICMP 是如何工作的？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
