@@ -1272,11 +1272,29 @@
      </item>
    
      <item>
+       <title>网络基础: 交换机和路由器的区别</title>
+       <link>https://dbwu.tech/posts/network/diff-between-switch-and-router/</link>
+       <pubDate>Thu, 25 Jan 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/diff-between-switch-and-router/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>硬件延迟级别</title>
        <link>https://dbwu.tech/posts/hardware/latency/</link>
        <pubDate>Tue, 16 Jan 2018 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/hardware/latency/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>网络基础: 路由器 (拾遗补缺)</title>
+       <link>https://dbwu.tech/posts/network/router/</link>
+       <pubDate>Tue, 21 Nov 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/router/</guid>
        <description></description>
      </item>
    
@@ -1322,6 +1340,24 @@
        <pubDate>Sun, 10 Sep 2017 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/network/subnet/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>网络基础: 交换机 (拾遗补缺)</title>
+       <link>https://dbwu.tech/posts/network/switch/</link>
+       <pubDate>Sun, 16 Jul 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/switch/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>curl 命令常用操作</title>
+       <link>https://dbwu.tech/posts/linux/tools/curl/</link>
+       <pubDate>Tue, 10 Jan 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/linux/tools/curl/</guid>
        <description></description>
      </item>
    

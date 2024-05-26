@@ -1,0 +1,420 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: 路由器 (拾遗补缺) - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: 路由器 (拾遗补缺)" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/router/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-11-21T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-11-21T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: 路由器 (拾遗补缺)"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: 路由器 (拾遗补缺)</h1>
+
+    
+      
+<p>
+    <span>2017-11-21</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="两种设备">两种设备</h2>
+<p>所有的通信设备 (主机、笔记本电脑、手机、交换机、路由器、服务器) 在网络层面可以分为两种设备:</p>
+<ol>
+<li>主机 (End System) : 不会转发 <strong>[目标 IP 地址 不等于 自身 IP 地址]</strong> 的数据包</li>
+<li>路由器 (Intermediate System): 会转发 <strong>[目标 IP 地址 不等于 自身 IP 地址]</strong> 的数据包</li>
+</ol>
+<h3 id="主机">主机</h3>
+<p>主机上的多个接口可以位于同一网段，但是不能使用相同的 IP 地址。</p>
+<p>例如电脑上有一块网卡、有一个无线网卡，这两个网卡都可以从同一个 DHCP 服务器获取同一网段的 IP 地址，但是不能获得相同的 IP 地址。</p>
+<h3 id="路由器">路由器</h3>
+<p>路由器的每个接口都需要使用不同的网段和不同的 IP 地址。</p>
+<h2 id="三种通信">三种通信</h2>
+<h3 id="主机和自己通信">主机和自己通信</h3>
+<p>最常见的如本地环回网络 <code>127.0.0.1</code>。</p>
+<p>此外，当数据包的目标 IP 地址等于主机自己的 IP 地址时，数据包只是在 TCP/IP 协议内部过了一遍，没有到达硬件网卡。</p>
+<p>例如本机 IP 地址为 <code>192.168.1.200</code>, 启动一个 Nginx 绑定并监听 <code>192.168.1.200:8080</code>, 那么请求 <code>192.168.1.200</code> 时，会返回 Nginx 的响应内容，数据包在本机内部过了一遍。</p>
+<h3 id="主机和广播域内其他主机通信">主机和广播域内其他主机通信</h3>
+<p>如果目标 IP 地址既不是本地环回网络 IP，也不是主机自身的 IP, 那么就需要通过硬件网卡发送到目标地址了。</p>
+<p>如何通过目标 IP 地址得出目标 Mac 地址呢？发送数据前，先使用 ARP 协议广播获取到目标 Mac 地址，详情过程可以参考 <a href="https://dbwu.tech/posts/network/how-arp-works/">这篇文章</a>。</p>
+<h3 id="主机和广播域外其他主机通信">主机和广播域外其他主机通信</h3>
+<p>如果主机和目标主机不在同一个广播域内，使用 ARP 协议获取目标 Mac 地址时，目标 Mac 地址应该填写什么了？当然是网关的 Mac 地址，详情过程可以参考 <a href="https://dbwu.tech/posts/network/how-arp-works/">这篇文章</a>。</p>
+<hr>
+<h2 id="路由表">路由表</h2>
+<blockquote>
+<p>路由器根据 “IP地址” 判断转发目标，IP 报文依据的是 “路由表”，路由表的构建依赖路由协议 (互联网主要依赖 BGP 协议)。</p>
+</blockquote>
+<p>路由器中有一张存储 IP 的表，根据这张表加数据包中的目标 IP 地址，可以查出数据包接下来应该发往哪个路由器。</p>
+<p><img src="https://dbwu.tech/images/network/epub_907755_307.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>为了将数据包发送到下一个路由器，还需要查出下一个路由器的 Mac 地址，并记录到数据包的 Mac 头部中 (修改 Mac 头部)。</p>
+<h3 id="表项">表项</h3>
+<p><img src="https://dbwu.tech/images/network/epub_907755_284.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>路由表包含了路由选择的必备信息，主要由以下 5 个表项组成:</p>
+<ol>
+<li><strong>目标 IP</strong></li>
+<li><strong>子网掩码</strong>: 表示目标 IP 地址中有多少为表示网络部分，目标 IP + 子网掩码 可以表示目标子网络信息，路由表的子网掩码列只表示在匹配网络包目标地址时需要对比的位数量</li>
+<li><strong>网关</strong>: 下一步需要转发的 IP 地址，包含转发接口的子网 IP 地址，通常是相邻路由器的网络接口IP地址，网关也可称为 “下一跳”</li>
+<li><strong>接口</strong>: 路由器上面对应的接口 (可以理解为一个 “网卡”)</li>
+<li><strong>指标</strong>: 当有多条路径可以到达相同目标地址（目标 IP 地址与子网掩码值相同）时不同路径的优先级。这个数字越小，表示距离目标地越近 (优先级越高)；数字越大，表示距离目标地越远 (优先级越低)。如果任意一个路由条目只有一个表项，那么其对应的 metric 值没有意义，因为无论 metric 是多少，这都是唯一的选择</li>
+</ol>
+<h3 id="查看路由表">查看路由表</h3>
+<p>Linux 中可以使用如下命令查看路由表。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ route -v
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Kernel IP routing table
+</span></span><span style="display:flex;"><span>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+</span></span><span style="display:flex;"><span>default         DESKTOP-IUAK47Q 0.0.0.0         UG    <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> eth0
+</span></span><span style="display:flex;"><span>172.17.0.0      0.0.0.0         255.255.0.0     U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> docker0
+</span></span><span style="display:flex;"><span>172.18.0.0      0.0.0.0         255.255.0.0     U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> br-b1b866c7f37c
+</span></span><span style="display:flex;"><span>172.20.0.0      0.0.0.0         255.255.0.0     U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> br-e7543e50246b
+</span></span><span style="display:flex;"><span>172.21.0.0      0.0.0.0         255.255.0.0     U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> br-b0601dad2b86
+</span></span><span style="display:flex;"><span>172.26.208.0    0.0.0.0         255.255.240.0   U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> eth0
+</span></span><span style="display:flex;"><span>192.168.49.0    0.0.0.0         255.255.255.0   U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> br-cbbb1e89822d
+</span></span></code></pre></div><p>Mac OS 中可以使用如下命令查看路由表。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -rn
+</span></span><span style="display:flex;"><span>Routing tables
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Internet:
+</span></span><span style="display:flex;"><span>Destination        Gateway            Flags        Refs      Use   Netif Expire
+</span></span><span style="display:flex;"><span>default            192.168.20.1       UGSc           <span style="color:#3677a9">39</span>        <span style="color:#3677a9">0</span>     en0
+</span></span><span style="display:flex;"><span>127.0.0.1          127.0.0.1          UH              <span style="color:#3677a9">3</span>    <span style="color:#3677a9">11132</span>     lo0
+</span></span><span style="display:flex;"><span>192.168.20/24      link#4             UCS             <span style="color:#3677a9">8</span>        <span style="color:#3677a9">0</span>     en0
+</span></span><span style="display:flex;"><span>192.168.20.1       0:1f:ca:88:96:8c   UHLWIir        <span style="color:#3677a9">40</span>       <span style="color:#3677a9">22</span>     en0   <span style="color:#3677a9">1025</span>
+</span></span><span style="display:flex;"><span>192.168.20.255     ff:ff:ff:ff:ff:ff  UHLWbI          <span style="color:#3677a9">0</span>        <span style="color:#3677a9">8</span>     en0
+</span></span></code></pre></div><hr>
+<h2 id="路由选择">路由选择</h2>
+<p>路由器根据接收到的数据包中的目标 IP 地址，从路由表中选择最适合的路径，并选择从哪个网路接口转发，这一系列过程称为路由选择。</p>
+<p>路由选择可以分为针对单播通信的单播 IP 路由选择和针对多播通信的多播 IP 路由选择。</p>
+<hr>
+<h2 id="最长缀匹配">最长缀匹配</h2>
+<p>当数据包到达路由器时，路由器会根据目标 IP 地址中的 (网络部分) 信息，从路由表中查找对应的路由表表项。</p>
+<p>如果路由表中存在该表项，则根据该表项记载的网络接口信息，转发数据包到对应的网关（下一跳路由器的 IP 地址）。</p>
+<blockquote>
+<p>如果路由表中出现多条表示同一个目标网络地址的表项时，则选择子网掩码最长、metric 指标值最小的表项，这种方式也称为最长缀匹配。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/epub_26211960_297.jpg" alt="图片来源: 图解网络硬件(三轮贤一)"></p>
+<h3 id="送快递示例">送快递示例</h3>
+<p>其实最长缀匹配和送快递的收货地址类似，例如一个快递包裹收件人地址为: 北京市海淀区知春路 ???</p>
+<p>路由表中现在有三条路径：</p>
+<ol>
+<li>北京市</li>
+<li>北京市海淀区</li>
+<li>北京海淀区知春路</li>
+</ol>
+<p>虽然 3 条路径都可以匹配到收货地址，但是显然快递小哥 (网关) 会选择第 3 条路径，因为它更具体，更可信。</p>
+<hr>
+<h2 id="转发">转发</h2>
+<blockquote>
+<p>路由器会忽略主机号，只匹配网络号。</p>
+</blockquote>
+<h3 id="接收包">接收包</h3>
+<p>路由器的网卡接口都具有 Mac 地址，只接收目标 Mac 地址与自身地址匹配的包，遇到不匹配的包直接丢弃。</p>
+<p>完成包接收操作之后，路由器就会丢弃包中的 Mac 头部，Mac 头部的作用就是将包送达路由器，其中的接收方 Mac 地址就是路由器网卡接口的 Mac 地址。因此当数据包到达路由器之后，Mac 头部的任务就完成了。</p>
+<h3 id="转发过程">转发过程</h3>
+<h4 id="1-查询路由表判断转发目标">1. 查询路由表判断转发目标</h4>
+<p><img src="https://dbwu.tech/images/network/epub_907755_284.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>假设地址为 10.10.1.101 的计算机要向地址为 192.168.1.10 的服务器发送一个包，这个包先到达图中的路由器。</p>
+<p>判断转发目标的第一步，就是根据包的接收方 IP 地址查询路由表中的目标地址栏，以找到相匹配的记录。就像前文提到的一样，这个匹配并不是匹配全部 32 个比特，而是根据子网掩码列中的值判断网络号的比特数，并匹配相应数量的比特。</p>
+<p>例如，图中的第 3 行，子网掩码列为 255.255.255.0，就表示需要匹配从左起 24 个比特，网络包的接收方 IP 地址和路由表中的目标地址左起 24 个比特的内容都是 192.168.1，因此两者是匹配的，该行记录就是候选转发目标之一。</p>
+<p>按照这样的规则，<strong>可能会匹配到多条候选记录</strong>。在这个例子中，第 3、4、5 行都可以匹配。</p>
+<p><strong>路由器首先寻找网络号最长的一条记录 (最长缀匹配)</strong>。网络号越长，说明主机号比特数越短，也就意味着该子网内可分配的主机数量越少 (子网中可能存在的主机数量越少)，这一规则的目标是尽量缩小范围，所以<strong>根据这条 (最长缀匹配) 记录判断的转发目标就会更加准确</strong>。</p>
+<ul>
+<li>第 3 行 192.168.1.0/255.255.255.0 表示一个子网</li>
+<li>第 4 行 192.168.1.10/255.255.255.255 表示一台服务器</li>
+</ul>
+<p>相比服务器所属的子网来说，直接指定服务器本身的地址时范围更小，因此这里应该选择第 4 行作为转发目标。根据最长缀匹配原则筛选后，如果只剩一条候选记录，则按照这条记录的内容进行转发。</p>
+<p>有时候路由表中会存在网络号长度相同的多条记录，例如考虑到路由器或网线的故障而设置的备用路由就属于这种情况。这时<strong>需要根据 metric 指标计数的值来进行判断</strong>，指标计数越小说明该路由越近，因此应选择指标计数较小的记录。</p>
+<p>如果在路由表中无法找到匹配的记录，路由器会丢弃这个包，并通过 ICMP 消息 (Destination Unreachable) 告知发送方。</p>
+<h4 id="2-找不到匹配路由时选择默认路由">2. 找不到匹配路由时选择默认路由</h4>
+<blockquote>
+<p>路由表中子网掩码为 0.0.0.0 的记录表示 “默认路由 (网关)”。</p>
+</blockquote>
+<p>子网掩码 0.0.0.0 表示: 数据包目标 IP 地址和路由表目标地址的匹配中，需要匹配的比特数为 0。换句话说，就是根本不需要匹配。只要将子网掩码设置为 0.0.0.0，那么无论任何地址都能匹配到这一条记录 (默认记录)。</p>
+<p>当匹配不到其他路由时，数据包就会被转发到网关路由器，因此这条记录也被称为默认网关。</p>
+<p><img src="https://dbwu.tech/images/network/epub_26211960_296.jpg" alt="图片来源: 图解网络硬件(三轮贤一)"></p>
+<p>如图所示，A 向 C 发送数据，路由器根据目标地址 192.168.3.0/24 查询路由表，结果没有查到对应的表项，因此使用 0.0.0.0/0 表项，将数据从端口 3 转发出去。</p>
+<p>由于匹配的比特数越长，优先级越高，因此子网掩码 0.0.0.0 的记录优先级是最低的，只有找不到其他匹配的记录时，才会选择该 (默认) 记录。</p>
+<h4 id="3-报错--丢弃包">3. 报错 &amp;&amp; 丢弃包</h4>
+<p>如果根据数据包中的目标 IP 地址无法查询到有效的路由表项，并且路由表中也不存在默认网关，路由器会返回转发错误，并丢弃该数据包。</p>
+<hr>
+<h2 id="路由聚合">路由聚合</h2>
+<blockquote>
+<p>路由聚合会将几个子网合并成一个子网，并在路由表中只产生一条记录。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/epub_907755_285.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>如图所示，现在有 3 个子网，分别为10.10.1.0/24、10.10.2.0/24、10.10.3.0/24，路由器 B 需要将包发往这 3 个子网。</p>
+<p>在这种情况下，路由器 B 的路由表中原本应该有对应这 3 个子网的 3 条记录，但在这个例子中，无论发往任何一个子网，都是通过路由器 A 来进行转发，因此我们可以在路由表中将这 3 个子网合并成 10.10.0.0/16，这样也可以正确地进行转发，但我们减少了路由表中的记录数量，这就是路由聚合。</p>
+<p>经过路由聚合，多个子网会被合并成一个子网，子网掩码会发生变化，同时，目标地址列也会改成聚合后的地址。</p>
+<p>从结果上看，路由表的子网掩码列只是用来在匹配目标地址时告诉路由器应该匹配多少个比特。而且，目标地址中的地址和实际子网的网络号可能并不完全相同，但即便如此，路由器依然可以正常工作。</p>
+<hr>
+<h2 id="数据包的有效期">数据包的有效期</h2>
+<p>从路由表中查找到转发目标之后，数据包就会被转发给输出端口，并最终发送出去，但在此之前，路由器还会对数据包进行一些处理。</p>
+<p>路由器在对数据包进行转发之前，会先更新 IP 报文头部的 TTL（Time to Live）字段，TTL 字段表示数据包的有效期，数据包每经过一个路由器的转发，这个值就会减 1，当这个值变成 0 时，就表示超过了有效期，路由器会将这个包直接丢弃。</p>
+<p>这个机制是为了防止数据包在一个地方陷入死循环，如果路由表中的转发目标都配置正确，应该不会出现这样的情况，但如果其中某些路由器的路由表的配置有问题，或者由于路由设备故障等原因导致的临时性路由混乱，就会出现这样的情况。</p>
+<p>有了这个 “兜底” 机制后，发送方在发送数据包时将 TTL 设为 64 或 128，数据包最多经过这么多路由器后就会 “寿终正寝”。现代的互联网即使访问一台位于地球另一侧的服务器，最多也只需要经过几十个路由器，因此只要数据包被正确转发，就可以在 TTL 过期之前到达目标地。</p>
+<hr>
+<h2 id="数据包的分片">数据包的分片</h2>
+<p>一旦转发的数据包长度超过了输出端口能传输的最大长度，就无法直接发送这个包了，可以使用 IP 协议中定义的分片功能对包进行拆分，缩短每个包的长度。</p>
+<blockquote>
+<p>IP 数据分片和 TCP 数据拆分机制是不同的。</p>
+</blockquote>
+<p>TCP 拆分数据是在将数据封装到包里之前进行的，换句话说，拆分好的一个数据块正好装进一个包里。但是从 IP 分片的角度来看，这样一个包其实是一个未拆分的整体，也就是说，分片是对一个完整的包进行再拆分的过程。</p>
+<h3 id="分片过程">分片过程</h3>
+<p><img src="https://dbwu.tech/images/network/epub_907755_300.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>首先，我们需要知道输出端口的 MTU，看看这个包能不能不分片直接发送。<strong>最大包长度是由端口类型决定的</strong>，用这个最大长度减掉头部的长度就是 MTU，将 MTU 与要转发的包长度进行比较。</p>
+<ul>
+<li>如果输出端口的 MTU 足够大，那么就可以不分片直接发送</li>
+<li>如果输出端口的 MTU 太小，那么就需要将包按照这个 MTU 进行分片，但在此之前还需要看一下 IP 头部中的标志字段，确认是否可以分片。如果查询标志字段发现不能分片，那么就只能丢弃这个包，并通过 ICMP 消息通知发送方。否则，就可以按照输出端口 MTU 对数据进行依次拆分了</li>
+</ul>
+<p><img src="https://dbwu.tech/images/network/ip_3.png" alt="IP 分片示例"></p>
+<p>在分片中，TCP 头部及其后面的部分都是可分片的数据，<strong>尽管 TCP 头部不属于用户数据，但从 IP 来看也是 TCP 请求传输的数据的一部分</strong>。数据被拆分后，每一份数据前面会加上 IP 头部，其大部分内容都和原本的 IP 头部一模一样，但其中有部分字段需要更新，这些字段用于记录分片相关的信息。</p>
+<h3 id="分片重组">分片重组</h3>
+<p>如果接收到的数据包是经过分片的，IP 协议栈会将它们还原成原始的包。</p>
+<p>分片的数据包会在 IP 头部的标志字段中进行标记，当收到分片的包时，IP 协议栈会将其暂存在内部的内存空间中，然后等待 IP 头部中具有相同 ID 的包全部到达，这是因为 <strong>同一个包的所有分片都具有相同的 ID</strong>。</p>
+<p>此外，IP 头部还有一个分片偏移量 (fragment offset) 字段，<strong>表示当前分片在整个包中所处的位置</strong>。</p>
+<p>根据这些信息 (ID + offset)，在所有分片全部收到之后，就可以将它们还原成原始的包，这个操作叫作分片重组。</p>
+<hr>
+<h2 id="控制平面和数据平面">控制平面和数据平面</h2>
+<p>高端路由器由控制平面（control plane）和数据平面（data plane，也可称为转发平面）组成，每个平面都有自己的 CPU 和内存。</p>
+<p><img src="https://dbwu.tech/images/network/route_1.png" alt="路由器结构"></p>
+<p>控制平面负责执行路由选择协议，管理路由选择处理必备的数据库信息并生成 FIB（Forward Information Base，转发表）, FIB 会被转发到用于接收传输数据包的数据平面中。</p>
+<p><strong>控制平面和数据平面分离的优点</strong>: 当需要转发的通信量剧增导致数据平面资源枯竭时，虽然无法继续进行分组转发，但对控制平面上路由选择处理所涉及的资源没有任何影响。同样，当路由选择处理负载剧增导致控制平面资源枯竭时，也不会给数据平面的资源以及分组转发处理带来任何影响。</p>
+<p>低端路由器的控制平面与数据平面一般不分离，使用唯一的 CPU 和内存进行处理。当处理的通信量达到极限时，会出现无法完成分组转发，同时路由选择处理也会停止的情况。</p>
+<hr>
+<h2 id="路由选择协议">路由选择协议</h2>
+<p>路由选择协议都是自适应的，能随着网络通信量和拓扑结构的变化而自适应地进行调整。</p>
+<p>互联网可以划分为许多较小的自治系统 (AS)，一个 AS 可以使用和别的 AS 不同的路由选择协议。</p>
+<p>可以把路由选择协议划分为两大类：</p>
+<ul>
+<li>自治系统内部的路由选择：RIP 和 OSPF</li>
+<li>自治系统间的路由选择：BGP</li>
+</ul>
+<h3 id="1-内部网关协议-rip">1. 内部网关协议 RIP</h3>
+<p>RIP 是一种基于距离向量的路由选择协议。距离是指跳数，直接相连的路由器跳数为 1。跳数最多为 15，超过 15 表示不可达。</p>
+<p>RIP 按固定的时间间隔仅和相邻路由器交换自己的路由表，经过若干次交换之后，所有路由器最终会知道到达本自治系统中任何一个网络的最短距离和下一跳路由器地址。</p>
+<p>每个 RIP 路由器维护一张路由表，表中包含以下信息：</p>
+<ul>
+<li>目标网络（Destination Network）</li>
+<li>下一跳地址（Next Hop）</li>
+<li>路由距离（Metric）</li>
+<li>路由条目更新时间（Timer）</li>
+</ul>
+<p>RIP 路由器周期性地（每30秒）向直接相连的所有邻居发送其完整的路由表，以便进行路由信息交换，这些路由更新报文使用 UDP 协议，端口号为 520。</p>
+<h4 id="收敛过程">收敛过程</h4>
+<p>当一个RIP路由器收到邻居路由器的路由更新信息时，它会执行以下步骤：</p>
+<ul>
+<li>更新路由表：如果收到的路由信息中的目标网络不在自己的路由表中，则将该目标网络添加到路由表中。如果该目标网络已经存在，且新的路径跳数更少，则更新路由表中的条目</li>
+<li>路由老化：RIP使用计时器机制老化路由表条目。如果一个路由条目在180秒内没有更新，则认为该路由条目过期，并将跳数设置为16，表示不可达</li>
+</ul>
+<p>RIP 协议实现简单，开销小。但是 RIP 能使用的最大距离为 15，限制了网络的规模，并且当网络出现故障时，要经过比较长的时间才能将此消息传送到所有路由器，所以 RIP 收敛速度慢，仅适用于稳定的网络环境。</p>
+<h3 id="2-内部网关协议-ospf">2. 内部网关协议 OSPF</h3>
+<p>开放最短路径优先 OSPF，是为了克服 RIP 的缺点而开发出来的。</p>
+<p>开放表示 OSPF 不受某一家厂商控制，而是公开发表的；最短路径优先表示使用了 Dijkstra 提出的最短路径算法 SPF。</p>
+<p>OSPF 具有以下特点：</p>
+<ul>
+<li>向本自治系统中的所有路由器 (广播) 发送信息</li>
+<li>发送的信息就是与相邻路由器的链路状态，链路状态包括与哪些路由器相连以及链路的 metric 指标 (metric 可以表示费用、距离、时延、带宽等)</li>
+<li>只有当链路状态发生变化时，路由器才会发送信息</li>
+</ul>
+<p>所有路由器都具有全网的拓扑结构图，并且是一致的。相比于 RIP，OSPF 的更新过程收敛的很快。</p>
+<h3 id="3-外部网关协议-bgp">3. 外部网关协议 BGP</h3>
+<p>BGP（Border Gateway Protocol，边界网关协议）</p>
+<p>AS 之间的路由选择很困难，主要是由于：</p>
+<ul>
+<li>互联网规模很大</li>
+<li>各个 AS 内部使用不同的路由选择协议，无法准确定义路径的度量</li>
+<li>AS 之间的路由选择必须考虑有关的策略，比如有些 AS 不愿意让其它 AS 经过</li>
+</ul>
+<p>BGP 只能寻找一条比较好的路由，而不是最佳路由。</p>
+<p>每个 AS 都必须配置 BGP 发言人，通过在两个相邻 BGP 发言人之间建立 TCP 连接来交换路由信息。</p>
+<p><img src="https://dbwu.tech/images/network/bgp_1.png" alt=""></p>
+<hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/9CEAwQYWDlK2BRsk-7g1lw">传输数据是如何正确送达到目标地的呢？</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/what-is-ddos/"><i class="fa fa-chevron-circle-left"></i> 网络基础: 什么是 DDoS ?</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/hardware/latency/">硬件延迟级别 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: 路由器 (拾遗补缺)"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
