@@ -483,7 +483,9 @@ Linux系统里面，<code>DNS</code> 服务器的 IP 地址保存在 <code>/etc/
 <blockquote>
 <p>HTTPDNS 本质上是通过 HTTP 完成对 DNS 版本的 “服务发现”。</p>
 </blockquote>
-<p>使用 HTTPDNS 取代常规的 DNS 解析。这是很多移动应用会选择的方法，使用 HTTP 协议绕过链路中的 DNS 服务器，可以避免域名劫持问题。</p>
+<p>根据用户的地址来判断应该返回什么IP，从而跳过传统DNS的影响。</p>
+<p>使用 HTTPDNS 取代常规的 DNS 解析，这是很多移动应用会选择的方法，使用 HTTP 协议绕过链路中的 DNS 服务器，可以避免域名劫持问题。</p>
+<p><img src="https://dbwu.tech/images/httpdns.jpg" alt=""></p>
 <h5 id="工作原理">工作原理</h5>
 <ol>
 <li>应用请求: 移动设备或应用通过发送 HTTP 请求来获取特定域名的 IP 地址</li>
@@ -500,7 +502,7 @@ Linux系统里面，<code>DNS</code> 服务器的 IP 地址保存在 <code>/etc/
 </ol>
 <h3 id="gslb">GSLB</h3>
 <p>基于 DNS 的全局负载均衡 GSLB (Global Server Load Balancing), 不仅为服务提供了负载均衡和高可用的功能，还可以在多个地理位置或数据中心之间进行负载均衡，确保用户的请求被发送到最合适的服务器。</p>
-<p><img src="https://dbwu.tech/images/network/gslb.png" alt=""></p>
+<p><img src="https://dbwu.tech/images/gslb.jpg" alt=""></p>
 <p>在 DNS 解析域名的同时使用负载均衡算法计算服务器 IP 地址。大型网站基本使用了 DNS 做为第一级负载均衡手段，然后在内部使用其它方式做第二级负载均衡。也就是说，域名解析的结果为内部的负载均衡服务器 IP 地址。</p>
 <p><strong>优点</strong>： DNS 能够根据地理位置进行域名解析，返回离用户最近的服务器 IP 地址。</p>
 <p><strong>缺点</strong>： 由于 DNS 具有多级结构，每一级的域名记录都可能被缓存，当下线一台服务器需要修改 DNS 记录时，需要过很长一段时间才能生效。</p>

@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>网络基础: 路由器 (拾遗补缺) - 蛮荆</title>
+  <title>网络基础: 网络层和路由器 (拾遗补缺) - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: 路由器 (拾遗补缺)" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: 网络层和路由器 (拾遗补缺)" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/network/router/" /><meta property="article:section" content="posts" />
@@ -17,7 +17,7 @@
 
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="网络基础: 路由器 (拾遗补缺)"/>
+<meta name="twitter:title" content="网络基础: 网络层和路由器 (拾遗补缺)"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.120.3">
@@ -104,7 +104,7 @@
 
 <article>
 
-    <h1>网络基础: 路由器 (拾遗补缺)</h1>
+    <h1>网络基础: 网络层和路由器 (拾遗补缺)</h1>
 
     
       
@@ -271,7 +271,7 @@
 <p>首先，我们需要知道输出端口的 MTU，看看这个包能不能不分片直接发送。<strong>最大包长度是由端口类型决定的</strong>，用这个最大长度减掉头部的长度就是 MTU，将 MTU 与要转发的包长度进行比较。</p>
 <ul>
 <li>如果输出端口的 MTU 足够大，那么就可以不分片直接发送</li>
-<li>如果输出端口的 MTU 太小，那么就需要将包按照这个 MTU 进行分片，但在此之前还需要看一下 IP 头部中的标志字段，确认是否可以分片。如果查询标志字段发现不能分片，那么就只能丢弃这个包，并通过 ICMP 消息通知发送方。否则，就可以按照输出端口 MTU 对数据进行依次拆分了</li>
+<li>如果输出端口的 MTU 太小，那么就需要将包按照这个 MTU 进行分片，但在此之前还需要看一下 IP 头部中的标志字段（Don&rsquo;t fragment），确认是否可以分片。如果查询标志字段发现不能分片（带有 Don&rsquo;t fragment 标志），那么就只能丢弃这个包，并通过 ICMP 消息通知发送方。否则，就可以按照输出端口 MTU 对数据进行依次拆分了</li>
 </ul>
 <p><img src="https://dbwu.tech/images/network/ip_3.png" alt="IP 分片示例"></p>
 <p>在分片中，TCP 头部及其后面的部分都是可分片的数据，<strong>尽管 TCP 头部不属于用户数据，但从 IP 来看也是 TCP 请求传输的数据的一部分</strong>。数据被拆分后，每一份数据前面会加上 IP 头部，其大部分内容都和原本的 IP 头部一模一样，但其中有部分字段需要更新，这些字段用于记录分片相关的信息。</p>
@@ -279,6 +279,8 @@
 <p>如果接收到的数据包是经过分片的，IP 协议栈会将它们还原成原始的包。</p>
 <p>分片的数据包会在 IP 头部的标志字段中进行标记，当收到分片的包时，IP 协议栈会将其暂存在内部的内存空间中，然后等待 IP 头部中具有相同 ID 的包全部到达，这是因为 <strong>同一个包的所有分片都具有相同的 ID</strong>。</p>
 <p>此外，IP 头部还有一个分片偏移量 (fragment offset) 字段，<strong>表示当前分片在整个包中所处的位置</strong>。</p>
+<p>除了最后一个分片，其他分片包含了一个 <code>More fragments = 1</code> 的 Flag，接收方就可以判断出后续还有更多的分片。</p>
+<p>最后一个分片，包含了一个 <code>More fragments = 0</code> 的 Flag，表示它是最后一个分片，因此接收方就可以开始重组了。</p>
 <p>根据这些信息 (ID + offset)，在所有分片全部收到之后，就可以将它们还原成原始的包，这个操作叫作分片重组。</p>
 <hr>
 <h2 id="控制平面和数据平面">控制平面和数据平面</h2>
@@ -365,7 +367,7 @@
         </li>
         <li>
         
-            <a href="https://dbwu.tech/posts/hardware/latency/">硬件延迟级别 <i class="fa fa-chevron-circle-right"></i> </a>
+            <a href="https://dbwu.tech/posts/network/ip/">网络基础: IP 协议 (拾遗补缺) <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>
@@ -382,7 +384,7 @@
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="网络基础: 路由器 (拾遗补缺)"
+        data-term="网络基础: 网络层和路由器 (拾遗补缺)"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"

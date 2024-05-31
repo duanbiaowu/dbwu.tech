@@ -261,7 +261,14 @@
 <li>C 收到了来自 B 的 “反射性” 攻击，因为 B 将数据数量包放大了，原本 A 可能只发送了 “hello” 给 B，而 B 却发送了N N
 N 个 “hello” 给 C, 如果类似 B 的开放服务器还不止一个，那么理论上，C 受到的攻击可以被无限放大</li>
 </ol>
-<p>或者针对特定应用程序或服务发送攻击，例如 HTTP 洪泛 (发送大量 HTTP 请求)，慢速 HTTP (攻击者向目标服务器发送大量的 HTTP 请求，但是每个请求的发送速度非常缓慢)，薄弱环节攻击 (例如网站的关键字搜索功能，攻击者可以自动化伪造不同关键字，发送大量请求，严重影响网站的响应速度，严重时甚至直接使整个网站宕机)。</p>
+<p>再举一个 DNS 放大攻击的小例子。</p>
+<p>开启 Wireshark 抓包，然后执行下面的命令:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ dig ANY isc.org
+</span></span></code></pre></div><p>如图所示，发出去的 DNS 请求包数据只有 25 字节.</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_181.jpeg" alt="DNS 请求抓包"></p>
+<p>但是收到的 DNS 应答包数据居然有 3111 字节，足足放大了 124 倍，如果在请求包中伪造一个想要攻击的服务器 IP 地址，该地址就会莫名收到 DNS服务器 3111 字节的回复，利用这个放大攻击，只需要控制少量 (僵尸) 主机，就可以把一个大网站拖垮。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_182.jpeg" alt="DNS 应答抓包"></p>
+<p>反射型攻击还可以对特定应用程序或服务发送攻击，例如 HTTP 洪泛 (发送大量 HTTP 请求)，慢速 HTTP (攻击者向目标服务器发送大量的 HTTP 请求，但是每个请求的发送速度非常缓慢)，薄弱环节攻击 (例如网站的关键字搜索功能，攻击者可以自动化伪造不同关键字，发送大量请求，严重影响网站的响应速度，严重时甚至直接使整个网站宕机)。</p>
 <h3 id="攻击特点">攻击特点</h3>
 <p>不论哪种类型的反射型攻击，其攻击方式都具有如下特点：</p>
 <ol>
@@ -312,7 +319,7 @@ N 个 “hello” 给 C, 如果类似 B 的开放服务器还不止一个，那�
         </li>
         <li>
         
-            <a href="https://dbwu.tech/posts/network/router/">网络基础: 路由器 (拾遗补缺) <i class="fa fa-chevron-circle-right"></i> </a>
+            <a href="https://dbwu.tech/posts/network/router/">网络基础: 网络层和路由器 (拾遗补缺) <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>

@@ -159,6 +159,9 @@
 <li>ICMP 不是 IP 数据分片的 “第一片”</li>
 <li>源地址不是单个主机的数据包 (例如 0.0.0.0 默认地址、127.0.0.1 环回地址、广播地址、多播地址)</li>
 </ol>
+<h3 id="fragment-reassembly">Fragment reassembly</h3>
+<p>当接收方因为分片丢失而无法按时完成数据包的重组时，它可以放弃并回复一个超时消息。</p>
+<p><img src="../../images/network/epub_22653765_112.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
 <hr>
 <h2 id="ping">ping</h2>
 <p><code>ping</code> 是 ICMP 的一个经典应用，主要用来测试两台主机之间的连通性，通过 ICMP 的 Echo 的报文来确定:</p>

@@ -1,0 +1,342 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: 内网穿透 是如何实现的 ？ - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: 内网穿透 是如何实现的 ？" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/how-nat-traversal-works/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-02-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-02-16T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: 内网穿透 是如何实现的 ？"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: 内网穿透 是如何实现的 ？</h1>
+
+    
+      
+<p>
+    <span>2018-02-16</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>阅读本文前，需要熟悉 NAT 实现原理，因为 P2P 的核心原理之一，就是需要能够穿透 NAT 网络设备，如果读者还不了解, 可以先阅读 <a href="https://dbwu.tech/posts/network/how-nat-works/">这篇文章</a>。</p>
+<h3 id="内网穿透-打洞-协议">内网穿透 (打洞) 协议</h3>
+<p>在大多数的情况下，参与 P2P 网络的设备位于使用 NAT 设备后面，这导致这些设备无法直接通过公共互联网进行通信。</p>
+<p>内网穿透 (打洞) 技术的目标是使节点之间能够绕过 NAT，像两个正常的公网 IP 一样直接建立 P2P 连接，以下是几种常见的内网穿透方法及其原理。</p>
+<h3 id="1-stunsession-traversal-utilities-for-nat">1. STUN（Session Traversal Utilities for NAT）</h3>
+<p>STUN 是一种轻量级协议，用于发现 NAT 设备后面的节点的公网 IP 地址和端口号。</p>
+<p>常见的 STUN 实现方案有 TCP 打洞和 UDP 打洞，本文着重介绍 UDP 穿透 (打洞) 的实现原理。</p>
+<h3 id="2-turntraversal-using-relays-around-nat">2. TURN（Traversal Using Relays around NAT）</h3>
+<p>当两个节点之间无法直接建立连接时，可以利用 TURN 协议，通过中继服务器中转流量。</p>
+<h3 id="3-iceinteractive-connectivity-establishment">3. ICE（Interactive Connectivity Establishment）</h3>
+<p>集合 STUN 和 TURN。</p>
+<hr>
+<h2 id="udp-内网穿透基本原理">UDP 内网穿透基本原理</h2>
+<p>连接双方节点通过 “中间服务器” 的协助，可以建立连接并使数据报文能够穿透对方的 NAT 网关。</p>
+<p>假设节点 A 和节点 B 是 P2P 网络中的两个节点，且都位于各自的 NAT 网关之后。</p>
+<ol>
+<li>节点 A 和节点 B 分别登录 “中间服务器” S，并上报各自的 内网 IP 和端口号，S 分别记录 A 和 B 的 公网+内网 IP 和端口号</li>
+<li>节点 A 要向节点 B 发起连接建立，但是不知道节点 B 的 IP 地址和端口号，于是向 S 请求相关信息</li>
+<li>S 将 B 的公网+内网  IP 和端口号告诉 A</li>
+<li>获取到 B 的 IP 和端口号之后，A 开始向 B 发起连接，发送数据</li>
+</ol>
+<p>当然，针对节点 A 和节点 B 所在的 NAT 网关位置，具体的细节可能稍有差异，下面一起来看看不同的场景下的具体实现细节。</p>
+<h3 id="相同-nat">相同 NAT</h3>
+<p>在这种场景中，节点 A 和节点 B 的 NAT 网关是同一个，如图所示，A 和 B 的 NAT 设备 IP 都是 <code>155.99.25.11</code>。</p>
+<p><img src="https://dbwu.tech/images/network/p2p_1.png" alt="两个节点位于同一个 NAT"></p>
+<h4 id="穿透前">穿透前</h4>
+<ul>
+<li>
+<p>节点 A (10.0.0.1:4321) 通过 NAT 网关 (155.99.25.11) 登录 “中间服务器” S</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 155.99.25.11, 62000</p>
+</li>
+<li>
+<p>节点 B (10.1.1.3:4321) 通过 NAT 网关 (155.99.25.11) 登录 “中间服务器” S</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 155.99.25.11, 62005</p>
+</li>
+</ul>
+<h4 id="穿透中">穿透中</h4>
+<ul>
+<li>节点 A 向 S 请求节点 B 的 IP 地址和端口号，数据包中包含 A 的内网地址+端口 (10.0.0.1:4321)</li>
+<li>S 向节点 A 发送数据包，其中包含了节点 B 的 公网+内网 IP 和端口号，节点 A 收到数据包后，保存了 B 的地址和端口信息</li>
+<li>S 向节点 B 发送数据包，其中包含了节点 A 的 公网+内网 IP 和端口号，节点 B 收到数据包后，保存了 A 的地址和端口信息</li>
+<li>此时节点 A 和节点 B 都有了对方的 IP 地址和端口号，穿透完成</li>
+</ul>
+<h4 id="穿透后">穿透后</h4>
+<ul>
+<li>节点 A 和节点 B 分别向对方发送数据 (使用内网地址通信)</li>
+</ul>
+<hr>
+<h3 id="不同-nat">不同 NAT</h3>
+<p>在这种场景中，节点 A 和节点 B 属于不同的 NAT 网关，如图所示，A 的 NAT 设备 IP 是 <code>155.99.25.11</code>, B 的 NAT 设备 IP 都是 <code>138.76.29.7</code>。</p>
+<p><img src="https://dbwu.tech/images/network/p2p_2.png" alt="两个节点位于不同的 NAT"></p>
+<h4 id="穿透前-1">穿透前</h4>
+<ul>
+<li>
+<p>节点 A (10.0.0.1:4321) 通过 NAT 网关 (155.99.25.11) 登录 “中间服务器” S</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 155.99.25.11, 62000</p>
+</li>
+<li>
+<p>节点 B (10.1.1.3:4321) 通过 NAT 网关 (138.76.29.7) 登录 “中间服务器” S</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 138.76.29.7, 31000</p>
+</li>
+</ul>
+<h4 id="穿透中-1">穿透中</h4>
+<ul>
+<li>节点 A 向 S 请求节点 B 的 IP 地址和端口号，数据包中包含 A 的内网地址+端口 (10.0.0.1:4321)</li>
+<li>S 向节点 A 发送数据包，其中包含了节点 B 的 公网+内网 IP 和端口号，节点 A 收到数据包后，保存了 B 的地址和端口信息</li>
+<li>S 向节点 B 发送数据包，其中包含了节点 A 的 公网+内网 IP 和端口号，节点 B 收到数据包后，保存了 A 的地址和端口信息</li>
+<li>此时节点 A 和节点 B 都有了对方的 IP 地址和端口号，穿透完成</li>
+</ul>
+<h4 id="穿透后-1">穿透后</h4>
+<ul>
+<li>节点 A 和节点 B 分别向对方发送数据 (使用两个 NAT 地址通信)</li>
+</ul>
+<hr>
+<h3 id="多层不同-nat">多层不同 NAT</h3>
+<p>在这种场景中，节点 A 和节点 B 属于不同且层次较多的 NAT 网关，如图所示，A 的 NAT 设备 IP 是 <code>10.0.1.1</code>, B 的 NAT 设备 IP 都是 <code>10.0.1.3</code>, 与此同时，节点 A 的 NAT 和节点 B 的 NAT 又属于同一个 NAT: <code>155.99.25.11</code>。</p>
+<p><img src="https://dbwu.tech/images/network/p2p_3.png" alt="两个节点位于不同的 NAT"></p>
+<h4 id="穿透前-2">穿透前</h4>
+<ul>
+<li>
+<p>节点 A (10.0.0.1:4321) 首先通过 NAT 网关 (10.0.1.1)，然后通过 NAT 网关 (155.99.25.11) 登录 “中间服务器” S</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 10.0.1.1, 45000 (第一次 NAT 转换)</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 155.99.25.11, 62000 (第二次 NAT 转换)</p>
+</li>
+<li>
+<p>节点 B (10.1.1.3:4321) 首先通过 NAT 网关 (10.0.1.1)，然后通过 NAT 网关 (155.99.25.11) 登录 “中间服务器” S</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 10.0.1.3, 55000 (第一次 NAT 转换)</p>
+</li>
+<li>
+<p>数据包中的 源 IP 地址、源端口分别被 NAT 网关改为 155.99.25.11, 62005 (第二次 NAT 转换)</p>
+</li>
+</ul>
+<h4 id="穿透中-2">穿透中</h4>
+<ul>
+<li>节点 A 向 S 请求节点 B 的 IP 地址和端口号，数据包中包含 A 的内网地址+端口 (10.0.0.1:4321)</li>
+<li>S 向节点 A 发送数据包，其中包含了节点 B 的 公网+内网 IP 和端口号，节点 A 收到数据包后，保存了 B 的地址和端口信息</li>
+<li>S 向节点 B 发送数据包，其中包含了节点 A 的 公网+内网 IP 和端口号，节点 B 收到数据包后，保存了 A 的地址和端口信息</li>
+<li>此时节点 A 和节点 B 都有了对方的 IP 地址和端口号，穿透完成</li>
+</ul>
+<h4 id="穿透后-2">穿透后</h4>
+<ul>
+<li>节点 A 和节点 B 分别向对方发送数据 (使用外层 NAT 155.99.25.11 通信)</li>
+</ul>
+<h3 id="心跳">心跳</h3>
+<p>一般情况下， NAT 网关/设备针对 UDP 连接自动关闭/删除机制 (例如空闲/超时计数)，所有 UDP 穿透存在有效期限制，所以通信的节点双方，需要定时向对方发送心跳包，保证内网穿透可以维持正常。</p>
+<hr>
+<h2 id="tcp-内网穿透">TCP 内网穿透</h2>
+<p>TCP 内网穿透比 UDP 内网穿透复杂，因为 TCP 是一个面向连接的协议，需要通过三次握手建立连接。UDP 只需要处理一个套接字的收发通信，而 TCP 需要处理多个套接字绑定同一个端口（端口复用），此外大部分 NAT 网关/设备对 UDP 协议支持更友好一些。</p>
+<h4 id="tcp-内网穿透基本原理">TCP 内网穿透基本原理</h4>
+<ul>
+<li>节点 A 和节点 B 通过 NAT 网关登录 “中间服务器” S, 同时监听各自的本地 TCP 端口是否有外部的连接建立</li>
+<li>节点 A 向 S 请求节点 B 的 IP 地址和端口号，数据包中包含 A 的内网地址+端口</li>
+<li>S 向节点 A 发送数据包，其中包含了节点 B 的 公网+内网 IP 和端口号，节点 A 收到数据包后，保存了 B 的地址和端口信息</li>
+<li>S 向节点 B 发送数据包，其中包含了节点 A 的 公网+内网 IP 和端口号，节点 B 收到数据包后，保存了 A 的地址和端口信息</li>
+<li>此时 节点 A 有了节点 B 的 IP 地址和端口号，向节点 B 发起 TCP 连接</li>
+</ul>
+<p>连接建立后，双方通过相同的 (或者不同的) NAT 网关/设备进行通信，流程和前文中提到的 UDP 内网穿透差不多，这里不再赘述。</p>
+<p>&ndash;</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://github.com/libp2p/go-libp2p">libp2p implementation in Go</a></li>
+<li><a href="https://github.com/dennis-tra/pcp">Command line peer-to-peer data transfer tool </a></li>
+<li><a href="https://arthurchiao.art/blog/how-nat-traversal-works-zh/">NAT 穿透技术原理及企业级实践</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/how-nat-works/"><i class="fa fa-chevron-circle-left"></i> 网络基础: NAT 是如何工作的 ？</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/system_design/principles/">System Design Principles <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: 内网穿透 是如何实现的 ？"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

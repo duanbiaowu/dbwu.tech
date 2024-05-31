@@ -551,6 +551,12 @@
     <loc>https://dbwu.tech/posts/database/mysql_ops_sql/</loc>
     <lastmod>2019-03-16T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/tags/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B/</loc>
+    <lastmod>2019-01-05T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/network/how-to-optimize-tcp-performance/</loc>
+    <lastmod>2019-01-05T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/tags/nginx/</loc>
     <lastmod>2018-10-23T00:00:00+00:00</lastmod>
   </url><url>
@@ -566,11 +572,20 @@
     <loc>https://dbwu.tech/posts/system_design/principles/</loc>
     <lastmod>2018-02-16T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/posts/network/how-nat-traversal-works/</loc>
+    <lastmod>2018-02-16T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/network/how-nat-works/</loc>
+    <lastmod>2018-02-10T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/network/diff-between-switch-and-router/</loc>
     <lastmod>2018-01-25T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/hardware/latency/</loc>
     <lastmod>2018-01-16T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/network/ip/</loc>
+    <lastmod>2017-12-01T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/network/router/</loc>
     <lastmod>2017-11-21T00:00:00+00:00</lastmod>
