@@ -1,0 +1,251 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>UDP VS TCP - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="UDP VS TCP" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/diff-between-tcp-and-udp/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-12-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-12-12T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="UDP VS TCP"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>UDP VS TCP</h1>
+
+    
+      
+<p>
+    <span>2017-12-12</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="头部格式">头部格式</h2>
+<h3 id="tcp-头部格式">TCP 头部格式</h3>
+<p><img src="https://dbwu.tech/images/network/MJB-TCP-Header-800x564.png" alt="图片来源: https://nmap.org/book/tcpip-ref.html"></p>
+<h3 id="udp-头部格式">UDP 头部格式</h3>
+<p><img src="https://dbwu.tech/images/network/MJB-UDP-Header-800x264.png" alt="图片来源: https://nmap.org/book/tcpip-ref.html"></p>
+<p>在 UDP 协议头中，只有端口号、包长度和校验码，总共 8 个字节，小巧的头部给它带来了一些优势:</p>
+<ul>
+<li>由于 UDP 头部长度还不到 TCP 头部的一半，所以在同样大小的 (IP) 数据包里，UDP 包携带的净数据比 TCP 包多一些</li>
+<li>由于 UDP 没有 Seq 和 Ack 等概念，不需要维持一个连接，所以没有建立连接、关闭连接等额外的开销 (这个优势在 DNS 查询中体现得淋漓尽致)</li>
+</ul>
+<h2 id="mtu">MTU</h2>
+<p>TCP 通信双方会告知对方自己的 MTU, 通信过程中发送的数据包大小以 MTU 较小的一方为基准。同时，TCP 可以避免应用数据被发送方 (网络层) 分片，因为应用数据到了传输层就会被 (TCP) 分片，然后再将切分好的小数据段交给网络层。其中，最大的分段大小称为 MSS（Maximum SegmentSize），它等于把 MTU 大小减去 IP 头部 + TCP 头部之后的大小，所以一个 MSS 正好可以装进一个 MTU 中。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_118.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>$$
+MSS = MTU - IP \ Header - TCP\ Header
+$$</p>
+<p>但是有的时候 TCP 头部超过 20 字节，所以会侵占一些 MSS 的空间，比如下图的例子中就占用 12 字节作为 TCPOptions，那传输层真正用来承载数据的就剩下 1500-20-20-12=1448 字节了，这些字节数都能在 Wireshark 中抓包时都可以看到。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_119.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>UDP 无视通信双方的 MTU 大小，获取到应用数据之后，添加上 UDP 头部后直接交给网络层。如果数据 MTU 大小的话，发送方的网络层负责分片 (数据允许分片的前提下)，接收方的网络层再将分片后的包组装起来。相对 TCP 来说，数据分片再组装的过程会带来额外的性能消耗。</p>
+<h2 id="重传">重传</h2>
+<p>TCP 要保证所有的数据包可以到达接受端 (传输可靠性)，所以必须要有重传机制 (细节本文先省略，后面专门写一篇文章来说一说)。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_114.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>UDP 没有重传机制，所以丢包需要由应用层来处理，如果某项操作中的一个 (或多个) 数据包丢包了，应用层需要重传该操作中的所有数据包。相比之下，TCP 只需要重传丢失的数据包即可。在海量连接场景中，一个操作可能需要数十个包来完成，UDP 的劣势就会被放大。</p>
+<p>但是在理想的网络传输下 (例如内网)，数据传输 (几乎) 不会丢包，UDP 要优于 TCP。</p>
+<h2 id="不安全因素">不安全因素</h2>
+<p>网络层的数据分片机制存在弱点 (缺陷)，会成为黑客的攻击目标。接收方组装分片的依据是，每个包里都有 <code>More fragments = 1</code> 的 Flag, 1 表示后续还有分片，0 则表示这是最后一个分片。</p>
+<p>如果黑客持续快速地发送 <code>More fragments = 1</code> 的 UDP 包，接收方永远无法将这些包组装起来，最终内存耗尽。</p>
+<h2 id="多播和广播">多播和广播</h2>
+<p>UDP 还有一个明显的优势: <strong>支持多播和广播</strong>，对于需要在内网中通知多个节点的场景，非常方便和高效。</p>
+<hr>
+<h2 id="udp-优化">UDP 优化</h2>
+<ol>
+<li>增大套接字缓冲区大小以及 UDP 缓冲区范围；</li>
+<li>增大本地端口号的范围；</li>
+<li>根据 MTU 大小，(应用层主动) 调整 UDP 数据包的大小，减少或者避免分片的发生 (例如以太网中，UDP 包大小可以参考 1500-8-20 = 1472 这个值)</li>
+</ol>
+<p><img src="https://dbwu.tech/images/linux/network_command_5.png" alt=""></p>
+<hr>
+<h2 id="udp-vs-dns">UDP VS DNS</h2>
+<p>由于历史的原因，互联网上物理链路的 <code>最小 MTU = 576</code>，基于 UDP 传输的 DNS 为了限制报文不超过 576，所以将 <code>DNS 报文限制在 512 字节</code>。一旦 DNS 查询应答超过 512 字节，基于 UDP 的 DNS 就只有截短为 512 字节，那么用户得到的 DNS 应答就是不完整的。</p>
+<p>为了解决这个问题，最简单的方式就是使用 TCP 重新查询，虽然查询时间可能比较长，但可以得到完整的应答。</p>
+<p>那么对大于 576 字节的数据传输，UDP 如何解决呢？答案：网络层数据分片。也就是说，<strong>只有 DNS 会限制 UDP 报文的长度</strong>，那么，当基于 UDP 传输的 DNS 有 1000 字节需要传输时，会将 1000 字节切成两个 500 字节的报文传输吗？不会！只会保留前面的 512 字节，剩下的 488 字节直接丢掉。</p>
+<hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://www.spiceworks.com/tech/networking/articles/tcp-vs-udp/">Differences Between TCP and UDP</a></li>
+<li><a href="https://stackoverflow.com/questions/47903/udp-vs-tcp-how-much-faster-is-it">UDP vs TCP, how much faster is it?</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/ip/"><i class="fa fa-chevron-circle-left"></i> 网络基础: IP 协议 (拾遗补缺)</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/hardware/latency/">硬件延迟级别 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="UDP VS TCP"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

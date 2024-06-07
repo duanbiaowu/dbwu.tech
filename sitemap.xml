@@ -536,6 +536,9 @@
     <loc>https://dbwu.tech/posts/other/interview/</loc>
     <lastmod>2020-01-01T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</loc>
+    <lastmod>2019-12-11T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/tools/git/</loc>
     <lastmod>2019-11-11T00:00:00+00:00</lastmod>
   </url><url>
@@ -556,6 +559,9 @@
   </url><url>
     <loc>https://dbwu.tech/posts/network/how-to-optimize-tcp-performance/</loc>
     <lastmod>2019-01-05T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</loc>
+    <lastmod>2018-12-11T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/nginx/</loc>
     <lastmod>2018-10-23T00:00:00+00:00</lastmod>
@@ -583,6 +589,9 @@
   </url><url>
     <loc>https://dbwu.tech/posts/hardware/latency/</loc>
     <lastmod>2018-01-16T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/network/diff-between-tcp-and-udp/</loc>
+    <lastmod>2017-12-12T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/network/ip/</loc>
     <lastmod>2017-12-01T00:00:00+00:00</lastmod>
@@ -613,6 +622,9 @@
   </url><url>
     <loc>https://dbwu.tech/tags/linux-%E5%91%BD%E4%BB%A4/</loc>
     <lastmod>2017-01-10T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/network/summary/</loc>
+    <lastmod>2017-01-02T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/linux/shortcut_keys/</loc>
     <lastmod>2016-02-09T00:00:00+00:00</lastmod>

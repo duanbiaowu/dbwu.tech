@@ -187,6 +187,8 @@
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 重用该状态下的现有 TIME_WAIT 连接用于 出站 (服务端，或者称为接收连接的一端) 的链接</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 对于入站 (客户端，或者称为发起连接的一端) 连接是没有作用</span>
 </span></span><span style="display:flex;"><span>net.ipv4.tcp_tw_reuse = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 必须配合使用</span>
+</span></span><span style="display:flex;"><span>net.ipv4.tcp_timestamps = <span style="color:#3677a9">1</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 启用快速回收 TIME_WAIT 资源</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># net.ipv4.tcp_tw_recycle = 1</span>
@@ -310,7 +312,7 @@ $$</p>
     <ul>
         <li>
         
-            <a href="https://dbwu.tech/posts/nginx/install/"><i class="fa fa-chevron-circle-left"></i> Nginx 快速安装优化指南</a>
+            <a href="https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/"><i class="fa fa-chevron-circle-left"></i> 为什么 TCP 需要 TIME_WAIT 状态</a>
         
         </li>
         <li>

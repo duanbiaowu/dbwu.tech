@@ -1227,6 +1227,15 @@
      </item>
    
      <item>
+       <title>为什么 TCP 需要建立连接三次握手</title>
+       <link>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</link>
+       <pubDate>Wed, 11 Dec 2019 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Git 边边角角</title>
        <link>https://dbwu.tech/posts/tools/git/</link>
        <pubDate>Mon, 11 Nov 2019 00:00:00 +0000</pubDate>
@@ -1250,6 +1259,15 @@
        <pubDate>Sat, 05 Jan 2019 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/network/how-to-optimize-tcp-performance/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>为什么 TCP 需要 TIME_WAIT 状态</title>
+       <link>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</link>
+       <pubDate>Tue, 11 Dec 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</guid>
        <description></description>
      </item>
    
@@ -1313,6 +1331,15 @@
        <pubDate>Tue, 16 Jan 2018 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/hardware/latency/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>UDP VS TCP</title>
+       <link>https://dbwu.tech/posts/network/diff-between-tcp-and-udp/</link>
+       <pubDate>Tue, 12 Dec 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/diff-between-tcp-and-udp/</guid>
        <description></description>
      </item>
    
@@ -1394,6 +1421,15 @@
        <pubDate>Tue, 10 Jan 2017 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/linux/tools/curl/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>网络基础: 杂七杂八</title>
+       <link>https://dbwu.tech/posts/network/summary/</link>
+       <pubDate>Mon, 02 Jan 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/summary/</guid>
        <description></description>
      </item>
    

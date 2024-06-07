@@ -1,0 +1,478 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: 杂七杂八 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: 杂七杂八" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/summary/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-01-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-01-02T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: 杂七杂八"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: 杂七杂八</h1>
+
+    
+      
+<p>
+    <span>2017-01-02</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="网络分层">网络分层</h2>
+<p><img src="https://dbwu.tech/images/network/osi_7_layer_model.png" alt="图片来源: https://www.escotal.com/osilayer.html"></p>
+<h2 id="isp">ISP</h2>
+<p>互联网服务提供商 ISP 可以从互联网管理机构获得许多 IP 地址，同时拥有通信线路以及路由器等联网设备，个人或机构向 ISP 缴纳一定的费用就可以接入互联网。</p>
+<p><img src="https://dbwu.tech/images/network/isp.png" alt=""></p>
+<p>目前的互联网是一种多层次 ISP 结构，ISP 根据覆盖面积的大小分为第一层 ISP、区域 ISP 和接入 ISP。互联网交换点 IXP 允许两个 ISP 直接相连而不用经过第三个 ISP。</p>
+<p><img src="https://dbwu.tech/images/network/isp_2.png" alt=""></p>
+<h2 id="通信时延">通信时延</h2>
+<blockquote>
+<p>💡 总时延 = 排队时延 + 处理时延 + 传输时延 + 传播时延</p>
+</blockquote>
+<p><strong>1. 排队时延</strong></p>
+<p>分组在路由器的输入队列和输出队列中排队等待的时间，取决于网络当前的通信量。</p>
+<p><strong>2. 处理时延</strong></p>
+<p>主机或路由器收到分组时进行处理所需要的时间，例如分析首部、从分组中提取数据、进行差错检验或查找适当的路由等。</p>
+<p><strong>3. 传输时延</strong></p>
+<p>主机或路由器传输数据帧所需要的时间。</p>
+<p><strong>4. 传播时延</strong></p>
+<p>电磁波在信道中传播所需要花费的时间，电磁波传播的速度接近光速。</p>
+<h2 id="网络应用常用端口">网络应用常用端口</h2>
+<p><img src="https://dbwu.tech/images/network/port.png" alt=""></p>
+<h2 id="五种中继系统">五种中继系统</h2>
+<p>将网络互相连接起来要使用一些中间设备（或中间系统），ISO 的术语称之为中继（relay）系统。根据中继系统所在的层次，可以有以下五种中继系统：</p>
+<ol>
+<li>物理层（即常说的第一层、层L1）中继系统，即转发器（repeater）</li>
+<li>数据链路层（即第二层，层L2），即网桥或桥接器（bridge）</li>
+<li>网络层（第三层，层L3）中继系统，即路由器（router）</li>
+<li>网桥和路由器的混合物桥路器（brouter）兼有网桥和路由器的功能</li>
+<li>在网络层以上的中继系统，即网关（gateway）</li>
+</ol>
+<h2 id="网络分层与传输数据类型">网络分层与传输数据类型</h2>
+<ul>
+<li>二层: 数据帧 (Frame)</li>
+<li>三层: 数据包 (Packet)</li>
+<li>四层: 数据段 (Segment)</li>
+</ul>
+<p>从应用程序发送数据的视角来看，数据首先会送到传输层的 Segment 中，然后传输层对 Segment 进行包装后，送到网络层的 Packet 中，再然后送到链路层以太网 Ethernet 的 Frame 中。</p>
+<h2 id="二层网络和三层网络">二层网络和三层网络</h2>
+<p>&ldquo;二层网络&rdquo; 和 &ldquo;三层网络&rdquo; 是指网络体系结构中不同的层次或协议层，这里的数字表示网络协议栈中的层数，通常是指 OSI 模型或 TCP/IP 模型中的层次。</p>
+<p><strong>二层网络是指网络体系结构中的数据链路层</strong>，主要负责帧的传输、物理地址的解析和物理层的错误检测。在二层网络中，设备通过物理地址（MAC 地址）进行通信。以太网是一个典型的二层网络技术，交换机通常工作在这一层，根据 MAC 地址转发数据帧。</p>
+<p><strong>三层网络是指网络体系结构中的网络层</strong>，负责数据包的路由、逻辑地址的解析（例如 IP 地址）以及在不同子网之间的通信。Internet Protocol (IP) 是一个典型的三层网络协议，路由器工作在这一层，负责跨越不同网络的数据包转发。</p>
+<p>在实际网络中，通常会同时使用二层和三层的技术，以满足不同的需求。二层网络主要用于本地区域内的局域网通信，而三层网络则用于在不同网络之间进行全局路由和通信，同时集成这两个层次可以构建更为复杂和灵活的网络架构。</p>
+<p>网络层实现主机之间的通信，而链路层实现具体每段链路之间的通信。</p>
+<p><img src="https://dbwu.tech/images/network/arp_1.png" alt=""></p>
+<blockquote>
+<p>💡 在通信过程中，目标 IP 地址始终不变，而源 MAC 地址、目标 MAC 地址随着链路的改变而变化。</p>
+</blockquote>
+<blockquote>
+<p>❓ 思考: 源 IP 地址会发生变化吗？如果存在 NAT 呢？</p>
+</blockquote>
+<h2 id="数据分层封装">数据分层封装</h2>
+<p>如图所示，应用数据在每个层的封装格式:</p>
+<p><img src="https://dbwu.tech/images/network/base_1.png" alt=""></p>
+<p>Linux 通用网络栈的示意图:</p>
+<p><img src="https://dbwu.tech/images/network/osi_7_layer.png" alt=""></p>
+<p>进行基准测试时，可以按照协议栈的每一层来测试。由于底层是其上方各层的基础，底层性能也就决定了高层性能。所以我们要清楚，底层性能指标，其实就是对应高层的极限性能。</p>
+<p>首先是网络接口层和网络层，它们主要负责网络包的封装、寻址、路由，以及发送和接收。每秒可处理的网络包数 PPS，就是它们最重要的性能指标（特别是在小包的情况下），可以使用内核自带的发包工具 pktgen ，来测试 PPS 的性能。</p>
+<p>再向上到传输层的 TCP 和 UDP，它们主要负责网络传输。对它们而言，吞吐量（BPS）、连接数以及延迟，就是最重要的性能指标，可以使用 iperf 或 netperf ，来测试传输层的性能。</p>
+<p>不过要注意，网络包的大小会直接影响这些指标的值。所以，通常需要测试一系列不同大小网络包的性能。</p>
+<p>最后到了应用层，最需要关注的是吞吐量（BPS）、每秒请求数以及延迟等指标，可以使用 wrk、ab 等工具，来测试应用程序的性能。</p>
+<hr>
+<h2 id="负载均衡">负载均衡</h2>
+<p>四层负载均衡根据 传输层 的数据来决定如何分发请求，通常会涉及 <code>源端口、源 IP 地址、目标端口、目标 IP 地址</code>，但不包括数据包（报文）内容，通过执行网络地址转换（NAT）来向后端服务器转发网络数据包。</p>
+<p>七层负载均衡根据 应用层 的数据来决定怎样分发请求，通常会涉及请求头的内容，URI 参数 和 Cookie 等，七层负载均衡器终结网络流量，读取消息，做出负载均衡判定，然后传送给特定后端服务器。</p>
+<p><strong>缺陷与不足：</strong></p>
+<ul>
+<li>如果没有足够的资源配置或配置错误，负载均衡器会变成一个性能瓶颈</li>
+<li>引入负载均衡器以帮助消除单点故障但导致了额外的复杂性</li>
+<li>单个负载均衡器会导致单点故障，但配置多个负载均衡器会进一步增加复杂性</li>
+</ul>
+<h3 id="三角传输模式">三角传输模式</h3>
+<p>在链路层根据负载均衡算法计算源服务器的 MAC 地址，并修改请求数据包的目的 MAC 地址进行转发。</p>
+<p><img src="https://dbwu.tech/images/network/triangle_load_balancing.png" alt=""></p>
+<p>通过配置源服务器的虚拟 IP 地址和负载均衡服务器的 IP 地址一致，从而不需要修改 IP 地址就可以进行转发。也正因为 IP 地址一样，所以源服务器的响应不需要转发回负载均衡服务器，可以直接转发给客户端，避免了负载均衡服务器的成为瓶颈。</p>
+<p>这是一种三角传输模式，被称为直接路由。对于提供下载和视频服务的网站来说，直接路由避免了大量的网络传输数据经过负载均衡服务器。</p>
+<hr>
+<h2 id="mac-地址">MAC 地址</h2>
+<p>有了 MAC 地址之后，同一个以太网络上的两台主机才能够通信，主机 A 需要知道主机 B 的 MAC 地址，才能发送以太网帧，交换机收到报文之后，根据目的 MAC 地址决定应该从哪个端口将数据发送给主机 B。</p>
+<h3 id="查看">查看</h3>
+<p>Linux 中可以使用 <code>ip</code> 命令查看 MAC 地址</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看当前主机的 MAC 地址</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>$ ip link
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu <span style="color:#3677a9">65536</span> qdisc noqueue state UNKNOWN mode DEFAULT group default qlen <span style="color:#3677a9">1000</span>
+</span></span><span style="display:flex;"><span>    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+</span></span><span style="display:flex;"><span>2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu <span style="color:#3677a9">1500</span> qdisc mq state UP mode DEFAULT group default qlen <span style="color:#3677a9">1000</span>
+</span></span><span style="display:flex;"><span>    link/ether 00:15:2d:c2:dd:c8 brd ff:ff:ff:ff:ff:ff
+</span></span></code></pre></div><h3 id="格式">格式</h3>
+<p><img src="https://dbwu.tech/images/network/epub_907755_195.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>一般来说，Linux 和 MAC 使用 <code>:</code> 进行分割，Windows 使用 <code>-</code> 进行分割。</p>
+<h3 id="mac-头部字段">MAC 头部字段</h3>
+<p><img src="https://dbwu.tech/images/network/epub_907755_187.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<hr>
+<h2 id="网卡">网卡</h2>
+<p>网卡的 ROM 中保存着全世界唯一的 MAC 地址，这是在生产网卡时写入的。</p>
+<h3 id="mac-是如何做到唯一的">MAC 是如何做到唯一的？</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># MAC 地址示例</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>00:15:5d:9b:52:60
+</span></span></code></pre></div><p>MAC 地址理论上由 IEEE 在管理，一个标准的 MAC 地址格式是 12 个 16 进制数字 (2 个为一组)。</p>
+<ul>
+<li>前 3 组是厂商识别码，由 IEEE 分配 (厂商出钱买，例如 00:50:56 和 00:0c:29 属于 Vmware)</li>
+<li>后 3 组厂商自行分配，所以如果一个厂商购买了一个识别码，那么理论上可以制造出 2^24 个网络 (网卡) 设备</li>
+</ul>
+<h3 id="mac-真的唯一吗">MAC 真的唯一吗？</h3>
+<p>如果所有网络设备生产商都按照 IEEE 规矩办事，全世界所有的 MAC 地址理论上是可以唯一的。</p>
+<p>但是这个只是技术理论上可以实现的，现实世界中的网络设备 MAC 地址不是唯一的，原因有两点:</p>
+<p>第一，山寨问题，山寨厂商不会去专门购买 IEEE 厂商识别码，所以可能直接盗用正规厂商的识别码，写入自己的山寨设备中。</p>
+<p>第二，即使是购买的正规厂商的网络设备，其设备内部写入的 MAC 地址也可以修改的。</p>
+<h3 id="地址冲突问题">地址冲突问题</h3>
+<p>如果 MAC 地址无法保证唯一，那么是否会引起地址冲突的问题呢？</p>
+<p>结论：有影响，但是范围很小，只要 (局域网) 内网段没有相同的 MAC 地址就可以。</p>
+<p>这个问题可以参考 IPv4 地址短缺问题，IPv4 的可用地址早已被分配完，但是因为有 NAT 技术存在，IPv4 地址还在继续使用。</p>
+<p>现实世界中的网络设备大部分都处于一个个 (或大或小) 不同的局域网之中，比如家庭网络场景，大部分设备的 IP 都是 <code>192.168.x.x</code>，但是这并不会导致两个不同家庭的相同 IP 地址冲突。</p>
+<p>例如小明连上家里的 Wifi, 分配到的 IP 地址为 192.168.1.100, 小红连上家里的 Wifi, 分配到的 IP 地址为 192.168.1.100, 他们俩人使用手机上网时，并不会产生 IP 地址冲突。</p>
+<p>同理，MAC 地址主要是被使用在网络第二层，第三层就是 IP 协议为主了，MAC 在自己网段内没有相同的就行，一旦跨网段，那么即使有两个同样的 MAC地址也无所谓了 (因为三层网络传输根据的是目标 IP 地址)。</p>
+<h3 id="帧校验序列">帧校验序列</h3>
+<p>MAC 模块会将包从缓冲区中取出，并在开头加上报头和起始帧分界符，在末尾加上用于检测错误的帧校验序列 (FCS)。</p>
+<p><img src="https://dbwu.tech/images/network/epub_907755_212.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>MAC 头部很容易被误解为是由网卡来处理的，实际上它是由 TCP/IP 协议栈来负责的。</p>
+<h3 id="lso">LSO</h3>
+<p>LSO通常指大型分段卸载（Large Segment Offload），这是网络接口卡（NIC）中的一种硬件加速技术，用于提高网络传输性能。</p>
+<p>传统的网络工作方式是这样的：应用层把产生的数据交给 TCP 层，TCP 层再根据 MSS 大小进行分段（由 CPU 负责），然后再交给网卡。而启用 LSO 之后，TCP 层就可以把大于 MSS 的数据块直接传给网卡，让网卡来负责分段工作了。</p>
+<p>通常情况下，操作系统会将要发送的网络数据分割成较小的片段（如 1500 字节的以太网帧）。每个片段都需要独立处理和传输，这会增加 CPU 的负载。LSO的工作原理是将这种分段任务卸载到 NIC 硬件，以减少 CPU 的负载并提高网络传输效率。</p>
+<p>例如 “Seq=348586, Len=2776”，最后会被网卡分成 “Seq=348586，Len=1388”和 “Seq=349974, Len=1388” 两个包。</p>
+<p>如果需要抓包的情况下，在发送方抓包时相当于站在 CPU 的视角，所以看到的是一个分段前的大包。假如是在接收方抓包，就是网卡分段后的两个小包了。</p>
+<hr>
+<h2 id="丢包">丢包</h2>
+<p><strong>互联网协议（Internet Protocol, IP）</strong> 不可靠：可能丢弃、延迟、重复或重排数据包。 传输控制协议（Transmission Control Protocol, TCP）在互联网协议（IP）之上提供了更可靠的传输层：它确保丢失的数据包被重新传输，消除重复，并且数据包被重新组装成它们被发送的顺序。</p>
+<p>Linux 系统本身就是相互关联的系统，任何一个组件出现问题都有可能影响到其他组件的正常运行。对于系统负载过高，要么是应用程序有问题，要么是系统不足。对于前者需要及时发现，debug 和修复；对于后者，也要及时发现并扩容。</p>
+<blockquote>
+<p>💡 系统 CPU、Memory、IO 负载过高都有可能导致网络丢包。</p>
+</blockquote>
+<ul>
+<li>CPU 负载过高，系统没有时间进行报文的 checksum 计算、复制内存等操作，从而导致网卡或者 socket buffer 出现丢包</li>
+<li>Memory 负载过高，导致应用程序处理过慢，无法及时处理报文</li>
+<li>IO 负载过高，CPU 都用来响应 IO wait，没有时间处理缓存中的 UDP 报文</li>
+</ul>
+<p>所以说，<strong>通信全程 (各个阶段) 都有丢包的可能</strong>：</p>
+<ul>
+<li>在两台主机连接之间，可能会发生传输失败的错误，比如网络拥塞、线路错误等</li>
+<li>在网卡收包后，环形缓冲区可能会因为溢出而丢包</li>
+<li>在链路层，可能会因为网络帧校验失败、QoS 等而丢包</li>
+<li>在 IP 层，可能会因为路由失败、组包大小超过 MTU 等而丢包</li>
+<li>在传输层，可能会因为端口未监听、资源占用超过内核限制等而丢包</li>
+<li>在套接字层，可能会因为套接字缓冲区溢出而丢包</li>
+<li>在应用层，可能会因为应用程序异常而丢包</li>
+<li>如果配置了 iptables 规则，这些网络包可能因为 iptables 过滤规则而丢包</li>
+</ul>
+<hr>
+<h2 id="应用数据包的发送和接收">应用数据包的发送和接收</h2>
+<p><img src="https://dbwu.tech/images/network/packet_rcv.png" alt=""></p>
+<p>如图所示，左半部分表示数据接收流程，右半部分表示数据发送数据，两者方向正好相反。</p>
+<h3 id="发送流程">发送流程</h3>
+<ol>
+<li><code>应用程序</code> 调用 <code>Socket API</code> 发送网络包</li>
+<li>由于这是一个系统调用，所以会 <code>陷入到内核态的套接字层</code> 中，套接字层会把数据包放到 <code>Socket 发送缓冲区</code> 中</li>
+<li><code>网络协议栈</code>从 Socket 发送缓冲区中，取出数据包；再按照 TCP/IP 栈，<code>从上到下逐层处理</code>。比如，传输层和网络层，分别为其增加 TCP 头和 IP 头，执行路由查找确认下一跳的 IP，并 <code>按照 MTU 大小进行分片</code></li>
+<li>分片后的网络包，再送到 <code>网络接口层</code>，进行 <code>物理地址寻址</code>，以找到 <code>下一跳的 MAC 地址</code>。然后添加帧头和帧尾，放到发包队列中。这一切完成后，会有 <code>软中断</code> 通知驱动程序：<code>发包队列</code> 中有新的网络帧需要发送</li>
+<li><code>驱动程序</code> 通过 DMA ，从发包队列中读出网络帧，并通过 <code>物理网卡</code> 把它发送出去</li>
+</ol>
+<h3 id="接受流程">接受流程</h3>
+<ol>
+<li>网络帧到达 <code>网卡</code> 后，网卡通过 DMA 方式，把这个网络包放到 <code>收包队列</code> 中，然后通过 <code>硬中断</code>，告诉中断处理程序已经收到了网络包</li>
+<li>网卡中断处理程序会为网络帧分配内核数据结构（sk_buff），并将其拷贝到 sk_buff <code>缓冲区</code>中；然后再通过<code>软中断</code>，通知<code>内核</code>收到了新的网络帧</li>
+<li>内核协议栈从缓冲区中取出网络帧，并通过<code>网络协议栈</code>，<code>从下到上逐层处理</code> 这个网络帧
+比如，在链路层检查报文的合法性，找出上层协议的类型（比如 IPv4 还是 IPv6），再去掉帧头、帧尾，然后交给网络层</li>
+<li><code>网络层</code>取出 IP 头，判断网络包下一步的走向，比如是交给上层处理还是转发 (路由器或者实现路由转发的主机才会转发，普通主机对于不是自己的包，会直接丢掉)，当网络层确认这个包是要发送到本机后，就会取出上层协议的类型（比如 TCP 还是 UDP），去掉 IP 头，再交给<code>传输层</code>处理</li>
+<li>传输层取出 TCP 头或者 UDP 头后，根据 <code>&lt; 源 IP、源端口、目的 IP、目的端口 &gt;</code> 四元组作为标识，找出对应的 Socket，并把数据拷贝到 <code>Socket 的接收缓存</code>中</li>
+<li>应用程序可以使用 Socket 接口，读取到新接收到的数据</li>
+</ol>
+<h3 id="缓冲区">缓冲区</h3>
+<ul>
+<li>网卡收发网络包时，通过 DMA 方式交互的环形缓冲区</li>
+<li>网卡中断处理程序为网络帧分配的，内核数据结构 sk_buff 缓冲区</li>
+<li>应用程序通过套接字接口，与网络协议栈交互时的套接字缓冲区</li>
+</ul>
+<p>这些缓冲区的位置在哪儿？是在网卡硬件中，还是在内存中？这个问题其实仔细想一下，就很容易明白: 这些 <code>缓冲区都处于内核管理的内存中</code>。</p>
+<ul>
+<li>环形缓冲区，由于需要 DMA 与网卡交互，理应属于网卡设备驱动的范围</li>
+<li>sk_buff 缓冲区，是一个维护网络帧结构的双向链表，链表中的每一个元素都是一个网络帧。虽然 TCP/IP 协议栈分了好几层，但上下不同层之间的传递，实际上只需要操作这个数据结构中的指针，而无需进行额外的数据复制</li>
+<li>套接字缓冲区，则允许应用程序，给每个套接字配置不同大小的接收或发送缓冲区。应用程序发送数据，实际上就是将数据写入缓冲区；而接收数据，其实就是从缓冲区中读取。至于缓冲区中数据的进一步处理，则由传输层的 TCP 或 UDP 协议来完成</li>
+</ul>
+<h3 id="中断过程">中断过程</h3>
+<p>通知计算机的操作会使用一个叫作中断的机制。为什么需要中断呢？</p>
+<p>因为在网卡执行接收包的操作的过程中，CPU 并不是一直等待网络包的到达并进行处理，而是会去继续执行其他的任务。</p>
+<p>因此，如果网卡不通知 CPU，CPU 就不知道数据包已经收到了，<code>网卡驱动</code> 也是计算机中运行的一个程序，因此它也不知道包到达的状态。</p>
+<p>所以在这种情况下，需要一种机制能够打断 CPU 正在执行的任务，让 CPU 可以注意到网卡中发生的事情，这种机制就是中断。</p>
+<p>中断的具体工作过程:</p>
+<ul>
+<li>网卡向扩展总线中的中断信号线发送信号，该信号线通过计算机中的中断控制器连接到 CPU</li>
+<li>当产生中断信号时，CPU 会暂时挂起正在处理的任务，切换到操作系统中的中断处理程序</li>
+<li>中断处理程序会调用网卡驱动，控制网卡执行相应的接收操作</li>
+<li>网卡驱动会开始运行，从网卡缓冲区中将接收到的包读取出来</li>
+<li>根据 MAC 头部的以太类型字段判断协议的种类，并调用负责处理该协议的协议栈程序 (以太类型的值应该是表示 IP 协议，因此会调用 TCP/IP 协议栈，并将包转交给后者。一般情况下，网卡不会直接调用协议栈，而是先交给操作系统，再由操作系统调用协议栈)</li>
+</ul>
+<p><strong>中断是有编号的，网卡在安装的时候就在硬件中设置了中断号，在中断处理程序中则将硬件的中断号和相应的驱动程序绑定</strong>。</p>
+<p>例如，假设网卡的中断号为 11，则在中断处理程序中将中断号 11 和相应的网卡驱动绑定起来，当网卡发起中断时，就会自动调用网卡驱动了。</p>
+<p>现代硬件设备都遵循即插即用规范自动设置中断号，所以作为开发者，没必要去关心中断号，在以前需要手动设置中断号的年代，经常发生因为设置了错误的中断号而导致网卡无法正常工作的问题。</p>
+<hr>
+<h2 id="拓扑结构分类">拓扑结构分类</h2>
+<p><img src="https://dbwu.tech/images/network/epub_26211960_291.jpg" alt="图片来源: 图解网络硬件(三轮贤一)"></p>
+<h2 id="多播">多播</h2>
+<p>多播（Multicast）是一种网络通信模式，其中一台主机向一组特定的目标主机发送数据，而不是向整个网络广播。这允许主机只发送一次数据，而多个主机（组成多播组）可以接收这一数据。这在某些场景下比广播更有效，特别是在多个主机需要接收相同数据的情况下。</p>
+<p>多播可以减少网络上的冗余数据传输，因为只有对应多播组的成员接收数据。这相对于广播而言，可以显著节省带宽。多播在一些应用中得到了广泛的应用，例如 IPTV、在线视频会议、分布式游戏等。使用多播能够提高网络效率，降低数据传输的成本。</p>
+<h3 id="多播组">多播组</h3>
+<p>多播组是一组具有相同兴趣的主机。主机可以加入或离开多播组。多播组使用特殊的 IP 地址范围，通常在 224.0.0.0 到 239.255.255.255 之间。</p>
+<h3 id="ip-多播地址">IP 多播地址</h3>
+<p>多播使用特殊的 IP 地址标识多播组。IPv4 多播地址是在 224.0.0.0 到 239.255.255.255 范围内分配的。IPv6 多播地址则以 ff00::/8 开头。</p>
+<h3 id="igmp">IGMP</h3>
+<p>IGMP （Internet Group Management Protocol）是用于主机加入和离开多播组的协议。主机通过 IGMP 向路由器表明它希望加入某个多播组。</p>
+<h3 id="路由器支持">路由器支持：</h3>
+<p>在多播中，路由器负责在不同的网络中传递多播数据。路由器需要支持多播路由协议，如 PIM（Protocol Independent Multicast）等。</p>
+<p>主机发送数据时，它使用多播组的 IP 地址。路由器根据多播组的 IP 地址和网络拓扑，将数据传递到对应的网络中，仅将数据发送到对应多播组的主机。</p>
+<hr>
+<h2 id="p2p">P2P</h2>
+<blockquote>
+<p>点对点（P2P，Peer-to-Peer）网络是一种分布式网络架构，网络中的每个节点（即对等方或对等体）都具有相等的权利和职责，能够直接与其他节点通信和共享资源，而不依赖于中央服务器进行协调和控制。P2P网络广泛应用于文件共享、分布式计算、通信和内容分发等领域。</p>
+</blockquote>
+<h3 id="网络特性">网络特性</h3>
+<ol>
+<li>去中心化：没有中央服务器或中心化的管理节点，所有节点都可以独立进行数据传输和资源共享</li>
+<li>对等性：每个节点既是客户端也是服务器，能够提供和请求服务</li>
+<li>资源共享：节点之间可以直接共享文件、带宽、计算能力等资源</li>
+<li>可扩展性：由于没有中央瓶颈，网络可以轻松扩展，增加节点数量不会显著影响网络性能</li>
+</ol>
+<h3 id="优势">优势</h3>
+<ol>
+<li>并行处理: P2P 网络中所有节点都能提供资源</li>
+<li>去中心化: 避免中心服务器产生的单点故障问题</li>
+<li>提高资源利用: 充分利用 P2P 网络中所有节点的资源</li>
+</ol>
+<h3 id="不足">不足</h3>
+<ol>
+<li>架构复杂: P2P 网络中的节点之间通常存在 NAT 隔离和转换，无法直接进行通信，需要构建额外的资源协调管理 系统/工具</li>
+<li>带宽消耗: 随着 P2P 网络规模的扩大，大量直接的成对连接会增加带宽的消耗 (尤其是在文件共享场景中)</li>
+<li>安全性: 恶意节点更容易发起攻击，如传播病毒软件或进行 DDos 攻击 (例如指定某个热门资源存在于被攻击服务器上，这时 P2P 网络中的其他节点就会向被攻击服务器发起连接和资源请求)</li>
+<li>资源管理复杂，版权 (盗版) 问题无法处理</li>
+</ol>
+<h3 id="根据中心化程度划分">根据中心化程度划分</h3>
+<h4 id="1-纯-p2p-网络">1. 纯 P2P 网络</h4>
+<p>每个节点同时作为客户端和服务器，没有任何中心服务器。</p>
+<h4 id="2-特殊型-p2p-网络">2. 特殊型 P2P 网络</h4>
+<ul>
+<li>一个中心服务器保存节点信息、数据/文件索引</li>
+<li>节点通过向中心服务器发送数据，告知中心服务器其要共享的 数据/文件</li>
+</ul>
+<h4 id="3-混合型-p2p-网络">3. 混合型 P2P 网络</h4>
+<p>同时具备纯 P2P 网络和特殊型 P2P 网络特点。</p>
+<h3 id="根据网络拓扑结构划分">根据网络拓扑结构划分</h3>
+<h4 id="1-结构化-p2p-网络">1. 结构化 P2P 网络</h4>
+<p>使用特定的拓扑结构和数据结构，确保高效的数据查询，节点需要请求资源时，可以快速定位期望的节点。</p>
+<h4 id="2-非结构化-p2p-网络">2. 非结构化 P2P 网络</h4>
+<p>没有特定的拓扑结构和数据结构，节点需要请求资源时，通过广播方式寻找，然后根据应答结果随机连接，适合动态变化的网络环境。</p>
+<hr>
+<h2 id="网络性能指标和优化">网络性能指标和优化</h2>
+<ol>
+<li>带宽，表示链路的最大传输速率，单位通常为 b/s （比特 / 秒）</li>
+<li>吞吐量，表示单位时间内成功传输（没有丢包）的数据量，单位通常为 b/s（比特 / 秒）
+吞吐量受带宽限制，<code>吞吐量 / 带宽</code>，也就是该网络的<code>使用率</code></li>
+<li>延时，表示从网络请求发出后，一直到收到远端响应，所需要的时间延迟
+在不同场景中，这一指标可能会有不同含义。比如，它可以表示，建立连接需要的时间（比如 TCP 握手延时），或一个数据包往返所需的时间（比如 RTT）</li>
+<li>PPS，是 Packet Per Second（包 / 秒）的缩写，表示以网络包为单位的传输速率
+PPS 通常用来评估网络的转发能力，比如硬件交换机，通常可以达到线性转发（即 PPS 可以达到或者接近理论最大值）。而基于 Linux 服务器的转发，则容易受网络包大小的影响</li>
+</ol>
+<h3 id="优化">优化</h3>
+<ol>
+<li>应用层中，主要是优化 I/O 模型、工作模型以及应用层的网络协议</li>
+<li>套接字层中，主要是优化套接字的缓冲区大小</li>
+<li>传输层中，主要是优化 TCP 和 UDP 协议 (参数调优)</li>
+<li>网络层中，主要是优化路由、转发、分片以及 ICMP 协议</li>
+<li>链路层中，主要是优化网络包的收发、网络功能卸载以及网卡选项</li>
+</ol>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/shortcut_keys/"><i class="fa fa-chevron-circle-left"></i> Linux 快捷键</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/tools/curl/">curl 命令常用操作 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: 杂七杂八"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

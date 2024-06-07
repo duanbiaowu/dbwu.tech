@@ -1,0 +1,468 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>为什么 TCP 需要建立连接三次握手 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="为什么 TCP 需要建立连接三次握手" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-12-11T00:00:00+00:00" />
+<meta property="article:modified_time" content="2019-12-11T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="为什么 TCP 需要建立连接三次握手"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>为什么 TCP 需要建立连接三次握手</h1>
+
+    
+      
+    
+
+    
+      
+
+    
+
+    <h2 id="tcp-三次握手基础">TCP 三次握手基础</h2>
+<p>先来看看 TCP 的标识位和状态机，这是理解 TCP 三次握手的基础。</p>
+<h3 id="tcp-标识位">TCP 标识位</h3>
+<p>TCP 报文头部中的标识位用于控制 TCP 连接的状态，可以指示各种控制信息，如连接建立、终止、重置等。</p>
+<p>常见的标识位有 6 个：</p>
+<ol>
+<li><strong>SYN</strong> (Synchronize Sequence numbers): 请求建立连接 (三次握手)，在连接建立时的初始数据包中设置，表明发送端希望建立连接并同步序列号，TCP 是双向通信，所以建立连接时，双方都要发一个 SYN</li>
+<li><strong>ACK</strong> (Acknowledgment field significant): 确认接收到的数据，ACK 标识设置后，接收端会在确认字段中填入下一个期望接收的序列号</li>
+<li><strong>FIN</strong> (No more data from sender): 请求终止连接 (四次挥手)，在数据发送完毕后的数据包中设置，通知接收 (对) 方: 发送 (己) 方已发送完所有数据，TCP 是双向通信，所以关闭连接时，双方都要发一个 FIN</li>
+<li><strong>RST</strong> (Reset the connection): 重置连接，用于异常或错误的连接终止，当接收端收到 RST 标识时，会立即终止连接，不做任何数据确认，例如 <a href="https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/">之前的文章中提到的 TIME_WAIT 问题</a>，注意: 生产环境中出现 RST 包往往意味着潜在的问题</li>
+<li><strong>PSH</strong> (Push Function): 提示接收端将接收到的数据立即交付应用层，表明数据应当被快速处理，而不需要等待更多的后续数据到达</li>
+<li><strong>URG</strong> (Urgent Pointer field significant): 指示数据具有高优先级，接收端应尽快处理</li>
+</ol>
+<h3 id="sequence-number-序号">Sequence Number (序号)</h3>
+<p>TCP 是双向通信，所以单个连接中的双方都可以向对方发送数据，所以需要各自维护自己的 <code>Seq</code> 字段。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_99.jpeg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>TCP 提供有序的传输，所以每个数据报文段都要加上一个 <code>Seq</code> 序号字段:</p>
+<ul>
+<li>当接收端收到乱序的包时，可以根据 Seq 重新排序</li>
+<li>当接收端收到重复的包时，可以根据 Seq 去重</li>
+</ul>
+<p>如图所示，<strong>序号增长方式 (重要)</strong>:</p>
+<ul>
+<li>数据段 1 起始 Seq 号为1，长度为 1448 (单位: 子节)，那么数据段 2 的 Seq 号就等于 1 + 1448 = 1449</li>
+<li>数据段 2 的长度也是 1448，所以数据段 3 的 Seq 号为 1449 + 1448 = 2897</li>
+</ul>
+<p>也就是说，一个 Seq 号的大小是根据上一个数据段的 Seq 号和长度相加而来的。</p>
+<p>$$
+Seq = 上一个数据段的 Seq + Len (长度)
+$$</p>
+<p>所以在 TCP 数据传输过程中，任意一方发出的数据段应该是连续的: 后一个包的 Seq 号等于前一个包的 Seq + Len (三次握手和四次挥手除外)。</p>
+<h3 id="len-数据段长度">Len (数据段长度)</h3>
+<p><img src="https://dbwu.tech/images/network/tcp_3_three_way_demo_3.png" alt=""></p>
+<p>需要注意的是: <code>Len</code> 不包括 TCP 头部长度，所以不要认为 <code>Len = 0</code> 的数据包没有意义，TCP 头部本身携带的信息也很多。</p>
+<h3 id="ack-确认号">Ack (确认号)</h3>
+<p>接收端告诉发送端自己已经收到了哪些数据段 (<code>Seq</code> 序号)。</p>
+<p><img src="https://dbwu.tech/images/network/tcp_seq_ack_len.jpeg" alt=""></p>
+<ul>
+<li>发送端 发送了 <code>Seq:1 Len:100</code> 的数据到 接收端, 然后 接收端 回复的 <code>Ack</code> 就是 <code>1 + 100 = 101</code>, 表示自己收到了 101 之前的所有数据</li>
+<li>发送端 发送了 <code>Seq:101 Len:50</code> 的数据到 接收端, 然后 接收端 回复的 <code>Ack</code> 就是 <code>101 + 50 = 151</code>, 表示自己收到了 151 之前的所有数据</li>
+</ul>
+<p>比如甲发送了“Seq:x Len:y”的数据段给乙，那乙回复的确认号就是x+y，这意味着它收到了x+y之前的所有字节。</p>
+<p><strong>结论 (重要)</strong>: 接收端回复的 <code>Ack</code> 号正好等于发送端的下一个 <code>Seq</code> 号，所以我们可以看到  10377 号包的 <code>Ack</code> 正好等于 10378 号包的 <code>Seq</code>。</p>
+<p>如果通信中任意一方没有发送任何数据，那么对方返回的 <code>Ack</code> 号也不会发生变化 (也就是三次握手时的初始值)。</p>
+<hr>
+<h3 id="tcp-状态机">TCP 状态机</h3>
+<p>下面是经典的 TCP 状态机，每个 TCP 连接从最初建立到最后断开，整个生命周期中的所有状态都囊括其中。</p>
+<p><img src="https://dbwu.tech/images/network/fdeffa2ecaa9de32f3e89bbf05fc6d53.jpg" alt=""></p>
+<p>下面是来自维基百科的彩色版本:</p>
+<p><img src="https://dbwu.tech/images/network/Tcp_state_diagram.png" alt="图片来源: https://en.wikipedia.org/wiki/File:Tcp_state_diagram.png"></p>
+<hr>
+<h2 id="三次握手示例">三次握手示例</h2>
+<p>下面是一个典型的三次握手示例图。</p>
+<p><img src="https://dbwu.tech/images/network/TCP_3_way_handshaking.png" alt="图片来源: https://coolshell.cn/articles/11564.html"></p>
+<ol>
+<li>第一次握手：客户端发起连接，设置请求报文标识位 <code>SYN = 1</code>, 同时初始化一个随机序列号 <code>Seq = x</code>, 发送请求报文 <code>SYN</code> 后，客户端进入 <code>SYN-SENT</code> 状态</li>
+<li>第二次握手：服务端收到客户端的请求后，初始化一个随机序列号 <code>Seq = y</code>, 同时设置应答报文标识位 <code>SYN = 1</code>, 确认标识位 <code>ACK = x + 1</code>, 发送应答报文 <code>SYN-ACK</code> 后，服务端进入 <code>SYN-RECEIVED</code> 状态</li>
+<li>第三次握手：客户端收到服务端的应答后，设置应答确认标识位 <code>ACK = x + 1</code>, 发送应答报文 <code>ACK</code> 后，客户端进入 <code>ESTABLISHED</code> 状态，服务端收到客户端的 <code>ACK = y + 1</code> 报文后，进入 <code>ESTABLISHED</code> 状态，TCP 连接建立完成</li>
+</ol>
+<p>在整个连接过程中，客户端和服务端的状态变化如下图所示:</p>
+<p><img src="https://dbwu.tech/images/network/TCP_3_way_handshaking2.png" alt="图片来源: tcpipguide.com"></p>
+<p>从图中可以看到，对于 <code>ESTABLISHED (连接已建立)</code> 这个状态，客户端和服务端的感知时间是不一样的:</p>
+<ul>
+<li>对于客户端来说，两次握手完成后，连接建立完成</li>
+<li>对于服务端来说，三次握手完成后，连接建立完成</li>
+</ul>
+<h3 id="wireshark-抓包">Wireshark 抓包</h3>
+<p>为了更直观的感受 TCP 的三次握手过程，这里使用 Wireshark 进行抓包:</p>
+<p>打开 WireShark 开始抓包，然后在终端执行下列命令:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl -I -H <span style="color:#ed9d13">&#34;Connection: close&#34;</span> https://dbwu.tech 
+</span></span></code></pre></div><p>切换到 Wireshark 操作界面，使用 <code>tcp</code> 进行包过滤，可以看到如下的 TCP 三次握手过程，其中 192.168.3.68 是本级的局域网 IP 地址。</p>
+<p><img src="https://dbwu.tech/images/network/tcp_3_three_way_demo_2.png" alt=""></p>
+<ol>
+<li>第一次握手：客户端发起连接请求时，使用的 <code>Seq</code> 字段为 3123802190</li>
+<li>第二次握手：服务端发起应答报文时，使用的 <code>Seq</code> 字段为 1071295171, <code>ACK = x + 1</code>, 也就是 3123802191</li>
+<li>第三次握手：客户端发起应答报文时，使用的 <code>ACK = y + 1</code>, 也就是 1071295172</li>
+</ol>
+<p>Tips: Wireshark 默认情况下，显示的是 <code>Seq</code> 的相对值 (从 0 开始)，如果想看到客户端和服务端的真实随机 <code>Seq</code> 值，可以在 Wireshark 操作界面的菜单进行如下设置:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>Edit &gt; Preferences &gt; Protocols &gt; TCP
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>取消勾选: Relative Sequence numbers
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/network/epub_729216_104.jpeg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<hr>
+<h2 id="证明-粗糙">证明 (粗糙)</h2>
+<p>讲完了 TCP 三次握手的理论基础之后，接下来可以分析并证明如下命题:</p>
+<blockquote>
+<p>TCP 建立连接时，至少需要三次握手。</p>
+</blockquote>
+<p>这里我们使用一个非常基础的数学证明方法：<strong>反证法</strong>，既然至少需要三次握手？那么我们的反证命题如下：</p>
+<blockquote>
+<p>TCP 建立连接时，不需要三次握手。</p>
+</blockquote>
+<p>具体来说，我们假设 TCP 握手次数 N 少于三次就可以建立连接，这里又可以将 N 分为三种范围区间:</p>
+<p>$$
+\begin{align*}
+\begin{cases}
+N &lt; 1 \ &amp; \text {} \text{} \\
+N == 1 \ &amp; \text {} \text{} \\
+N == 2 \ &amp; \text {} \text{}
+\end{cases}
+\end{align*}
+$$</p>
+<p>下面对三种范围区间分别进行证明。</p>
+<h3 id="n--1">N &lt; 1</h3>
+<p>当 <code>N &lt; 1</code> 时，意味着双方都不发起第一次握手，此时双方甚至都不知道彼此的存在，更别谈建立连接进行通信了，所以 <code>N &lt; 1</code> 不成立，此时进入下一个命题: <code>N == 1</code>。</p>
+<h3 id="n--1-1">N == 1</h3>
+<p>当 <code>N == 1</code> 时，意味着双方需要一次握手，也就是 发送端 向 接收方 发起连接建立请求 (<code>SYN</code>)，但是请求发出后就没有下文了，所以连接还是无法建立。</p>
+<p>因为没有收到接收端的应答报文，所以 发送端 此时无法确认两件事情:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>发送</th>
+<th>接收</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>发送端</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>接收端</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>发送端 (自己) 的发送功能是否正常 (否可以将数据正常发送到接收端)</li>
+<li>接收端的接收功能是否正常 (包括是否监听了对应的端口、数据缓冲区是否正常等)</li>
+</ol>
+<p>因为无法确认这两件事情，所以发送端认为连接还未建立，自然也就不会向接收方继续发送数据了。所以 <code>N == 1</code> 不成立，此时进入下一个命题: <code>N == 2</code>。</p>
+<h3 id="n--2">N == 2</h3>
+<p>当 <code>N == 2</code> 时，意味着双方需要两次握手，我们在 <code>N == 1</code> 的基础上继续证明。</p>
+<p>在第一次握手后，接收端 收到 发送端 的连接建立请求报文后，会回复一个连接建立应答报文 (<code>SYN-ACK</code>)，但是和 发送端 的报文一样，接收端 的应答发出后就没有下文了，所以连接还是无法建立。</p>
+<p><del>1. 发送端 (自己) 的发送功能是否正常 (否可以将数据正常发送到接收端)</del></p>
+<p><del>2. 接收端的接收功能是否正常 (包括是否监听了对应的端口、数据缓冲区是否正常等)</del></p>
+<p>对于 <code>N == 1</code> 中存在的两个问题，此时已经得到了确认:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>发送</th>
+<th>接收</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>发送端</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>接收端</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>发送端的发送功能是正常的</li>
+<li>接收端的接收功能是正常的</li>
+</ol>
+<p>因为没有收到 发送端 的 (确认) 应答报文，所以 接收端 此时无法确认两件事情:</p>
+<ol>
+<li>接收端 (自己) 的发送功能是否正常 (是否可以将数据正常发送到发送端)</li>
+<li>发送端的接收功能是否正常</li>
+</ol>
+<h3 id="原命题证明">原命题证明</h3>
+<p>通过前文中的反证法，可以证明 TCP 建立连接时，至少需要三次握手。</p>
+<p>我们沿着前文中的思路，来看看 <code>N == 3</code> 时，发送端 和 接收端 对应的状态变化。</p>
+<p>在第二次握手后，发送端 收到 接收端 的连接建立应答报文后，会回复一个连接建立应答报文 (<code>ACK</code>)。</p>
+<p><del>1. 接收端 (自己) 的发送功能是否正常 (是否可以将数据正常发送到发送端)</del></p>
+<p><del>2. 发送端的接收功能是否正常</del></p>
+<p>对于 <code>N == 2</code> 中存在的两个问题，此时已经得到了确认:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>发送</th>
+<th>接收</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>发送端</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>接收端</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>接收端的发送功能是正常的</li>
+<li>发送端端接收功能是正常的</li>
+</ol>
+<hr>
+<h2 id="通过序列号来证明">通过序列号来证明</h2>
+<p>前文中通过 <strong>反证法 + TCP 报文状态</strong> 证明了 TCP 建立连接时，至少需要三次握手，除此之外，也可以利用 TCP 序列号 (严谨地) 证明。</p>
+<p>为了实现可靠数据传输，TCP 协议的通信双方都必须维护一个序列号 <code>Seq</code>，用来标识发送出去的数据包中哪些是已经被对方收到的。</p>
+<blockquote>
+<p>三次握手的过程等于: 通信双方相互发送初始序列号，并确认对方已经收到了初始序列号的必要过程。</p>
+</blockquote>
+<ul>
+<li>如果只有一次握手，接收端 没有发送初始序列号</li>
+<li>如果只有两次握手，只有 发送端 的初始序列号可以被确认，接收端 的初始序列号无法得到确认</li>
+</ul>
+<p>除此之外，在只有两次握手的情况下，可能还会出现一种异常情况: 延迟包导致的无效连接。</p>
+<p><img src="https://dbwu.tech/images/network/tcp_rst_demo.png" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，某个网络有多条路径，客户端建立连接请求的第一个数据包，正好被传输到一条延迟严重的路径，所以迟迟没有到达服务器。</p>
+<p>客户端发送超时后，认为第一个数据包丢失了，于是重新发起请求，第二个请求被传输到正常的路径，所以很快就完成了连接。</p>
+<p>对于客户端来说，本次通信过程似乎已经结束了，但是此时它的第一个数据包，延迟到达了服务器。因为服务器并不知道这是一个旧的无效请求，所以按照正常情况回复应答。</p>
+<p><strong>如果 TCP 只有两次握手，服务器上此时就建立了一个无效的 (过期的重复) 连接</strong>。</p>
+<p>但是在 TCP 三次握手的机制下，客户端收到服务器的回复后，发现这个 (已经超时的) 连接不是它想要的，所以就应答一个 <code>RST</code> 数据包，服务器收到 <code>RST</code> 数据后，同时关闭连接。</p>
+<hr>
+<h2 id="结论">结论</h2>
+<blockquote>
+<p>理论上讲 3 次以上，不论握手多少次，都无法确认一个 TCP 连接是 “完全可靠” 的。</p>
+<p>但通过 3 次握手，至少可以确认连接是 “基本可用” 的，再增加握手次数，也只不过是提高 “连接可用” 这个结论的可信程度而已。</p>
+</blockquote>
+<p>TCP 3 次握手后，发送端 和 接受端状态变化如下:</p>
+<ul>
+<li>发送端确认了: 自己发送、接收正常，对方发送、接收正常</li>
+<li>接收端确认了: 自己发送、接收正常，对方发送、接收正常</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>发送</th>
+<th>接收</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>发送端</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>接收端</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<p>综上所述，TCP 三次握手也是软件工程中的一个经典的 “Trade-Off” 案例。</p>
+<hr>
+<h2 id="附录">附录</h2>
+<h3 id="tcp-连接失败抓包">TCP 连接失败抓包</h3>
+<p>TCP 握手失败一般分两种类型，要么被拒绝，要么丢包。因此在 Wireshark 中可以用两个过滤表达式定位出大多数失败的握手。</p>
+<h4 id="1-表达式-1">1. 表达式 1</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>(tcp.flags.reset == 1) &amp;&amp; (tcp.Seq == 1)
+</span></span></code></pre></div><p>从表面上看，它只是过滤出 Seq 号为1，且含有 Reset 标志的包，似乎与握手无关。</p>
+<p>但在 (默认) 启用 Relative Sequence Numbers 的情况下，这往往表示握手请求被对方拒绝了，结果如下图所示。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_29.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>接下来只需右键选中过滤出的包，再点击 Follow TCP Stream 就可以把失败的全过程显示出来，如下图所示。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_30.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>此次握手失败的原因是服务器没有在监听 80 端口，所以拒绝了客户端的握手请求。</p>
+<h4 id="2-表达式-2">2. 表达式 2</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>(tcp.flags.syn == 1) &amp;&amp; (tcp.analysis.retransmission)
+</span></span></code></pre></div><p>这个表达式可以过滤出重传的握手请求。</p>
+<p>一个握手请求之所以要重传，往往是因为对方没收到，或者对方回复的确认包丢失了。这个重传特征正好用来过滤，结果如下图所示。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_31.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>接下来只需右键选中过滤出的包，再点击 Follow TCP Stream 就可以把失败的全过程显示出来，如下图所示。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_32.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>此次握手失败的原因是丢包，所以服务器收不到握手请求。</p>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/tools/git/"><i class="fa fa-chevron-circle-left"></i> Git 边边角角</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/other/interview/">工程师面试指北 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="为什么 TCP 需要建立连接三次握手"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
