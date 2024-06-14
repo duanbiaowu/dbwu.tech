@@ -1,0 +1,360 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>TCP 可靠传输实现原理 - 2.滑动窗口 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="TCP 可靠传输实现原理 - 2.滑动窗口" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/what-is-tcp-sliding-window/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-12-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-12-25T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="TCP 可靠传输实现原理 - 2.滑动窗口"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>TCP 可靠传输实现原理 - 2.滑动窗口</h1>
+
+    
+      
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>TCP 实现可靠传输层的核心有三点：</p>
+<ol>
+<li>确认与重传 (已经可以满足 “可靠性”，但是可能存在性能问题)</li>
+<li>滑动窗口 (为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
+<li>拥塞控制 (防止网络链路过载造成丢包，避免发送方发的太快)</li>
+</ol>
+<p>滑动窗口和拥塞控制相互制约，使发送方可以从网络链路的全局角度来自动调整发送速率，从这个角度来看，TCP 对于整个网络的意义已经超过 “传输层”。</p>
+<p>本文主要讲解三个核心中的第二点: <strong>滑动窗口</strong>。</p>
+<blockquote>
+<p>滑动窗口主要关注发送方到接收方的流量控制</p>
+<p>拥塞控制更多地关注网络层面的流量控制</p>
+</blockquote>
+<h3 id="前置知识点">前置知识点</h3>
+<p>在讲解 TCP 的确认与重传之前，先来复习几个基本知识点。</p>
+<h4 id="1-发送窗口">1. 发送窗口</h4>
+<blockquote>
+<p>发送方已经发送但是还未收到确认的最大数据量，由接收方的接收窗口大小 和 网络上的拥塞窗口大小 (cwnd, 后面专门写一篇文章写拥塞控制) 限制。</p>
+</blockquote>
+<p>发送窗口是发送方维护的一个数据结构，并根据接收方的通知动态调整。</p>
+<p>如图所示，发送窗口为 1 个 MSS 和 2 个 MSS时 的差别，在相同的往返时间里，右边比左边多发了两倍的数据量。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_107.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>发送窗口和 MSS 有什么关系？</p>
+<p>发送窗口决定了一口气能发送多少字节，而 MSS 决定了这些字节需要分多少个数据包发送完。</p>
+<p>在发送窗口为 16000 字节的情况下:</p>
+<ul>
+<li>如果 MSS 等于 1000 字节，需要发送 16000/1000=16 个数据包</li>
+<li>如果 MSS 等于 8000 字节，需要发送 16000/8000=2 个数据包</li>
+</ul>
+<p>将网络链路/带宽比做高速公路，发送窗口大小就是货车的数量，只要窗口足够大 (货车足够多)，TCP 可以不受往返时间的约束而源源不断地传输数据，所以无论在局域网还是广域网，TCP 依然是最受欢迎的传输层协议。</p>
+<h4 id="2-接收窗口">2. 接收窗口</h4>
+<blockquote>
+<p>接收方可以接收但是未确认的最大数据量，由接收方根据自身接收能力和缓冲区大小来决定。</p>
+</blockquote>
+<p>接收窗口会通过 Ack 报文通知发送方，防止发送方发送过多数据导致缓冲区溢出而丢包。也就是说，当接收方收到接收窗口范围之外 (包括延时到达) 的数据包，会直接丢弃。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_110.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，10.32.106.103 告诉 10.32.106.73 自己的接收窗口是 64093 字节，10.32.106.73 收到之后，就会把自己的发送窗口限制在 64093字节内。</p>
+<p><strong>接收窗口变为 0 之后</strong>，发送方就不再发送数据了，但是等接收方处理了缓冲区数据后，又可以再次接收数据了，此时如何通知发送方呢？</p>
+<p>TCP 使用了 <code>零窗口探测</code> (ZWP, Zero Window Probe) 来解决这个问题，发送方在接收窗口为 0 之后，周期性地发送一个字节的数据包（通常是已经发送过但未被确认的最后一个字节），这些小的数据包用于检测接收方的接收窗口是否已经变为非零大小，如果接收窗口变为非零，发送方就可以继续发送数据了。</p>
+<hr>
+<h2 id="滑动窗口">滑动窗口</h2>
+<p>在 <a href="https://dbwu.tech/posts/network/what-is-tcp-ack-with-retx">上篇文章</a> 中，我们详细讲解了 TCP 的数据确认和重传机制，这是 TCP 实现可靠传输的基础。</p>
+<p>但是在实现可靠传输的同时，是否可以在不造成网络拥堵、数据丢包的前提下，尽可能提高吞吐量，充分利用链路带宽呢？要实现这个目标，TCP 必须了解网络链路实际的传输带宽、处理速率、瓶颈节点等关键因素，为此，TCP 引入了 <code>滑动窗口</code> 机制。</p>
+<p>有了前文中的 发送窗口 和 接收窗口 基础之后，滑动窗口理解起来就简单多了。</p>
+<blockquote>
+<p>发送方的滑动窗口基于发送窗口，由接收方的接收窗口大小和拥塞窗口 (后面专门写一篇文章写拥塞控制) 大小来决定。</p>
+</blockquote>
+<p>$$
+发送窗口大小 (swnd) = min(接收窗口大小 (rwnd), 拥塞窗口大小(cwnd) )
+$$</p>
+<p>通过动态调整 滑动窗口 大小，实现了 (发送方到接收方的) <code>流量控制</code>:</p>
+<ul>
+<li>窗口缩小: 如果接收方缓冲区不足，会减小接收窗口大小，通知发送方减缓发送速率</li>
+<li>窗口扩大: 如果接收方缓冲区充足，会增大接收窗口大小，通知发送方提升发送速率</li>
+</ul>
+<p>下面是两个典型的滑动窗口过程示例:</p>
+<p><img src="https://dbwu.tech/images/network/tcpswflow.png" alt="图片来源: http://www.tcpipguide.com/free/t_TCPWindowSizeAdjustmentandFlowControl-2.htm"></p>
+<!-- raw HTML omitted -->
+<p><img src="https://dbwu.tech/images/network/epub_907755_150.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<h3 id="示例">示例</h3>
+<p>当发送方收到接收方的 Ack 应答后，发送窗口会向前滑动，释放已经被 Ack 的数据段，允许新的数据段进入发送窗口。</p>
+<p><img src="https://dbwu.tech/images/network/tcpswwindows.png" alt="图片来源: http://www.tcpipguide.com/free/t_TCPSlidingWindowAcknowledgmentSystemForDataTranspo-6.htm"></p>
+<p>如图所示是一个典型的窗口示例，主要分成了 4 个部分:</p>
+<ol>
+<li>Category #1: 接收方已经确认的数据</li>
+<li>Category #2: 已经发送，但是接收方还未确认的数据 (属于发送窗口)</li>
+<li>Category #3: 发送窗口中已经可以发送、但是还未发送的数据 (属于发送窗口)</li>
+<li>Category #4: 发送窗口之外的数据</li>
+</ol>
+<p>其中，黑色方框部分就是 <code>发送窗口</code>，每确认一部分数据后，窗口就会向前移动，添加一部分新数据，然后准备发送。</p>
+<p>例如，当接收方确认了 32, 33, 34 号数据包之后，发送方就可以发送 46, 47, 48 号数据包，然后窗口向前移动 3 个，将 52, 53, 54 号数据包加入到窗口中。</p>
+<h3 id="示例-2">示例 2</h3>
+<p><img src="https://dbwu.tech/images/network/tcpswaftersendnow.png" alt="图片来源: http://www.tcpipguide.com/free/t_TCPSlidingWindowAcknowledgmentSystemForDataTranspo-7.htm"></p>
+<p>如图所示，发送窗口中的数据已经全部发送，但是没有收到接收方的任何 Ack 确认，所以窗口无法向前滑动，只能等待接收方的 Ack。</p>
+<h3 id="示例-3">示例 3</h3>
+<p><img src="https://dbwu.tech/images/network/tcpswslide.png" alt="图片来源: http://www.tcpipguide.com/free/t_TCPSlidingWindowAcknowledgmentSystemForDataTranspo-8.htm"></p>
+<p>如图所示，收到接收方对 32 - 36 的 5 个数据包的 Ack 之后，窗口向前滑动 5 个数据包，发送了 46 - 51 的 5 个数据包，同时将 52 - 56 的 5 个数据包加入到窗口中准备发送。</p>
+<hr>
+<h2 id="zero-window">Zero Window</h2>
+<p>如果接收方处理数据包的速度落后发送方发送数据的速度，接收方缓冲区就会占满，然后通知发送方接收窗口为 0。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_111.jpg" alt="接收窗口返回 0"></p>
+<p>如图所示的 Wireshark 抓包截图，89.0.0.85 持续向 89.0.0.210 声明自己的接收窗口 win=0，所以 89.0.0.210 的发送窗口就被限制为0，也就是暂停发送数据。Wireshark 会智能地给数据包打上 <code>TCP zerowindow</code> 标签。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_79.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>如图所示的 Wireshark 抓包截图，可以看到接收窗口逐渐减少的过程，直到最后接收方缓存区已满，通知发送方接收窗口为 0。</p>
+<hr>
+<h2 id="full-window">Full Window</h2>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_80.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>如图所示的 Wireshark 抓包截图，当一个数据包被打上 <code>TCP Window Full</code> 标签时，表示数据包的发送方已经将发送窗口中的数据包全部发送完了，但是还未收到任何确认。</p>
+<p>Britain 一直声明它的接收窗口只有 65535，意味着 Middle East 最多能给它发送 65535 字节的数据而无需确认，当 Wireshark 在数据包中计算出 Middle East 已经有 65535 字节未被 Britain 确认时，就会出现 <code>TCP Window Full</code>, 此时 Britain 暂停发送数据。</p>
+<p><code>TCP Window Full</code> 很容易和 <code>TCP zerowindow</code> 混淆，两者之间有一定相似之处:</p>
+<ul>
+<li>前者表示这个数据包的发送方暂时没办法再发送数据了</li>
+<li>后者表示这个数据包的发送方暂时没办法再接收数据了</li>
+</ul>
+<p>也就是说两者都意味着数据传输暂停，同样需要引起重视。</p>
+<hr>
+<h2 id="nagle-算法">Nagle 算法</h2>
+<p>算法原理：发送方已经发送数据还未被接收方确认之前，期间如果又有小数据生成，先把小数据收集起来，凑满一个 MSS (最大报文段大小) 或者收到接收方 Ack 后再一起发送。通过将小数据包积累成较大的数据包后再发送，从而提高网络效率。</p>
+<p>详细规则:</p>
+<ol>
+<li>如果发送方有数据需要发送且数据量超过 MSS, 或者发送窗口中没有未确认的数据包，那么立即发送该数据包</li>
+<li>如果发送方有数据需要发送且发送窗口中有未确认的数据包，将新的数据包积累到发送缓冲区，直到收到接收方的数据包确认 Ack, 或者发送缓冲区的数据量达到 MSS，再发送数据包</li>
+</ol>
+<p>下面是对应的伪代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">if</span> 有新数据要发送
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">if</span> 数据量超过 MSS
+</span></span><span style="display:flex;"><span>    立即发送
+</span></span><span style="display:flex;"><span>  <span style="color:#6ab825;font-weight:bold">else</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> 之前发出去的数据尚未确认
+</span></span><span style="display:flex;"><span>      把新数据缓存起来，凑够 MSS 或等 Ack 到达再发送
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">else</span>
+</span></span><span style="display:flex;"><span>      立即发送
+</span></span><span style="display:flex;"><span>    end <span style="color:#6ab825;font-weight:bold">if</span>
+</span></span><span style="display:flex;"><span>  end <span style="color:#6ab825;font-weight:bold">if</span>
+</span></span><span style="display:flex;"><span>end <span style="color:#6ab825;font-weight:bold">if</span>
+</span></span></code></pre></div><p>Nagle 算法和延迟确认一样，并没有直接提高性能，只是减少了部分确认包，减轻了网络负担。</p>
+<h3 id="示例-1">示例</h3>
+<p><img src="https://dbwu.tech/images/network/epub_729216_128.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，第一个数据包把输入的第一个字符发出去了，在收到确认包之前的 150 毫秒里，又输入 6 个字符，这 6 个字符并没有被逐个发送，而是被累计缓存起来，等收到 2 号数据包 (Ack) 之后，和 3 号数据包一起发送，所以 3 号数据包的数据长度是 312 字节。</p>
+<h3 id="不足-局限性">不足 (局限性)</h3>
+<p>Nagle 算法和延迟确认一样，不适合需要快速响应的小数据包通信场景，因为会导致发送延迟，影响性能与应用体验。</p>
+<p>此外，Nagle 算法和延迟确认是冲突的，如果接收方启用了延迟确认，Nagle 算法可能导致发送方的数据包积压，从而增加通信延迟，这种情况下，Nagle 算法和延迟确认的结合可能会引起队列头部阻塞（head-of-line blocking）。</p>
+<h3 id="tcp_cork">TCP_CORK</h3>
+<p>TCP_CORK 是比 Nagle 算法更加激进的优化方式，因为它完全禁止了小数据包的发送，直到数据积累到足够大 (能够填充一个完整的 TCP 段)，或者被明确指示发送 (如关闭 TCP_CORK 选项)。</p>
+<p>相对来说， Nagle 算法只是禁止了大量的小数据包的发送。</p>
+<hr>
+<h2 id="糊涂窗口综合症">糊涂窗口综合症</h2>
+<p>糊涂窗口综合症 (Silly Window Syndrome) 是指在 TCP 网络通信中，发送方或接收方以 <code>不合理的小块数据</code> 进行通信，从而导致低效的数据传输和网络带宽浪费。</p>
+<p><img src="https://dbwu.tech/images/network/tcpsws.png" alt="图片来源: http://www.tcpipguide.com/free/t_TCPSillyWindowSyndromeandChangesTotheSlidingWindow.htm"></p>
+<p>SWS 主要由以下两种情况引发:</p>
+<ol>
+<li>发送方以小数据块发送数据 (当发送方生成数据的速度过慢或者每次生成的数据过小时)</li>
+<li>接收方以小数据块更新其接收窗口 (接收方缓冲区较小或者处理数据速度较慢时)</li>
+</ol>
+<p>当接收方通知给发送方的接收窗口越来越小时 (例如只有几个字节)，此时发送方再发送几个字节的数据，就完全没要了，为什么呢？</p>
+<p>因为传输层的 TCP 头部 + 网络层的 IP 头部，最少有 40 个字节，为了发送几个字节的数据包，而额外组装了 40 个字节的头部，这就本末倒置了。所以，<code>糊涂窗口综合症</code> 这个命名方式也挺合理的 :-)</p>
+<h3 id="解决方案">解决方案</h3>
+<p>如果问题是由于发送方引起的，那么就会使用前文中提到 <code>Nagle 算法</code> 来解决。</p>
+<p>如果问题是由于接收方引起的，那么就会使用 <code>Clark’s算法</code> 来解决，该算法主要思路如下: 接收方在发送窗口更新时，只有当接收窗口的增加量达到一定的阈值（如 MSS 大小）, 或者接收缓冲区空闲超过一半大小时，再发送窗口更新报文。这样就可以避免接收方频繁发送小窗口更新报文，确保发送方等到数据包较大时再发送。</p>
+<hr>
+<h2 id="附录">附录</h2>
+<h3 id="什么情况下会发送数据">什么情况下会发送数据？</h3>
+<ul>
+<li>可以发送一个完整的 MSS 大小的数据段</li>
+<li>连接空闲，并且可以清空发送缓冲区</li>
+<li>Nagle 算法被禁止，并且可以清空发送缓冲区</li>
+<li>紧急数据</li>
+<li>重传数据</li>
+<li>确认 Ack</li>
+<li>接收窗口更新</li>
+</ul>
+<h3 id="tcp-window-scale">TCP Window Scale</h3>
+<p>Window Scale 的作用是向对方声明一个 Shift count，我们把它作为 2 的指数，再乘以 TCP 头中定义的接收窗口，就得到真正的 TCP 接收窗口了。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_112.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，从底部可以看到 10.32.106.159 告诉 10.32.106.103 说它的 Shift count 是 5, 2^5 等于 32，这就意味着后续通信中，10.32.106.159 声明的接收窗口大小，需要乘以 32 才是真正的接收窗口值。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_113.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，10.32.106.159 声明它的接收窗口为 “Window size value: 183”，183 乘以 32 得到 5856，所以 Wireshark 就显示出“Win=5856”了。</p>
+<p>需要注意的是， Wireshark 是根据 Shift count 计算出这个结果的，如果抓包时没有抓到三次握手，Wireshark 就不知道该如何计算，所以有时候会很莫名地看到一些极小的接收窗口值，还有的场景中，防火墙识别不了 Window Scale，因此对方无法获得 Shift count，最终导致严重的 TCP 性能问题。</p>
+<h3 id="-更多思考">❓ 更多思考</h3>
+<p>每个 TCP 连接都是独立的，如果一个服务器中运行多个网络应用，而且每个应用不知道其他应用的存在，那么如何统筹规划对于网卡带宽的高效利用？</p>
+<hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/algorithm/leetcode_sliding_window_pattern/">LeetCode Sliding Window</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/what-is-tcp-ack-with-retx/"><i class="fa fa-chevron-circle-left"></i> TCP 可靠传输实现原理 - 1.确认和重传</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/what-is-tcp-congestion-control/">TCP 可靠传输实现原理 - 3.拥塞控制 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="TCP 可靠传输实现原理 - 2.滑动窗口"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

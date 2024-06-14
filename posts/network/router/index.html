@@ -167,7 +167,7 @@
 <p>Linux 中可以使用如下命令查看路由表。</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ route -v
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下 (WSL2 环境)</span>
 </span></span><span style="display:flex;"><span>Kernel IP routing table
 </span></span><span style="display:flex;"><span>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 </span></span><span style="display:flex;"><span>default         DESKTOP-IUAK47Q 0.0.0.0         UG    <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> eth0
@@ -177,7 +177,16 @@
 </span></span><span style="display:flex;"><span>172.21.0.0      0.0.0.0         255.255.0.0     U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> br-b0601dad2b86
 </span></span><span style="display:flex;"><span>172.26.208.0    0.0.0.0         255.255.240.0   U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> eth0
 </span></span><span style="display:flex;"><span>192.168.49.0    0.0.0.0         255.255.255.0   U     <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>        <span style="color:#3677a9">0</span> br-cbbb1e89822d
-</span></span></code></pre></div><p>Mac OS 中可以使用如下命令查看路由表。</p>
+</span></span></code></pre></div><p>Flags 字段中部分标志解释:</p>
+<ul>
+<li><code>U</code> : 这条路有已经启用</li>
+<li><code>H</code> : 这是一个主机的路由。如果没有这个标志，那么这条路由就是到同一个网络的，如果没有使用 CIDR 的话，也可能是同一个子网</li>
+<li><code>G</code> : 这条路由是间接的，目标地没有直接相连，而必须通过中间路由器或网关 (Gateway，G) 相连</li>
+</ul>
+<p>Refs 字段说明了路由的引用计数，也就是当前有多少个仍处于活动状态的使用者。</p>
+<p>Use 字段说明已经用该路由发送了多少分组。</p>
+<p>Netif 字段是相关网络接口的名称。</p>
+<p>Mac OS 中可以使用如下命令查看路由表。</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -rn
 </span></span><span style="display:flex;"><span>Routing tables
 </span></span><span style="display:flex;"><span>

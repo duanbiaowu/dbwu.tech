@@ -1264,6 +1264,33 @@
      </item>
    
      <item>
+       <title>TCP 可靠传输实现原理 - 3.拥塞控制</title>
+       <link>https://dbwu.tech/posts/network/what-is-tcp-congestion-control/</link>
+       <pubDate>Sun, 30 Dec 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/what-is-tcp-congestion-control/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>TCP 可靠传输实现原理 - 2.滑动窗口</title>
+       <link>https://dbwu.tech/posts/network/what-is-tcp-sliding-window/</link>
+       <pubDate>Tue, 25 Dec 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/what-is-tcp-sliding-window/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>TCP 可靠传输实现原理 - 1.确认和重传</title>
+       <link>https://dbwu.tech/posts/network/what-is-tcp-ack-with-retx/</link>
+       <pubDate>Fri, 21 Dec 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/what-is-tcp-ack-with-retx/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>为什么 TCP 需要 TIME_WAIT 状态</title>
        <link>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</link>
        <pubDate>Tue, 11 Dec 2018 00:00:00 +0000</pubDate>
@@ -1336,7 +1363,7 @@
      </item>
    
      <item>
-       <title>UDP VS TCP</title>
+       <title>TCP VS UDP 区别</title>
        <link>https://dbwu.tech/posts/network/diff-between-tcp-and-udp/</link>
        <pubDate>Tue, 12 Dec 2017 00:00:00 +0000</pubDate>
        

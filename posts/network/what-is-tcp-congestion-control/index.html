@@ -1,0 +1,311 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>TCP 可靠传输实现原理 - 3.拥塞控制 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="TCP 可靠传输实现原理 - 3.拥塞控制" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/what-is-tcp-congestion-control/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-12-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-12-30T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="TCP 可靠传输实现原理 - 3.拥塞控制"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>TCP 可靠传输实现原理 - 3.拥塞控制</h1>
+
+    
+      
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>TCP 实现可靠传输层的核心有三点：</p>
+<ol>
+<li>确认与重传 (已经可以满足 “可靠性”，但是可能存在性能问题)</li>
+<li>滑动窗口 (为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
+<li>拥塞控制 (防止网络链路过载造成丢包，避免发送方发的太快)</li>
+</ol>
+<p>滑动窗口和拥塞控制相互制约，使发送方可以从网络链路的全局角度来自动调整发送速率，从这个角度来看，TCP 对于整个网络的意义已经超过 “传输层”。</p>
+<p>本文主要讲解三个核心中的第一点: <strong>拥塞控制</strong>。</p>
+<blockquote>
+<p>滑动窗口主要关注发送方到接收方的流量控制</p>
+<p>拥塞控制更多地关注网络层面的流量控制</p>
+</blockquote>
+<p>拥塞控制的视角更为全面，会对整个网络链路中的所有主机、路由器，以及降低网络传输性能的有关因素进行综合考量。</p>
+<h3 id="前置知识点">前置知识点</h3>
+<p>在讲解 TCP 的拥塞控制之前，先来复习几个基本知识点。</p>
+<h4 id="1-丢包">1. 丢包</h4>
+<p>丢包一般分两种情况：</p>
+<ul>
+<li>网络质量导致的零星丢包</li>
+<li>网络拥塞导致的大量丢包</li>
+</ul>
+<p>丢包会引起重传，重传会加剧网络负载，网络负载严重后，丢包会更严重，进入 “恶性循环”。</p>
+<p>如果网络中所有发送方和接收方都进入 “恶性循环”，就会形成 “网络丢包” 风暴，直至拖垮整个网络。</p>
+<p>所以 TCP 需要站在整个网络层面的角度，对传输的整个过程链路进行规划和把握，也就是本文的主题 <code>拥塞控制</code>。</p>
+<hr>
+<h2 id="拥塞控制">拥塞控制</h2>
+<p>TCP 的拥塞控制的核心思想是根据网络状况动态调整拥塞窗口（cwnd）的大小，通过反馈机制（如丢包和延迟）检测网络拥塞，并相应地调整数据发送速率，主要由 4 个方面组成:</p>
+<ol>
+<li>慢启动</li>
+<li>拥塞避免</li>
+<li>快速重传 (拥塞发生后)</li>
+<li>快速恢复</li>
+</ol>
+<p><img src="https://dbwu.tech/images/network/Pi81I.png" alt="拥塞控制状态机"></p>
+<h3 id="1-慢启动">1. 慢启动</h3>
+<p>发送方和接收方三次握手后连接建立后，是不是应该直接开始快速发送数据包呢？TCP 认为，虽然单个连接上快速发送大量数据包是 OK 的 (毕竟有滑动窗口地址负责流量控制)，但是如果网络中的所有连接都这么做的话，避免会导致流量高峰，进而形成网络拥塞。所以，刚开始的时候应该慢点发送数据，然后根据网络状态不断进行调整 (网络负载较小时就多发送，网络负载较小时就少发送)。</p>
+<ul>
+<li>初始状态下，cwnd 设置为一个较小的值（例如 2 个 MSS）</li>
+<li>每收到一个 Ack，cwnd 加 1 (cwnd += 1)</li>
+<li>每经过一个 RTT, cwnd 翻倍 (cwnd *= 2)</li>
+<li>直到 cwnd &gt;= ssthresh (预定义的慢启动阈值) 或者检测到丢包，cwnd 增长结束 (进入拥塞避免阶段)</li>
+</ul>
+<blockquote>
+<p>因为是指数级增长，所以 “慢启动” 其实并不慢。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/tcp.slow_.start_.jpg" alt="图片来源: https://coolshell.cn/articles/11609.html"></p>
+<p>Linux 3.0 之后，采用了 Google 的建议，将 cwnd 初始化为 10 个 MSS。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>https://github.com/torvalds/linux/blob/02f8c6aee8df3cdc935e9bdd4f2d020306035dbe/include/net/tcp.h#L200
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Linux 3.0 默认 cwnd 大小</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#define TCP_INIT_CWND		10</span>
+</span></span></code></pre></div><h3 id="2-拥塞避免">2. 拥塞避免</h3>
+<p><code>拥塞避免</code> 并非指完全能够避免网络拥塞，而是指在拥塞避免阶段，将拥塞窗口控制为按线性规律增长，使网络尽可能避免出现拥塞。</p>
+<blockquote>
+<p>Typically, ssthresh starts at 65535 bytes.</p>
+</blockquote>
+<p>慢启动持续一段时间后，拥塞窗口变为一个较大的值，此时距离 <code>网络拥塞点</code> 也比较接近了，所以需要降缓速度慢下来。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_131.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>当 <code>cwnd &gt;= ssthresh</code> 时，进入拥塞避免阶段，此时 cwnd 的增长方式变化为:</p>
+<ul>
+<li>每收到一个 Ack，cwnd = cwnd + 1/cwnd (主要考虑 cwnd = 1 时的边界情况)</li>
+<li>每经过一个 RTT, cwnd = cwnd + 1</li>
+</ul>
+<p><img src="https://dbwu.tech/images/network/epub_655484_284.jpeg" alt=""></p>
+<p>从算法的变化过程可以看出，进入拥塞避免后，cwnd 由指数型增长变化为线性增长。</p>
+<h4 id="估算网络拥塞点">估算网络拥塞点</h4>
+<p>网络拥塞的特征是连续丢包，丢包会引起重传，Wireshark 能够标识出重传的数据包，因此可以先从 Wireshark 中找到一连串重传包中的第一个，再根据该重传包的 Seq 值找到其原始包，最后计算该原始包发送时刻的在途字节数。由于网络拥塞就是在该原始数据包发出去的时刻发生的，所以这个在途字节数就大致代表了 <code>网络拥塞点</code> 的大小。</p>
+<p>可以根据这个结果，多次采样进行参考，然后选定一个合适的值作为该连接的拥塞点。例如根据采样结果取一个偏小的 (类似接口响应的 95 分位) 数值。</p>
+<h3 id="3-拥塞发生">3. 拥塞发生</h3>
+<p>传统的 TCP 流量控制认为，一旦发生丢包，就是网络链路发生了拥塞，所以发送方会急剧地减小发送窗口，甚至进入短暂的等待状态（超时重传）。
+所以，<code>1%</code> 的丢包率并不只是降低 <code>1%</code> 的传输性能，而是可能降低 <code>50%</code> 以上。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_115.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>拥塞发生之后，又有两种常用的主流算法来解决:</p>
+<p><strong>1. TCP Tahoe 算法</strong></p>
+<p>该算法和超时重传机制一样，工作过程如下:</p>
+<ul>
+<li>修改 sshthresh = cwnd / 2</li>
+<li>修改 cwnd = 1</li>
+<li>进入慢启动过程</li>
+</ul>
+<p><img src="https://dbwu.tech/images/network/epub_729216_116.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>这是一种较为保守的算法。</p>
+<p><strong>2. TCP Reno 算法</strong></p>
+<p>该算法工作过程如下:</p>
+<ul>
+<li>修改 cwnd = cwnd / 2</li>
+<li>修改 sshthresh = cwnd</li>
+<li>进入快速恢复 (下文中会提到)</li>
+</ul>
+<p><img src="https://dbwu.tech/images/network/epub_729216_121.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>由此可见，没有网络拥塞时，发送窗口越大，性能越好，此时应该尽量增大接收窗口 (例如 LAN 环境中)。如果经常发生拥塞，那限制发送窗口反而能提高性能，因为丢包 + 重传是绝对的性能杀手。</p>
+<h3 id="4-快速恢复">4. 快速恢复</h3>
+<p>在重传数据包之后，发送方不会立即进入慢启动阶段，而是通过调整 cwnd 来快速恢复到丢包前的传输速率。</p>
+<p>拥塞发生之后，如果出发了快速重传 (收到 3 个及以上 Dup Ack), 说明此时网络拥塞并没有很严重，所以只要保证接下来降低发送速率就可以了，完全不需要像超时重传一样那么保守，此时就可以进入到快速恢复阶段了。</p>
+<p>快速恢复 (Fast Recovery) 算法如下:</p>
+<ul>
+<li>cwnd = sshthresh + 3 * MSS（收到 3 个 Ack）</li>
+<li>重传 Dup Ack 指定的数据包</li>
+<li>再次收到 Dup Ack，修改 cwnd = cwnd + 1</li>
+<li>再次 Ack，修改 cwnd = sshthresh, 进入拥塞避免阶段</li>
+</ul>
+<h4 id="不足-局限性">不足 (局限性)</h4>
+<p>相比保守的 RTO 超时重传，快速恢复调整 cwnd 和 sshthresh 更加符合真实的网络链路场景，但是该算法的不足在于: <strong>严重依赖引起快速重传的 Dup Ack</strong>, 引发快速重传至少需要 3 个 Dup Ack 包，但是 3 个 Dup Ack 并不意味着只丢了 3 个数据包 (很可能是多个数据包)，但是快速重传只会重传一个，其他丢失的数据包依然只能等待 RTO 超时重传，于是进入一个恶性循环:</p>
+<ul>
+<li>超时一个数据包，sshthresh 就锐减一半</li>
+<li>超时多个数据包，sshthresh 就会减少到 1, 并且不会触发快速恢复算法了</li>
+</ul>
+<hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/36640.pdf">An Argument for Increasing TCP’s Initial Congestion Window</a></li>
+<li><a href="https://www.cs.cmu.edu/~prs/15-441-F14/lectures/rec05-congestion.pdf">TCP CongestionControl</a></li>
+<li><a href="https://coolshell.cn/articles/11609.html">TCP 那些事儿 (下)</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/what-is-tcp-sliding-window/"><i class="fa fa-chevron-circle-left"></i> TCP 可靠传输实现原理 - 2.滑动窗口</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/how-to-optimize-tcp-performance/">高性能网络编程: TCP 调优 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="TCP 可靠传输实现原理 - 3.拥塞控制"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

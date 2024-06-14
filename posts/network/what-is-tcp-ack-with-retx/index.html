@@ -1,0 +1,413 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>TCP 可靠传输实现原理 - 1.确认和重传 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="TCP 可靠传输实现原理 - 1.确认和重传" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/what-is-tcp-ack-with-retx/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-12-21T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-12-21T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="TCP 可靠传输实现原理 - 1.确认和重传"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>TCP 可靠传输实现原理 - 1.确认和重传</h1>
+
+    
+      
+    
+
+    
+      
+
+    
+
+    <h2 id="概述">概述</h2>
+<p>TCP 实现可靠传输层的核心有三点：</p>
+<ol>
+<li>确认与重传 (已经可以满足 “可靠性”，但是可能存在性能问题)</li>
+<li>滑动窗口 (为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
+<li>拥塞控制 (防止网络链路过载造成丢包，避免发送方发的太快)</li>
+</ol>
+<p>滑动窗口和拥塞控制相互制约，使发送方可以从网络链路的全局角度来自动调整发送速率，从这个角度来看，TCP 对于整个网络的意义已经超过 “传输层”。</p>
+<p>本文主要讲解三个核心中的第一点: <strong>确认与重传</strong>。</p>
+<h3 id="前置知识点">前置知识点</h3>
+<p>在讲解 TCP 的滑动窗口之前，先来复习几个基本知识点。</p>
+<h4 id="1-序列号sequence-number">1. 序列号（Sequence Number）</h4>
+<p>数据中的每个字节的数据在传输时都被分配一个唯一的序列号，帮助接收方按正确的顺序重新组装数据包 (即使数据包是乱序到达接收方)。</p>
+<h4 id="2-确认acknowledgment">2. 确认（Acknowledgment）</h4>
+<p>接收方发送确认消息（Ack）给发送方，表明自己已成功接收到数据包，这样发送方就可以知道哪些数据包已成功传输，从而可以发送新的数据包 (或者将发送失败的数据包进行重传)。</p>
+<p>为了便于识别和简化篇幅，下文中统一使用 <code>Seq</code> 表示序列号，使用 <code>Ack</code> 表示确认号。</p>
+<h4 id="3-rto-retransmission-timeout">3. RTO (Retransmission Timeout)</h4>
+<p>RTO (超时重传时间) 的计算基于往返时间（RTT, Round-Trip Time）的估计和测量，RTT 是指从发送数据包到收到 Ack 时间，RTO 通常使用加权平均 RTT 和偏差来计算，以适应网络的变化。</p>
+<p>为什么 RTO 需要在 RTT 的基础上进行加权处理？而不是直接使用 RTT 往返时间作为数据包的超时等待时间？</p>
+<p>当网络链路负载过高时，Ack 应答时间会变长，此时就需要将 RTO 时间设置稍微长一些，否则可能出现数据包重传之后，前面的 Ack 应答才姗姗来迟。</p>
+<p>表面上来看，只是多重传了一个数据包，但是<strong>实际上却可能造成严重的后果</strong>。因为 Ack 应答时间变长，大多是由于网络拥塞引起的，如果此时再进行多余的重传，那么本来就拥塞的网络无疑会雪上加霜。那么你可能会问了：那么 RTO 时间是不是越长越好呢？显然也不是，因为等待时间过长，数据包的重传会有很大的延迟，而且也无法充分利用带宽。</p>
+<p>根据发送方和接收方的物理距离以及网络链路的不同，Ack 的返回时间也会产生很大的波动，因此 TCP 采用了动态加权调整 RTO 时间，具体来说，TCP 会在发送数据的过程中持续监测 Ack 时间，如果 Ack 时间变慢，增大 RTO, 相反就减少 RTO, 或者保持不变。</p>
+<h4 id="4-乱序重组与丢包">4. 乱序重组与丢包</h4>
+<p>当数据包乱序到达接收方时，接收方只要根据 <code>Seq</code> 序列号从小到大重新排序即可，保证了 TCP 的传输有序性。</p>
+<p>此外，如果有数据包丢失，接收方通过前一个 <code>Seq+Len</code> 的值与下一个 <code>Seq</code> 的之间的差值 (正常应该是 0)，就能判断哪些数据包丢失，保证了 TCP 的传输可靠性。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_100.jpeg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，3 个数据包乱序到达了接收方，根据 <code>Seq</code> 重新排序之后:</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_101.jpeg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>但是排序完之后还是有问题: 第一个包的 Seq+Len=101+100=201，意味着下一个包本应该是 Seq:201，而不是实际收到的 Seq:301, 由此接收方可以判断出，“Seq:201” 这个数据包 (可能) 已经丢失了，于是它回复 Ack:201 给发送方。</p>
+<h4 id="5-发送缓冲区">5. 发送缓冲区</h4>
+<p>TCP 是双向通信，所以发送方再向接收方发送数据的同时，接收方也可以向发送方发送数据。</p>
+<p><img src="https://dbwu.tech/images/network/epub_907755_144.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>发送方发送给接收方的数据包，在得到 Ack 应答之前，会保存在 <code>发送缓冲区</code> 中，如果某些数据包丢失了，发送方就可以直接从缓冲区取出对应的数据包进行重传。</p>
+<blockquote>
+<p>所以说，确认与重传机制是 TCP 可靠性实现的基础。</p>
+</blockquote>
+<p>那么，理想的发送缓冲区应该设置为多少呢？</p>
+<p>$$
+理想发送缓冲区 = 网络带宽每秒发送字节数 * RTT
+$$</p>
+<p>例如:</p>
+<ul>
+<li>网络带宽每秒发送字节数 = 1024, RTT = 1 秒，缓冲区 = 1024 字节</li>
+<li>网络带宽每秒发送字节数 = 4096, RTT = 0.5 秒，缓冲区 = 2048 字节</li>
+</ul>
+<h4 id="6-在途字节数">6. 在途字节数</h4>
+<p>$$
+在途字节数 = Seq + Len - Ack
+$$</p>
+<p><code>Seq</code> 和 <code>Len</code> 表示发送方发送的上一个数据包，而 <code>Ack</code> 表示接收方接收的上一个数据包。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_93.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>如图所示，第 0.400000秒 之前，服务器的 Ack 为 3284，表示序号在 3284 之前的字节已经收到了，在途字节数就是 265248+180-3284=262144 字节。</p>
+<h4 id="7-校验和">7. 校验和</h4>
+<p>虽然 IP 也有校验和，但只对 IP 分组首部进行计算和校验，所以 TCP 和 UDP 都额外提供了校验和来保护自己的首部和数据。</p>
+<p>TCP 为数据段中的数据提供了校验和，这样有助于确保抵达目标地址后，检验数据在传输过程中是否被网络损坏。</p>
+<p>虽然校验和也是 TCP 实现可靠传输的手段之一，但是本文主要将确认和重传，所以校验和在这里一笔带过。</p>
+<hr>
+<h2 id="超时重传">超时重传</h2>
+<blockquote>
+<p><code>Seq</code> 以字节为单位，所以 <code>Ack</code> 只能应答收到的连续最大包。</p>
+</blockquote>
+<ul>
+<li>发送方发送了数据包: 1, 2, 3, 4, 5, 并启动 <code>超时定时器</code></li>
+<li>接收方收到了数据包: 1, 2, 5</li>
+</ul>
+<p>此时接收方会应答 Ack = 3, 而不是 Ack = 5, 要不然发送方会认为发出去的 5 个数据包，接收方全部收到了。</p>
+<p>如果在超时前收到 Ack，发送方确认该数据包已成功接收，停止定时器，并将 RTO 时间恢复到正常计算值。</p>
+<p>如果定时器超时，发送方就重新发送 3 号 数据包，并重置定时器 (通常会增加 RTO 时间，例如退避算法中，RTO 时间会翻倍)。</p>
+<h3 id="示例">示例</h3>
+<p><img src="https://dbwu.tech/images/network/epub_907755_143.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<p>如图所示:</p>
+<ul>
+<li>假设上次接收到第 1460 字节，那么接下来如果收到序号为 1461 的包，说明没有丢包</li>
+<li>但如果收到的包序号为 2921，那就有数据包 (可能) 丢失了</li>
+</ul>
+<h3 id="性能影响">性能影响</h3>
+<p>虽然通过超时重传可以确保丢失的数据包可以被重新发送，但是这是一种及其被动和保守的策略，对传输性能有严重性能，主要体现在两个方面:</p>
+<ol>
+<li>增加传输延迟/降低带宽利用率: 在 RTO 阶段 (也就是未检测到数据包超时之前)，排在未确认数据包队列后面的数据包不能传输</li>
+<li>拥塞窗口缩减: 发生超时重传之后，拥塞窗口会锐减 (某些版本实现中会减到 1 个 MSS)，接下来发送方的发送窗口会更小 (发送得更慢)</li>
+</ol>
+<blockquote>
+<p>如果网络负载本身已经很严重，重传会导致网络的负载更加恶化，结果就是导致更大的延迟以及更多的丢包。</p>
+</blockquote>
+<hr>
+<h2 id="快速重传">快速重传</h2>
+<p>为了解决超时重传带来的问题，TCP 引入了一种 Fast Retransmit (快速重传) 机制，在检测到数据包丢失时迅速进行重传。</p>
+<p><strong>快速重传机制依赖于重复确认（Duplicate Acknowledgments, DupAcks）来检测数据包丢失，当接收方接收到一个乱序 (不连续) 的数据包时，会重新发送对最后一个按序 (连续) 到达的数据包的 Ack, 发送方收到一定数量 (3 个) 的重复 Ack 之后，认为数据包 (可能已经) 丢失，并立即重传该数据包</strong>。</p>
+<p>当接收方发现接收到的数据包比预期的要大，说明有中间的数据包还没到，也就是说，此时数据包已经不连续，例如:</p>
+<ul>
+<li>发送方发送了数据包: 1, 2, 3, 4, 5, 6, 7</li>
+<li>接收方收到了数据包: 1, 2, 5, 应答 Ack = 3</li>
+<li>接收方收到了数据包: 1, 2, 5, 4, 应答 Dup Ack = 3</li>
+<li>接收方收到了数据包: 1, 2, 5, 4, 6, 应答 Dup Ack = 3</li>
+<li>接收方收到了数据包: 1, 2, 5, 4, 6, 7 应答 Dup Ack = 3</li>
+<li>此时发送方收到了 3 个重复 Ack, 意识到 3 号数据包 (可能) 已经丢失，理解重新发送 3 号数据包</li>
+</ul>
+<blockquote>
+<p>快速重传之所以称为快速，是因为它不像超时重传一样需要等待 RTO 时间。</p>
+</blockquote>
+<h3 id="示例-1">示例 1</h3>
+<p>如图所示，客户端发送了 1182、1184、1185、1187、1188 共 5 个包，其中 1182 在路上丢了。幸好到达服务器的 4 个包触发了 4 个 Ack=991851 (后面 3 个为 Dup Ack)，所以客户端意识到丢包了，于是在包号 1337 快速重传了 Seq=991851。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_119.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>为什么要求必须大于等于 3 个 Dup Ack 呢？</p>
+<p>因为网络包有时会乱序 (尤其是链路比较复杂的情况下)，乱序的包一样会触发重复的 Ack，但是为了乱序而重传没有必要。</p>
+<p>正常的乱序 (非丢包) 情况下，数据包之间的序号差异不会很大，例如 3 号数据包可能会在 5 号数据包之后到达，但是不太可能在 50 号数据包之后到达。</p>
+<ul>
+<li>左图中，2 号数据包的因为丢包，凑够了 3 个 Dup Ack，所以触发快速重传</li>
+<li>右图中，2 号数据包 4 号数据包之后到达，因为没有凑够 3 个 Dup Ack, 没有触发快速重传</li>
+</ul>
+<p><img src="https://dbwu.tech/images/network/epub_729216_120.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<h3 id="示例-2">示例 2</h3>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_76.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>如图所示，服务器收到的 7 号数据包为 “Seq=29303,Len=1460”，所以它期望下一个数据包应该是 <code>Seq + Len</code> = 29303 + 1460 = 30763。</p>
+<p>没想到实际收到的却是 8 号数据包 Seq = 32223，说明 Seq = 30763 数据包可能丢失了。</p>
+<p>因此服务器立即在 9 号包发了 Ack = 30763。</p>
+<p>但是接下来服务器收到的 10号、12号、14号 都是大于 Seq = 30763，因此每收到一个数据包，就应答一次 Ack = 30763，Wireshark 已经智能地在这些应答都打上了 [TCP Dup Ack] 标记。</p>
+<h3 id="示例-3">示例 3</h3>
+<p>如图所示，客户端收到了 4 个 Ack = 991851，于是在 1177 号包重传了 Seq = 991851。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_77.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<h3 id="快速重传和超时重传">快速重传和超时重传</h3>
+<blockquote>
+<p>快速重传降低了延迟，但是有可能产生重复包 (例如某个包延迟了，但却导致其被重传了)</p>
+<p>超时重传降低了产生重复包的概率，但是增加了延迟</p>
+</blockquote>
+<p>相比超时重传，快速重传对性能影响小一些，因为它没有 ROT 等待时间，而且拥塞窗口减小的幅度没那么大，可以避免进入 <code>慢启动</code> 阶段 (1 个 MSS)。</p>
+<p><strong>但是如果数据包数量太少，其中一个数据包丢失了，没有足够数量的后续数据包触发 Dup Ack，可能会凑不齐触发快速重传所必需的 3 个Dup Ack，因此这种情况下的丢包，只能等待超时重传</strong>。</p>
+<p>例如在文件传输场景中，丢包对极小文件的影响比大文件严重。因为读写一个小文件需要的数据包很少，所以丢包时 (很可能) 凑不齐 3个 Dup Ack，只能等待超时重传，而大文件因为数据包很多，较大可能会触发快速重传。</p>
+<h3 id="乱序范围与快速重传">乱序范围与快速重传</h3>
+<p>小范围的数据包乱序，可能造成的影响不大，比如原本顺序为 1、2、3、4、5 号数据包被打乱成 2、1、3、4、5，这种情况下几乎没有影响 (接收方重新排序即可)。</p>
+<p>但是大范围的数据包乱序，可能触发快速重传，比如原本顺序为 1、2、3、4、5 号数据包被打乱成 2、3、4、5、1，就会触发 3 个 Dup ACK，导致 1 号数据包的快速重传。</p>
+<h3 id="依然存在的问题-局限性">依然存在的问题 (局限性)</h3>
+<p>虽然快速重传部分解决了超时重传的问题，但是依然存在一个问题: <strong>接收方无法确认应该重传的数据包范围</strong>。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_120.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如左图所示，当发送方收到 3 个重复的 Dup Ack 2 时，依然面临的一个问题是: <strong>应该重传应答 Dup Ack 号的单个数据包，还是重传 Ack 号之后的所有已经发送的数据包？</strong>。因为发送方并不知道这三个 Dup Ack 是哪些数据包应答的，因为 Dup Ack 和 Ack 一样，应答的是接收方收到的最大连续数据包，所以如果出现了大范围内个别丢包，发送方只能逐个等待丢失数据包的 Dup Ack, 然后再逐个 快速重传 丢失的数据包。</p>
+<p>下面来举个例子说明。</p>
+<ul>
+<li>发送方连续发送了 20 个数据包 (Seq: 1 - 20)</li>
+<li>因为网络原因，数据包 5, 7, 11 丢失了，其余数据包正常到达接收方</li>
+<li>接收方收到 6 号数据包之后，应答 Ack = 5</li>
+<li>接收方收到 8, 9, 10 号数据包之后，应答 3 个 Dup Ack = 5</li>
+</ul>
+<p>此时，作为发送方，收到连续 3 个 Dup Ack = 5 之后，并不知道 Dup Ack 是由哪些数据包应答的，所以发送方只能先把 5 号数据重传了，然后等待下一个应答 (Ack 或者 Dup Ack), 然后根据具体的应答进行响应的操作。</p>
+<p>在某些 TCP 实现中，会采用 “暴力” 快速重传，也就是重传 Ack 到已发送数据包的最大序列号之间的所有数据包，以上面的例子来说，当发送方接收到 3 个连续的 Dup Ack = 5 时，会直接重传 5 - 20 这 16 个数据包。</p>
+<p>❓ 思考: 一个更加智能的方案是: 接收方告诉发送方数据包 5, 7, 11 已经丢失了，请尽快重传。</p>
+<hr>
+<h2 id="选择性确认">选择性确认</h2>
+<p>理解了快速重传的不足 (局限性) 之后，我们再来看看看另一个方案 Selective Acknowledgment (选择性重传)。</p>
+<p>在选择性重传中，接收方通过 SAck 向发送方应答已经收到的非连续数据包，发送方可以作为依据，来重传接收方没有收到 (可能已经丢失) 的数据包。</p>
+<p><img src="https://dbwu.tech/images/network/tcp_SAck_example-900x507.jpg" alt="图片来源: https://coolshell.cn/articles/11564.html"></p>
+<p><strong>SAck 需要发送方和接收方都支持，接收方通过告诉发送方已经收到哪些数据块，以及缺失哪些数据块，从而使发送方只重传丢失的数据段，而不是整个数据窗口</strong>。</p>
+<h3 id="示例-4">示例</h3>
+<p><img src="https://dbwu.tech/images/network/epub_729216_123.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>如图所示，把 “SAck=992461-996175” 和 “Ack=991851” 两个条件综合起来，发送方就知道 992461～996175 已经收到了，而前面的991851～992460 还未收到，发送方只需要重传 991851～992460 数据段就可以了。</p>
+<h3 id="reneging">Reneging</h3>
+<blockquote>
+<p>所谓接收方 Reneging 是指接收方可以把已经应答发送方的 SAck 里面的数据丢弃。</p>
+</blockquote>
+<p><strong>重要</strong>: 所以发送方也不能完全依赖 SAck，还是要依赖 Ack，并维护 RTO 时间，如果后续的 Ack 没有增长，还是要把 SAck 的东西重传，另外，接收方这边永远不能把 SAck 的数据包标记为 Ack。</p>
+<h3 id="选择性重传与快速重传">选择性重传与快速重传</h3>
+<p>快速重传只知道有数据包丢了，但是不知道是一个还是多个、以及具体的数据包，而选择性重传可以知道具体是哪些数据包丢了。</p>
+<p><strong>两者互为补充</strong>，快速重传通过 Dup Aak 快速检测到丢包情况，及时进行重传，选择性重传在快速重传的基础上，通过应答中的 SAck 报文，进行更加精准高效的重传 (尤其是大范围数据传输中，个别数据包丢失的情况)。</p>
+<hr>
+<h2 id="重复选择性确认">重复选择性确认</h2>
+<p>重复选择性确认（Duplicate SACK）是选择性确认的一个扩展和优化，目的在于进一步提高数据传输的可靠性和效率，特别是在处理丢包和乱序传输时。</p>
+<p>重复选择性确认指接收方在 SACK 选项中重复报告已经收到的相同数据包，使发送方可以更好地判断哪些数据包已经被接收，哪些可能仍然丢失或乱序。</p>
+<ul>
+<li>接收方在收到数据包后，通过 SACK 选项通知已经接收到的数据块，如果某个数据块已经多次收到，接收方会重复报告该数据块</li>
+<li>发送方根据接收到的 SACK 选项，判断哪些数据包需要重传。如果某个数据块在 SACK 选项中多次出现，发送方可以确认该数据块已经被接收，避免不必要的重传</li>
+</ul>
+<h3 id="示例-5">示例</h3>
+<ol>
+<li>Ack 丢包</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>        Transmitted    Received    ACK Sent
+</span></span><span style="display:flex;"><span>        Segment        Segment     (Including SACK Blocks)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        3000-3499      3000-3499   <span style="color:#3677a9">3500</span> (ACK dropped)
+</span></span><span style="display:flex;"><span>        3500-3999      3500-3999   <span style="color:#3677a9">4000</span> (ACK dropped)
+</span></span><span style="display:flex;"><span>        3000-3499      3000-3499   4000, <span style="color:#40ffff">SACK</span>=3000-3500
+</span></span><span style="display:flex;"><span>                                              ---------
+</span></span></code></pre></div><p>如图所示，3000-3499 和 3500-3999 两个 Ack 包丢失了，发送方重传了 3000-3499 数据包，接收方发现这个数据包重复收到了，于是应答 Ack = 4000, SAck=3000-3500, 也就是意味着 4000 之前的所有数据包都接收到了，所以 SACK=3000-3500 就是一个 Dup SAck。</p>
+<p>通过这个 Dup SAck, 发送方就可以知道，数据包没有丢失，丢失的是 Ack 应答包。</p>
+<ol start="2">
+<li>网络延迟</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>        Transmitted    Received    ACK Sent
+</span></span><span style="display:flex;"><span>        Segment        Segment     (Including SACK Blocks)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        500-999        500-999     <span style="color:#3677a9">1000</span>
+</span></span><span style="display:flex;"><span>        1000-1499      (delayed)
+</span></span><span style="display:flex;"><span>        1500-1999      1500-1999   1000, <span style="color:#40ffff">SACK</span>=1500-2000
+</span></span><span style="display:flex;"><span>        2000-2499      2000-2499   1000, <span style="color:#40ffff">SACK</span>=1500-2500
+</span></span><span style="display:flex;"><span>        2500-2999      2500-2999   1000, <span style="color:#40ffff">SACK</span>=1500-3000
+</span></span><span style="display:flex;"><span>        1000-1499      1000-1499   <span style="color:#3677a9">3000</span>
+</span></span><span style="display:flex;"><span>                       1000-1499   3000, <span style="color:#40ffff">SACK</span>=1000-1500
+</span></span><span style="display:flex;"><span>                                            ---------
+</span></span></code></pre></div><p>如图所示，1000-1499 数据包延迟了，所以发送方没有收到 Ack, 紧接着到达的三个数据包出发了快速重传，但是快速重传的过程中，延迟的数据包 1000-1499 到达了接收方，所以接收方应答了一个 Ack = 3000, SAck=1000-1500, 也就是意味着 3000 之前的所有数据包都接收到了，所以 SAck=1000-1500 就是一个 Dup SAck。</p>
+<p>通过这个 Dup SAck, 发送方就可以知道，数据包没有丢失，而是产生了延迟。通过重复性选择，可以帮助发送方更好地判断丢包原因 (例如是发送数据包丢了，还是应答 Ack 丢了)。</p>
+<h2 id="附录">附录</h2>
+<h3 id="延迟确认带来的性能影响">延迟确认带来的性能影响</h3>
+<p>如果接收方收到数据包之后，没有什么数据要发送给发送方，可以延迟一段时间 Ack, 如果在延迟期间，接收方有数据要发送，就可以将数据和 Ack 放在一个数据包里面发送了。</p>
+<p>延迟确认并没有直接提高性能，只是减少了部分确认包，减轻了网络负担。</p>
+<p>但是某些场景中，延迟确认反而会影响性能，典型的场景下如下:</p>
+<ul>
+<li>小数据包通信: 发送方可能会因为等待接收方的 Ack 而出现额外的延迟，导致传输整体时间增加</li>
+<li>实时通信: 延迟确认会增加传输延迟 (当然，这类场景一般使用 UDP)</li>
+<li>高并发短连接: 每个短连接的请求-响应时间，因为延迟确认而增加，导致服务器的请求积压</li>
+</ul>
+<p>还有一种场景: <strong>发送窗口很小</strong>，也会严重降低 TCP 的传输性能，示例来自 <a href="https://book.douban.com/subject/26710788/">Wireshark 网络分析的艺术</a>。</p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_24.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p>如图所示，服务器接收窗口只有 2920 字节（相当于两个 MSS），且关闭了延迟确认时。因为客户端每发两个包就会耗光窗口，所以不得不停下来等待服务器的确认。</p>
+<p>如果这时候服务器上启用了延迟确认 (例如延迟时间为 200 毫秒)，那 29 号和 30 号数据包之间、32 号与 33 号数据包之间 &hellip; 38 号和 39 号数据包之间，都需要多等待 200 毫秒，传输效率会下降数百倍。这个场景下的延迟确认杀伤力巨大，而且非常隐蔽！</p>
+<hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://www.ietf.org/rfc/rfc2883.txt"> An Extension to the Selective Acknowledgement (SACK) Option for TCP</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/"><i class="fa fa-chevron-circle-left"></i> 为什么 TCP 需要 TIME_WAIT 状态</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/what-is-tcp-sliding-window/">TCP 可靠传输实现原理 - 2.滑动窗口 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="TCP 可靠传输实现原理 - 1.确认和重传"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

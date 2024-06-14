@@ -148,10 +148,16 @@
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ <span style="color:#24909d">ulimit</span> -HSn <span style="color:#3677a9">1048576</span>
 </span></span></code></pre></div><h4 id="2-永久性设置">2. 永久性设置</h4>
 <p>修改配置文件 <code>/etc/security/limits.conf</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 追加如下内容 (例如支持百万连接)</span>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ sudo vim /etc/security/limits.conf
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 追加如下内容 (例如支持百万连接)</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 重启永久生效</span>
 </span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 单个进程可以打开的最大进程数量</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#   表示可以针对不同用户配置不同的值 </span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#   当然实际情况中，网络应用一般会独享整个主机/容器所有资源</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 调整文件描述符限制</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 注意: 实际生效时会以两者中的较小值为准 (所以最好的方法就是保持两个值相同)</span>
 </span></span><span style="display:flex;"><span>* soft nofile <span style="color:#3677a9">1048576</span>
 </span></span><span style="display:flex;"><span>* hard nofile <span style="color:#3677a9">1048576</span>
 </span></span><span style="display:flex;"><span>root soft nofile <span style="color:#3677a9">1048576</span>
@@ -161,12 +167,16 @@
 <p>单个进程打开的文件描述符数量 不能超过 操作系统所有进程文件描述符数量 (<code>/proc/sys/fs/file-max</code>), 所以需要修改对应的值:</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ sudo vim /etc/sysctl.conf
 </span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 操作系统所有进程一共可以打开的文件数量</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 增加/修改以下内容</span>
-</span></span><span style="display:flex;"><span>fs.file-max = <span style="color:#3677a9">10485760</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 注意: 该设置只对非 root 用户进行限制, root 不受影响</span>
+</span></span><span style="display:flex;"><span>fs.file-max = <span style="color:#3677a9">16777216</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 执行 sysctl -p 生效</span>
-</span></span><span style="display:flex;"><span>$ sysctl -p
-</span></span></code></pre></div><h4 id="4-查看配置">4. 查看配置</h4>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 进程级别可以打开的文件数量</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 或者可以设置为一个比 soft nofile 和 hard nofile 略大的值</span>
+</span></span><span style="display:flex;"><span>fs.nr_open = <span style="color:#3677a9">16777216</span>
+</span></span></code></pre></div><p>运行 <code>sysctl -p</code> 命令生效，重启之后仍然有效。</p>
+<h4 id="4-查看配置">4. 查看配置</h4>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ cat /proc/sys/fs/file-nr
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 第一个数表示当前系统使用的文件描述符数</span>
@@ -176,10 +186,7 @@
 </span></span></code></pre></div><hr>
 <h2 id="linux-内核参数调优">Linux 内核参数调优</h2>
 <p>打开系统配置文件 <code>/etc/sysctl.conf</code>，增加 (或修改) 以下配置数据:</p>
-<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 操作系统所有进程一共可以打开的文件数量</span>
-</span></span><span style="display:flex;"><span>fs.file-max = <span style="color:#3677a9">16777216</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置系统的 TCP TIME_WAIT 数量，如果超过默认值则会被立即清除</span>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置系统的 TCP TIME_WAIT 数量，如果超过默认值则会被立即清除</span>
 </span></span><span style="display:flex;"><span>net.ipv4.tcp_max_tw_buckets = <span style="color:#3677a9">1048576</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 将处于 TIME_WAIT 状态的套接字被重用于新的连接</span>
@@ -255,7 +262,7 @@
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 缩短连接追踪表中处于 TIME_WAIT 状态连接的超时时间</span>
 </span></span><span style="display:flex;"><span>net.netfilter.nf_conntrack_tcp_timeout_time_wait = <span style="color:#3677a9">30</span>
-</span></span></code></pre></div><p>运行 <code>sysctl -p</code> 命令生效。</p>
+</span></span></code></pre></div><p>运行 <code>sysctl -p</code> 命令生效，重启之后仍然有效。</p>
 <h3 id="注意事项">注意事项</h3>
 <p>如果系统已经使用了参数 <code>net.ipv4.tcp_syncookies</code>, 参数 <code>net.ipv4.tcp_max_syn_backlog</code> 将自动失效，详情见 <a href="https://dbwu.tech/posts/network/what-is-ddos/#4-tcp-syn-cookies">之前的文章</a>。</p>
 <hr>
@@ -282,6 +289,12 @@ $$</p>
 <li>服务器内存大小有上限，一个 TCP 套接字会关联内存缓冲区、文件描述符等资源</li>
 </ol>
 <p>综上所述，一个服务端的 TCP 网络应用，可以支持的最大连接数量主要取决于其内存大小 (内核参数都已经调优的情况下)。</p>
+<h3 id="如何测试">如何测试？</h3>
+<p>在测试设备不充足的情况下，如何测试百万连接数量场景？核心思路：突破 TCP 四元组限制即可。</p>
+<ol>
+<li>客户端配置多个 IP, 这样每个 IP 地址就有大约 64K 个端口号可以使用，向服务端发起连接之前，绑定不同的端口即可</li>
+<li>服务端监听多个端口号，客户端只需要连接不同的服务端号口即可</li>
+</ol>
 <hr>
 <h2 id="reference">Reference</h2>
 <p><img src="https://dbwu.tech/images/network/tcp_1.png" alt="图片来源: https://time.geekbang.org/column/intro/100020901"></p>
@@ -312,7 +325,7 @@ $$</p>
     <ul>
         <li>
         
-            <a href="https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/"><i class="fa fa-chevron-circle-left"></i> 为什么 TCP 需要 TIME_WAIT 状态</a>
+            <a href="https://dbwu.tech/posts/network/what-is-tcp-congestion-control/"><i class="fa fa-chevron-circle-left"></i> TCP 可靠传输实现原理 - 3.拥塞控制</a>
         
         </li>
         <li>

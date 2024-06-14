@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>UDP VS TCP - 蛮荆</title>
+  <title>TCP VS UDP 区别 - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="UDP VS TCP" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="TCP VS UDP 区别" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/network/diff-between-tcp-and-udp/" /><meta property="article:section" content="posts" />
@@ -17,7 +17,7 @@
 
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="UDP VS TCP"/>
+<meta name="twitter:title" content="TCP VS UDP 区别"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.120.3">
@@ -104,7 +104,7 @@
 
 <article>
 
-    <h1>UDP VS TCP</h1>
+    <h1>TCP VS UDP 区别</h1>
 
     
       
@@ -133,6 +133,9 @@
 <li>由于 UDP 头部长度还不到 TCP 头部的一半，所以在同样大小的 (IP) 数据包里，UDP 包携带的净数据比 TCP 包多一些</li>
 <li>由于 UDP 没有 Seq 和 Ack 等概念，不需要维持一个连接，所以没有建立连接、关闭连接等额外的开销 (这个优势在 DNS 查询中体现得淋漓尽致)</li>
 </ul>
+<h2 id="性能">性能</h2>
+<p>TCP 传输数据时，会有建立连接的三次握手和断开连接的四次 (或者三次) 挥手开销，在短连接业务场景中，建立连接和断开连接占据相当一大部分比重，所以 UDP 的性能要比 TCP 高。</p>
+<p>但是如果在长连接业务场景中，当连接持续的时间很长，并且传输了大量的数据，TCP 的性能要比 UDP 高。</p>
 <h2 id="mtu">MTU</h2>
 <p>TCP 通信双方会告知对方自己的 MTU, 通信过程中发送的数据包大小以 MTU 较小的一方为基准。同时，TCP 可以避免应用数据被发送方 (网络层) 分片，因为应用数据到了传输层就会被 (TCP) 分片，然后再将切分好的小数据段交给网络层。其中，最大的分段大小称为 MSS（Maximum SegmentSize），它等于把 MTU 大小减去 IP 头部 + TCP 头部之后的大小，所以一个 MSS 正好可以装进一个 MTU 中。</p>
 <p><img src="https://dbwu.tech/images/network/epub_22653765_118.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
@@ -145,13 +148,19 @@ $$</p>
 <h2 id="重传">重传</h2>
 <p>TCP 要保证所有的数据包可以到达接受端 (传输可靠性)，所以必须要有重传机制 (细节本文先省略，后面专门写一篇文章来说一说)。</p>
 <p><img src="https://dbwu.tech/images/network/epub_22653765_114.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
-<p>UDP 没有重传机制，所以丢包需要由应用层来处理，如果某项操作中的一个 (或多个) 数据包丢包了，应用层需要重传该操作中的所有数据包。相比之下，TCP 只需要重传丢失的数据包即可。在海量连接场景中，一个操作可能需要数十个包来完成，UDP 的劣势就会被放大。</p>
+<p>UDP 没有重传机制，所以丢包需要由应用层来处理，所以健壮的 UDP 程序至少需要处理以下两个问题:</p>
+<ul>
+<li>发送方在 RTO 时间内，没有收到接收方确认应答，应该重传报文</li>
+<li>接收方确保确认应答和请求是正确匹配的</li>
+</ul>
+<p>如果某项操作中的一个 (或多个) 数据包丢包了，应用层需要重传该操作中的所有数据包。相比之下，TCP 只需要重传丢失的数据包即可。在海量连接场景中，一个操作可能需要数十个包来完成，UDP 的劣势就会被放大。</p>
 <p>但是在理想的网络传输下 (例如内网)，数据传输 (几乎) 不会丢包，UDP 要优于 TCP。</p>
 <h2 id="不安全因素">不安全因素</h2>
 <p>网络层的数据分片机制存在弱点 (缺陷)，会成为黑客的攻击目标。接收方组装分片的依据是，每个包里都有 <code>More fragments = 1</code> 的 Flag, 1 表示后续还有分片，0 则表示这是最后一个分片。</p>
 <p>如果黑客持续快速地发送 <code>More fragments = 1</code> 的 UDP 包，接收方永远无法将这些包组装起来，最终内存耗尽。</p>
 <h2 id="多播和广播">多播和广播</h2>
 <p>UDP 还有一个明显的优势: <strong>支持多播和广播</strong>，对于需要在内网中通知多个节点的场景，非常方便和高效。</p>
+<p>而如果使用 TCP 实现多播和广播，就需要多个独立的连接才可以完成。</p>
 <hr>
 <h2 id="udp-优化">UDP 优化</h2>
 <ol>
@@ -213,7 +222,7 @@ $$</p>
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="UDP VS TCP"
+        data-term="TCP VS UDP 区别"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"
