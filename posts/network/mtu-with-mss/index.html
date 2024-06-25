@@ -1,0 +1,406 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>网络基础: MTU 和 MSS - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="网络基础: MTU 和 MSS" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/mtu-with-mss/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-02-01T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-02-01T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="网络基础: MTU 和 MSS"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>网络基础: MTU 和 MSS</h1>
+
+    
+      
+    
+
+    
+      
+
+    
+
+    <ul>
+<li><a href="#%E6%A6%82%E8%BF%B0">概述</a></li>
+<li><a href="#mtu-%E6%98%AF%E4%BB%80%E4%B9%88">MTU 是什么？</a></li>
+<li><a href="#mtu-%E6%A0%87%E5%87%86%E5%A4%A7%E5%B0%8F">MTU 标准大小</a></li>
+<li><a href="#mss-%E6%98%AF%E4%BB%80%E4%B9%88">MSS 是什么？</a></li>
+<li><a href="#%E5%A6%82%E4%BD%95%E7%A1%AE%E5%AE%9A%E6%98%AF%E5%90%A6%E5%88%86%E7%89%87">如何确定是否分片？</a></li>
+<li><a href="#mtu-%E5%BE%88%E9%87%8D%E8%A6%81">MTU 很重要</a></li>
+<li><a href="#%E5%A6%82%E4%BD%95%E9%80%82%E9%85%8D-mss-">如何适配 MSS ?</a>
+<ul>
+<li><a href="#tcp-adjust-mss">TCP Adjust-MSS</a></li>
+</ul>
+</li>
+<li><a href="#%E5%A6%82%E4%BD%95%E8%8E%B7%E5%8F%96-mtu-%E5%80%BC-">如何获取 MTU 值 ?</a>
+<ul>
+<li><a href="#%E6%9F%A5%E7%9C%8B%E6%9C%AC%E6%9C%BA-mtu">查看本机 MTU</a></li>
+<li><a href="#%E6%9F%A5%E7%9C%8B%E7%BD%91%E7%BB%9C%E9%93%BE%E8%B7%AF%E4%B8%AD%E7%9A%84-mtu">查看网络链路中的 MTU</a>
+<ul>
+<li><a href="#1-tracepath-%E5%91%BD%E4%BB%A4">1. tracepath 命令</a></li>
+<li><a href="#2-ping-%E5%91%BD%E4%BB%A4">2. ping 命令</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#path-mtu-discovery">Path MTU Discovery</a>
+<ul>
+<li><a href="#%E5%B1%80%E9%99%90%E6%80%A7">局限性</a></li>
+<li><a href="#linux-%E5%8F%82%E6%95%B0">Linux 参数</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="概述">概述</h2>
+<p><img src="https://dbwu.tech/images/network/mtu_2.png" alt=""></p>
+<blockquote>
+<p>MTU 属于链路层，计算大小时会包括 IP 数据包的头部和数据。</p>
+<p>MSS 属于传输层，计算大小时仅包括 TCP 段的数据部分，不包括 TCP 和 IP 头部。</p>
+<p>UDP 不考虑 MSS，但也应该注意 MTU 限制 (由应用层完成)，避免数据报过大而导致 IP 层分片。</p>
+</blockquote>
+<h2 id="mtu-是什么">MTU 是什么？</h2>
+<p><strong>MTU</strong>（Maximum Transmission Unit，最大传输单元）是指网络层在一次传输中能够传输的最大数据包（或帧）的大小，以字节为单位。</p>
+<p>MTU 决定了单个网络帧的最大大小，超过这个大小的数据必须被网络层分片传输，所以正确配置 MTU 可以提高网络效率，减少分片带来的额外开销，避免过大的数据包在传输过程中被网络链路中节点丢弃。</p>
+<blockquote>
+<p>发送数据包的大小是由 MTU 值较小的一方决定，如果数据包长度超过了接收方的 MSS, 就会被接受方直接丢弃。</p>
+</blockquote>
+<h2 id="mtu-标准大小">MTU 标准大小</h2>
+<p>MTU 的大小根据以太网的标准来设置，以太网标准规定，一个网络帧最大为 1518 字节，去掉以太网头部的 18 字节后，剩余的就是以太网 MTU 的大小。</p>
+<p>$$
+MTU 标准大小 = 1500 字节
+$$</p>
+<p>Wi-Fi 同样为 1500 字节。</p>
+<h2 id="mss-是什么">MSS 是什么？</h2>
+<p>MTU 表示一个数据帧的大小，但是一个数据帧中不可能全部是应用数据，还需要有传输层和网络层的头部，这样才能保证数据包正常并且正确地从发送方到达接收方。</p>
+<p><strong>MSS</strong>（Maximum Segment Size，最大报文段长度）是指在 TCP连接中，单个 TCP 报文段中数据部分的最大大小，以字节为单位。MSS 的主要作用是限制 TCP 报文段的大小，确保数据能够在网络路径上不被分片地传输，从而提高网络传输效率和性能。</p>
+<p><img src="https://dbwu.tech/images/network/epub_907755_138.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<blockquote>
+<p>MSS 由 TPC 连接的双方在 TCP 三次握手过程中协商得出的，由 MSS 值较小的一方决定。</p>
+</blockquote>
+<p>MSS 不包括 TCP 头部和 IP 头部，它指实际数据的大小 (也就是具体的应用数据)。</p>
+<p>$$
+MSS = MTU - IP 头部大小 - TCP 头部大小
+$$</p>
+<p>例如典型的 IPv4 中</p>
+<p>$$
+MSS = 1500 − 20 − 20 = 1460
+$$</p>
+<h2 id="如何确定是否分片">如何确定是否分片？</h2>
+<p>当发送方发给接收方的数据包 (例如 2500 字节大小) 经过路由器时，如果超过路由器的 MTU 大小 (例如路由器 MTU 只有 1500)，此时路由器面临两个选择:</p>
+<ul>
+<li>直接将数据包丢掉 (丢包)</li>
+<li>将数据包分片后再传输</li>
+</ul>
+<p>路由器如何做出选择，取决于数据包在网络层是否设置了 DF（Don&rsquo;t fragment）标志:</p>
+<ul>
+<li>如果设置了，直接丢弃数据包</li>
+<li>如果没设置，数据包被分片再传输</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果通信中出现类似如下的报错 (只丢大包)</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 说明很可能就是 MTU 过大导致的</span>
+</span></span><span style="display:flex;"><span>Packetneeds to be fragmented but DF <span style="color:#24909d">set</span>
+</span></span></code></pre></div><hr>
+<h2 id="mtu-很重要">MTU 很重要</h2>
+<p>为什么说 MTU 很重要？</p>
+<p>因为如果 MTU 设置不正确 (一般情况下是过大)，<strong>IP 层会数据分片，然后引起分片重组，引发延迟，延迟可能会引发丢包和 (TCP) 重传，丢包同样会引起 (TCP) 重传</strong>，最终进入网络质量的恶性循环。</p>
+<hr>
+<h2 id="如何适配-mss-">如何适配 MSS ?</h2>
+<p>如果 MSS 设置不合理，就会引发丢包和分片:</p>
+<ul>
+<li>丢包意味着重传 (尤其在 TCP 中影响更恶劣)，堪称网络性能第一杀手</li>
+<li>分片意味着传输效率降低 (需要数据分片、数组重组会带来额外的开销)</li>
+</ul>
+<p>所以通信双方协商好 MSS 至关重要。</p>
+<blockquote>
+<p>MSS 的大小是由通信双方 MSS 值较小的一方决定。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/network/mtu_1.png" alt=""></p>
+<p>如图所示 (Wireshark 抓包)，TCP 三次握手建立连接时，第一个和第二个包中，发送方和接收方分别声明了自己的 MSS:</p>
+<ul>
+<li>发送方声明了自己的 MSS = 1460 (字节)</li>
+<li>接收方声明了自己的 MSS = 1412 (字节)，可以看出接收方的网络接入比较复杂 (在传输过程中会增加不同的报文头，导致 MSS 会不断变大)，所以 MSS 给的较为保守</li>
+</ul>
+<p>三次握手之后，发送方知道自己的 MTU 比接收方的要大，如果直接发送 1460 字节的包，很可能在网络链路中的某个节点被分片或者丢包了，所以在接下来传输数据时，发送方会将自己的 MSS 调整为 1412。</p>
+<p><strong>但是需要注意的是</strong>: 如果网络链路中的某个节点的 MTU 比发送方和接收方的更小，那么数据包还是会被分片。</p>
+<h3 id="tcp-adjust-mss">TCP Adjust-MSS</h3>
+<p>TCP Adjust-MSS 用于动态修户 TCP 报文的 MSS 值，通常配置在防火墙、路由器，解决网络链路中 MTU 自动适配问题。</p>
+<hr>
+<h2 id="如何获取-mtu-值-">如何获取 MTU 值 ?</h2>
+<h3 id="查看本机-mtu">查看本机 MTU</h3>
+<p>Linux 中获取 MTU 值大小:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ifconfig | grep -i mtu
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>docker0: <span style="color:#40ffff">flags</span>=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu <span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>eth0: <span style="color:#40ffff">flags</span>=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu <span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>lo: <span style="color:#40ffff">flags</span>=73&lt;UP,LOOPBACK,RUNNING&gt;  mtu <span style="color:#3677a9">65536</span>
+</span></span></code></pre></div><p>从输出结果中可以看到，MTU 值和网卡设备是关联的，所以每个网卡设备的 MTU 值大小是不同的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看某个具体网卡的 MTU</span>
+</span></span><span style="display:flex;"><span>$ ifconfig eth0 | grep -i mtu
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>eth0: <span style="color:#40ffff">flags</span>=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt;  mtu <span style="color:#3677a9">1500</span>
+</span></span></code></pre></div><h3 id="查看网络链路中的-mtu">查看网络链路中的 MTU</h3>
+<h4 id="1-tracepath-命令">1. tracepath 命令</h4>
+<p>Linux 中有一个专用的命令: tracepath</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ tracepath dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出主机到目标地址的每一跳</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 并显示路径中的最小 MTU 值</span>
+</span></span><span style="display:flex;"><span> 1?: [LOCALHOST]                                         pmtu <span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span> 1:  10.90.89.46                                           0.500ms
+</span></span><span style="display:flex;"><span> 1:  10.90.91.46                                           0.545ms
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>14:  172.70.212.4                                        191.432ms asymm <span style="color:#3677a9">15</span>
+</span></span><span style="display:flex;"><span>     Too many hops: pmtu <span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>     Resume: pmtu <span style="color:#3677a9">1500</span>
+</span></span></code></pre></div><h4 id="2-ping-命令">2. ping 命令</h4>
+<p>ping 命令 (Linux 环境) 的几个参数说明:</p>
+<ul>
+<li><code>M do</code>：设置不允许分片</li>
+<li><code>s</code>   ：设置数据包的有效负载大小 (不包括 ICMP 头部的 8 字节）</li>
+</ul>
+<p>ping 命令采用 ICMP 协议来完成探测，ICMP 头大小为 8 字节，IP 头大小为 20 字节，如果网络链路的 MTU 为 1500 字节，那么单个数据包最大长度等于:</p>
+<p>$$
+1500 - 20 - 8 = 1472
+$$</p>
+<p>首先，先设置数据包大小为 1472，看看是否可以连通:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -M <span style="color:#6ab825;font-weight:bold">do</span> -s <span style="color:#3677a9">1472</span> -c <span style="color:#3677a9">3</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (104.21.71.166) 1472(1500) bytes of data.
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1480</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">50</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">200</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1480</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">50</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">200</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1480</span> bytes from 104.21.71.166 (104.21.71.166): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">3</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">50</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">200</span> ms
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> received, 0% packet loss, <span style="color:#24909d">time</span> 2002ms
+</span></span><span style="display:flex;"><span>rtt min/avg/max/mdev = 200.285/200.317/200.365/0.367 ms
+</span></span></code></pre></div><p>通过输出结果可以看到，数据包大小为 1472 时，可以正常连通。</p>
+<p>接下来，将数据包大小增加，设置为 1473，看看是否可以连通:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -M <span style="color:#6ab825;font-weight:bold">do</span> -s <span style="color:#3677a9">1473</span> -c <span style="color:#3677a9">3</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (172.67.147.110) 1473(1501) bytes of data.
+</span></span><span style="display:flex;"><span>ping: <span style="color:#24909d">local</span> error: Message too long, <span style="color:#40ffff">mtu</span>=<span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>ping: <span style="color:#24909d">local</span> error: Message too long, <span style="color:#40ffff">mtu</span>=<span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>ping: <span style="color:#24909d">local</span> error: Message too long, <span style="color:#40ffff">mtu</span>=<span style="color:#3677a9">1500</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">0</span> received, +3 errors, 100% packet loss, <span style="color:#24909d">time</span> 1999ms
+</span></span></code></pre></div><p>通过输出结果可以看到，数据包超过了 MTU，而且不允许分片，所以连通失败了。</p>
+<p>最后，设置允许数据分片，看看是否可以连通:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -s <span style="color:#3677a9">1473</span> -c <span style="color:#3677a9">3</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (172.67.147.110) 1473(1501) bytes of data.
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1481</span> bytes from 172.67.147.110 (172.67.147.110): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">207</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1481</span> bytes from 172.67.147.110 (172.67.147.110): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">207</span> ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1481</span> bytes from 172.67.147.110 (172.67.147.110): <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">3</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=<span style="color:#3677a9">207</span> ms
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> received, 0% packet loss, <span style="color:#24909d">time</span> 2000ms
+</span></span><span style="display:flex;"><span>rtt min/avg/max/mdev = 207.504/207.513/207.522/0.007 ms
+</span></span></code></pre></div><p>通过输出结果可以看到，虽然数据包超过了 MTU，但是允许分片，所以连通依然可以成功。</p>
+<hr>
+<h2 id="path-mtu-discovery">Path MTU Discovery</h2>
+<p>PMTUD（Path MTU Discovery）是一种用于确定从源到目标地路径上的最大传输单元（MTU）的方法。</p>
+<p>PMTUD 的基本思想是通过逐步减小数据包大小，确定路径中最小的 MTU 值，具体的工作过程：</p>
+<ol>
+<li><strong>发送初始数据包</strong>：</li>
+</ol>
+<p>源主机首先假设网络链路的最小 MTU 等于自己的 MTU，发送一个不允许分片（Don&rsquo;t Fragment，IP 报文中的 DF 标志）的大数据包。</p>
+<ol start="2">
+<li><strong>ICMP &ldquo;需要分片&rdquo; 消息</strong>：</li>
+</ol>
+<p>如果数据包在网络链路的某个转发节点因为 MTU 过大 (且不允许分片) 而无法通过，就会直接丢弃数据包并返回一个 ICMP Fragmentation Needed 消息给源主机，并指明路径中此时的 MTU 值。</p>
+<ol start="3">
+<li><strong>调整数据包大小</strong>：</li>
+</ol>
+<p>源主机接收到 ICMP 消息后，更新 MTU 值，并重发较小的、不允许分片的数据包。</p>
+<ol start="4">
+<li><strong>重复上述步骤</strong>：</li>
+</ol>
+<p>源主机重复发送不允许分片的数据包，并根据 ICMP 消息不断调整数据包大小，直到数据包成功到达目的地。</p>
+<p>最后一次发送的数据包的 MTU 值，也就是整个网络链路中的最小 MTU 值。</p>
+<h3 id="局限性">局限性</h3>
+<p>PMTUD 依赖 ICMP 协议进行探测，但是 ICMP 会被很多网络链路中的设备禁用，所以整体上可用性较差，改进的方法是 PLPMTUD（Packetization Layer Path MTU Discovery），不依赖 ICMP 消息，而是通过传输层协议（如 TCP）的反馈机制来发现网络链路的 MTU。</p>
+<h3 id="linux-参数">Linux 参数</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ sysctl net.ipv4.ip_no_pmtu_disc
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>net.ipv4.ip_no_pmtu_disc = <span style="color:#3677a9">0</span>
+</span></span></code></pre></div><hr>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/tools/netstat/"><i class="fa fa-chevron-circle-left"></i> netstat 命令常用操作</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/switch/">网络基础: 交换机 (拾遗补缺) <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="网络基础: MTU 和 MSS"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

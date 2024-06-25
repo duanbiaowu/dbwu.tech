@@ -1,0 +1,356 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>ping 命令常用操作 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="ping 命令常用操作" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/linux/tools/ping/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-01-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-01-23T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="ping 命令常用操作"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>ping 命令常用操作</h1>
+
+    
+      
+<p>
+    <span>2017-01-23</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/linux-%E5%91%BD%E4%BB%A4">Linux 命令</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="ping-命令作用">ping 命令作用</h2>
+<p><code>ping</code> 命令是网络管理中最常用的工具之一，用于测试网络连接的可达性。 通过向目标主机发送 <a href="https://dbwu.tech/posts/network/how-icmp-works/">ICMP请求</a>，并等待目标主机的响应，判断目标主机是否在线以及网络的延迟情况。</p>
+<p><code>ping</code> 基于 <a href="https://dbwu.tech/posts/network/how-icmp-works/">ICMP 协议</a>，通过计算 ICMP 回显响应报文与 ICMP 回显请求报文的时间差，来获得往返延时。这个过程并不需要特殊认证，常被很多网络攻击利用，比如端口扫描工具 nmap、组包工具 hping3 等等。为了避免这些问题，很多网络服务会把 ICMP 禁止掉，这种情况下就无法用 ping 测试网络服务的可用性和往返延时。</p>
+<p>本文展示一些 ping 命令的常用操作。</p>
+<hr>
+<h2 id="基础用法">基础用法</h2>
+<h3 id="1-基本-ping">1. 基本 ping</h3>
+<p>测试目标主机的连通性：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 第一部分，是每个 ICMP 请求的信息，包括 ICMP 序列号（icmp_seq）、TTL（生存时间，或者跳数）以及往返延时（RTT）</span>
+</span></span><span style="display:flex;"><span>ping dbwu.tech (104.21.71.166): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">0</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=220.515 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=215.660 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=223.046 ms
+</span></span><span style="display:flex;"><span>^C
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 第二部分，则是 ICMP 请求的汇总</span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> packets received, 0.0% packet loss
+</span></span><span style="display:flex;"><span>round-trip min/avg/max/stddev = 215.660/219.740/223.046/3.065 ms
+</span></span></code></pre></div><p>通过输出结果的统计数据，可以得到本机和目标主机的网络延迟 (最小值/平均值/最大值) 以及丢包情况。</p>
+<p>除了使用 域名 作为参数之外，也可以使用 IP 地址作为参数:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping 8.8.8.8
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>ping 8.8.8.8 (8.8.8.8): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 8.8.8.8: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">0</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">52</span> <span style="color:#40ffff">time</span>=60.760 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 8.8.8.8: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">52</span> <span style="color:#40ffff">time</span>=75.570 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 8.8.8.8: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">52</span> <span style="color:#40ffff">time</span>=60.359 ms
+</span></span><span style="display:flex;"><span>^C
+</span></span><span style="display:flex;"><span>--- 8.8.8.8 ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> packets received, 0.0% packet loss
+</span></span><span style="display:flex;"><span>round-trip min/avg/max/stddev = 60.359/65.563/75.570/7.078 ms
+</span></span></code></pre></div><h3 id="2-限制-ping-次数">2. 限制 ping 次数</h3>
+<p>默认情况下，<code>ping</code> 会一直发送请求，直到 (Ctrl + C) 手动停止，这时可以使用 <code>-c</code> 选项限制 ping 的次数：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 指定发送 3 个 ping 请求，然后停止</span>
+</span></span><span style="display:flex;"><span>$ ping -c <span style="color:#3677a9">3</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span></code></pre></div><h3 id="3-指定-ping-请求时间的间隔">3. 指定 ping 请求时间的间隔</h3>
+<p>使用 <code>-i</code> 选项可以指定 ping 请求之间的间隔时间（以秒为单位）：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -i <span style="color:#3677a9">3</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 每两个 ping 请求之间等待 2 秒</span>
+</span></span></code></pre></div><h3 id="4-设置-ping-请求超时时间">4. 设置 ping 请求超时时间</h3>
+<p>使用 <code>-W</code> 选项可以设置等待响应的超时时间（以秒为单位）：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置超时的时间为 3 秒</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 3 秒之后，输出请求超时</span>
+</span></span><span style="display:flex;"><span>$ ping -W <span style="color:#3677a9">3</span> google.com
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>PING google.com (142.251.8.100): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span>Request timeout <span style="color:#6ab825;font-weight:bold">for</span> icmp_seq <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>Request timeout <span style="color:#6ab825;font-weight:bold">for</span> icmp_seq <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>Request timeout <span style="color:#6ab825;font-weight:bold">for</span> icmp_seq <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span>^C
+</span></span><span style="display:flex;"><span>--- google.com ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">4</span> packets transmitted, <span style="color:#3677a9">0</span> packets received, 100.0% packet loss
+</span></span></code></pre></div><h3 id="5-修改数据包大小">5. 修改数据包大小</h3>
+<p>使用 <code>-s</code> 选项可以设置 ICMP 数据包的大小（以字节为单位）：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -s <span style="color:#3677a9">0</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (172.67.147.110): <span style="color:#3677a9">0</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">8</span> bytes from 172.67.147.110: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">0</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">50</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">8</span> bytes from 172.67.147.110: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">50</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">8</span> bytes from 172.67.147.110: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">50</span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="6-使用-ipv6">6. 使用 IPv6</h3>
+<p>使用 <code>ping6</code>（在某些操作系统上为 <code>ping -6</code>）来 ping IPv6 地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping6 google.com
+</span></span></code></pre></div><h3 id="7-持续-ping">7. 持续 ping</h3>
+<p>在 Windows 上，可以使用 <code>-t</code> 选项来持续 ping 目标，直到手动停止（Ctrl+C）：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -t dbwu.tech
+</span></span></code></pre></div><p>Linux 和 Mac 默认情况下 <code>ping</code> 会持续运行，直到手动停止，所以不需要设置该参数。</p>
+<h3 id="8-显示-ping-统计信息">8. 显示 ping 统计信息</h3>
+<p>使用 <code>-q</code> 选项可以使 ping 只在开始和结束时显示统计信息，减少屏幕输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -c <span style="color:#3677a9">3</span> -q dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (104.21.71.166): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> packets received, 0.0% packet loss
+</span></span><span style="display:flex;"><span>round-trip min/avg/max/stddev = 215.278/235.462/286.484/29.647 ms
+</span></span></code></pre></div><h3 id="9-ping-广播地址">9. ping 广播地址</h3>
+<p>ping 广播地址来测试局域网内所有主机的联通性：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -b 192.168.1.255
+</span></span></code></pre></div><p>注意：ping 广播地址可能被网络管理员禁用，防止网络滥用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -b 192.168.31.255
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># ping 广播被禁用</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>ping: bad interface name
+</span></span></code></pre></div><hr>
+<h3 id="高级用法">高级用法</h3>
+<h3 id="1-设置-ping-的-ttl-值">1. 设置 ping 的 TTL 值</h3>
+<p>使用 <code>-t</code> 选项（Windows）, <code>-TTL</code> 选项（Linux）,  <code>-m</code> 选项 (Mac) 来设置 TTL（生存时间）值：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Mac</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置 TTL 为 1, 显然会触发 ICMP Time to live exceeded</span>
+</span></span><span style="display:flex;"><span>$ ping -m <span style="color:#3677a9">1</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (104.21.71.166): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">92</span> bytes from 192.168.31.1: Time to live exceeded
+</span></span><span style="display:flex;"><span>Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src      Dst
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">4</span>  <span style="color:#3677a9">5</span>  <span style="color:#3677a9">00</span> <span style="color:#3677a9">5400</span> <span style="color:#3677a9">8544</span>   <span style="color:#3677a9">0</span> <span style="color:#3677a9">0000</span>  <span style="color:#3677a9">01</span>  <span style="color:#3677a9">01</span> a477 192.168.31.138  104.21.71.166
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Request timeout <span style="color:#6ab825;font-weight:bold">for</span> icmp_seq <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置 TTL 为 64</span>
+</span></span><span style="display:flex;"><span>$ ping -m <span style="color:#3677a9">64</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 正常工作</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (104.21.71.166): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">0</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=313.260 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=216.286 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=215.767 ms
+</span></span><span style="display:flex;"><span>^C
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">3</span> packets transmitted, <span style="color:#3677a9">3</span> packets received, 0.0% packet loss
+</span></span><span style="display:flex;"><span>round-trip min/avg/max/stddev = 215.767/248.438/313.260/45.837 ms
+</span></span></code></pre></div><h3 id="2-强制不进行-dns-解析">2. 强制不进行 DNS 解析</h3>
+<p>使用 <code>-n</code> 选项可以禁止 ping 进行 DNS 解析，仅显示 IP 地址：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -n -c <span style="color:#3677a9">5</span> dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>PING dbwu.tech (104.21.71.166): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">0</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=222.654 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=246.398 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=267.387 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">3</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=288.952 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 104.21.71.166: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">4</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">51</span> <span style="color:#40ffff">time</span>=310.073 ms
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>--- dbwu.tech ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span> packets transmitted, <span style="color:#3677a9">5</span> packets received, 0.0% packet loss
+</span></span><span style="display:flex;"><span>round-trip min/avg/max/stddev = 222.654/267.093/310.073/30.752 ms
+</span></span></code></pre></div><h3 id="3-指定网卡">3. 指定网卡</h3>
+<p>在运行多个网卡的主机中，可以使用 <code>-I</code> 选项（Linux）指定网卡进行 ping 操作：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -I eth0 dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span></code></pre></div><h3 id="4-改变数据包的时间戳格式">4. 改变数据包的时间戳格式</h3>
+<p>使用 <code>-D</code> 选项（Linux）可以在每个 ping 的输出中显示时间戳：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ ping -D dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span></code></pre></div>
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/tools/dns/"><i class="fa fa-chevron-circle-left"></i> DNS 命令行工具</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/tools/netstat/">netstat 命令常用操作 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="ping 命令常用操作"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

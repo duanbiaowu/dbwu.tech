@@ -130,8 +130,11 @@
 <p><img src="../../images/network/arp_2.png" alt=""></p>
 <p>主机 (客户端) 和三层网络设备 (例如路由器，三层交换机) 上会维护一张 ARP 表，用于存储 IP 地址和 Mac 地址的映射关系，每一个表项表示一个 IP 地址到 Mac 地址的转换关系。</p>
 <h3 id="工作层次">工作层次</h3>
+<h4 id="第一种看法">第一种看法</h4>
+<p>ARP 属于二层协议，工作在数据链路层，因为 ARP 无法脱离广播域的限制。</p>
+<h4 id="第二种看法">第二种看法</h4>
 <p><strong>ARP 协议工作在 OSI (或 TCP/IP) 模型的第二层（数据链路层）和第三层（网络层）之间</strong>，也许这个结论会颠覆你对网络分层的已有认知，但是如果分析 ARP 的工作方式之后，你会发现情况确实如此。</p>
-<p>ARP 不属于二层网络，不能把数据发送到目标主机，因为 ARP 报文数据是包装在二层以太网帧中的，同时 ARP 也不属于三层网络，因为它不具备三层网络中的路由寻址功能。</p>
+<p>ARP 不属于二层网络，不能把数据发送到目标主机，因为 ARP 报文数据是包装在二层以太网帧中的，同时 ARP 也不属于三层网络，因为它不具备三层网络中的路由寻址功能 (无法跨越网段)。</p>
 <p>具体来说，ARP 通过 ARP 请求和 ARP 应答，将网络层的逻辑地址（IP 地址）映射到数据链路层的物理地址（Mac 地址）。</p>
 <p><img src="https://dbwu.tech/images/network/Figure7.3.png" alt="ARP 请求和应答示例"></p>
 <h2 id="工作流程">工作流程</h2>
@@ -319,6 +322,11 @@
 <li>通告新的 Mac 地址: 主机更换了网卡，这时会产生新的 Mac 地址，为了通知网络中的其他主机更新 ARP 表项，主机会发送一个免费的 ARP 请求</li>
 </ol>
 <hr>
+<h2 id="arp-anti-spoofing">ARP Anti-Spoofing</h2>
+<p>ARP 欺骗（ARP Spoofing）是一种网络攻击技术，攻击者伪造 ARP 消息，将其 Mac 地址关联到其他设备的 IP 地址，从而在网络上拦截、修改或阻断数据传输。</p>
+<p>为了防止 ARP 欺骗，可以使用 ARP Anti-Spoofing 技术来保护网络安全，交换机会对 ARP 报文进行检查，一旦发现 IP 与 Mac 地址有伪造的情况，立马丢包甚至关闭端口。</p>
+<p>当用户手动修改 IP 时，其实已经通过 DHCP Release 报文将自动获取到的的 IP 释放了。所以当交换机检查到该 IP 已经被释放后，任何非 DHCP 数据报文，全部拒绝丢掉。</p>
+<p>&ndash;</p>
 <h2 id="reference">Reference</h2>
 <ul>
 <li><a href="https://info.support.huawei.com/info-finder/encyclopedia/zh/ARP.html">ARP</a></li>

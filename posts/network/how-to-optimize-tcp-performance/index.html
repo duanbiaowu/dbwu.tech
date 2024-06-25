@@ -186,13 +186,14 @@
 </span></span></code></pre></div><hr>
 <h2 id="linux-内核参数调优">Linux 内核参数调优</h2>
 <p>打开系统配置文件 <code>/etc/sysctl.conf</code>，增加 (或修改) 以下配置数据:</p>
-<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置系统的 TCP TIME_WAIT 数量，如果超过默认值则会被立即清除</span>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置系统的 TCP TIME_WAIT 数量，如果超过该值</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 不需要等待 2MSL，直接关闭</span>
 </span></span><span style="display:flex;"><span>net.ipv4.tcp_max_tw_buckets = <span style="color:#3677a9">1048576</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 将处于 TIME_WAIT 状态的套接字被重用于新的连接</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 将处于 TIME_WAIT 状态的套接字重用于新的连接</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果新连接的时间戳 大于 旧连接的最新时间戳</span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 重用该状态下的现有 TIME_WAIT 连接用于 出站 (服务端，或者称为接收连接的一端) 的链接</span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 对于入站 (客户端，或者称为发起连接的一端) 连接是没有作用</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 重用该状态下的现有 TIME_WAIT 连接，这两个参数主要针对接收方 (服务端)</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 对于发送方 (客户端) ，这两个参数没有任何作用</span>
 </span></span><span style="display:flex;"><span>net.ipv4.tcp_tw_reuse = <span style="color:#3677a9">1</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 必须配合使用</span>
 </span></span><span style="display:flex;"><span>net.ipv4.tcp_timestamps = <span style="color:#3677a9">1</span>
@@ -228,7 +229,6 @@
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 决定了在发送 FIN（Finish）包之后，TCP 连接保持在 FIN-WAIT-2 状态的时间</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 主要作用是在 TCP 连接关闭时，为了等待对方关闭连接而保留资源的时间</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果超过这个时间仍未收到 FIN 包，连接将被关闭</span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># RFC 1122 建议对应的超时时间不低于 100s，即至少为 8</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 更快地检测和释放无响应的连接，释放资源</span>
 </span></span><span style="display:flex;"><span>net.ipv4.tcp_fin_timeout = <span style="color:#3677a9">15</span>
 </span></span><span style="display:flex;"><span>
@@ -281,6 +281,10 @@ $$</p>
 <p>其中服务端 IP、服务端端口已经固定了 (就是监听的 TCP 程序)，所以理论的连接数量上限就取决于 (客户端 IP * 客户端端口) 的组合数量了。</p>
 <p>$$
 客户端 IP 数量 * 客户端端口数量 = 2^{32} * 2^{16} = 2^{48}
+$$</p>
+<p>当然如果服务端程序监听 1 ～ 65535 的所有端口号，理论的连接数量上限就变为:</p>
+<p>$$
+2^{32} * 2^{16} * 2^{16} = 2^{64}
 $$</p>
 <p>当然实际情况下肯定达不到这样的上限数量，原因有三:</p>
 <ol>

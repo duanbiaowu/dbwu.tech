@@ -276,7 +276,140 @@
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl --header <span style="color:#ed9d13">&#34;Content-Type:application/json&#34;</span> https://dbwu.tech
 </span></span></code></pre></div><h3 id="设置认证">设置认证</h3>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl --user username:password https://dbwu.tech
-</span></span></code></pre></div>
+</span></span></code></pre></div><h3 id="设置证书-代理">设置证书 (代理)</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 以特定证书访问某网站</span>
+</span></span><span style="display:flex;"><span>$ curl -vvvv --cacert /path/to/root_ca.cer https://dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 以特定代理访问某网站</span>
+</span></span><span style="display:flex;"><span>$ curl -vvvv --proxy http://127.0.0.1:8080 https://dbwu.tech
+</span></span></code></pre></div><h3 id="访问-socket">访问 Socket</h3>
+<p>例如 Nginx 监听地址如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>server {
+</span></span><span style="display:flex;"><span>        listen unix:/tmp/nginx.sock;
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><!-- raw HTML omitted -->
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># --unix-socket 指定 unix socket 文件路径</span>
+</span></span><span style="display:flex;"><span>$ curl --unix-socket /tmp/nginx.sock http://localhost/path
+</span></span></code></pre></div><h3 id="分析-http-请求链路各阶段耗时">分析 HTTP 请求链路各阶段耗时</h3>
+<p>一个 HTTP 请求，会涉及到网络各层的工作时间，<code>-w</code> 参数允许用户自定义输出格式，可以显示请求和响应的各种信息。</p>
+<p>下面是常用的 <code>curl -w</code> 参数选项：</p>
+<ul>
+<li><strong><code>%{url_effective}</code></strong>：请求 URL</li>
+<li><strong><code>%{http_code}</code></strong>：HTTP 响应状态码</li>
+<li><strong><code>%{http_connect}</code></strong>：从代理收到的 HTTP 响应代码</li>
+<li><strong><code>%{time_total}</code></strong>：完成请求的总时间，以秒为单位</li>
+<li><strong><code>%{time_namelookup}</code></strong>：DNS 解析花费时间，以秒为单位</li>
+<li><strong><code>%{time_connect}</code></strong>：TCP 连接建立所用时间，以秒为单位</li>
+<li><strong><code>%{time_appconnect}</code></strong>：SSL/SSH 握手所用时间，以秒为单位</li>
+<li><strong><code>%{time_pretransfer}</code></strong>：从客户端发起请求到准备传输数据所用时间，以秒为单位</li>
+<li><strong><code>%{time_starttransfer}</code></strong>：从客户端发起请求到开始接收响应的时间，以秒为单位</li>
+<li><strong><code>%{size_request}</code></strong>：请求的字节大小</li>
+<li><strong><code>%{size_upload}</code></strong>：上传的字节大小</li>
+<li><strong><code>%{size_download}</code></strong>：下载的字节大小</li>
+<li><strong><code>%{speed_download}</code></strong>：平均下载速度，以字节每秒为单位</li>
+<li><strong><code>%{speed_upload}</code></strong>：平均上传速度，以字节每秒为单位</li>
+<li><strong><code>%{content_type}</code></strong>：响应的 Content-Type</li>
+</ul>
+<p>下面是一些使用 <code>-w</code> 参数的示例：</p>
+<h4 id="1-显示-http-状态码">1. 显示 HTTP 状态码</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>$ curl -w <span style="color:#ed9d13">&#34;HTTP Status Code: %{http_code}\n&#34;</span> -o /dev/null -s https://www.dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>HTTP Status Code: <span style="color:#3677a9">200</span>
+</span></span></code></pre></div><h4 id="2-显示请求总时间和-dns-解析时间">2. 显示请求总时间和 DNS 解析时间</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>$ curl -w <span style="color:#ed9d13">&#34;Total Time: %{time_total}\nDNS Lookup Time: %{time_namelookup}\n&#34;</span> -o /dev/null -s https://www.dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Total Time: 0.382818
+</span></span><span style="display:flex;"><span>DNS Lookup Time: 0.006947
+</span></span></code></pre></div><h4 id="3-显示多项信息">3. 显示多项信息</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>$ curl -w <span style="color:#ed9d13">&#34;HTTP Code: %{http_code}\nTotal Time: %{time_total}\nDownload Size: %{size_download}\n&#34;</span> -o /dev/null -s https://www.dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>HTTP Code: <span style="color:#3677a9">200</span>
+</span></span><span style="display:flex;"><span>Total Time: 0.478081
+</span></span><span style="display:flex;"><span>Download Size: <span style="color:#3677a9">19493</span>
+</span></span></code></pre></div><h4 id="4-组合示例">4. 组合示例</h4>
+<p>下面是一个更复杂的示例，展示如何使用多个变量格式化输出：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>$ curl -w <span style="color:#ed9d13">&#34;URL: %{url_effective}\nHTTP Code: %{http_code}\nTotal Time: %{time_total}\nDNS Lookup Time: %{time_namelookup}\nConnect Time: %{time_connect}\nPretransfer Time: %{time_pretransfer}\nStarttransfer Time: %{time_starttransfer}\nDownload Size: %{size_download}\nUpload Size: %{size_upload}\nDownload Speed: %{speed_download} bytes/sec\nUpload Speed: %{speed_upload} bytes/sec\nContent Type: %{content_type}\n&#34;</span> -o /dev/null -s https://www.dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>URL: https://www.dbwu.tech/
+</span></span><span style="display:flex;"><span>HTTP Code: <span style="color:#3677a9">200</span>
+</span></span><span style="display:flex;"><span>Total Time: 0.487167
+</span></span><span style="display:flex;"><span>DNS Lookup Time: 0.008145
+</span></span><span style="display:flex;"><span>Connect Time: 0.008359
+</span></span><span style="display:flex;"><span>Pretransfer Time: 0.333323
+</span></span><span style="display:flex;"><span>Starttransfer Time: 0.446315
+</span></span><span style="display:flex;"><span>Download Size: <span style="color:#3677a9">19493</span>
+</span></span><span style="display:flex;"><span>Upload Size: <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>Download Speed: <span style="color:#3677a9">40012</span> bytes/sec
+</span></span><span style="display:flex;"><span>Upload Speed: <span style="color:#3677a9">0</span> bytes/sec
+</span></span><span style="display:flex;"><span>Content Type: text/html; <span style="color:#40ffff">charset</span>=utf-8
+</span></span></code></pre></div><p>从输出结果中可以看到，请求中各个链路花费的时间:</p>
+<ul>
+<li>DNS 查询时间: 0.008145 秒，也就是 8.1 毫秒</li>
+<li>TCP 连接时间: 0.333323 - 0.008145 = 0.325178 秒，也就是 300 毫秒</li>
+<li>服务器处理时间：0.446315 - 0.333323 = 0.112992 秒，也就是 112 毫秒</li>
+<li>响应内容传输时间：0.487167 - 0.446315 = .040852 秒，也就是 40 毫秒</li>
+</ul>
+<p>所以在整个请求中，占用时间最多的部分就是 TCP 三次握手建立连接的时间，占到了总时间的 60% 还多。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>URL: %{url_effective}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>HTTP Code: %{http_code}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Total Time: %{time_total}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>DNS Lookup Time: %{time_namelookup}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Connect Time: %{time_connect}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Pretransfer Time: %{time_pretransfer}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Starttransfer Time: %{time_starttransfer}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Download Size: %{size_download}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Upload Size: %{size_upload}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Download Speed: %{speed_download} bytes/sec<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Upload Speed: %{speed_upload} bytes/sec<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Content Type: %{content_type}<span style="color:#ed9d13">\n</span>
+</span></span></code></pre></div><h4 id="5-复用示例">5. 复用示例</h4>
+<p>如果希望复用 <code>-w</code> 的的输出格式，可以将格式写入文件中，然后 curl 访问时，通过 <code>-w</code> 参数来指定具体的文件名称即可。</p>
+<p>例如将刚才的输出配置写入到 /tmp/curl-w.format 文件中。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ cat /tmp/curl-w.format
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>URL: %{url_effective}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>HTTP Code: %{http_code}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Total Time: %{time_total}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>DNS Lookup Time: %{time_namelookup}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Connect Time: %{time_connect}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Pretransfer Time: %{time_pretransfer}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Starttransfer Time: %{time_starttransfer}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Download Size: %{size_download}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Upload Size: %{size_upload}<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Download Speed: %{speed_download} bytes/sec<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Upload Speed: %{speed_upload} bytes/sec<span style="color:#ed9d13">\n</span>
+</span></span><span style="display:flex;"><span>Content Type: %{content_type}<span style="color:#ed9d13">\n</span>
+</span></span></code></pre></div><p>使用 curl 访问时，通过将 <code>-w</code> 参数指定为具体的文件名称即可。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ curl -w <span style="color:#ed9d13">&#34;@/tmp/curl-w.format&#34;</span> -o /dev/null -s  https://www.dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>URL: https://www.dbwu.tech/
+</span></span><span style="display:flex;"><span>HTTP Code: <span style="color:#3677a9">200</span>
+</span></span><span style="display:flex;"><span>Total Time: 0.394064
+</span></span><span style="display:flex;"><span>DNS Lookup Time: 0.008351
+</span></span><span style="display:flex;"><span>Connect Time: 0.008593
+</span></span><span style="display:flex;"><span>Pretransfer Time: 0.267342
+</span></span><span style="display:flex;"><span>Starttransfer Time: 0.352437
+</span></span><span style="display:flex;"><span>Download Size: <span style="color:#3677a9">19493</span>
+</span></span><span style="display:flex;"><span>Upload Size: <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>Download Speed: <span style="color:#3677a9">49466</span> bytes/sec
+</span></span><span style="display:flex;"><span>Upload Speed: <span style="color:#3677a9">0</span> bytes/sec
+</span></span><span style="display:flex;"><span>Content Type: text/html; <span style="color:#40ffff">charset</span>=utf-8
+</span></span></code></pre></div><h4 id="python-小工具">Python 小工具</h4>
+<p>Github 上有一个类似功能的开源程序，链接: <a href="https://github.com/reorx/httpstat">https://github.com/reorx/httpstat</a>。</p>
+<p><img src="https://dbwu.tech/images/network/httpstat.png" alt="dig 迭代查询示例"></p>
+
 
 </article>
 
@@ -301,7 +434,7 @@
         </li>
         <li>
         
-            <a href="https://dbwu.tech/posts/network/switch/">网络基础: 交换机 (拾遗补缺) <i class="fa fa-chevron-circle-right"></i> </a>
+            <a href="https://dbwu.tech/posts/linux/tools/show-ip/">查看本机 IP 地址 <i class="fa fa-chevron-circle-right"></i> </a>
         
         </li>
     </ul>

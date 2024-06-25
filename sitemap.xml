@@ -626,10 +626,25 @@
     <loc>https://dbwu.tech/posts/network/switch/</loc>
     <lastmod>2017-07-16T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://dbwu.tech/posts/linux/tools/curl/</loc>
-    <lastmod>2017-01-10T00:00:00+00:00</lastmod>
+    <loc>https://dbwu.tech/posts/network/mtu-with-mss/</loc>
+    <lastmod>2017-02-01T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/tags/linux-%E5%91%BD%E4%BB%A4/</loc>
+    <lastmod>2017-01-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/netstat/</loc>
+    <lastmod>2017-01-26T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/ping/</loc>
+    <lastmod>2017-01-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/dns/</loc>
+    <lastmod>2017-01-15T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/show-ip/</loc>
+    <lastmod>2017-01-11T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/curl/</loc>
     <lastmod>2017-01-10T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/network/summary/</loc>

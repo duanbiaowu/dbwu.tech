@@ -1,0 +1,428 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>netstat 命令常用操作 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="netstat 命令常用操作" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/linux/tools/netstat/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-01-26T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-01-26T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="netstat 命令常用操作"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>netstat 命令常用操作</h1>
+
+    
+      
+<p>
+    <span>2017-01-26</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/linux-%E5%91%BD%E4%BB%A4">Linux 命令</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="netstat-命令作用">netstat 命令作用</h2>
+<p><code>netstat</code> 是一个网络管理命令行工具，用于监控和排查网络连接状态及统计信息，可以显示网络连接、路由表、接口统计等数据。</p>
+<hr>
+<h2 id="常用方法">常用方法</h2>
+<p>本文代码运行环境:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ cat /etc/os-release 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">PRETTY_NAME</span>=<span style="color:#ed9d13">&#34;Ubuntu 22.04.4 LTS&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">NAME</span>=<span style="color:#ed9d13">&#34;Ubuntu&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">VERSION_ID</span>=<span style="color:#ed9d13">&#34;22.04&#34;</span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="1-显示所有连接和监听端口">1. 显示所有连接和监听端口</h3>
+<p>输出当前主机上所有的网络连接和监听端口。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -a
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Active Internet connections (servers and established)
+</span></span><span style="display:flex;"><span>Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:3000            0.0.0.0:*               LISTEN     
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:900             0.0.0.0:*               LISTEN     
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:ssh           localhost:57876         ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> cs-100667547897-d:41352 sf-in-f101.1e100.:https ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> cs-100667547897-d:55234 metadata.googl:http-alt TIME_WAIT  
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:3000          localhost:49822         ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:57878         localhost:ssh           TIME_WAIT  
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:900           cs-100667547897-d:45530 TIME_WAIT  
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:55890         localhost:970           ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> cs-100667547897-d:55302 sl-in-f95.1e100.n:https ESTABLISHED
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>显示 IP 地址和端口号:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -n
+</span></span></code></pre></div><h3 id="2-显示-tcp-连接">2. 显示 TCP 连接</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -t
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:ssh           localhost:57876         ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:3000          localhost:49822         ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:48078         localhost:970           ESTABLISHED
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:48888         localhost:ssh           TIME_WAIT  
+</span></span><span style="display:flex;"><span>tcp6       <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 10.88.0.4:980           10.95.150.2:57362       ESTABLISHED
+</span></span></code></pre></div><h3 id="3-显示-udp-连接">3. 显示 UDP 连接</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -u
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span></code></pre></div><h3 id="4-显示监听的服务及其进程-pid">4. 显示监听的服务及其进程 PID</h3>
+<p><img src="https://dbwu.tech/images/network/epub_907755_112.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -lp
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Active Internet connections (only servers)
+</span></span><span style="display:flex;"><span>Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:3000            0.0.0.0:*               LISTEN      384/node            
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:900             0.0.0.0:*               LISTEN      -                   
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:ssh             0.0.0.0:*               LISTEN      61/sshd: /usr/sbin/ 
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:8998          0.0.0.0:*               LISTEN      -                   
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> localhost:45439         0.0.0.0:*               LISTEN      385/sshd: codean_ne 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Active UNIX domain sockets (only servers)
+</span></span><span style="display:flex;"><span>Proto RefCnt Flags       Type       State         I-Node   PID/Program name     Path
+</span></span><span style="display:flex;"><span>unix  <span style="color:#3677a9">2</span>      [ ACC ]     STREAM     LISTENING     <span style="color:#3677a9">21343</span>    193/dockerd          /var/run/docker.sock
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="5-显示网络接口统计信息">5. 显示网络接口统计信息</h3>
+<p>输出每个网络接口的统计信息，包括本地环回网络和虚拟/容器网络，通过输出结果可以查看网卡的丢包记录。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -i
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># RX-OK、RX-ERR、RX-DRP、RX-OVR 分别表示</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 接收时的总包数、总错误数、进入 Ring Buffer 后因其他原因（如内存不足）导致的丢包数、 Ring Buffer 溢出导致的丢包数</span>
+</span></span><span style="display:flex;"><span>Kernel Interface table
+</span></span><span style="display:flex;"><span>Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
+</span></span><span style="display:flex;"><span>docker0   <span style="color:#3677a9">1460</span>        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>             <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> BMU
+</span></span><span style="display:flex;"><span>eth0      <span style="color:#3677a9">1500</span>     <span style="color:#3677a9">7678</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>          <span style="color:#3677a9">5705</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> BMRU
+</span></span><span style="display:flex;"><span>lo       <span style="color:#3677a9">65536</span>     <span style="color:#3677a9">6585</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>          <span style="color:#3677a9">6585</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> LRU
+</span></span></code></pre></div><h3 id="6-显示路由表">6. 显示路由表</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -r
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Kernel IP routing table
+</span></span><span style="display:flex;"><span>Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+</span></span><span style="display:flex;"><span>default         10.88.0.1       0.0.0.0         UG        <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>          <span style="color:#3677a9">0</span> eth0
+</span></span><span style="display:flex;"><span>10.88.0.0       0.0.0.0         255.255.0.0     U         <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>          <span style="color:#3677a9">0</span> eth0
+</span></span><span style="display:flex;"><span>172.17.0.0      0.0.0.0         255.255.0.0     U         <span style="color:#3677a9">0</span> <span style="color:#3677a9">0</span>          <span style="color:#3677a9">0</span> docker0
+</span></span></code></pre></div><h3 id="7-显示详细的统计信息">7. 显示详细的统计信息</h3>
+<p>输出详细的网络协议统计信息。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -s
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 不同的协议之间使用空行进行分割</span>
+</span></span><span style="display:flex;"><span>Ip:
+</span></span><span style="display:flex;"><span>Forwarding: <span style="color:#3677a9">1</span> <span style="color:#999;font-style:italic"># 开启转发</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">31</span> total packets received <span style="color:#999;font-style:italic"># 总收包数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> forwarded <span style="color:#999;font-style:italic"># 转发包数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> incoming packets discarded  <span style="color:#999;font-style:italic"># 接收丢包数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">25</span> incoming packets delivered <span style="color:#999;font-style:italic"># 接收的数据包数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">15</span> requests sent out <span style="color:#999;font-style:italic"># 发出的数据包数</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Icmp:
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> ICMP messages received <span style="color:#999;font-style:italic"># 收到的ICMP包数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> input ICMP message failed <span style="color:#999;font-style:italic"># 收到ICMP失败数</span>
+</span></span><span style="display:flex;"><span>ICMP input histogram:
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> ICMP messages sent <span style="color:#999;font-style:italic">#  ICMP 发送数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> ICMP messages failed <span style="color:#999;font-style:italic"># ICMP 失败数</span>
+</span></span><span style="display:flex;"><span>ICMP output histogram:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Tcp:
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">57</span> active connection openings <span style="color:#999;font-style:italic"># 主动连接数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">165</span> passive connection openings <span style="color:#999;font-style:italic"># 被动连接数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">1</span> failed connection attempts <span style="color:#999;font-style:italic"># 失败连接尝试数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">28</span> connection resets received <span style="color:#999;font-style:italic"># 接收的连接重置数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">16</span> connections established <span style="color:#999;font-style:italic"># 建立连接数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">16660</span> segments received <span style="color:#999;font-style:italic"># 已接收报文数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">25630</span> segments sent out <span style="color:#999;font-style:italic"># 已发送报文数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">25</span> segments retransmitted <span style="color:#999;font-style:italic"># 重传报文数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> bad segments received <span style="color:#999;font-style:italic"># 错误报文数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">35</span> resets sent <span style="color:#999;font-style:italic"># 发出的连接重置数</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Udp:
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">65</span> packets received
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> packets to unknown port received
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> packet receive errors
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">65</span> packets sent
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> receive buffer errors
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> send buffer errors
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>TcpExt:
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">11</span> resets received <span style="color:#6ab825;font-weight:bold">for</span> embryonic SYN_RECV sockets <span style="color:#999;font-style:italic"># 半连接重置数</span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">0</span> packet headers predicted
+</span></span><span style="display:flex;"><span>TCPTimeouts: <span style="color:#3677a9">7</span>   <span style="color:#999;font-style:italic"># 超时数</span>
+</span></span><span style="display:flex;"><span>TCPSynRetrans: <span style="color:#3677a9">4</span> <span style="color:#999;font-style:italic"># SYN 重传数</span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>如果希望输出指定协议的结果，可以使用指定协议名称的简称作为参数即可 (例如 {-t|&ndash;tcp} {-u|&ndash;udp} )。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 指定输出 TCP 协议统计数据</span>
+</span></span><span style="display:flex;"><span>$ netstat -s -t
+</span></span></code></pre></div><h3 id="8-持续显示网络状态">8. 持续显示网络状态</h3>
+<p>结合 <code>watch</code> 命令可以实时监控网络状态：</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 监听 TCP 链接状态变化</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 每秒刷新 1 次</span>
+</span></span><span style="display:flex;"><span>$ watch -n <span style="color:#3677a9">1</span> netstat -ant
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span></code></pre></div><h3 id="9-查看网络协议栈中的套接字信息">9. 查看网络协议栈中的套接字信息</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -nltp
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出展示了套接字的状态、接收队列、发送队列、本地地址、远端地址、进程 PID 和进程名称</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># -l 表示只显示监听套接字</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># -n 表示显示 IP 地址和端口</span>
+</span></span><span style="display:flex;"><span>Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:9061            0.0.0.0:*               LISTEN      1414/java
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:9062            0.0.0.0:*               LISTEN      1413/java
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 0.0.0.0:9191            0.0.0.0:*               LISTEN      11357/WorkerMan: wo
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><hr>
+<h2 id="结合其他命令使用">结合其他命令使用</h2>
+<h3 id="1-显示与某个端口相关的连接">1. 显示与某个端口相关的连接</h3>
+<p>使用 <code>netstat + grep</code> 筛选出符合条件的连接:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查找所有 80 端口的连接</span>
+</span></span><span style="display:flex;"><span>$ netstat -an | grep :80
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查找所有 TIME_WAIT 状态的连接</span>
+</span></span><span style="display:flex;"><span>$ netstat -an | grep TIME_WAIT
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出省略 ...</span>
+</span></span></code></pre></div><h3 id="2-查看某个进程的网络连接">2. 查看某个进程的网络连接</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 Docker 进程 ID </span>
+</span></span><span style="display:flex;"><span>$ pidof dockerd
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">8275</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看进程 ID 为 Docker 的网络连接</span>
+</span></span><span style="display:flex;"><span>$ netstat -anp | grep <span style="color:#3677a9">8275</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>tcp        <span style="color:#3677a9">0</span>      <span style="color:#3677a9">0</span> 127.0.0.1:47976         127.0.0.1:1514          ESTABLISHED 8275/dockerd
+</span></span><span style="display:flex;"><span>unix  <span style="color:#3677a9">2</span>      [ ]         DGRAM                    <span style="color:#3677a9">1372463816</span> 8275/dockerd
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="3-统计-tcp-连接各类状态的数量">3. 统计 TCP 连接各类状态的数量</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 在 netstat 命令的输出基础上，使用 awk 进行统计</span>
+</span></span><span style="display:flex;"><span>$ netstat -t | awk <span style="color:#ed9d13">&#39;/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}&#39;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>ESTABLISHED <span style="color:#3677a9">8</span>
+</span></span><span style="display:flex;"><span>FIN_WAIT2 <span style="color:#3677a9">3</span>
+</span></span><span style="display:flex;"><span>TIME_WAIT <span style="color:#3677a9">14</span>
+</span></span></code></pre></div><p>在统计结果的基础上再进行排序。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -nat | awk  <span style="color:#ed9d13">&#39;{print  $6}&#39;</span>  |  sort  |  uniq  -c  |  sort  -n
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># MySQL 数据库的连接数暴涨，想查到连接来源</span>
+</span></span><span style="display:flex;"><span>$ netstat -tpn|grep 3306|grep -i estab|awk <span style="color:#ed9d13">&#39;{print $4}&#39;</span>|cut -d <span style="color:#ed9d13">&#39;:&#39;</span> -f 1|awk <span style="color:#ed9d13">&#39;{a[0]=a[0]=a[0] + 1} END {for (i in a) print i &#34; &#34; a[i]}&#39;</span> 
+</span></span></code></pre></div><hr>
+<h2 id="替代工具">替代工具</h2>
+<p>需要注意的是，在一些较新的 Linux 发行版中，netstat 已经不再是默认安装了，用户可以使用 <code>ss</code> 和 <code>ip</code> 命令进行替代。</p>
+<h3 id="1-ss-socket-statistics">1. ss (Socket Statistics)</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示所有 TCP 连接</span>
+</span></span><span style="display:flex;"><span>$ ss -t
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示所有 UDP 连接</span>
+</span></span><span style="display:flex;"><span>$ ss -u
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示所有监听端口</span>
+</span></span><span style="display:flex;"><span>$ ss -l
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示监听端口及其进程信息</span>
+</span></span><span style="display:flex;"><span>$ ss -lp
+</span></span></code></pre></div><h3 id="2-ip-iproute2-工具集的一个子命令">2. ip (iproute2 工具集的一个子命令)</h3>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示路由表</span>
+</span></span><span style="display:flex;"><span>$ ip route
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示接口信息</span>
+</span></span><span style="display:flex;"><span>$ ip addr
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 显示链路信息</span>
+</span></span><span style="display:flex;"><span>$ ip link
+</span></span></code></pre></div>
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/linux/tools/ping/"><i class="fa fa-chevron-circle-left"></i> ping 命令常用操作</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/mtu-with-mss/">网络基础: MTU 和 MSS <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="netstat 命令常用操作"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

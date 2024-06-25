@@ -143,10 +143,12 @@
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// https://github.com/torvalds/linux/blob/1c163f4c7b3f621efff9b28a47abb36f7378d783/include/net/tcp.h#L121
 </span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
 </span></span><span style="display:flex;"><span><span style="color:#cd2828;font-weight:bold">#define TCP_TIMEWAIT_LEN (60*HZ) </span><span style="color:#999;font-style:italic">/* how long to wait to destroy TIME-WAIT state, about 60 seconds */</span><span style="color:#cd2828;font-weight:bold">
-</span></span></span></code></pre></div><p>之所以采用这种机制，主要是为了避免发生下面两个问题：</p>
+</span></span></span></code></pre></div><p>为什么是 2 个 MSL 时间呢？</p>
+<p><strong>因为发送方要考虑数据报文 从发送方到接收方的 MSL, 反过来说，接收方也要考虑 ACK 报文从接收方到发送方的 MSL</strong>。</p>
+<p>之所以采用这种机制，主要是为了避免发生下面两个问题：</p>
 <ol>
 <li>防止被动关闭连接的一端，延迟的数据被后续使用 <strong>相同四元组的 TCP 连接</strong> 接收</li>
-<li>防止被动关闭连接的一端，发出的 <code>FIN</code> 消息没有收到对应的 <code>ACK</code> 消息，而在新连接到来的时候发送 <code>RST</code> 消息。</li>
+<li>防止被动关闭连接的一端，发出的 <code>FIN</code> 消息没有收到对应的 <code>ACK</code> 消息，而在新连接到来的时候发送 <code>RST</code> 消息</li>
 </ol>
 <p>下面就这两个问题来进行分析说明。</p>
 <hr>
@@ -167,7 +169,13 @@ $$</p>
 <li>这时客户端又向服务端发起新的连接，很巧的是，这个新连接和刚才 (已关闭) 的旧连接使用了同样的端口 (复用)，于是新连接和旧连接的四元组变成了一样的</li>
 <li>新连接建立完成后，旧连接上面的延迟数据包 A 到了 (新连接)，这时就会产生严重的问题 &hellip;</li>
 </ol>
-<p>通过 <code>TIME_WAIT</code> 状态，发起主动关闭连接的一端会等待 2 个 MSL 时间，这个时间足够长，可以消除延迟的数据包可能对新 (复用端口)  的连接造成影响， <code>TIME_WAIT</code> 状态下接收到的延迟数据包会被直接丢弃。</p>
+<p>通过 <code>TIME_WAIT</code> 状态，发起主动关闭连接的一端会等待 2 个 MSL 时间，这个时间足够长，可以最大限度消除延迟的数据包可能对新 (复用端口)  的连接造成影响， <code>TIME_WAIT</code> 状态下接收到的延迟数据包会被直接丢弃。</p>
+<p>这里考虑一个极端的 (小概率) 问题: 经过 2 个 MSL 时间之后，延迟的数据包 A 到达了，并且其 <code>Seq</code> 正好位于新连接的接收窗口内，那么新连接 (TCP 传输层) 会直接将整个数据包转交到上层应用吗？</p>
+<p>根据应用层安全 (是否加密) 程度，分为两种情况:</p>
+<ul>
+<li>未加密，那么就会干扰应用数据，例如源数据为 “我的头像牛X吗？”，因为延迟的数据包，在 头 字后面插入了一个逗号，变成了 “我的头，像牛X吗？”</li>
+<li>已加密 (例如使用了 HTTPS)，TLS 会校验数据完整性，那么显然数据包 A 是无法通过校验的，然后被直接丢弃，HTTPS 连接就此中断</li>
+</ul>
 <hr>
 <h2 id="第二个问题">第二个问题</h2>
 <blockquote>
@@ -208,6 +216,7 @@ $$</p>
 <li><a href="https://coolshell.cn/articles/22263.html">从一次经历谈 TIME_WAIT 的那些事</a></li>
 <li><a href="https://zhuanlan.zhihu.com/p/695713170">针对 TIME_WAIT, 作者给出了自己的解决思路</a></li>
 <li><a href="https://tech.youzan.com/you-zan-tcpwang-luo-bian-cheng-zui-jia-shi-jian/">SO_REUSEADDR 选项和 tcp_timestamps 参数</a></li>
+<li><a href="https://mp.weixin.qq.com/s/Wblk0pXrs4WkQzPkW_kCVg">为何TCP要自我攻击？</a></li>
 </ul>
 
 
