@@ -108,6 +108,14 @@
 
     
       
+<p>
+    <span>2017-02-01</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+</p>
+
     
 
     
@@ -120,10 +128,15 @@
 <li><a href="#mtu-%E6%98%AF%E4%BB%80%E4%B9%88">MTU 是什么？</a></li>
 <li><a href="#mtu-%E6%A0%87%E5%87%86%E5%A4%A7%E5%B0%8F">MTU 标准大小</a></li>
 <li><a href="#mss-%E6%98%AF%E4%BB%80%E4%B9%88">MSS 是什么？</a></li>
-<li><a href="#%E5%A6%82%E4%BD%95%E7%A1%AE%E5%AE%9A%E6%98%AF%E5%90%A6%E5%88%86%E7%89%87">如何确定是否分片？</a></li>
+<li><a href="#%E5%A6%82%E4%BD%95%E7%A1%AE%E5%AE%9A%E6%98%AF%E5%90%A6%E5%88%86%E7%89%87">如何确定是否分片？</a>
+<ul>
+<li><a href="#%E4%B8%BA%E4%BB%80%E4%B9%88-tcp-%E5%88%86%E6%AE%B5%E4%B9%8B%E5%90%8Eip-%E8%BF%98%E8%A6%81%E5%88%86%E7%89%87">为什么 TCP 分段之后，IP 还要分片？</a></li>
+</ul>
+</li>
 <li><a href="#mtu-%E5%BE%88%E9%87%8D%E8%A6%81">MTU 很重要</a></li>
 <li><a href="#%E5%A6%82%E4%BD%95%E9%80%82%E9%85%8D-mss-">如何适配 MSS ?</a>
 <ul>
+<li><a href="#%E9%BB%98%E8%AE%A4%E7%9A%84-mss-%E5%A4%A7%E5%B0%8F">默认的 MSS 大小</a></li>
 <li><a href="#tcp-adjust-mss">TCP Adjust-MSS</a></li>
 </ul>
 </li>
@@ -133,7 +146,8 @@
 <li><a href="#%E6%9F%A5%E7%9C%8B%E7%BD%91%E7%BB%9C%E9%93%BE%E8%B7%AF%E4%B8%AD%E7%9A%84-mtu">查看网络链路中的 MTU</a>
 <ul>
 <li><a href="#1-tracepath-%E5%91%BD%E4%BB%A4">1. tracepath 命令</a></li>
-<li><a href="#2-ping-%E5%91%BD%E4%BB%A4">2. ping 命令</a></li>
+<li><a href="#2-networksetup">2. networksetup</a></li>
+<li><a href="#3-ping-%E5%91%BD%E4%BB%A4">3. ping 命令</a></li>
 </ul>
 </li>
 </ul>
@@ -144,6 +158,7 @@
 <li><a href="#linux-%E5%8F%82%E6%95%B0">Linux 参数</a></li>
 </ul>
 </li>
+<li><a href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB">扩展阅读</a></li>
 </ul>
 <!-- raw HTML omitted -->
 <p><img src="https://dbwu.tech/images/network/mtu_2.png" alt=""></p>
@@ -195,7 +210,14 @@ $$</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果通信中出现类似如下的报错 (只丢大包)</span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 说明很可能就是 MTU 过大导致的</span>
 </span></span><span style="display:flex;"><span>Packetneeds to be fragmented but DF <span style="color:#24909d">set</span>
-</span></span></code></pre></div><hr>
+</span></span></code></pre></div><h3 id="为什么-tcp-分段之后ip-还要分片">为什么 TCP 分段之后，IP 还要分片？</h3>
+<p>网络层的 IP 依赖下层的数据链路层传输数据，受限于数据链路层的 MTU, 所以必须对数据进行分片传输。</p>
+<p>那传输层的 TCP 是依赖网络层传输数据的，直接把数据交给 IP 层不就可以了，为什么还要自己进行分段呢？</p>
+<p>网络层的 IP 协议提供 “尽力而为” 的传输服务 (也就是不保证数据包一定会被送达)，如果要使传输过程变得可靠，就要使用传输层的 TCP 协议来实现。</p>
+<p>TCP 实现可靠传输的核心之一就是 <code>重传机制</code>，如果每个应用数据包都很小，那么 TCP 确实不需要分段，只要在重传时将数据包丢给网络层 IP 就可以了。</p>
+<p>但是现实中不是这样的，考虑一些大的数据传输场景，例如大文件下载，<strong>如果 TCP 不进行数据分段处理</strong>，并且大文件在传输过程中丢包了，紧接着发生 TCP 重传，此时重传的就是整个大文件，这显然是不合理的，因为只需要重传丢包的数据部分就可以了。而如果 TCP 对数据进行分段处理，那么发生丢包后，只需要重传丢包的部分就可以了 (根据发送方和接收方的 Seq 和 Ack 值就可以判断出哪些数据包丢失了)。</p>
+<p>这其实就和应用层实现 <a href="https://dbwu.tech/posts/network/http/#206">大文件断点续传/下载</a> 原因是一样的，虽然可以直接下载整个文件，但是出于网络可靠性和服务器负载等情况考虑，一般还是会选择使用数据分片 <code>Accept-Ranges</code> 的方式来下载文件。</p>
+<hr>
 <h2 id="mtu-很重要">MTU 很重要</h2>
 <p>为什么说 MTU 很重要？</p>
 <p>因为如果 MTU 设置不正确 (一般情况下是过大)，<strong>IP 层会数据分片，然后引起分片重组，引发延迟，延迟可能会引发丢包和 (TCP) 重传，丢包同样会引起 (TCP) 重传</strong>，最终进入网络质量的恶性循环。</p>
@@ -218,6 +240,12 @@ $$</p>
 </ul>
 <p>三次握手之后，发送方知道自己的 MTU 比接收方的要大，如果直接发送 1460 字节的包，很可能在网络链路中的某个节点被分片或者丢包了，所以在接下来传输数据时，发送方会将自己的 MSS 调整为 1412。</p>
 <p><strong>但是需要注意的是</strong>: 如果网络链路中的某个节点的 MTU 比发送方和接收方的更小，那么数据包还是会被分片。</p>
+<h3 id="默认的-mss-大小">默认的 MSS 大小</h3>
+<p>如果通信的对端，没有传递 MSS, 那么接下来的通信 MSS 以什么为准呢？</p>
+<ul>
+<li>对于 IPv4，默认的 MSS 值是 536 字节，因为 IPv4 最小 MTU 等于 576 字节，减去 40 字节（IP 头部 + TCP 头部），正好是 536</li>
+<li>对于 IPv6，默认的 MSS 值是 1220 字节，因为 IPv6 最小 MTU 等于 1280 字节，减去 60 字节（IPv6 头部 + 20 字节的 TCP 头部），正好是 1220</li>
+</ul>
 <h3 id="tcp-adjust-mss">TCP Adjust-MSS</h3>
 <p>TCP Adjust-MSS 用于动态修户 TCP 报文的 MSS 值，通常配置在防火墙、路由器，解决网络链路中 MTU 自动适配问题。</p>
 <hr>
@@ -252,7 +280,13 @@ $$</p>
 </span></span><span style="display:flex;"><span>14:  172.70.212.4                                        191.432ms asymm <span style="color:#3677a9">15</span>
 </span></span><span style="display:flex;"><span>     Too many hops: pmtu <span style="color:#3677a9">1500</span>
 </span></span><span style="display:flex;"><span>     Resume: pmtu <span style="color:#3677a9">1500</span>
-</span></span></code></pre></div><h4 id="2-ping-命令">2. ping 命令</h4>
+</span></span></code></pre></div><h4 id="2-networksetup">2. networksetup</h4>
+<p>Mac 中有一个专用的命令: networksetup</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ networksetup -getMTU en0
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 输出如下</span>
+</span></span><span style="display:flex;"><span>Active MTU: <span style="color:#3677a9">1500</span> (Current Setting: 1500)
+</span></span></code></pre></div><h4 id="3-ping-命令">3. ping 命令</h4>
 <p>ping 命令 (Linux 环境) 的几个参数说明:</p>
 <ul>
 <li><code>M do</code>：设置不允许分片</li>
@@ -328,6 +362,10 @@ $$</p>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>net.ipv4.ip_no_pmtu_disc = <span style="color:#3677a9">0</span>
 </span></span></code></pre></div><hr>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://endtimes.dev/why-your-website-should-be-under-14kb-in-size/">Why your website should be under 14kB in size</a></li>
+</ul>
 
 
 </article>

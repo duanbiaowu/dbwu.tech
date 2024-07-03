@@ -127,7 +127,7 @@
 <p>下图所示的状态机展示了，通信双方建立 TCP 连接之后的状态转换过程。</p>
 <p><img src="https://dbwu.tech/images/gif/state2.gif" alt="图片来源: tcpipguide.com"></p>
 <blockquote>
-<p>通信双方主动发起关闭连接的一端，存在 TIME_WAIT 状态，被动关闭连接的一端，会直接进入 CLOSED 状态。</p>
+<p>通信双方主动发起关闭连接的一端，存在 TIME_WAIT 状态，被动接受关闭连接的一端，会进入 CLOSE_WAIT 状态。</p>
 </blockquote>
 <h2 id="两个问题">两个问题</h2>
 <p>这里以客户端主动关闭连接为例，先来看下经典的 “四次挥手” 过程:</p>

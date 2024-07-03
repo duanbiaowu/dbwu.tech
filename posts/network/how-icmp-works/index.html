@@ -123,7 +123,43 @@
 
     
 
-    <h2 id="概述">概述</h2>
+    <ul>
+<li><a href="#%E6%A6%82%E8%BF%B0">概述</a>
+<ul>
+<li><a href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81-icmp-">为什么需要 ICMP ?</a></li>
+</ul>
+</li>
+<li><a href="#icmp-%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C-">ICMP 如何工作 ?</a>
+<ul>
+<li><a href="#icmp-%E6%8A%A5%E6%96%87%E7%B1%BB%E5%9E%8B">ICMP 报文类型</a></li>
+<li><a href="#%E4%B8%8D%E4%BC%9A%E4%BA%A7%E7%94%9F-icmp-%E5%B7%AE%E9%94%99%E7%9A%84%E5%9C%BA%E6%99%AF">不会产生 ICMP 差错的场景</a></li>
+<li><a href="#fragment-reassembly">Fragment reassembly</a></li>
+</ul>
+</li>
+<li><a href="#ping">ping</a>
+<ul>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86">实现原理</a></li>
+<li><a href="#wireshark-%E6%8A%93%E5%8C%85">Wireshark 抓包</a></li>
+</ul>
+</li>
+<li><a href="#traceroute">traceroute</a>
+<ul>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86-1">实现原理</a></li>
+<li><a href="#wireshark-%E6%8A%93%E5%8C%85-1">Wireshark 抓包</a></li>
+<li><a href="#%E9%9A%90%E8%97%8F%E8%B7%AF%E7%94%B1%E5%99%A8">隐藏路由器</a></li>
+<li><a href="#%E5%AE%8C%E6%95%B4%E7%89%88%E6%8A%93%E5%8C%85%E5%92%8C%E6%88%AA%E5%9B%BE">完整版抓包和截图</a></li>
+</ul>
+</li>
+<li><a href="#icmp-%E6%B4%AA%E6%B3%9B%E6%94%BB%E5%87%BB">ICMP 洪泛攻击</a>
+<ul>
+<li><a href="#%E5%B8%A6%E5%AE%BD-doos-%E6%94%BB%E5%87%BB">带宽 DOoS 攻击</a></li>
+<li><a href="#%E8%BF%9E%E6%8E%A5-doos-%E6%94%BB%E5%87%BB">连接 DOoS 攻击</a></li>
+</ul>
+</li>
+<li><a href="#reference">Reference</a></li>
+<li><a href="#%E6%89%A9%E5%B1%95%E5%B7%A5%E5%85%B7">扩展工具</a></li>
+</ul>
+<h2 id="概述">概述</h2>
 <blockquote>
 <p>因特网控制报文协议 ICMP（Internet Control Message Protocol）是一个差错报告机制，属于 TCP/IP 协议簇中的一个重要子协议。通常被 IP 层或更高层协议（TCP/UDP）使用，属于网络层协议，主要用于在 IP 主机和路由器之间传递控制消息，用于报告主机是否可达、路由是否可用等。</p>
 </blockquote>
@@ -161,7 +197,7 @@
 </ol>
 <h3 id="fragment-reassembly">Fragment reassembly</h3>
 <p>当接收方因为分片丢失而无法按时完成数据包的重组时，它可以放弃并回复一个超时消息。</p>
-<p><img src="../../images/network/epub_22653765_112.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
+<p><img src="https://dbwu.tech/images/network/epub_22653765_112.jpg" alt="图片来源: Wireshark 网络分析的艺术"></p>
 <hr>
 <h2 id="ping">ping</h2>
 <p><code>ping</code> 是 ICMP 的一个经典应用，主要用来测试两台主机之间的连通性，通过 ICMP 的 Echo 的报文来确定:</p>
@@ -195,7 +231,7 @@
 <p>通过对比 ping 命令的输出和 Wireshark 的抓包数据，可以看到请求和应答顺序都是可以一一对应的。</p>
 <p>在 ICMP 请求抓包数据中，数据报的 Type 字段为 8, 表示这是一条 ICMP Echo 请求报文。</p>
 <p><img src="https://dbwu.tech/images/network/icmp_4.png" alt="ICMP 请求报文示例"></p>
-<p>在 ICMP 应答抓包数据中，数据报的 Type 字段为 8, 表示这是一条 ICMP Reply 应答报文。</p>
+<p>在 ICMP 应答抓包数据中，数据报的 Type 字段为 0, 表示这是一条 ICMP Reply 应答报文。</p>
 <p><img src="https://dbwu.tech/images/network/icmp_5.png" alt="ICMP 应答报文示例"></p>
 <hr>
 <h2 id="traceroute">traceroute</h2>
@@ -244,7 +280,7 @@
 <p><img src="https://dbwu.tech/images/network/icmp_9_2.png" alt="TTL 为 2 的 ICMP 异常数据包"></p>
 <!-- raw HTML omitted -->
 <p><img src="https://dbwu.tech/images/network/icmp_10_2.png" alt="TTL 为 8 的 ICMP 异常数据包"></p>
-<h3 id="其他">其他</h3>
+<h3 id="隐藏路由器">隐藏路由器</h3>
 <p>数据包在传输过程中，有的路由器会隐藏自己的位置，不让 ICMP Timeout 的消息通过，或者 某次探查没有获得响应，或者响应丢失，结果就是 traceroute 的结果输出中，在对应的路由器的那一跳上始终会显示 <code>*</code> 号。</p>
 <p>还有一种情况，某些路由器会错误地转发 TTL 为 0 的数据报，此时该路由器的下一跳路由器，就会直接丢弃数据，并返回 <code>ICMP 传输超时</code> 报文。</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 指定使用 TCP 协议</span>
@@ -265,7 +301,33 @@
 </span></span><span style="display:flex;"><span>...
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#3677a9">30</span>  * * *
-</span></span></code></pre></div><hr>
+</span></span></code></pre></div><h3 id="完整版抓包和截图">完整版抓包和截图</h3>
+<p>下面给一个完整的 traceroute 命令输出和 Wireshark 抓包截图。</p>
+<p>注意: 域名 <code>dbwu.tech</code> 解析到了多个 IP 地址，所以输出结果中的网络链路会和上面的不一样。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 指定使用 ICMP 协议</span>
+</span></span><span style="display:flex;"><span>$ traceroute --icmp  dbwu.tech
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 本机 IP: 192.168.3.200</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 应答如下</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>traceroute to dbwu.tech (104.21.71.166), <span style="color:#3677a9">64</span> hops max, <span style="color:#3677a9">72</span> byte packets
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">1</span>  192.168.3.1 (192.168.3.1)  4.991 ms  4.030 ms  5.451 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">2</span>  100.64.0.1 (100.64.0.1)  15.547 ms  9.119 ms  18.130 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">3</span>  * 10.224.23.1 (10.224.23.1)  21.869 ms  12.968 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">4</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">5</span>  10.255.51.5 (10.255.51.5)  14.064 ms  7.399 ms  5.838 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">6</span>  * * 202.97.106.1 (202.97.106.1)  28.820 ms
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">7</span>  * * *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">8</span>  * 202.97.54.38 (202.97.54.38)  27.518 ms *
+</span></span><span style="display:flex;"><span> <span style="color:#3677a9">9</span>  202.97.83.162 (202.97.83.162)  171.627 ms  167.289 ms  168.189 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">10</span>  81.173.16.34 (81.173.16.34)  168.333 ms  200.227 ms  165.401 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">11</span>  172.69.143.2 (172.69.143.2)  166.677 ms  166.071 ms  166.491 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">12</span>  104.21.71.166 (104.21.71.166)  167.848 ms  165.138 ms  171.294 ms
+</span></span></code></pre></div><p>在 Wireshark 软件操作界面中通过 icmp 关键字，将对应的数据包过滤出来:</p>
+<p><img src="https://dbwu.tech/images/network/icmp_123.png" alt="traceroute dbwu.tech 完整抓包"></p>
+<p>从截图中可以非常清晰地看到，ICMP 报文中 TTL 值的变化情况，当 TTL 到达 12 时 (经过 12 跳)，终于到达目标主机。</p>
+<p><strong>需要注意的是</strong>: 即使第一次已经收到目标主机的 ICMP 应答报文，源主机依然会再发送两个 ICMP 请求报文 (默认凑够 3 次)，读者可以观察一下最后 3 个 ICMP 请求和应答报文中的 TTL 值，是否发现了什么有趣的东西 :-)</p>
+<hr>
 <h2 id="icmp-洪泛攻击">ICMP 洪泛攻击</h2>
 <p>ICMP 协议没有验证机制，所以很容易被用于进行网络攻击，目前最常见的是 <strong>ICMP 洪泛攻击:</strong> 攻击者在短时间内向目标设备发送大量的 ICMP 虚假报文，导致设备忙于应答虚假报文，无法应答正常报文。</p>
 <p><img src="https://dbwu.tech/images/network/icmp_13.png" alt="图片来源: https://info.support.huawei.com/info-finder/encyclopedia/zh/ICMP.html"></p>

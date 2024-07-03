@@ -446,6 +446,9 @@
     <loc>https://dbwu.tech/posts/golang_data_race/</loc>
     <lastmod>2023-02-02T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/tags/leetcode/</loc>
+    <lastmod>2023-02-02T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/algorithm/bit_operations/</loc>
     <lastmod>2023-02-02T00:00:00+00:00</lastmod>
   </url><url>
@@ -578,6 +581,9 @@
     <loc>https://dbwu.tech/posts/nginx/install/</loc>
     <lastmod>2018-10-23T00:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://dbwu.tech/posts/os/disk-scheduling-algorithm/</loc>
+    <lastmod>2018-03-09T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://dbwu.tech/posts/network/http/</loc>
     <lastmod>2018-02-16T00:00:00+00:00</lastmod>
   </url><url>
@@ -637,6 +643,12 @@
   </url><url>
     <loc>https://dbwu.tech/posts/linux/tools/ping/</loc>
     <lastmod>2017-01-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/ifconfig/</loc>
+    <lastmod>2017-01-22T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://dbwu.tech/posts/linux/tools/nc/</loc>
+    <lastmod>2017-01-18T00:00:00+00:00</lastmod>
   </url><url>
     <loc>https://dbwu.tech/posts/linux/tools/dns/</loc>
     <lastmod>2017-01-15T00:00:00+00:00</lastmod>

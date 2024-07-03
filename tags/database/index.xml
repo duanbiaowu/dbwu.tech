@@ -1309,6 +1309,15 @@
      </item>
    
      <item>
+       <title>磁盘结构和调度算法</title>
+       <link>https://dbwu.tech/posts/os/disk-scheduling-algorithm/</link>
+       <pubDate>Fri, 09 Mar 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/os/disk-scheduling-algorithm/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>HTTP 鲜为人知的细节</title>
        <link>https://dbwu.tech/posts/network/http/</link>
        <pubDate>Fri, 16 Feb 2018 00:00:00 +0000</pubDate>
@@ -1467,6 +1476,24 @@
        <pubDate>Mon, 23 Jan 2017 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/linux/tools/ping/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>ifconfig 命令</title>
+       <link>https://dbwu.tech/posts/linux/tools/ifconfig/</link>
+       <pubDate>Sun, 22 Jan 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/linux/tools/ifconfig/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>nc 命令常用操作</title>
+       <link>https://dbwu.tech/posts/linux/tools/nc/</link>
+       <pubDate>Wed, 18 Jan 2017 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/linux/tools/nc/</guid>
        <description></description>
      </item>
    

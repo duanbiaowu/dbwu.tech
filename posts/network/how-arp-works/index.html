@@ -123,54 +123,110 @@
 
     
 
-    <h2 id="概述">概述</h2>
+    <ul>
+<li><a href="#%E6%A6%82%E8%BF%B0">概述</a>
+<ul>
+<li><a href="#%E5%B7%A5%E4%BD%9C%E5%B1%82%E6%AC%A1">工作层次</a>
+<ul>
+<li><a href="#%E7%AC%AC%E4%B8%80%E7%A7%8D%E7%9C%8B%E6%B3%95">第一种看法</a></li>
+<li><a href="#%E7%AC%AC%E4%BA%8C%E7%A7%8D%E7%9C%8B%E6%B3%95">第二种看法</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B">工作流程</a>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+<li><a href="#%E4%B8%8D%E5%90%8C%E5%AD%90%E7%BD%91">不同子网</a></li>
+</ul>
+</li>
+<li><a href="#wireshark-%E6%8A%93%E5%8C%85">Wireshark 抓包</a>
+<ul>
+<li><a href="#%E6%AD%A3%E5%B8%B8%E5%BA%94%E7%AD%94">正常应答</a></li>
+<li><a href="#%E6%97%A0%E5%BA%94%E7%AD%94">无应答</a></li>
+</ul>
+</li>
+<li><a href="#arp-%E8%A1%A8">ARP 表</a>
+<ul>
+<li><a href="#arp-%E8%A1%A8%E9%A1%B9">ARP 表项</a></li>
+<li><a href="#arp-%E8%A1%A8%E9%A1%B9%E7%8A%B6%E6%80%81">ARP 表项状态</a>
+<ul>
+<li><a href="#reachable">REACHABLE</a></li>
+<li><a href="#stale">STALE</a></li>
+<li><a href="#delay">DELAY</a></li>
+<li><a href="#probe">PROBE</a></li>
+<li><a href="#failed">FAILED</a></li>
+<li><a href="#permanent">PERMANENT</a></li>
+</ul>
+</li>
+<li><a href="#%E7%BC%93%E5%AD%98%E8%80%81%E5%8C%96">缓存老化</a></li>
+</ul>
+</li>
+<li><a href="#arp-%E6%94%BB%E5%87%BB">ARP 攻击</a>
+<ul>
+<li><a href="#1arp-%E6%AC%BA%E9%AA%97arp-spoofing">1.ARP 欺骗（ARP Spoofing）</a></li>
+<li><a href="#2-arp-%E6%B4%AA%E6%B3%9Barp-flooding">2. ARP 洪泛（ARP Flooding）</a></li>
+</ul>
+</li>
+<li><a href="#arp-%E8%A1%A8%E7%B1%BB%E5%9E%8B">ARP 表类型</a>
+<ul>
+<li><a href="#1-%E5%8A%A8%E6%80%81%E7%B1%BB%E5%9E%8B">1. 动态类型</a></li>
+<li><a href="#2-%E9%9D%99%E6%80%81%E7%B1%BB%E5%9E%8B">2. 静态类型</a></li>
+</ul>
+</li>
+<li><a href="#%E5%85%8D%E8%B4%B9-arp">免费 ARP</a></li>
+<li><a href="#reference">Reference</a></li>
+</ul>
+<h2 id="概述">概述</h2>
 <blockquote>
-<p>ARP（Address Resolution Protocol，地址解析协议）是用来将 IP 地址解析为 Mac 地址的协议。</p>
+<p>ARP（Address Resolution Protocol，地址解析协议）是用来将 IP 地址解析为 MAC 地址的协议。</p>
 </blockquote>
-<p><img src="../../images/network/arp_2.png" alt=""></p>
-<p>主机 (客户端) 和三层网络设备 (例如路由器，三层交换机) 上会维护一张 ARP 表，用于存储 IP 地址和 Mac 地址的映射关系，每一个表项表示一个 IP 地址到 Mac 地址的转换关系。</p>
+<p><img src="https://dbwu.tech/images/network/arp_2.png" alt=""></p>
+<p>主机 (客户端) 和三层网络设备 (例如路由器，三层交换机) 上会维护一张 ARP 表，用于存储 IP 地址和 MAC 地址的映射关系，每一个表项表示一个 IP 地址到 MAC 地址的转换关系。</p>
+<p><img src="https://dbwu.tech/images/network/arp_table.png" alt=""></p>
 <h3 id="工作层次">工作层次</h3>
 <h4 id="第一种看法">第一种看法</h4>
 <p>ARP 属于二层协议，工作在数据链路层，因为 ARP 无法脱离广播域的限制。</p>
 <h4 id="第二种看法">第二种看法</h4>
 <p><strong>ARP 协议工作在 OSI (或 TCP/IP) 模型的第二层（数据链路层）和第三层（网络层）之间</strong>，也许这个结论会颠覆你对网络分层的已有认知，但是如果分析 ARP 的工作方式之后，你会发现情况确实如此。</p>
 <p>ARP 不属于二层网络，不能把数据发送到目标主机，因为 ARP 报文数据是包装在二层以太网帧中的，同时 ARP 也不属于三层网络，因为它不具备三层网络中的路由寻址功能 (无法跨越网段)。</p>
-<p>具体来说，ARP 通过 ARP 请求和 ARP 应答，将网络层的逻辑地址（IP 地址）映射到数据链路层的物理地址（Mac 地址）。</p>
+<p>具体来说，ARP 通过 ARP 请求和 ARP 应答，将网络层的逻辑地址（IP 地址）映射到数据链路层的物理地址（MAC 地址）。</p>
 <p><img src="https://dbwu.tech/images/network/Figure7.3.png" alt="ARP 请求和应答示例"></p>
+<hr>
 <h2 id="工作流程">工作流程</h2>
 <p>这里假设主机 A 第一次和主机 B 通信。</p>
 <ol>
 <li>当主机 A 需要发送数据到主机 B 时，首先会检查主机 B 的 IP 地址是否位于同一子网内 (两台主机是否连接的同一个交换机)</li>
-<li>如果主机 B 的 IP 地址位于同一子网内，主机 A 会发起 ARP 广播请求，主机 B 收到 ARP 请求后，会回复一个 ARP 回复，其中包含了目标 B 的 Mac 地址</li>
-<li>如果主机 B 的 IP 地址不在同一子网内，主机将向默认网关发送 ARP 请求，ARP 请求中包含了目标 IP 地址和请求者的 Mac 地址，获取主机 B 的 Mac 地址</li>
-<li>在向默认网关发送 ARP 请求之前，需要获取默认网关路由器的 Mac 地址，所以 <strong>会先发出一个 ARP 请求</strong></li>
-<li>默认网关收到 ARP 请求后，发送一个 ARP 回复到主机 A，其中包含了自己的 Mac 地址</li>
+<li>如果主机 B 的 IP 地址位于同一子网内，主机 A 会发起 ARP 广播请求，主机 B 收到 ARP 请求后，会回复一个 ARP 回复，其中包含了目标 B 的 MAC 地址</li>
+<li>如果主机 B 的 IP 地址不在同一子网内，主机将向默认网关发送 ARP 请求，ARP 请求中包含了目标 IP 地址和请求者的 MAC 地址，获取主机 B 的 MAC 地址</li>
+<li>在向默认网关发送 ARP 请求之前，需要获取默认网关路由器的 MAC 地址，所以 <strong>会先发出一个 ARP 请求</strong></li>
+<li>默认网关收到 ARP 请求后，发送一个 ARP 回复到主机 A，其中包含了自己的 MAC 地址</li>
 <li>此时主机 A 再次向默认网关发送 <strong>查询主机 B 的 ARP 请求</strong></li>
-<li>默认网关收到 ARP 请求后，会将 ARP 请求转发出去然后等待应答 (这里的细节先忽略)，接收到应答之后，发送一个 ARP 回复到主机 A，其中包含了主机 B 的 Mac 地址</li>
-<li>主机 A 将主机 B 的 Mac 地址保存在 ARP 缓存中，后续再向主机 B 发送数据时，就可以直接从 ARP 表中获取到主机 B 的 Mac 地址了</li>
+<li>默认网关收到 ARP 请求后，会将 ARP 请求转发出去然后等待应答 (这里的细节先忽略)，接收到应答之后，发送一个 ARP 回复到主机 A，其中包含了主机 B 的 MAC 地址</li>
+<li>主机 A 将主机 B 的 MAC 地址保存在 ARP 缓存中，后续再向主机 B 发送数据时，就可以直接从 ARP 表中获取到主机 B 的 MAC 地址了</li>
 </ol>
 <p><img src="https://dbwu.tech/images/network/epub_907755_192.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
 <h3 id="示例">示例</h3>
-<p>ARP 通过广播 ARP 请求和单播 ARP 应答这两个过程完成 IP 地址到 Mac 地址解析和映射，下面以两个相同子网内的主机来说明 ARP 的工作流程。</p>
+<p>ARP 通过广播 ARP 请求和单播 ARP 应答这两个过程完成 IP 地址到 MAC 地址解析和映射，下面以两个相同子网内的主机来说明 ARP 的工作流程。</p>
 <p><img src="https://dbwu.tech/images/network/arp_4.png" alt="同一子网内，ARP 请求和应答示例"></p>
 <p>这里假设主机 Host_1 要向主机 Host_3 发送主机，但是不知道 Host_3 的 IP 地址，所以需要先通过 ARP 请求来获得 Host_3 的 IP 地址。</p>
 <ol>
-<li>Host_1 查找本地的 ARP 缓存表，确认是否存在 Host_3 的 Mac 地址表项
+<li>Host_1 查找本地的 ARP 缓存表，确认是否存在 Host_3 的 MAC 地址表项
 <ul>
-<li>如果在 ARP 缓存表中 <strong>找到了</strong> Host_3 的 Mac 地址 (假设为 Mac_3)，直接将数据报文进行帧封装 ( <code>目的 Mac 地址: Mac_3</code>)</li>
-<li>如果在 ARP 缓存表中 <strong>找不到</strong> Host_3 的 Mac 地址，先缓存要发送的数据报文，然后通过广播方式发送一个 ARP 请求报文，其中: <code>源 Mac 地址: Host_1 的 Mac 地址</code>, <code>源 IP 地址: Host_1 的 IP 地址</code>, <code>目的 Mac 地址: FF:FF:FF:FF:FF:FF</code>, <code>目的 IP 地址: Host_3 的 IP 地址</code></li>
+<li>如果在 ARP 缓存表中 <strong>找到了</strong> Host_3 的 MAC 地址 (假设为 MAC_3)，直接将数据报文进行帧封装 ( <code>目标 MAC 地址: MAC_3</code>)</li>
+<li>如果在 ARP 缓存表中 <strong>找不到</strong> Host_3 的 MAC 地址，先缓存要发送的数据报文，然后通过广播方式发送一个 ARP 请求报文，其中: <code>源 MAC 地址: Host_1 的 MAC 地址</code>, <code>源 IP 地址: Host_1 的 IP 地址</code>, <code>目标 MAC 地址: FF:FF:FF:FF:FF:FF</code>, <code>目标 IP 地址: Host_3 的 IP 地址</code></li>
 </ul>
 </li>
 <li>交换机 Switch_1 收到 ARP 请求报文后，转发到在同一广播域内 (也就是转发到 Host_2, Host_3)</li>
-<li>Host_2 收到 ARP 请求后，发现目的 IP 地址不是自己的，直接丢掉，Host_3 收到 ARP 请求后，发现目的 IP 地址是自己，开始处理：
+<li>Host_2 收到 ARP 请求后，发现目标 IP 地址不是自己的，直接丢掉，Host_3 收到 ARP 请求后，发现目标 IP 地址是自己，开始处理：
 <ul>
-<li>首先将 ARP 请求中的 <strong>源 IP 地址和源 Mac 地址存入自己的 ARP 表中</strong> (也就是存储 Host_1_IP -&gt; Host_1_Mac 的映射关系)</li>
-<li>然后使用单播发送 ARP 应答报文给 Host_1, 其中: <code>源 Mac 地址: Host_3 的 Mac 地址</code>, <code>源 IP 地址: Host_3 的 IP 地址</code>, <code>目的 Mac 地址: Host_1 的 Mac 地址</code>, <code>目的 IP 地址: Host_1 的 IP 地址</code></li>
+<li>首先将 ARP 请求中的 <strong>源 IP 地址和源 MAC 地址存入自己的 ARP 表中</strong> (也就是存储 Host_1_IP -&gt; Host_1_MAC 的映射关系)</li>
+<li>然后使用单播发送 ARP 应答报文给 Host_1, 其中: <code>源 MAC 地址: Host_3 的 MAC 地址</code>, <code>源 IP 地址: Host_3 的 IP 地址</code>, <code>目标 MAC 地址: Host_1 的 MAC 地址</code>, <code>目标 IP 地址: Host_1 的 IP 地址</code></li>
 </ul>
 </li>
 <li>交换机 Switch_1 收到 ARP 应答报文后，转发到 Host_1, Host_1 收到 ARP 应答后:
 <ul>
-<li>首先将 ARP 应答中的 <strong>源 IP 地址和源 Mac 地址存入自己的 ARP 表中</strong> (也就是存储 Host_3_IP -&gt; Host_3_Mac 的映射关系)</li>
+<li>首先将 ARP 应答中的 <strong>源 IP 地址和源 MAC 地址存入自己的 ARP 表中</strong> (也就是存储 Host_3_IP -&gt; Host_3_MAC 的映射关系)</li>
 <li>然后将要发送的数据进行报文封装，并发送给 Host_3</li>
 </ul>
 </li>
@@ -179,9 +235,9 @@
 <p>刚才的示例说明了，位于同一子网内的两台主机之间的 ARP 请求和应答过程，那么对于不同子网的两台主机，其中的流程又是怎样的呢？
 例如下图中的 主机 Host_1 要向主机 Host_4 发送主机。</p>
 <p><img src="https://dbwu.tech/images/network/arp_4.png" alt="不同子网间，ARP 请求和应答示例"></p>
-<p>因为 Host_1 已经配置了默认网关，所以 Host_1 会先发送 ARP 请求报文获取默认网关路由器的 Mac 地址，收到默认网关的应答报文后，将默认网关的 IP 地址和 Mac 地址存入自己的 ARP 表中，然后将发送给 Host_4 的数据报文发送给默认网关，经由默认网关转发到 Host_4。</p>
-<p>网关需要学习 Host_4 的 ARP 表项吗？不需要，因为它已经记录了 Host_4 所属子网的交换机 Switch_2 的 Mac 地址，所以只需要将请求/数据报文转发到 Switch_2 即可。</p>
-<p>后序的通信过程中，Host_1 学习 Host_4 的 ARP 表项 (IP -&gt; Mac 映射关系) 过程，和前文中 Host_1 学习 Host_3 的 ARP 表项过程类似，唯一的区别在于多了一层默认网关和一层交换机 (Switch_2) 的转发，这里不再赘述。</p>
+<p>因为 Host_1 已经配置了默认网关，所以 Host_1 会先发送 ARP 请求报文获取默认网关路由器的 MAC 地址，收到默认网关的应答报文后，将默认网关的 IP 地址和 MAC 地址存入自己的 ARP 表中，然后将发送给 Host_4 的数据报文发送给默认网关，经由默认网关转发到 Host_4。</p>
+<p><strong>网关需要学习 Host_4 的 ARP 表项吗</strong>？需要，因为网关必须先把数据报文封装成以太网帧，其中当然必须包含 Host_4 的 MAC 地址。</p>
+<p>后序的通信过程中，Host_1 学习 Host_4 的 ARP 表项 (IP -&gt; MAC 映射关系) 过程，和前文中 Host_1 学习 Host_3 的 ARP 表项过程类似，唯一的区别在于多了一层默认网关和一层交换机 (Switch_2) 的转发，这里不再赘述。</p>
 <hr>
 <h2 id="wireshark-抓包">Wireshark 抓包</h2>
 <p>下面通过抓包工具 <code>Wireshark</code> 分别来演示 ARP 请求正常应答和无应答两种情况。</p>
@@ -199,26 +255,28 @@
 </span></span><span style="display:flex;"><span>^C
 </span></span><span style="display:flex;"><span>--- 192.168.3.200 ping statistics ---
 </span></span><span style="display:flex;"><span><span style="color:#3677a9">5</span> packets transmitted, <span style="color:#3677a9">5</span> received, 0% packet loss, <span style="color:#24909d">time</span> 5004ms
-</span></span></code></pre></div><p><img src="https://dbwu.tech/images/network/arp_10.png" alt="Wireshark 抓包 - ARP 请求正常应答"></p>
+</span></span></code></pre></div><!-- raw HTML omitted -->
+<p><img src="https://dbwu.tech/images/network/arp_10.png" alt="Wireshark 抓包 - ARP 请求正常应答"></p>
 <p>接下来，通过 Wireshark 抓包来看看 ARP 请求的报文数据:</p>
+<!-- raw HTML omitted -->
 <p><img src="https://dbwu.tech/images/network/arp_8.png" alt="Wireshark 抓包 - ARP 请求报文"></p>
 <p>通过抓包数据，可以将报文中的关键数据摘取出来:</p>
 <ul>
 <li>Opcode: 1, 表示该报文为 ARP 请求报文</li>
-<li>源 Mac: 本机 Mac 地址</li>
+<li>源 MAC: 本机 MAC 地址</li>
 <li>源 IP : 本机 IP 地址</li>
-<li>目的 Mac: FF:FF:FF:FF:FF:FF, 说明这是一个广播请求</li>
-<li>目的 IP: 192.168.3.200</li>
+<li>目标 MAC: FF:FF:FF:FF:FF:FF, 说明这是一个广播请求</li>
+<li>目标 IP: 192.168.3.200</li>
 </ul>
 <p>然后通过 Wireshark 抓包来看看 ARP 应答的报文数据:</p>
 <p><img src="https://dbwu.tech/images/network/arp_9.png" alt="Wireshark 抓包 - ARP 应答报文"></p>
 <p>通过抓包数据，可以将报文中的关键数据摘取出来:</p>
 <ul>
 <li>Opcode: 2, 表示该报文为 ARP 应答报文</li>
-<li>源 Mac: 对端主机 Mac 地址</li>
+<li>源 MAC: 对端主机 MAC 地址</li>
 <li>源 IP : 对端主机 IP 地址</li>
-<li>目的 Mac: 本机 Mac 地址</li>
-<li>目的 IP: 本机 IP 地址</li>
+<li>目标 MAC: 本机 MAC 地址</li>
+<li>目标 IP: 本机 IP 地址</li>
 </ul>
 <p>和刚才 ARP 请求时的广播报文不同，这里的 ARP 应答为单播报文，直接从对端主机发送到本机。</p>
 <h3 id="无应答">无应答</h3>
@@ -239,24 +297,23 @@
 <p><img src="https://dbwu.tech/images/network/arp_5.png" alt="Wireshark 抓包 - ARP 请求无应答"></p>
 <p>如图所示，虽然连续发了好几个 ARP 请求，但是没有收到任何应答。</p>
 <hr>
-<h2 id="arp-缓存">ARP 缓存</h2>
-<p>如果每次发送数据包之前，都要发起 APR 请求查询目标主机 IP 地址，网络中就会增加很多 ARP 包，这显然是没有必要的 (因为单个主机的 IP 地址和 Mac 地址并不会频繁变动)，所以会将 APP 查询结果缓存起来。</p>
-<p>每个主机都有一个 ARP 高速缓存，里面存储着当前局域网上的各主机和路由器的 IP 地址到 Mac 地址的映射表。</p>
-<p><img src="../../images/network/arp_3.png" alt=""></p>
-<p>如果主机 A 知道主机 B 的 IP 地址，但是 ARP 高速缓存中没有该 IP 地址到 Mac 地址的映射，此时主机 A 通过广播的方式发送 ARP 请求分组，主机 B 收到该请求后会发送 ARP 响应分组给主机 A 告知其 Mac 地址，随后主机 A 向其高速缓存中写入主机 B 的 IP 地址到 Mac 地址的映射。</p>
-<p>也就是说，在主机发送数据包时，先查询一下 ARP 缓存，如果其中已经保存了目标主机的 Mac 地址，就不需要发送 ARP 查询请求，而是直接使用 ARP 缓存中的地址，只有当 ARP 缓存中不存在目标主机的 Mac 地址时，才发送 ARP 查询请求。</p>
-<p>Linux 中使用 <code>arp</code> 命令来查看 ARP 缓存相关信息:</p>
-<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 ARP 缓存</span>
+<h2 id="arp-表">ARP 表</h2>
+<p>如果每次发送数据包之前，都要发起 APR 请求查询目标主机 IP 地址，网络中就会增加很多 ARP 包，这显然是没有必要的 (因为单个主机的 IP 地址和 MAC 地址并不会频繁变动)，所以会将 APP 查询结果缓存起来。</p>
+<p>这个缓存表就是 <code>ARP 表</code>，里面存储着当前局域网上的各主机和路由器的 IP 地址到 MAC 地址的映射关系。</p>
+<p><img src="https://dbwu.tech/images/network/arp_table.png" alt=""></p>
+<p>如果主机 A 知道主机 B 的 IP 地址，但是 ARP 高速缓存中没有该 IP 地址到 MAC 地址的映射，此时主机 A 通过广播的方式发送 ARP 请求分组，主机 B 收到该请求后会发送 ARP 响应分组给主机 A 告知其 MAC 地址，随后主机 A 向其高速缓存中写入主机 B 的 IP 地址到 MAC 地址的映射。</p>
+<p>也就是说，在主机发送数据包时，先查询一下 ARP 表，如果其中已经保存了目标主机的 MAC 地址，就不需要发送 ARP 查询请求，而是直接使用 ARP 缓存中的地址，只有当 ARP 表中不存在目标主机的 MAC 地址时，才发送 ARP 查询请求。</p>
+<p>Linux 中使用 <code>arp</code> 命令来查看 ARP 表缓存相关信息:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 ARP 表缓存</span>
 </span></span><span style="display:flex;"><span>$ arp -a
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 ARP 缓存详细信息</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 ARP 表缓存详细信息</span>
 </span></span><span style="display:flex;"><span>$ arp -an 
 </span></span></code></pre></div><p>Windows 中使用相同的命令和参数。</p>
 <p><img src="https://dbwu.tech/images/network/epub_907755_194.jpg" alt="图片来源: 网络是怎样连接的(户根勤)"></p>
-<h3 id="arp-表和-arp-缓存的关系">ARP 表和 ARP 缓存的关系</h3>
-<p>ARP 表中存储着当前主机已知的网络中的 IP 地址到 Mac 地址的映射关系，而 ARP 缓存则存储着最近使用过的 ARP 记录的缓存，以便快速通过 IP 地址获取到对应的 Mac 地址， 所以 ARP 缓存是 ARP 表的子集。</p>
+<h3 id="arp-表项">ARP 表项</h3>
 <p><strong>ARP 表是以每个网络接口为单位保存的</strong>，也就是每个以太网卡、无线网卡、虚拟网卡 (例如 Docker) 都有自己的 ARP 表，当一个数据包到达某个网络接口时，操作系统会检查该接口的 ARP 缓存表。</p>
-<p>Linux 中使用 <code>ip</code> 命名查看 ARP 表信息:</p>
+<p>Linux 中使用 <code>ip</code> 命名查看 ARP 表项信息:</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 ARP 表</span>
 </span></span><span style="display:flex;"><span>$ ip neigh show
 </span></span><span style="display:flex;"><span>
@@ -288,8 +345,8 @@
 <h4 id="permanent">PERMANENT</h4>
 <p>表示静态 ARP 表项，在管理员手动删除之前一直生效。</p>
 <h3 id="缓存老化">缓存老化</h3>
-<p>使用 ARP 缓存可以减少 ARP 包的数量，但是和所有 “缓存数据” 一样，ARP 缓存也存在数据失效的问题。</p>
-<p>当某个主机的 IP 地址或者 Mac 地址发生变化时，ARP 缓存的数据就会失效，为了最大化减少 ARP 缓存失效带来的问题，ARP 缓存数据会定期删除，缓存数据删除之后，主机发送数据请求之前，重新执行一次 ARP 请求查询就又可以获取到目标主机的 Mac 地址了。</p>
+<p>使用 ARP 缓存可以减少 ARP 包的数量，但是和所有 <strong>“缓存数据”</strong> 一样，ARP 缓存也存在数据失效的问题。</p>
+<p>当某个主机的 IP 地址或者 MAC 地址发生变化时，ARP 缓存的数据就会失效，为了最大化减少 ARP 缓存失效带来的问题，ARP 缓存数据会定期删除，缓存数据删除之后，主机发送数据请求之前，重新执行一次 ARP 请求查询就又可以获取到目标主机的 MAC 地址了。</p>
 <p>Linux 中可以使用 <code>sysctl</code> 命令来查看 ARP 缓存的默认有效期。</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 查看 ARP 缓存的默认有效期</span>
 </span></span><span style="display:flex;"><span>$ sysctl net.ipv4.neigh.default.gc_stale_time
@@ -300,35 +357,31 @@
 </span></span></code></pre></div><p>除了定期删除策略外，在网络接口下线时 (例如无线网卡被拔出)，其 ARP 缓存会被立刻删除。</p>
 <hr>
 <h2 id="arp-攻击">ARP 攻击</h2>
-<p>ARP 攻击利用 ARP 协议的工作方式来欺骗网络中的主机，使其将网络流量发送到错误的目标，通常有下面几种常见的方式。</p>
+<p>ARP 攻击利用 ARP 协议的工作方式来欺骗网络中的主机，使其将网络流量发送到错误的目标，通常有两种常见的方式。</p>
 <h3 id="1arp-欺骗arp-spoofing">1.ARP 欺骗（ARP Spoofing）</h3>
-<p>攻击者发送伪造的 ARP 应答消息，欺骗网络中的其他主机，告诉它们 <strong>攻击者的 Mac 地址对应于指定主机的 IP 地址</strong>，这样，当其他主机想要发送数据给指定主机时，数据包实际上会被发送到攻击者的主机上，攻击者可以对数据进行监视、修改或丢弃。</p>
+<p>攻击者发送伪造的 ARP 应答消息，欺骗网络中的其他主机，告诉它们: <strong>攻击者的 MAC 地址对应于指定主机的 IP 地址</strong>，这样，当其他主机想要发送数据给指定主机时，数据包实际上会被发送到攻击者的主机上，攻击者可以对数据进行监视、修改或丢弃。</p>
+<p>为了防止 ARP 欺骗，可以使用 ARP Anti-Spoofing 技术来保护网络安全，交换机会对 ARP 报文进行检查，一旦发现 IP 与 MAC 地址有伪造的情况，立马丢包甚至关闭端口。</p>
+<p>当用户手动修改 IP 时，其实已经通过 DHCP Release 报文将自动获取到的的 IP 释放了。所以当交换机检查到该 IP 已经被释放后，任何非 DHCP 数据报文，全部拒绝丢掉。</p>
 <h3 id="2-arp-洪泛arp-flooding">2. ARP 洪泛（ARP Flooding）</h3>
-<p>攻击者发送大量的伪造 ARP 请求消息到网络中的所有主机，导致网络中的所有主机都将 ARP 缓存中的条目重置为攻击者指定的值，这样，网络中的数据包将被发送到错误的目标，从而实现网络流量的劫持和监视 (整个过程和 DNS 劫持很像)。</p>
-<h3 id="3-arp-缓存投毒arp-cache-poisoning">3. ARP 缓存投毒（ARP Cache Poisoning）</h3>
-<p>攻击者利用 ARP 缓存中的漏洞，发送伪造的 ARP 响应消息，将合法主机的 Mac 地址映射到错误的 IP 地址，这样，当合法主机试图与目标主机进行通信时，数据包实际上会被发送到攻击者控制的计算机上。</p>
+<p>攻击者发送大量伪造的 ARP 请求和应答包，导致网络设备的 ARP 缓存表被填满。当设备的 ARP 缓存被伪造的条目填满时，合法的 ARP 条目无法被正确存储和更新，导致设备无法进行正常的网络通信，从而引发网络瘫痪。</p>
 <hr>
 <h2 id="arp-表类型">ARP 表类型</h2>
 <h3 id="1-动态类型">1. 动态类型</h3>
 <p>通过 ARP 请求和 ARP 应答自动生成和维护，表项可以被更新和 (过期) 删除，也可以被静态 ARP 表项覆盖。</p>
 <h3 id="2-静态类型">2. 静态类型</h3>
-<p>由网络管理员手动建立的 IP 地址和 Mac 地址之间的映射关系，表项不会被 (过期) 删除，也不会被静态 ARP 表项覆盖。</p>
-<p>静态 ARP 表项可以限制指定本端主机和指定 IP 的对端主机通信时只使用指定的 Mac 地址，此时攻击报文无法修改本端主机的 ARP 表中的 IP 地址和 Mac 地址的映射关系，从而保护了本端主机和对端主机之间的正常通信，一般会在网关设备上配置静态 ARP 表项。</p>
+<p>由网络管理员手动建立的 IP 地址和 MAC 地址之间的映射关系，表项不会被 (过期) 删除，也不会被静态 ARP 表项覆盖。</p>
+<p>静态 ARP 表项可以限制指定本端主机和指定 IP 的对端主机通信时只使用指定的 MAC 地址，此时攻击报文无法修改本端主机的 ARP 表中的 IP 地址和 MAC 地址的映射关系，从而保护了本端主机和对端主机之间的正常通信，一般会在网关设备上配置静态 ARP 表项。</p>
 <hr>
 <h2 id="免费-arp">免费 ARP</h2>
-<p>主机使用自己的 IP 地址作为目的 IP 地址发送 ARP 请求 (主机自己向自己发送 ARP 请求)，此种方式称免费 ARP, 主要起到如下作用:</p>
+<p>主机使用自己的 IP 地址作为目标 IP 地址发送 ARP 请求 (主机自己向自己发送 ARP 请求)，此种方式称免费 ARP, 主要起到如下作用:</p>
 <ol>
 <li>IP 地址冲突检测: 主机对外发送 ARP 请求，正常情况下不会收到 ARP 应答，如果收到了，说明网络中已经存在与自身 IP 重复的主机，检测到重复 (冲突) 之后，主机会周期性地发送 ARP 免费应答报文，直到冲突解决</li>
-<li>通告新的 Mac 地址: 主机更换了网卡，这时会产生新的 Mac 地址，为了通知网络中的其他主机更新 ARP 表项，主机会发送一个免费的 ARP 请求</li>
+<li>通告新的 MAC 地址: 主机更换了网卡，这时会产生新的 MAC 地址，为了通知网络中的其他主机更新 ARP 表项，主机会发送一个免费的 ARP 请求</li>
 </ol>
 <hr>
-<h2 id="arp-anti-spoofing">ARP Anti-Spoofing</h2>
-<p>ARP 欺骗（ARP Spoofing）是一种网络攻击技术，攻击者伪造 ARP 消息，将其 Mac 地址关联到其他设备的 IP 地址，从而在网络上拦截、修改或阻断数据传输。</p>
-<p>为了防止 ARP 欺骗，可以使用 ARP Anti-Spoofing 技术来保护网络安全，交换机会对 ARP 报文进行检查，一旦发现 IP 与 Mac 地址有伪造的情况，立马丢包甚至关闭端口。</p>
-<p>当用户手动修改 IP 时，其实已经通过 DHCP Release 报文将自动获取到的的 IP 释放了。所以当交换机检查到该 IP 已经被释放后，任何非 DHCP 数据报文，全部拒绝丢掉。</p>
-<p>&ndash;</p>
 <h2 id="reference">Reference</h2>
 <ul>
+<li><a href="https://datatracker.ietf.org/doc/html/rfc826">An Ethernet Address Resolution Protocol</a></li>
 <li><a href="https://info.support.huawei.com/info-finder/encyclopedia/zh/ARP.html">ARP</a></li>
 <li><a href="https://cizixs.com/2017/07/31/arp-protocol/">ARP 协议解析</a></li>
 </ul>
