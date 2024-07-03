@@ -1,0 +1,519 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>动态规划简明教程 - 4 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="动态规划简明教程 - 4" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/dynamic_programming_4/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-06-19T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-06-19T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="动态规划简明教程 - 4"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>动态规划简明教程 - 4</h1>
+
+    
+      
+<p>
+    <span>2022-06-19</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92">动态规划</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/leetcode">LeetCode</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="-最长递增子序列">❓ 最长递增子序列</h2>
+<p>给你一个整数数组 nums ，找到其中最长严格递增子序列的长度。</p>
+<p>子序列 是由数组派生而来的序列，删除（或不删除）数组中的元素而不改变其余元素的顺序。例如，[3,6,2,7] 是数组 [0,3,1,6,2,2,7] 的子序列。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 示例来自: https://leetcode.cn/</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 1：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [10,9,2,5,3,7,101,18]
+</span></span><span style="display:flex;"><span>输出：4
+</span></span><span style="display:flex;"><span>解释：最长递增子序列是 [2,3,7,101]，因此长度为 <span style="color:#3677a9">4</span> 。
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 2：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [0,1,0,3,2,3]
+</span></span><span style="display:flex;"><span>输出：4
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>示例 3：
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>输入：nums = [7,7,7,7,7,7,7]
+</span></span><span style="display:flex;"><span>输出：1
+</span></span></code></pre></div><h2 id="-解题过程">💡 解题过程</h2>
+<p>动态规划的子问题分解属于自顶向下的思想，和前面几篇系列文章一样，这道题也可以按照 <code>暴力搜索 -&gt; 记忆化搜索 -&gt; 动态规划搜索</code> 的顺序来实现代码，这样循序渐进地优化更符合我们的思考过程，也可以降低我们从一开始直接推导状态转移方程的心理压力。</p>
+<p>接下来，我们先尝试着给出一个可行的题解，然后在这个基础上慢慢迭代优化。</p>
+<p>解题方法函数原型:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">lengthOfLIS</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><h3 id="单元测试">单元测试</h3>
+<p>为了节省篇幅，这里给出针对本题的单元测试代码，不管 <code>暴力搜索 -&gt; 记忆化搜索 -&gt; 动态规划搜索</code> 哪种实现方式，都可以直接运行该单元测试。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Test_lengthOfLIS</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">type</span> args <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		nums []<span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	tests := []<span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		name <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>		args args
+</span></span><span style="display:flex;"><span>		want <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	}{
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-1&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{<span style="color:#6ab825;font-weight:bold">nil</span>},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-2&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[]<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">1</span>}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-3&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[]<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">10</span>, <span style="color:#3677a9">9</span>, <span style="color:#3677a9">2</span>, <span style="color:#3677a9">5</span>, <span style="color:#3677a9">3</span>, <span style="color:#3677a9">7</span>, <span style="color:#3677a9">101</span>, <span style="color:#3677a9">18</span>}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">4</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-4&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[]<span style="color:#6ab825;font-weight:bold">int</span>{<span style="color:#3677a9">0</span>, <span style="color:#3677a9">1</span>, <span style="color:#3677a9">0</span>, <span style="color:#3677a9">3</span>, <span style="color:#3677a9">2</span>, <span style="color:#3677a9">3</span>}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">4</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, tt := <span style="color:#6ab825;font-weight:bold">range</span> tests {
+</span></span><span style="display:flex;"><span>		t.<span style="color:#447fcf">Run</span>(tt.name, <span style="color:#6ab825;font-weight:bold">func</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> got := <span style="color:#447fcf">lengthOfLIS</span>(tt.args.nums); got != tt.want {
+</span></span><span style="display:flex;"><span>				t.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;lengthOfLIS() = %v, want %v&#34;</span>, got, tt.want)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="-暴力搜索">💪 暴力搜索</h2>
+<h3 id="解题思路">解题思路</h3>
+<p>暴力搜索的思路是尝试找出所有可能的递增子序列，然后找出其中最长的那个，具体的算法步骤可以概括为:</p>
+<ol>
+<li>遍历数组中每个元素</li>
+<li>针对每个当前元素，尝试找出以该元素开头的所有递增子序列</li>
+<li>计算将当前元素包含在子序列中时，可以获得的最大递增子序列长度</li>
+<li>计算跳过当前元素时 (也就是不将当前元素包含在子序列中)，可以获得的最大递增子序列长度</li>
+<li>重复第 2, 3, 4 步骤，同时更新已知的最大递增子序列长度，直到数组遍历完成</li>
+</ol>
+<h3 id="暴力搜索示例">暴力搜索示例</h3>
+<p>遍历到数组的任意一个元素时，我们有两种选择:</p>
+<ol>
+<li>将当前元素添加到已有的子序列中</li>
+<li>跳过当前元素，将当前元素的下一个元素添加到已有的子序列中</li>
+</ol>
+<p>例如遍历第一个元素 <code>1</code> 时，存在的两种选择:</p>
+<ol>
+<li>将 <code>1</code> 加入到子序列中，已知的最大递增子序列长度为 2</li>
+<li>跳过 <code>1</code>，已知的最大递增子序列长度为 1</li>
+</ol>
+<p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_3.png" alt="是否将 1 添加到子序列中"></p>
+<h3 id="实现代码">实现代码</h3>
+<p>因为需要 <strong>尝试数组中每个元素的所有可能子序列长度 (穷举)</strong>，所以自然而然，我们会想到使用回溯算法来实现代码。</p>
+<p>根据解题思路，可以写出如下的代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 暴力搜索迭代版本 (超时)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 超时原因: 重复检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">lengthOfLISBruteForce</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(nums) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	maxLen := <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#447fcf">backtrack</span>(nums, -<span style="color:#3677a9">1</span>, <span style="color:#3677a9">0</span>, &amp;maxLen)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxLen
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 回溯穷举每个元素开头的所有递增子序列
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// prev: 上个元素的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// cur:  当前元素的索引
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">backtrack</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, prev, cur <span style="color:#6ab825;font-weight:bold">int</span>, maxLen *<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> cur == <span style="color:#24909d">len</span>(nums) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	taken := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> prev == -<span style="color:#3677a9">1</span> || nums[cur] &gt; nums[prev] {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 计算将当前元素包含在子序列中时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 可以获得的最大递增子序列长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		taken = <span style="color:#3677a9">1</span> + <span style="color:#447fcf">backtrack</span>(nums, cur, cur+<span style="color:#3677a9">1</span>, maxLen)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算跳过当前元素时 (也就是不将当前元素包含在子序列中)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 可以获得的最大递增子序列长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	notTaken := <span style="color:#447fcf">backtrack</span>(nums, prev, cur+<span style="color:#3677a9">1</span>, maxLen)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新已知的最大递增子序列长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	*maxLen = <span style="color:#24909d">max</span>(*maxLen, <span style="color:#24909d">max</span>(taken, notTaken))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#24909d">max</span>(taken, notTaken)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="提交超时">提交超时</h3>
+<p>运行单元测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -v -count=<span style="color:#3677a9">1</span> . 
+</span></span></code></pre></div><p>输出结果如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>=== RUN   <span style="color:#40ffff">Test_lengthOfLIS</span>
+</span></span><span style="display:flex;"><span>=== RUN   Test_lengthOfLIS/test-1
+</span></span><span style="display:flex;"><span>=== RUN   Test_lengthOfLIS/test-2
+</span></span><span style="display:flex;"><span>=== RUN   Test_lengthOfLIS/test-3
+</span></span><span style="display:flex;"><span>=== RUN   Test_lengthOfLIS/test-4
+</span></span><span style="display:flex;"><span>--- PASS: Test_lengthOfLIS (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_lengthOfLIS/test-1 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_lengthOfLIS/test-2 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_lengthOfLIS/test-3 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_lengthOfLIS/test-4 (0.00s)
+</span></span><span style="display:flex;"><span>PASS
+</span></span><span style="display:flex;"><span>ok      leetcode/0300-Longest-Increasing-Subsequence    0.002s
+</span></span></code></pre></div><p>单元测试全部通过，表面上来看，我们的暴力搜索实现没有问题，现在去官方提交看看运行结果。</p>
+<p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_1.png" alt="提交超时"></p>
+<p>提交代码到官方后，提示 “测试超出时间限制”，说明代码的运行时间复杂度太高了，也就是代码运行时间存在优化空间。</p>
+<h3 id="超时原因分析">超时原因分析</h3>
+<p>在尝试优化暴力搜索之前，我们先来分析一下刚才的算法为何时间复杂度很高。</p>
+<p>对于数组中的每个元素，我们都要检测从其位置开始到数组结尾的最大递增子序列长度，这会产生一个问题: <strong>元素重复检测，也就是因为 “重叠子问题” 导致的 子问题重复计算</strong>。</p>
+<p>举例来说，遍历第一个元素 <code>nums[1] = 1 (0, 1)</code> 时，在回溯 (递归) 过程中会依次检测会出现两条路径:</p>
+<ol>
+<li>将当前元素添加到已有的子序列中，递归检测 <code>(0, 1)</code></li>
+<li>跳过当前元素，将当前元素的下一个元素添加到已有的子序列中，递归检测 <code>(0, 2)</code></li>
+</ol>
+<p>然而无论哪条路径，都会重复检测 <code>(2, 3)</code> 这个元素组合，以此类推，随着递归的深度不断增加，重复检测的元素组合会越来越多。</p>
+<p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_4.png" alt="元素重复检测示例"></p>
+<h2 id="-记忆化搜索">📝 记忆化搜索</h2>
+<p>现在我们已经分析出了暴力搜索的超时原因 (子问题重复计算)，和 Fibonacci 问题类似，作为优化方案，可以采用一个 <code>额外的备忘录</code> 来记录已经检测过的元素组合，具体来说:</p>
+<ol>
+<li>回溯 (递归) 过程中检测每个元素的不同路径组合时 (也就是不同的 <code>prev + cur</code> 参数组合)</li>
+<li>如果当前路径已经检测过，直接返回备忘录中的值即可</li>
+<li>如果当前路径未检测过，进行递归检测，并在递归结束后将对应的值添加到备忘录中</li>
+</ol>
+<p>下面是对应的实现代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 记忆化搜索
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">lengthOfLISMemo</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(nums) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 初始化备忘录
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 所有值设置为 -1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 表示当前元素组合还未被检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 使用一个二维数组来表示 HashMap
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 其中 memo[i][j] 表示:
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    i = 参数 prev + 1 (prev 从 -1 开始)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">//    j = 参数 cur
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	memo := <span style="color:#24909d">make</span>([][]<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#24909d">len</span>(nums))
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> memo {
+</span></span><span style="display:flex;"><span>		memo[i] = <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, <span style="color:#24909d">len</span>(nums)+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#6ab825;font-weight:bold">range</span> memo[i] {
+</span></span><span style="display:flex;"><span>			memo[i][j] = -<span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#447fcf">backtrackMemo</span>(nums, -<span style="color:#3677a9">1</span>, <span style="color:#3677a9">0</span>, memo)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">backtrackMemo</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>, prev, cur <span style="color:#6ab825;font-weight:bold">int</span>, memo [][]<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 递归结束条件
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> cur == <span style="color:#24909d">len</span>(nums) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果备忘录中已经包含 [当前元素组合]
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> memo[prev+<span style="color:#3677a9">1</span>][cur] != -<span style="color:#3677a9">1</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> memo[prev+<span style="color:#3677a9">1</span>][cur]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	taken := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> prev == -<span style="color:#3677a9">1</span> || nums[cur] &gt; nums[prev] {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 计算将当前元素包含在子序列中时
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		<span style="color:#999;font-style:italic">// 可以获得的最大递增子序列长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		taken = <span style="color:#3677a9">1</span> + <span style="color:#447fcf">backtrackMemo</span>(nums, cur, cur+<span style="color:#3677a9">1</span>, memo)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 计算跳过当前元素时 (也就是不将当前元素包含在子序列中)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 可以获得的最大递增子序列长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	notTaken := <span style="color:#447fcf">backtrackMemo</span>(nums, prev, cur+<span style="color:#3677a9">1</span>, memo)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新备忘录中 [当前元素组合] 的值
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	memo[prev+<span style="color:#3677a9">1</span>][cur] = <span style="color:#24909d">max</span>(taken, notTaken)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> memo[prev+<span style="color:#3677a9">1</span>][cur]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_2.png" alt="提交测试通过"></p>
+<p>虽然加了备忘录之后代码性能依然较低，但是好在可以通过全部的测试用例了。</p>
+<h3 id="代码执行过程示例">代码执行过程示例</h3>
+<p>如图所示，有了备忘录之后，每个元素组合只会被计算一次，计算量会大大减少。</p>
+<p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_5.png" alt="记忆化搜索执行示例"></p>
+<p>举例来说，当递归计算元素组合 <code>[0, 1]</code> 时 (prev = 0, cur = 1)，会出现两个组合 (路径):</p>
+<ol>
+<li>将当前元素添加到已有的子序列中，对应组合 <code>[1, 2]</code></li>
+<li>跳过当前元素，将当前元素的下一个元素添加到已有的子序列中，对应组合 <code>[0, 2]</code></li>
+</ol>
+<p>接下来，递归计算组合 <code>[1, 2]</code> 时，会计算其子组合 <code>[2, 3]</code> 和 <code>[1, 3]</code> 并在计算完成后更新到备忘录中。</p>
+<p>在递归计算组合 <code>[0, 2]</code> 时，也会计算子组合 <code>[2, 3]</code>，因为 <code>[2, 3]</code> 之前已经计算过了，所以直接从备忘录中取得计算结果即可，无需重复计算。</p>
+<hr>
+<h2 id="-动态规划">🚀 动态规划</h2>
+<p>现在实现了暴力搜索和记忆化搜索代码之后，我们来思考如何编写动态规划代码。</p>
+<h3 id="状态转移方程">状态转移方程</h3>
+<blockquote>
+<p>设计正确的状态转移方程是解决动态规划问题的前提。</p>
+</blockquote>
+<blockquote>
+<p>自顶向下时，当前元素作为 “当前子序列的末尾元素”，可以选择加入或者不加入到子序列中</p>
+<p>自底向上时，根据已知的子序列状态，将当前元素作为 “已知的子序列状态” 末尾元素，计算可以得到的子序列长度，(和自顶向下正好相反)</p>
+</blockquote>
+<p>和前文中暴力搜索和记忆化搜索的 自顶向下 的实现不同，对于动态规划，我们考虑如何 自定向上 的实现。</p>
+<p>遍历数组时，对于每个当前元素 <code>nums[i]</code>，我们需要存储以 <code>nums[i]</code> 为结尾可以形成的最大递增子序列长度，记录为 <code>dp[i]</code> 。</p>
+<p>这样在向后遍历其他元素时，每次只需要根据已有的子问题解 <code>dp[...]</code> 来计算出当前元素 <code>dp[i]</code> 的解即可，具体来说：</p>
+<ol>
+<li><code>nums[i]</code> 默认为 1，表示由其自身构成的最大递增子序列长度</li>
+<li>遍历 <code>nums[0] ... nums[i]</code>, 每个当前元素记录为 <code>nums[j]</code>，执行下列操作:
+<ol>
+<li>如果 <code>nums[j] &gt;= nums[i]</code> , 说明 <code>nums[i]</code> 连接 <code>nums[j]</code> 时 <strong>无法形成递增子序列</strong>，直接跳过即可</li>
+<li>如果 <code>nums[j] &lt; nums[i]</code> , 说明 <code>nums[i]</code> 连接 <code>nums[j]</code> 时 <strong>可以形成递增子序列</strong>，此时更新 <code>dp[i]</code> 对应的最大长度解，也就是 <code>dp[i]</code> (当前值) 和 <code>dp[j] + 1</code> (连接 <code>nums[j]</code> 之后) 中的较大值</li>
+</ol>
+</li>
+</ol>
+<p>举例来说:</p>
+<p>以 <code>nums[0] = 0</code> 构成的最大递增子序列长度为 1 (0)，当遍历到下一个元素 <code>nums[1] = 1</code> 时，因为 <code>nums[0] &lt; nums[1]</code>, <strong>可以形成递增子序列</strong>，此时将 <code>nums[1] = 1</code> 可以构成的最大递增子序列长度更新为 2 (0, 1)。</p>
+<p>同理，以 <code>nums[1] = 1</code> 构成的最大递增子序列长度为 2 (0, 1)，当遍历到下一个元素 <code>nums[2] = 0</code> 时，因为 <code>nums[2] &gt;= nums[1]</code>, <strong>无法形成递增子序列</strong>，直接跳过即可。</p>
+<p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_6.png" alt="状态转移示例"></p>
+<p>根据这两个示例和边界条件，可以推导出如下的状态转移方程:</p>
+<p>$$
+\begin{align*}
+F(i) =
+\begin{cases}
+\max\ ( F(i), F(j) + 1 \ ) \ &amp; \text {, } \text{F}(j) &lt; F(i), j \in [0:i) \\
+1 &amp; \text{, } \text{}default
+\end{cases}
+\end{align*}
+$$</p>
+<h3 id="算法步骤">算法步骤</h3>
+<p>根据上面的分析过程和状态转移过程，可以得到如下的算法步骤：</p>
+<ol>
+<li><strong>定义问题状态</strong>：计算数组中以每个元素结尾的最长子序列长度</li>
+<li><strong>状态转移方程</strong>：<code>F(i) = max{F(i), F(j) + 1}</code></li>
+<li><strong>初始化</strong>：建立状态转移表 (一维数组)</li>
+<li><strong>计算子问题</strong>：计算子数组 <code>nums[0:i]</code> 中以每个元素结尾的最长子序列长度</li>
+<li><strong>计算原问题</strong>：计算以当前元素的结尾的最长子序列长度</li>
+</ol>
+<h3 id="实现代码-1">实现代码</h3>
+<p>计算出状态转移方程之后，剩下的事情就是将算法步骤直接翻译为代码就可以了，下面的是动态规划的实现代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 动态规划
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">lengthOfLIS</span>(nums []<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	n := <span style="color:#24909d">len</span>(nums)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> n == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	maxLen := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// dp[i] 的值代表以 nums[i] 结尾的最长子序列长度
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dp := <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; n; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#999;font-style:italic">// 默认为 1
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>		dp[i] = <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt; i; j++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> nums[j] &lt; nums[i] {
+</span></span><span style="display:flex;"><span>				dp[i] = <span style="color:#24909d">max</span>(dp[i], dp[j]+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		maxLen = <span style="color:#24909d">max</span>(maxLen, dp[i])
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxLen
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_7.png" alt="提交通过"></p>
+<p>下面是动态规划代码的执行过程图解。</p>
+<p><img src="https://dbwu.tech/images/algorithm/lengthOfLIS_8.png" alt="动态规划执行过程"></p>
+<hr>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/duanbiaowu/leetcode">LeetCode 题解</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/dynamic_programming_3/"><i class="fa fa-chevron-circle-left"></i> 动态规划简明教程 - 3</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/dynamic_programming_5/">动态规划简明教程 - 5 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="动态规划简明教程 - 4"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

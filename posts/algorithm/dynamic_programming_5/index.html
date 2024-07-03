@@ -1,0 +1,661 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>动态规划简明教程 - 5 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="动态规划简明教程 - 5" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/algorithm/dynamic_programming_5/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-06-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-06-25T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="动态规划简明教程 - 5"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>动态规划简明教程 - 5</h1>
+
+    
+      
+<p>
+    <span>2022-06-25</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%AE%97%E6%B3%95">算法</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E5%8A%A8%E6%80%81%E8%A7%84%E5%88%92">动态规划</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/leetcode">LeetCode</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <h2 id="-最大正方形">❓ 最大正方形</h2>
+<p>在一个由 &lsquo;0&rsquo; 和 &lsquo;1&rsquo; 组成的二维矩阵内，找到只包含 &lsquo;1&rsquo; 的最大正方形，并返回其面积。</p>
+<p><img src="https://dbwu.tech/images/algorithm/max1grid.jpg" alt="图片来源: https://leetcode.cn/"></p>
+<p>如图所示的的矩阵中，最大正方形面积为 4。</p>
+<p><img src="https://dbwu.tech/images/algorithm/max2grid.jpg" alt="图片来源: https://leetcode.cn/"></p>
+<p>如图所示的的矩阵中，最大正方形面积为 1。</p>
+<h2 id="-解题过程">💡 解题过程</h2>
+<p>动态规划的子问题分解属于自顶向下的思想，因此在解题时可以按照 <code>暴力搜索 -&gt; 记忆化搜索 -&gt; 动态规划搜索</code> 的顺序来实现代码，这样循序渐进地优化更符合我们的思考过程，也可以降低我们从一开始直接推导状态转移方程的心理压力。</p>
+<p>接下来，我们先尝试着给出一个可行的题解，然后在这个基础上慢慢迭代优化。</p>
+<p>解题方法函数原型:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maximalSquare</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {}
+</span></span></code></pre></div><h3 id="单元测试">单元测试</h3>
+<p>为了节省篇幅，这里给出针对本题的单元测试代码，不管 <code>暴力搜索 -&gt; 记忆化搜索 -&gt; 动态规划搜索</code> 哪种实现方式，都可以直接运行该单元测试。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">Test_maximalSquare</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">type</span> args <span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	tests := []<span style="color:#6ab825;font-weight:bold">struct</span> {
+</span></span><span style="display:flex;"><span>		name <span style="color:#6ab825;font-weight:bold">string</span>
+</span></span><span style="display:flex;"><span>		args args
+</span></span><span style="display:flex;"><span>		want <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	}{
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-1&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{<span style="color:#6ab825;font-weight:bold">nil</span>},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-2&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[][]<span style="color:#6ab825;font-weight:bold">byte</span>{
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;0&#39;</span>},
+</span></span><span style="display:flex;"><span>			}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">0</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-3&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[][]<span style="color:#6ab825;font-weight:bold">byte</span>{
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>},
+</span></span><span style="display:flex;"><span>			}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-4&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[][]<span style="color:#6ab825;font-weight:bold">byte</span>{
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;0&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>},
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>},
+</span></span><span style="display:flex;"><span>			}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">1</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-5&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[][]<span style="color:#6ab825;font-weight:bold">byte</span>{
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>},
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>},
+</span></span><span style="display:flex;"><span>			}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">4</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>		{
+</span></span><span style="display:flex;"><span>			<span style="color:#ed9d13">&#34;test-6&#34;</span>,
+</span></span><span style="display:flex;"><span>			args{[][]<span style="color:#6ab825;font-weight:bold">byte</span>{
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>},
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>},
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>},
+</span></span><span style="display:flex;"><span>				{<span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>, <span style="color:#ed9d13">&#39;1&#39;</span>, <span style="color:#ed9d13">&#39;0&#39;</span>},
+</span></span><span style="display:flex;"><span>			}},
+</span></span><span style="display:flex;"><span>			<span style="color:#3677a9">4</span>,
+</span></span><span style="display:flex;"><span>		},
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> _, tt := <span style="color:#6ab825;font-weight:bold">range</span> tests {
+</span></span><span style="display:flex;"><span>		t.<span style="color:#447fcf">Run</span>(tt.name, <span style="color:#6ab825;font-weight:bold">func</span>(t *testing.T) {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> got := <span style="color:#447fcf">maximalSquare</span>(tt.args.matrix); got != tt.want {
+</span></span><span style="display:flex;"><span>				t.<span style="color:#447fcf">Errorf</span>(<span style="color:#ed9d13">&#34;maximalSquare() = %v, want %v&#34;</span>, got, tt.want)
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		})
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="-暴力搜索">💪 暴力搜索</h2>
+<p><strong>解题思路:</strong></p>
+<p>正方形的特征为四条边长度相等，所以一个最简单可行的方案为：</p>
+<ol>
+<li>从矩阵左上角开始、到右下角结束、逐个元素遍历搜索 (也就是矩阵的逐行逐列遍历)</li>
+<li>以当前元素作为待检测正方形的左上角开始检测</li>
+<li>边长初始化为 1</li>
+<li>如果以当前元素作为正方形左上角、当前边长为正方形边长可以形成的 “新的正方形” 中的元素全部为 1，当前边长 + 1</li>
+<li>重复第 3, 4 步，直到 “新的正方形” 中的元素包含 0</li>
+<li>更新已知的最大正方形面积</li>
+<li>开始遍历矩阵的下一个元素</li>
+<li>重复第 1 - 7 步，直到遍历到矩阵的最后一个元素 (右下角元素)</li>
+</ol>
+<h3 id="暴力搜索示例">暴力搜索示例</h3>
+<p>首先，我们从矩阵 (二维数组) 的左上角开始遍历，按照从左到右、从上到下的顺序，一直遍历到矩阵的最后一个元素。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_2.png" alt="矩阵遍历顺序"></p>
+<p>遍历到任意一个元素时，如果当前元素为 <code>0</code>, 直接跳过 (因为 <code>0</code> 无法构成有效正方形)，如果当前元素为 <code>1</code>, 我们就以当前元素为 “新的正方形” 的左上角，不断递增边长，试图寻找面积更大的正方形。</p>
+<p>例如遍历到矩阵中坐标为 <code>[1, 2]</code> 的元素时，就以 <code>[1, 2]</code> 这个坐标作为 “新的正方形” 的左上角开始寻找:</p>
+<blockquote>
+<p>Tips: 每次试图寻找面积更大的正方形时，只需要检测右侧的元素和底侧的元素，也就是当前正方形的外层元素，因为内层元素已经确认过了。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_5.png" alt="只需要检测右侧的元素和底侧的元素即可"></p>
+<h3 id="实现代码">实现代码</h3>
+<p>根据解题思路，可以写出如下的代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 题解代码
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 暴力搜索迭代版本 (超时)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 超时原因: 重复检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maximalSquare</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(matrix) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">var</span> maxSide <span style="color:#6ab825;font-weight:bold">int</span>
+</span></span><span style="display:flex;"><span>	rows, cols := <span style="color:#24909d">len</span>(matrix), <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 按照矩阵逐个元素遍历
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; rows; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt; cols; j++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> matrix[i][j] == <span style="color:#ed9d13">&#39;0&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">continue</span>
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 以当前坐标作为矩形左上角，检测最大正方形的边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 更新已知的最大正方形面积
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			maxSide = <span style="color:#24909d">max</span>(maxSide, <span style="color:#447fcf">search</span>(matrix, i, j))
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxSide * maxSide
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 搜索以当前坐标为最上角的最大正方形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">search</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>, x, y <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	rows, cols := <span style="color:#24909d">len</span>(matrix), <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	curSide := <span style="color:#3677a9">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 边长从 2 开始递增
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">for</span> length := <span style="color:#3677a9">2</span>; x+length &lt;= rows &amp;&amp; y+length &lt;= cols; length++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; length; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前 “新的正方形” 中右侧的元素包含 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接返回对应的边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> matrix[x+i][y+curSide] == <span style="color:#ed9d13">&#39;0&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> curSide
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; length; i++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#999;font-style:italic">// 如果当前 “新的正方形” 中底侧的元素包含 0
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#999;font-style:italic">// 直接返回对应的边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>			<span style="color:#6ab825;font-weight:bold">if</span> matrix[x+curSide][y+i] == <span style="color:#ed9d13">&#39;0&#39;</span> {
+</span></span><span style="display:flex;"><span>				<span style="color:#6ab825;font-weight:bold">return</span> curSide
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		curSide = length
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> curSide
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">max</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> a &gt; b {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> a
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> b
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="提交超时">提交超时</h3>
+<p>运行单元测试:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ go <span style="color:#24909d">test</span> -v -count=<span style="color:#3677a9">1</span> . 
+</span></span></code></pre></div><p>输出结果如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>=== RUN   <span style="color:#40ffff">Test_maximalSquare</span>
+</span></span><span style="display:flex;"><span>=== RUN   Test_maximalSquare/test-1
+</span></span><span style="display:flex;"><span>=== RUN   Test_maximalSquare/test-2
+</span></span><span style="display:flex;"><span>=== RUN   Test_maximalSquare/test-3
+</span></span><span style="display:flex;"><span>=== RUN   Test_maximalSquare/test-4
+</span></span><span style="display:flex;"><span>=== RUN   Test_maximalSquare/test-5
+</span></span><span style="display:flex;"><span>=== RUN   Test_maximalSquare/test-6
+</span></span><span style="display:flex;"><span>--- PASS: Test_maximalSquare (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_maximalSquare/test-1 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_maximalSquare/test-2 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_maximalSquare/test-3 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_maximalSquare/test-4 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_maximalSquare/test-5 (0.00s)
+</span></span><span style="display:flex;"><span>    --- PASS: Test_maximalSquare/test-6 (0.00s)
+</span></span><span style="display:flex;"><span>PASS
+</span></span><span style="display:flex;"><span>ok      leetcode/0221-Maximal-Square    0.002s
+</span></span></code></pre></div><p>单元测试全部通过，表面上来看，我们的暴力搜索实现没有问题，现在去官方提交看看运行结果。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_1.png" alt="提交超时"></p>
+<p>提交代码到官方后，给出的提示很明确：“测试用例通过了，但是耗时太长”，说明我们的算法实现是没有问题的，但是运行太慢了，说明代码的运行时间复杂度太高了，换句话说就是，代码运行时间存在优化空间。</p>
+<h3 id="超时原因分析">超时原因分析</h3>
+<p>在尝试优化暴力搜索之前，我们先来分析一下刚才的算法为何时间复杂度很高。</p>
+<p>例如遍历到矩阵中坐标为 <code>[1, 2]</code> 的元素时，边长从 2 开始递增，开始检测当前元素是否可以形成边长为 2 的 “新正方形” 。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_3.png" alt="边长为 2 时形成的新正方形"></p>
+<p>如图所示，边长为 2 时，可以形成的新的正方形，将变长递增到 3。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_4.png" alt="边长为 3 时无法形成的新正方形"></p>
+<p>如图所示，边长为 3 时，无法形成的新的正方形，因为坐标 <code>[3, 2]</code> 和 坐标 <code>[3, 4]</code> 的元素值为 <code>0</code>。</p>
+<p>到这里，坐标为 <code>[1, 2]</code> 的元素就检测完了 (最大正方形面积为 4)，接下来开始检测下一个元素，坐标为 <code>[1, 3]</code> 的元素，从边长 2 开始检测。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_6.png" alt="边长为 2 时形成的新正方形"></p>
+<p>边长为 2 时，坐标为 <code>[1, 3]</code> 的元素时形成的 “新正方形” 的 4 个坐标为: [1, 3] [1, 4] [2, 3] [2, 4]，仔细观察你会发现，这 4 个 坐标在检测上一个坐标 <code>[1, 2]</code> 元素时已经检测过了。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_7.png" alt="4 个坐标被重复检测"></p>
+<p>到了这里，代码超时的原因终于找到了: <strong>元素重复检测，也就是因为 “重叠子问题” 导致的 子问题重复计算</strong>。</p>
+<h3 id="递归代码">递归代码</h3>
+<p>下面是暴力搜索的递归版本实现代码，和迭代版本代码一样，提交后也会提示执行超时。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_1.png" alt="提交超时"></p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 暴力搜索递归版本 (超时)
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 超时原因: 重复检测
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maximalSquare</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(matrix) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	m, n := <span style="color:#24909d">len</span>(matrix), <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>	maxSide := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; m; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt; n; j++ {
+</span></span><span style="display:flex;"><span>			maxSide = <span style="color:#24909d">max</span>(maxSide, <span style="color:#447fcf">searchRecursive</span>(matrix, i, j))
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxSide * maxSide
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 搜索以当前坐标 [x, y] 为左上角的最大正方形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">searchRecursive</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>, x, y <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &gt;= <span style="color:#24909d">len</span>(matrix) || y &gt;= <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>]) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> matrix[x][y] == <span style="color:#ed9d13">&#39;0&#39;</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 搜索以 [当前坐标的底侧元素] 为坐标 的最大正常形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	down := <span style="color:#447fcf">searchRecursive</span>(matrix, x+<span style="color:#3677a9">1</span>, y)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 搜索以 [当前坐标的右侧元素] 为坐标 的最大正常形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	right := <span style="color:#447fcf">searchRecursive</span>(matrix, x, y+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 搜索以 [当前坐标的右下侧元素] 为坐标 的最大正常形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	diag := <span style="color:#447fcf">searchRecursive</span>(matrix, x+<span style="color:#3677a9">1</span>, y+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">1</span> + <span style="color:#24909d">min</span>(down, right, diag)
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">max</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> a &gt; b {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> a
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> b
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">min</span>(x, y, z <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &lt; y &amp;&amp; x &lt; z {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> x
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> y &lt; z {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> y
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> z
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><hr>
+<h2 id="-记忆化搜索">📝 记忆化搜索</h2>
+<p>现在我们已经分析出了暴力搜索的超时原因 (子问题重复计算)，作为优化方案，可以采用一个 <code>额外的备忘录</code> 来记录每个坐标的最大边长，具体来说:</p>
+<ol>
+<li>遍历每个坐标元素时，需要分别计算该坐标的 <code>底侧坐标、右侧坐标、右下侧坐标</code> 三个坐标为左上角时，可以形成的最大正方形边长</li>
+<li>递归过程中:
+<ol>
+<li>对于当前坐标，如果备忘录中已经包含其最大正方形边长，直接返回</li>
+<li>对于当前坐标，记录其可以形成的最大正方形边长到备忘录中</li>
+</ol>
+</li>
+</ol>
+<p>下面是对应的实现代码:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 记忆化搜索
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maximalSquare</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> <span style="color:#24909d">len</span>(matrix) == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	m, n := <span style="color:#24909d">len</span>(matrix), <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>	memo := <span style="color:#24909d">make</span>([][]<span style="color:#6ab825;font-weight:bold">int</span>, m)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#6ab825;font-weight:bold">range</span> memo {
+</span></span><span style="display:flex;"><span>		memo[i] = <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	maxSide := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">0</span>; i &lt; m; i++ {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">0</span>; j &lt; n; j++ {
+</span></span><span style="display:flex;"><span>			maxSide = <span style="color:#24909d">max</span>(maxSide, <span style="color:#447fcf">searchMemo</span>(matrix, i, j, memo))
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxSide * maxSide
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">searchMemo</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>, x, y <span style="color:#6ab825;font-weight:bold">int</span>, memo [][]<span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &gt;= <span style="color:#24909d">len</span>(matrix) || y &gt;= <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>]) {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> matrix[x][y] == <span style="color:#ed9d13">&#39;0&#39;</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 如果备忘录中已经包含 [当前坐标] 的边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// 直接返回
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#6ab825;font-weight:bold">if</span> memo[x][y] != <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> memo[x][y]
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 搜索以 [当前坐标的底侧元素] 为坐标 的最大正常形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	down := <span style="color:#447fcf">searchMemo</span>(matrix, x+<span style="color:#3677a9">1</span>, y, memo)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 搜索以 [当前坐标的右侧元素] 为坐标 的最大正常形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	right := <span style="color:#447fcf">searchMemo</span>(matrix, x, y+<span style="color:#3677a9">1</span>, memo)
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 搜索以 [当前坐标的右下侧元素] 为坐标 的最大正常形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	diag := <span style="color:#447fcf">searchMemo</span>(matrix, x+<span style="color:#3677a9">1</span>, y+<span style="color:#3677a9">1</span>, memo)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// 更新备忘录中 [当前坐标] 的边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	memo[x][y] = <span style="color:#3677a9">1</span> + <span style="color:#24909d">min</span>(down, right, diag)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> memo[x][y]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">max</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> a &gt; b {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> a
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> b
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">min</span>(x, y, z <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &lt; y &amp;&amp; x &lt; z {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> x
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> y &lt; z {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> y
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> z
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/maximalSquare_8.png" alt="提交测试通过"></p>
+<h3 id="代码执行过程示例">代码执行过程示例</h3>
+<p>有了备忘录之后，每个坐标只会被计算一次，计算量会大大减少。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_10.png" alt="记忆化搜索执行示例"></p>
+<p>举例来说，当递归计算坐标 <code>[1, 2]</code> 时，会计算出其相邻的 4 个坐标可以形成的最大正方形并记录在备忘录中，当后续遍历到作标 <code>[1, 3]</code> 和坐标 <code>[2, 3]</code> 时，就不需要再次计算了，直接返回已有的备忘录中的值 (边长) 即可。</p>
+<hr>
+<h2 id="-动态规划">🚀 动态规划</h2>
+<p>现在实现了暴力搜索和记忆化搜索代码之后，我们来思考如何编写动态规划代码。</p>
+<h3 id="状态转移方程">状态转移方程</h3>
+<blockquote>
+<p>设计正确的状态转移方程是解决动态规划问题的前提。</p>
+</blockquote>
+<p>和前文中暴力搜索和记忆化搜索的 自顶向下 的实现不同，对于动态规划，我们考虑如何 自定向上 的实现。</p>
+<blockquote>
+<p>自顶向下时，当前元素作为 “新的正方形” 左上角</p>
+<p>自底向上时，当前元素作为 “新的正方形” 右下角 (和自顶向下正好相反，形成镜像)</p>
+</blockquote>
+<p>遍历矩阵元素时，对应每个当前元素，如果确定其可以构成的最大正方形面积呢？既然当前元素是作为 “新的正方形” 的右下角，那么只要需要计算出其 <code>上侧，左侧、左上角</code> 的正方形边长，然后取三者中的最小值，最后加一 (当前元素的边长)，就是当前元素可以构成的最大正方形边长。</p>
+<p>举例来说，当计算坐标 <code>[1, 2]</code> 时，只要需要计算出其 <code>上侧，左侧、左上角</code> 的正方形边长：</p>
+<ul>
+<li>上侧: [0, 2], 可以构成的最大正方形边长 = 0</li>
+<li>左侧: [1, 1], 可以构成的最大正方形边长 = 0</li>
+<li>左上角: [0, 1], 可以构成的最大正方形边长 = 0</li>
+</ul>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_11.png" alt="计算坐标 1, 2 可以构成的最大正方形"></p>
+<p>所以坐标 <code>[1, 2]</code> 可以构成的最大正方形边长等于:</p>
+<p>$$
+\begin{align*}
+min(0, 0, 0) + 1 = 1
+\end{align*}
+$$</p>
+<p>再比如，当计算坐标 <code>[2, 3]</code> 时，只要需要计算出其 <code>上侧，左侧、左上角</code> 的正方形边长：</p>
+<ul>
+<li>上侧: [1, 3], 可以构成的最大正方形边长 = 1</li>
+<li>左侧: [2, 2], 可以构成的最大正方形边长 = 1</li>
+<li>左上角: [1, 2], 可以构成的最大正方形边长 = 1</li>
+</ul>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_12.png" alt="计算坐标 2, 3 可以构成的最大正方形"></p>
+<p>所以坐标 <code>[2, 3]</code> 可以构成的最大正方形边长等于:</p>
+<p>$$
+\begin{align*}
+min(1, 1, 1) + 1 = 2
+\end{align*}
+$$</p>
+<p>根据这两个示例和边界条件，可以推导出如下的状态转移方程:</p>
+<p>$$
+\begin{align*}
+F(i, j) =
+\begin{cases}
+\min( F(i-1, j), F(i, j-1), F(i-1, j-1) \ ) + 1 &amp; \text {, } \text{matrix}[i][j] = 1 \\
+0 &amp; \text{, } \text{matrix}[i][j] = 0
+\end{cases}
+\end{align*}
+$$</p>
+<p>当前坐标可以构成的最大正方形边长 等于其 <code>上侧，左侧、左上角</code> 的正方形边长中的最小值加一。</p>
+<h3 id="算法步骤">算法步骤</h3>
+<p>根据上面的分析过程和状态转移过程，可以得到如下的算法步骤：</p>
+<ol>
+<li><strong>定义问题状态</strong>：以矩阵中的每个元素作为 “新的正方形” 的右下角坐标，计算可以构成的 “最大正方形” 边长</li>
+<li><strong>状态转移方程</strong>：<code>F(i, j) = min{ F(i−1,j), F(i,j−1), F(i−1,j−1) } + 1</code></li>
+<li><strong>初始化</strong>：建立状态转移表 (一个二维数组)，数组中所有元素初始化为 0, 表示以当前元素为坐标可以构成的最大正方形边长为 0</li>
+<li><strong>计算子问题</strong>：计算当前坐标的 <code>上侧，左侧、左上角</code> 的 “最大正方形” 边长，并保存结果</li>
+<li><strong>计算原问题</strong>：从矩阵左上角开始一直遍历到右下角，逐个计算当前元素的 “最大正方形” 边长，同时更新目前已知的 “最大正方形” 边长 (变量 maxSide)</li>
+</ol>
+<h3 id="实现代码-1">实现代码</h3>
+<p>计算出状态转移方程之后，剩下的事情就是将算法步骤直接翻译为代码就可以了，下面的是动态规划的实现代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#999;font-style:italic">// 动态规划
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#447fcf">maximalSquare</span>(matrix [][]<span style="color:#6ab825;font-weight:bold">byte</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	m := <span style="color:#24909d">len</span>(matrix)
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> m == <span style="color:#3677a9">0</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	n := <span style="color:#24909d">len</span>(matrix[<span style="color:#3677a9">0</span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#999;font-style:italic">// dp[i][j]: 以 i 行 j 列为右下角所能构成的最大正方形边长
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	<span style="color:#999;font-style:italic">// dp[i][j] = 1 + min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1])
+</span></span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"></span>	dp := <span style="color:#24909d">make</span>([][]<span style="color:#6ab825;font-weight:bold">int</span>, m+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	dp[<span style="color:#3677a9">0</span>] = <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>	maxSide := <span style="color:#3677a9">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">for</span> i := <span style="color:#3677a9">1</span>; i &lt;= m; i++ {
+</span></span><span style="display:flex;"><span>		dp[i] = <span style="color:#24909d">make</span>([]<span style="color:#6ab825;font-weight:bold">int</span>, n+<span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">for</span> j := <span style="color:#3677a9">1</span>; j &lt;= n; j++ {
+</span></span><span style="display:flex;"><span>			<span style="color:#6ab825;font-weight:bold">if</span> matrix[i-<span style="color:#3677a9">1</span>][j-<span style="color:#3677a9">1</span>] == <span style="color:#ed9d13">&#39;1&#39;</span> {
+</span></span><span style="display:flex;"><span>				dp[i][j] = <span style="color:#3677a9">1</span> + <span style="color:#24909d">min</span>(dp[i-<span style="color:#3677a9">1</span>][j-<span style="color:#3677a9">1</span>], dp[i-<span style="color:#3677a9">1</span>][j], dp[i][j-<span style="color:#3677a9">1</span>])
+</span></span><span style="display:flex;"><span>				maxSide = <span style="color:#24909d">max</span>(maxSide, dp[i][j])
+</span></span><span style="display:flex;"><span>			}
+</span></span><span style="display:flex;"><span>		}
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> maxSide * maxSide
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">max</span>(a, b <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> a &gt; b {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> a
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> b
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">func</span> <span style="color:#24909d">min</span>(x, y, z <span style="color:#6ab825;font-weight:bold">int</span>) <span style="color:#6ab825;font-weight:bold">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> x &lt; y &amp;&amp; x &lt; z {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> x
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">if</span> y &lt; z {
+</span></span><span style="display:flex;"><span>		<span style="color:#6ab825;font-weight:bold">return</span> y
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#6ab825;font-weight:bold">return</span> z
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><img src="https://dbwu.tech/images/algorithm/maximalSquare_14.png" alt="提交通过"></p>
+<p>下面是动态规划代码的执行过程部分示例。</p>
+<p><img src="https://dbwu.tech/images/algorithm/maximalSquare_13.png" alt="动态规划执行过程示例"></p>
+<hr>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://github.com/duanbiaowu/leetcode">LeetCode 题解</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/dynamic_programming_4/"><i class="fa fa-chevron-circle-left"></i> 动态规划简明教程 - 4</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/network/vlan/">为什么需要 VLAN 网络 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="动态规划简明教程 - 5"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+
