@@ -140,6 +140,7 @@
 <ul>
 <li><a href="#%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86">实现原理</a></li>
 <li><a href="#wireshark-%E6%8A%93%E5%8C%85">Wireshark 抓包</a></li>
+<li><a href="#ttl-%E5%AD%97%E6%AE%B5%E8%BE%93%E5%87%BA%E8%AF%B4%E6%98%8E">TTL 字段输出说明</a></li>
 </ul>
 </li>
 <li><a href="#traceroute">traceroute</a>
@@ -233,6 +234,23 @@
 <p><img src="https://dbwu.tech/images/network/icmp_4.png" alt="ICMP 请求报文示例"></p>
 <p>在 ICMP 应答抓包数据中，数据报的 Type 字段为 0, 表示这是一条 ICMP Reply 应答报文。</p>
 <p><img src="https://dbwu.tech/images/network/icmp_5.png" alt="ICMP 应答报文示例"></p>
+<h3 id="ttl-字段输出说明">TTL 字段输出说明</h3>
+<p>在 ping 命令的输出中，有一个 ttl 字段，使用初始 ttl 值减去应答 ttl 值，表明 ICMP 报文经过的路由器数量。</p>
+<p>根据具体协议栈的实现，ping 命令执行的 ICMP 报文一般采用的 ttl 初始值分别为 32、64、128、255 中任意一个，不会使用其它值，如果应答 ttl 值和初始 ttl 值一样，说明通信的双方都在同一广播域 (局域网)，没有经过任何路由器。</p>
+<p>下面举个例子来说明，从本机 ping 家庭路由器的 IP 地址。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 本机 IP: 192.168.3.200</span>
+</span></span><span style="display:flex;"><span>$ ping 192.168.3.1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 应答如下</span>
+</span></span><span style="display:flex;"><span>PING 192.168.3.1 (192.168.3.1): <span style="color:#3677a9">56</span> data bytes
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 192.168.3.1: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">0</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">64</span> <span style="color:#40ffff">time</span>=26.104 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 192.168.3.1: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">1</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">64</span> <span style="color:#40ffff">time</span>=6.658 ms
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">64</span> bytes from 192.168.3.1: <span style="color:#40ffff">icmp_seq</span>=<span style="color:#3677a9">2</span> <span style="color:#40ffff">ttl</span>=<span style="color:#3677a9">64</span> <span style="color:#40ffff">time</span>=22.854 ms
+</span></span><span style="display:flex;"><span>^C
+</span></span><span style="display:flex;"><span>--- 192.168.3.1 ping statistics ---
+</span></span><span style="display:flex;"><span><span style="color:#3677a9">4</span> packets transmitted, <span style="color:#3677a9">4</span> packets received, 0.0% packet loss
+</span></span><span style="display:flex;"><span>round-trip min/avg/max/stddev = 4.046/14.915/26.104/9.676 ms
+</span></span></code></pre></div><p>从输出结果中可以看到，ttl 的值没有发生任何变化，因为是局域网内部通信。</p>
 <hr>
 <h2 id="traceroute">traceroute</h2>
 <p>traceroute 是 ICMP 的另一个经典应用，用来跟踪一个数据包从源设备到目标设备的传输信息，通常用于诊断网络问题和查找数据包传输路径。</p>

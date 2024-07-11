@@ -277,7 +277,7 @@
 </span></span><span style="display:flex;"><span>net.netfilter.nf_conntrack_tcp_timeout_time_wait = <span style="color:#3677a9">30</span>
 </span></span></code></pre></div><p>运行 <code>sysctl -p</code> 命令生效，重启之后仍然有效。</p>
 <h3 id="注意事项">注意事项</h3>
-<p>如果系统已经使用了参数 <code>net.ipv4.tcp_syncookies</code>, 参数 <code>net.ipv4.tcp_max_syn_backlog</code> 将自动失效，详情见 <a href="https://dbwu.tech/posts/network/what-is-ddos/#4-tcp-syn-cookies">之前的文章</a>。</p>
+<p>如果系统已经使用了参数 <code>net.ipv4.tcp_syncookies</code>, 参数 <code>net.ipv4.tcp_max_syn_backlog</code> 将自动失效，详情见 <a href="https://dbwu.tech/posts/network/what-is-ddos/#5-tcp-syn-cookies">之前的文章</a>。</p>
 <hr>
 <h2 id="客户端参数">客户端参数</h2>
 <p>当服务器充当 “客户端角色” 时 (例如代理服务器)，连接后端服务器器时，每个连接需要分配一个临时端口号。</p>

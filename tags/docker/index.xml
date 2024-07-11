@@ -1219,6 +1219,15 @@
      </item>
    
      <item>
+       <title>IO 模型</title>
+       <link>https://dbwu.tech/posts/network/io-model/</link>
+       <pubDate>Sun, 09 Jan 2022 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/io-model/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Mac 边边角角</title>
        <link>https://dbwu.tech/posts/tools/mac/</link>
        <pubDate>Wed, 11 Nov 2020 00:00:00 +0000</pubDate>
@@ -1251,15 +1260,6 @@
        <pubDate>Wed, 01 Jan 2020 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/other/interview/</guid>
-       <description></description>
-     </item>
-   
-     <item>
-       <title>为什么 TCP 需要建立连接三次握手</title>
-       <link>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</link>
-       <pubDate>Wed, 11 Dec 2019 00:00:00 +0000</pubDate>
-       
-       <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</guid>
        <description></description>
      </item>
    
@@ -1323,6 +1323,15 @@
        <pubDate>Tue, 11 Dec 2018 00:00:00 +0000</pubDate>
        
        <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</guid>
+       <description></description>
+     </item>
+   
+     <item>
+       <title>为什么 TCP 建立连接需要三次握手</title>
+       <link>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</link>
+       <pubDate>Sat, 08 Dec 2018 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</guid>
        <description></description>
      </item>
    

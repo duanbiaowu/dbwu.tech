@@ -1,0 +1,404 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>IO 模型 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="IO 模型" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/io-model/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-01-09T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-01-09T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="IO 模型"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>IO 模型</h1>
+
+    
+      
+<p>
+    <span>2022-01-09</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E9%AB%98%E6%80%A7%E8%83%BD%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B">高性能网络编程</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <ul>
+<li><a href="#io-%E6%A8%A1%E5%9E%8B">I/O 模型</a>
+<ul>
+<li><a href="#1-%E9%98%BB%E5%A1%9E%E5%BC%8F-io">1. 阻塞式 I/O</a></li>
+<li><a href="#2-%E9%9D%9E%E9%98%BB%E5%A1%9E%E5%BC%8F-io">2. 非阻塞式 I/O</a></li>
+<li><a href="#3-io-%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8">3. I/O 多路复用</a></li>
+<li><a href="#4-%E4%BF%A1%E5%8F%B7%E9%A9%B1%E5%8A%A8-io">4. 信号驱动 I/O</a></li>
+<li><a href="#5-%E5%BC%82%E6%AD%A5-io">5. 异步 I/O</a></li>
+</ul>
+</li>
+<li><a href="#%E9%98%BB%E5%A1%9E%E9%9D%9E%E9%98%BB%E5%A1%9E%E5%90%8C%E6%AD%A5%E5%BC%82%E6%AD%A5">阻塞/非阻塞，同步/异步</a></li>
+<li><a href="#%E5%B0%8F%E7%BB%93">小结</a></li>
+<li><a href="#reference">Reference</a></li>
+</ul>
+<h2 id="io-模型">I/O 模型</h2>
+<p><strong>Unix</strong> 有五种 I/O 模型</p>
+<ol>
+<li>阻塞式 I/O</li>
+<li>非阻塞式 I/O</li>
+<li>I/O 多路复用（select, poll, epoll）</li>
+<li>信号驱动式 I/O</li>
+<li>异步 I/O（AIO）</li>
+</ol>
+<h3 id="1-阻塞式-io">1. 阻塞式 I/O</h3>
+<p><img src="https://dbwu.tech/images/os/io.png" alt=""></p>
+<p>应用进程执行系统调用时被阻塞，直到数据从内核缓冲区复制到应用进程缓冲区中才返回。</p>
+<p>阻塞不意味着整个操作系统都被阻塞，在阻塞的过程中，其它应用进程还可以执行，所以阻塞本身不消耗 CPU 时间，这种模型的 CPU 利用率会比较高。</p>
+<p>下面将 阻塞式 I/O 工作流程翻译为简单的伪代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">while</span> <span style="color:#6ab825;font-weight:bold">True</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 阻塞等待客户端连接</span>
+</span></span><span style="display:flex;"><span>    connection, client_address = sock.accept()
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">try</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">while</span> <span style="color:#6ab825;font-weight:bold">True</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic"># 阻塞等待数据</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic"># 读取数据</span>
+</span></span><span style="display:flex;"><span>            data = connection.recv(<span style="color:#3677a9">16</span>)
+</span></span><span style="display:flex;"><span>            <span style="color:#999;font-style:italic"># 执行其他操作</span>
+</span></span></code></pre></div><h3 id="2-非阻塞式-io">2. 非阻塞式 I/O</h3>
+<p><img src="https://dbwu.tech/images/os/io_1.png" alt=""></p>
+<p>应用进程执行系统调用时，内核直接返回一个错误码，然后应用进程可以继续向下运行，但是需要不断的执行系统调用来获取 I/O 操作是否完成，也称为轮询（polling）。</p>
+<p>由于 CPU 要处理更多的系统调用，因此这种模型的 CPU 利用率比较低。</p>
+<p>下面将 非阻塞式 I/O 工作流程翻译为简单的伪代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">while</span> <span style="color:#6ab825;font-weight:bold">True</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">try</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 内核直接返回一个错误吗</span>
+</span></span><span style="display:flex;"><span>        connection, client_address = sock.accept()
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 继续向下执行</span>
+</span></span><span style="display:flex;"><span>        connection.setblocking(<span style="color:#3677a9">0</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">except</span> <span style="color:#bbb">BlockingIOError</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 处理错误</span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">try</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 读取数据</span>
+</span></span><span style="display:flex;"><span>        data = connection.recv(<span style="color:#3677a9">16</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 执行其他操作</span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">except</span> <span style="color:#bbb">BlockingIOError</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 处理错误</span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span></code></pre></div><h3 id="3-io-多路复用">3. I/O 多路复用</h3>
+<p><img src="https://dbwu.tech/images/os/io_2.png" alt=""></p>
+<p>使用 select, poll, epoll 等待多个套接字 (文件描述符) 中的任何一个变为就绪，等待过程会阻塞，当某一个套接字就绪后，再把数据从内核空间 (缓冲期) 复制数据到用户空间 (进程) 。当然，epoll 的工作方式和 select, poll 有些差异，不过这里先不做细节上的深究，统一当作 I/O 多路复用的实现来看待。</p>
+<p>这种模型可以让单个 进程/线程 具有处理多个 I/O 事件的能力，也称为事件驱动 I/O。</p>
+<p>如果一个 Web Server 没有 I/O 多路复用，那么每一个 Socket 连接都需要创建一个线程去处理，如果同时有几万个连接，那么就需要创建相同数量的线程 (可能导致的后果就是操作系统直接崩溃)，相比之下，I/O 多路复用不需要多个进程/线程创建、上下文切换的开销，系统负载更小。</p>
+<p>下面将 I/O 多路复用 工作流程翻译为简单的伪代码。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+</span></span><span style="display:flex;"><span>server_address = (<span style="color:#ed9d13">&#39;localhost&#39;</span>, <span style="color:#3677a9">8080</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>inputs = [sock]
+</span></span><span style="display:flex;"><span>outputs = []
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">while</span> inputs:
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 阻塞等待套接字就绪</span>
+</span></span><span style="display:flex;"><span>    readable, writable, exceptional = select.select(inputs, outputs, inputs)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 获取到已经就绪的套接字</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 遍历处理读事件</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> s <span style="color:#6ab825;font-weight:bold">in</span> readable:
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 遍历处理写事件</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> s <span style="color:#6ab825;font-weight:bold">in</span> writable:
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 遍历处理其他事件</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">for</span> s <span style="color:#6ab825;font-weight:bold">in</span> exceptional:
+</span></span><span style="display:flex;"><span>        ...
+</span></span></code></pre></div><h3 id="4-信号驱动-io">4. 信号驱动 I/O</h3>
+<p><img src="https://dbwu.tech/images/os/io_3.png" alt=""></p>
+<p>应用进程执行系统调用时，内核直接返回，然后应用进程可以继续向下运行，也就是说等待数据阶段应用进程是非阻塞的。</p>
+<p>内核在数据到达时向应用进程发送信号，应用进程收到信号之后，在信号处理程序中执行系统调用，将数据从内核空间 (缓冲期) 复制数据到用户空间 (进程)，这种模型的 CPU 利用率会比较高。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 信号回调函数</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">handler</span>(signum, frame):
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 读取数据</span>
+</span></span><span style="display:flex;"><span>    data, addr = sock.recvfrom(<span style="color:#3677a9">1024</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 执行其他操作</span>
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 初始化 socket</span>
+</span></span><span style="display:flex;"><span>sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+</span></span><span style="display:flex;"><span>sock.bind((<span style="color:#ed9d13">&#39;localhost&#39;</span>, <span style="color:#3677a9">8080</span>))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 注册信号回调函数</span>
+</span></span><span style="display:flex;"><span>signal.signal(signal.SIGIO, handler)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">while</span> <span style="color:#6ab825;font-weight:bold">True</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 等待信号通知</span>
+</span></span><span style="display:flex;"><span>    signal.pause()
+</span></span></code></pre></div><h3 id="5-异步-io">5. 异步 I/O</h3>
+<p><img src="https://dbwu.tech/images/os/io_4.png" alt=""></p>
+<p>应用进程执行系统调用时，内核直接返回，然后应用进程可以继续向下运行，不会被阻塞，内核会在所有操作 (包括从内核空间复制数据到用户空间) 完成之后向应用进程发送信号。</p>
+<blockquote>
+<p>异步 I/O 与信号驱动 I/O 的区别在于，异步 I/O 的信号是通知应用进程 I/O (数据复制) 已经完成，而信号驱动 I/O 的信号是通知应用进程可以开始 I/O  (数据复制) 。</p>
+</blockquote>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 异步回调函数</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 通知应用进程 I/O (数据复制) 已经完成</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">async</span> <span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">handle_client</span>(reader, writer):
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">while</span> <span style="color:#6ab825;font-weight:bold">True</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 直接读取数据即可</span>
+</span></span><span style="display:flex;"><span>        data = <span style="color:#6ab825;font-weight:bold">await</span> reader.read(<span style="color:#3677a9">100</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#999;font-style:italic"># 执行其他操作</span>
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    writer.close()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">async</span> <span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">main</span>():
+</span></span><span style="display:flex;"><span>    <span style="color:#999;font-style:italic"># 监听端口并注册异步回调函数</span>
+</span></span><span style="display:flex;"><span>    server = <span style="color:#6ab825;font-weight:bold">await</span> asyncio.start_server(handle_client, <span style="color:#ed9d13">&#39;localhost&#39;</span>, <span style="color:#3677a9">10000</span>)
+</span></span></code></pre></div><hr>
+<h2 id="阻塞非阻塞同步异步">阻塞/非阻塞，同步/异步</h2>
+<p>如何判断一个 I/O 模型是同步还是异步？</p>
+<blockquote>
+<p>I/O 事件数据在内核空间和用户空间来回复制时，是否会阻塞当前线程？</p>
+<p>如果会阻塞当前线程，则为同步 I/O, 否则就是异步 I/O。</p>
+</blockquote>
+<p><img src="https://dbwu.tech/images/os/io_6.png" alt=""></p>
+<!-- raw HTML omitted -->
+<p>所以前文中提到的 5 种 I/O 模型中，只有最后 1 种 <code>异步 I/O 模型</code> 是真正的异步 I/O, 其他 4 种都是同步 I/O。</p>
+<p>一个 I/O 读取操作通常包括两个步骤：</p>
+<ol>
+<li>等待网络数据到达网卡(读就绪) -&gt; 等待网卡可写(写就绪) –&gt; 读取/写入到内核缓冲区</li>
+<li>从内核空间缓冲区复制数据 –&gt; 用户空间(读), 或者 从用户空间 (进程) 复制数据 -&gt; 内核缓冲区(写)</li>
+</ol>
+<p><strong>4 种同步 I/O 模型的主要区别在 I/O 操作的第一步</strong>: 等待网络数据到达网卡(读就绪) -&gt; 等待网卡可写(写就绪) –&gt; 读取/写入到内核缓冲区，除了 <code>阻塞式 I/O</code> 模型外，其他 3 种同步 I/O 模型在第一步不会发生阻塞。</p>
+<p>换句话说，只有 <code>阻塞式 I/O</code> 模型是阻塞的，其他 3 种模型都是非阻塞的。</p>
+<hr>
+<h2 id="小结">小结</h2>
+<blockquote>
+<p>阻塞 / 非阻塞的主语是 I/O 操作调用者（应用进程），而同步 / 异步的主语是 I/O 操作执行者（操作系统）。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>I/O 模型</th>
+<th>是否阻塞</th>
+<th>是否同步</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>阻塞式 I/O</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>非阻塞式 I/O</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>I/O 多路复用</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>信号驱动式 I/O</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>异步 I/O</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://book.douban.com/subject/1500149/">Unix Network Programming</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/tools/mac/"><i class="fa fa-chevron-circle-left"></i> Mac 边边角角</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/algorithm/bit_operations/">LeetCode 刷题必懂位运算 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="IO 模型"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

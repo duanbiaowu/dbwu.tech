@@ -123,20 +123,53 @@
 
     
 
-    <h2 id="概述">概述</h2>
-<p>阅读本文前，需要熟悉 NAT 实现原理，因为 P2P 的核心原理之一，就是需要能够穿透 NAT 网络设备，如果读者还不了解, 可以先阅读 <a href="https://dbwu.tech/posts/network/how-nat-works/">这篇文章</a>。</p>
-<h3 id="内网穿透-打洞-协议">内网穿透 (打洞) 协议</h3>
+    <ul>
+<li><a href="#%E6%A6%82%E8%BF%B0">概述</a>
+<ul>
+<li><a href="#%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F-%E6%89%93%E6%B4%9E">内网穿透 (打洞)</a></li>
+</ul>
+</li>
+<li><a href="#udp-%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F">UDP 内网穿透</a>
+<ul>
+<li><a href="#%E7%9B%B8%E5%90%8C-nat">相同 NAT</a>
+<ul>
+<li><a href="#%E7%A9%BF%E9%80%8F%E5%89%8D">穿透前</a></li>
+<li><a href="#%E7%A9%BF%E9%80%8F%E4%B8%AD">穿透中</a></li>
+<li><a href="#%E7%A9%BF%E9%80%8F%E5%90%8E">穿透后</a></li>
+</ul>
+</li>
+<li><a href="#%E4%B8%8D%E5%90%8C-nat">不同 NAT</a>
+<ul>
+<li><a href="#%E7%A9%BF%E9%80%8F%E5%89%8D-1">穿透前</a></li>
+<li><a href="#%E7%A9%BF%E9%80%8F%E4%B8%AD-1">穿透中</a></li>
+<li><a href="#%E7%A9%BF%E9%80%8F%E5%90%8E-1">穿透后</a></li>
+</ul>
+</li>
+<li><a href="#%E5%A4%9A%E5%B1%82%E4%B8%8D%E5%90%8C-nat">多层不同 NAT</a>
+<ul>
+<li><a href="#%E7%A9%BF%E9%80%8F%E5%89%8D-2">穿透前</a></li>
+<li><a href="#%E7%A9%BF%E9%80%8F%E4%B8%AD-2">穿透中</a></li>
+<li><a href="#%E7%A9%BF%E9%80%8F%E5%90%8E-2">穿透后</a></li>
+</ul>
+</li>
+<li><a href="#%E5%BF%83%E8%B7%B3">心跳</a></li>
+</ul>
+</li>
+<li><a href="#tcp-%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F">TCP 内网穿透</a>
+<ul>
+<li><a href="#tcp-%E5%86%85%E7%BD%91%E7%A9%BF%E9%80%8F%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86">TCP 内网穿透基本原理</a></li>
+</ul>
+</li>
+<li><a href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB">扩展阅读</a></li>
+</ul>
+<h2 id="概述">概述</h2>
+<p>阅读本文前，需要熟悉 NAT 实现原理，因为内网穿透的核心原理之一，就是需要能够穿透 NAT 网络设备，如果读者还不了解 NAT, 可以先阅读 <a href="https://dbwu.tech/posts/network/how-nat-works/">这篇文章</a>。</p>
+<p>本文以 P2P 网络场景为例来讲解内网穿透原理，读者也可以带入其他应用场景，例如远程协助工具、远程会议工具。</p>
+<h3 id="内网穿透-打洞">内网穿透 (打洞)</h3>
 <p>在大多数的情况下，参与 P2P 网络的设备位于使用 NAT 设备后面，这导致这些设备无法直接通过公共互联网进行通信。</p>
-<p>内网穿透 (打洞) 技术的目标是使节点之间能够绕过 NAT，像两个正常的公网 IP 一样直接建立 P2P 连接，以下是几种常见的内网穿透方法及其原理。</p>
-<h3 id="1-stunsession-traversal-utilities-for-nat">1. STUN（Session Traversal Utilities for NAT）</h3>
-<p>STUN 是一种轻量级协议，用于发现 NAT 设备后面的节点的公网 IP 地址和端口号。</p>
-<p>常见的 STUN 实现方案有 TCP 打洞和 UDP 打洞，本文着重介绍 UDP 穿透 (打洞) 的实现原理。</p>
-<h3 id="2-turntraversal-using-relays-around-nat">2. TURN（Traversal Using Relays around NAT）</h3>
-<p>当两个节点之间无法直接建立连接时，可以利用 TURN 协议，通过中继服务器中转流量。</p>
-<h3 id="3-iceinteractive-connectivity-establishment">3. ICE（Interactive Connectivity Establishment）</h3>
-<p>集合 STUN 和 TURN。</p>
+<p>内网穿透 (打洞) 技术的目标是使节点之间能够绕过 NAT，像两个正常的公网 IP 一样直接建立 P2P 连接，常见的实现方案有 TCP 打洞和 UDP 打洞，本文着重介绍 UDP 穿透 (打洞) 的实现原理。</p>
 <hr>
-<h2 id="udp-内网穿透基本原理">UDP 内网穿透基本原理</h2>
+<h2 id="udp-内网穿透">UDP 内网穿透</h2>
 <p>连接双方节点通过 “中间服务器” 的协助，可以建立连接并使数据报文能够穿透对方的 NAT 网关。</p>
 <p>假设节点 A 和节点 B 是 P2P 网络中的两个节点，且都位于各自的 NAT 网关之后。</p>
 <ol>
@@ -173,7 +206,7 @@
 </ul>
 <h4 id="穿透后">穿透后</h4>
 <ul>
-<li>节点 A 和节点 B 分别向对方发送数据 (使用内网地址通信)</li>
+<li>节点 A 和节点 B 分别向对方发送数据 (使用 NAT 内网地址通信)</li>
 </ul>
 <hr>
 <h3 id="不同-nat">不同 NAT</h3>
@@ -242,13 +275,13 @@
 <li>节点 A 和节点 B 分别向对方发送数据 (使用外层 NAT 155.99.25.11 通信)</li>
 </ul>
 <h3 id="心跳">心跳</h3>
-<p>一般情况下， NAT 网关/设备针对 UDP 连接自动关闭/删除机制 (例如空闲/超时计数)，所有 UDP 穿透存在有效期限制，所以通信的节点双方，需要定时向对方发送心跳包，保证内网穿透可以维持正常。</p>
+<p>一般情况下， NAT 网关/设备针对 UDP 连接有自动关闭/删除的机制 (例如空闲/超时计数)，所有 UDP 穿透存在有效期限制，所以通信的节点双方，需要定时向对方发送心跳包，保证内网穿透可以维持正常。</p>
 <hr>
 <h2 id="tcp-内网穿透">TCP 内网穿透</h2>
-<p>TCP 内网穿透比 UDP 内网穿透复杂，因为 TCP 是一个面向连接的协议，需要通过三次握手建立连接。UDP 只需要处理一个套接字的收发通信，而 TCP 需要处理多个套接字绑定同一个端口（端口复用），此外大部分 NAT 网关/设备对 UDP 协议支持更友好一些。</p>
+<p>TCP 内网穿透比 UDP 内网穿透复杂，因为 TCP 是一个面向连接的协议，需要通过三次握手建立连接。相比之下，UDP 只需要处理一个套接字的收发通信，而 TCP 需要处理多个套接字绑定同一个端口（端口复用），此外大部分 NAT 网关/设备对 UDP 协议支持更友好一些。</p>
 <h4 id="tcp-内网穿透基本原理">TCP 内网穿透基本原理</h4>
 <ul>
-<li>节点 A 和节点 B 通过 NAT 网关登录 “中间服务器” S, 同时监听各自的本地 TCP 端口是否有外部的连接建立</li>
+<li>节点 A 和节点 B 通过 NAT 网关登录 “中间服务器” S, 同时监听各自的本地 TCP 端口，等待外部的请求建立连接</li>
 <li>节点 A 向 S 请求节点 B 的 IP 地址和端口号，数据包中包含 A 的内网地址+端口</li>
 <li>S 向节点 A 发送数据包，其中包含了节点 B 的 公网+内网 IP 和端口号，节点 A 收到数据包后，保存了 B 的地址和端口信息</li>
 <li>S 向节点 B 发送数据包，其中包含了节点 A 的 公网+内网 IP 和端口号，节点 B 收到数据包后，保存了 A 的地址和端口信息</li>
