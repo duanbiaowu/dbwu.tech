@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>TCP 可靠传输实现原理 - 2.滑动窗口 - 蛮荆</title>
+  <title>TCP 可靠传输实现原理 - 2.滑动窗口 (流量控制) - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="TCP 可靠传输实现原理 - 2.滑动窗口" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="TCP 可靠传输实现原理 - 2.滑动窗口 (流量控制)" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/network/what-is-tcp-sliding-window/" /><meta property="article:section" content="posts" />
@@ -17,7 +17,7 @@
 
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="TCP 可靠传输实现原理 - 2.滑动窗口"/>
+<meta name="twitter:title" content="TCP 可靠传输实现原理 - 2.滑动窗口 (流量控制)"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.120.3">
@@ -104,7 +104,7 @@
 
 <article>
 
-    <h1>TCP 可靠传输实现原理 - 2.滑动窗口</h1>
+    <h1>TCP 可靠传输实现原理 - 2.滑动窗口 (流量控制)</h1>
 
     
       
@@ -123,7 +123,49 @@
 
     
 
-    <h2 id="概述">概述</h2>
+    <ul>
+<li><a href="#%E6%A6%82%E8%BF%B0">概述</a>
+<ul>
+<li><a href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86%E7%82%B9">前置知识点</a>
+<ul>
+<li><a href="#1-%E5%8F%91%E9%80%81%E7%AA%97%E5%8F%A3">1. 发送窗口</a></li>
+<li><a href="#2-%E6%8E%A5%E6%94%B6%E7%AA%97%E5%8F%A3">2. 接收窗口</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3">滑动窗口</a>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B">示例</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B-2">示例 2</a></li>
+<li><a href="#%E7%A4%BA%E4%BE%8B-3">示例 3</a></li>
+</ul>
+</li>
+<li><a href="#zero-window">Zero Window</a></li>
+<li><a href="#window-full">Window Full</a></li>
+<li><a href="#nagle-%E7%AE%97%E6%B3%95">Nagle 算法</a>
+<ul>
+<li><a href="#%E7%A4%BA%E4%BE%8B-1">示例</a></li>
+<li><a href="#%E4%B8%8D%E8%B6%B3-%E5%B1%80%E9%99%90%E6%80%A7">不足 (局限性)</a></li>
+<li><a href="#tcp_cork">TCP_CORK</a></li>
+</ul>
+</li>
+<li><a href="#%E7%B3%8A%E6%B6%82%E7%AA%97%E5%8F%A3%E7%BB%BC%E5%90%88%E7%97%87">糊涂窗口综合症</a>
+<ul>
+<li><a href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88">解决方案</a></li>
+</ul>
+</li>
+<li><a href="#%E9%99%84%E5%BD%95">附录</a>
+<ul>
+<li><a href="#%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E4%BC%9A%E5%8F%91%E9%80%81%E6%95%B0%E6%8D%AE">什么情况下会发送数据？</a></li>
+<li><a href="#tcp-window-scale">TCP Window Scale</a></li>
+<li><a href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%BB%B6%E8%BF%9F%E8%BF%87%E9%AB%98%E4%BC%9A%E5%BD%B1%E5%93%8D%E6%80%A7%E8%83%BD">为什么延迟过高会影响性能？</a></li>
+<li><a href="#-%E6%9B%B4%E5%A4%9A%E6%80%9D%E8%80%83">❓ 更多思考</a></li>
+</ul>
+</li>
+<li><a href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB">扩展阅读</a></li>
+</ul>
+<h2 id="概述">概述</h2>
 <p>TCP 实现可靠传输层的核心有三点：</p>
 <ol>
 <li>确认与重传 (已经可以满足 “可靠性”，但是可能存在性能问题)</li>
@@ -134,10 +176,17 @@
 <p>本文主要讲解三个核心中的第二点: <strong>滑动窗口</strong>。</p>
 <blockquote>
 <p>滑动窗口主要关注发送方到接收方的流量控制</p>
-<p>拥塞控制更多地关注网络层面的流量控制</p>
+<p>拥塞控制更多地关注整个网络 (链路) 层面的流量控制</p>
 </blockquote>
 <h3 id="前置知识点">前置知识点</h3>
 <p>在讲解 TCP 的确认与重传之前，先来复习几个基本知识点。</p>
+<blockquote>
+<p>所谓发送方和接收方，只是一个相对的概念。</p>
+</blockquote>
+<ul>
+<li>客户端向服务端发送数据时，客户端是发送方，服务端是接收方</li>
+<li>服务端向客户端发送数据时，客户端是接收方，服务端是发送方</li>
+</ul>
 <h4 id="1-发送窗口">1. 发送窗口</h4>
 <blockquote>
 <p>发送方已经发送但是还未收到确认的最大数据量，由接收方的接收窗口大小 和 网络上的拥塞窗口大小 (cwnd, 后面专门写一篇文章写拥塞控制) 限制。</p>
@@ -204,18 +253,18 @@ $$</p>
 <h2 id="zero-window">Zero Window</h2>
 <p>如果接收方处理数据包的速度落后发送方发送数据的速度，接收方缓冲区就会占满，然后通知发送方接收窗口为 0。</p>
 <p><img src="https://dbwu.tech/images/network/epub_729216_111.jpg" alt="接收窗口返回 0"></p>
-<p>如图所示的 Wireshark 抓包截图，89.0.0.85 持续向 89.0.0.210 声明自己的接收窗口 win=0，所以 89.0.0.210 的发送窗口就被限制为0，也就是暂停发送数据。Wireshark 会智能地给数据包打上 <code>TCP zerowindow</code> 标签。</p>
+<p>如图所示的 Wireshark 抓包截图，89.0.0.85 持续向 89.0.0.210 声明自己的接收窗口 win=0，所以 89.0.0.210 的发送窗口就被限制为0，也就是暂停发送数据。Wireshark 会智能地给数据包打上 <code>TCP Zero Window</code> 标签。</p>
 <p><img src="https://dbwu.tech/images/network/epub_22653765_79.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
 <p>如图所示的 Wireshark 抓包截图，可以看到接收窗口逐渐减少的过程，直到最后接收方缓存区已满，通知发送方接收窗口为 0。</p>
 <hr>
-<h2 id="full-window">Full Window</h2>
+<h2 id="window-full">Window Full</h2>
 <p><img src="https://dbwu.tech/images/network/epub_22653765_80.jpeg" alt="图片来源: Wireshark 网络分析的艺术"></p>
 <p>如图所示的 Wireshark 抓包截图，当一个数据包被打上 <code>TCP Window Full</code> 标签时，表示数据包的发送方已经将发送窗口中的数据包全部发送完了，但是还未收到任何确认。</p>
-<p>Britain 一直声明它的接收窗口只有 65535，意味着 Middle East 最多能给它发送 65535 字节的数据而无需确认，当 Wireshark 在数据包中计算出 Middle East 已经有 65535 字节未被 Britain 确认时，就会出现 <code>TCP Window Full</code>, 此时 Britain 暂停发送数据。</p>
-<p><code>TCP Window Full</code> 很容易和 <code>TCP zerowindow</code> 混淆，两者之间有一定相似之处:</p>
+<p>Britain 一直声明它的接收窗口只有 65535，意味着 Middle East 最多能给它发送 65535 字节的数据而无需确认，当 Wireshark 在数据包中计算出 Middle East 已经有 65535 字节未被 Britain 确认时，就会出现 <code>TCP Window Full</code>, 此时 Middle East 应该暂停发送数据。</p>
+<p><code>Window Full</code> 很容易和 <code>Zero Window</code> 混淆，两者之间有一定相似之处:</p>
 <ul>
-<li>前者表示这个数据包的发送方暂时没办法再发送数据了</li>
-<li>后者表示这个数据包的发送方暂时没办法再接收数据了</li>
+<li>Window Full 表示这个 数据包的发送方 告诉接收方，暂时不要再发送数据了</li>
+<li>Zero Window 表示这个 数据包的发送方 告诉接收方，暂时不能再接收数据了</li>
 </ul>
 <p>也就是说两者都意味着数据传输暂停，同样需要引起重视。</p>
 <hr>
@@ -244,9 +293,15 @@ $$</p>
 <p>如图所示，第一个数据包把输入的第一个字符发出去了，在收到确认包之前的 150 毫秒里，又输入 6 个字符，这 6 个字符并没有被逐个发送，而是被累计缓存起来，等收到 2 号数据包 (Ack) 之后，和 3 号数据包一起发送，所以 3 号数据包的数据长度是 312 字节。</p>
 <h3 id="不足-局限性">不足 (局限性)</h3>
 <p>Nagle 算法和延迟确认一样，不适合需要快速响应的小数据包通信场景，因为会导致发送延迟，影响性能与应用体验。</p>
-<p>此外，Nagle 算法和延迟确认是冲突的，如果接收方启用了延迟确认，Nagle 算法可能导致发送方的数据包积压，从而增加通信延迟，这种情况下，Nagle 算法和延迟确认的结合可能会引起队列头部阻塞（head-of-line blocking）。</p>
+<p>此外，Nagle 算法和延迟确认是冲突的，如果接收方启用了延迟确认，Nagle 算法可能导致发送方的数据包积压，从而增加通信延迟，这种情况下，Nagle 算法和延迟确认的结合可能会引起队列头部阻塞（head-of-line blocking）, 增加网络延迟。</p>
+<p><img src="https://dbwu.tech/images/network/nagle_with_ack_delay.png" alt=""></p>
+<ol>
+<li>当 服务端 发送了第一个分组后，由于 客户端 开启了延迟确认，就需要等待 40ms 后才会回复 ACK</li>
+<li>同时，由于 服务端 开启了 Nagle 算法，这时还没收到第一个分组的 ACK，服务端 也会在这里一直等着</li>
+<li>直到 40ms 超时后，客户端 才会回复 ACK，然后 服务端 才会继续发送第二个分组</li>
+</ol>
 <h3 id="tcp_cork">TCP_CORK</h3>
-<p>TCP_CORK 是比 Nagle 算法更加激进的优化方式，因为它完全禁止了小数据包的发送，直到数据积累到足够大 (能够填充一个完整的 TCP 段)，或者被明确指示发送 (如关闭 TCP_CORK 选项)。</p>
+<p>TCP_CORK 算法是比 Nagle 算法更加激进的优化方式，因为它完全禁止了小数据包的发送，直到数据积累到足够大 (能够填充一个完整的 TCP 段)，或者被明确指示发送 (如关闭 TCP_CORK 选项)。</p>
 <p>相对来说， Nagle 算法只是禁止了大量的小数据包的发送。</p>
 <hr>
 <h2 id="糊涂窗口综合症">糊涂窗口综合症</h2>
@@ -259,6 +314,7 @@ $$</p>
 </ol>
 <p>当接收方通知给发送方的接收窗口越来越小时 (例如只有几个字节)，此时发送方再发送几个字节的数据，就完全没要了，为什么呢？</p>
 <p>因为传输层的 TCP 头部 + 网络层的 IP 头部，最少有 40 个字节，为了发送几个字节的数据包，而额外组装了 40 个字节的头部，这就本末倒置了。所以，<code>糊涂窗口综合症</code> 这个命名方式也挺合理的 :-)</p>
+<p>举个例子，当有效负载只有 1 字节时，再加上 TCP 头部和 IP 头部各占用的 20 字节，整个网络包就是 41 字节，这样实际带宽的利用率只有 2.4%（1/41）。往大了说，如果整个网络带宽都被这种小包占满，那整个网络的有效利用率就太低了。</p>
 <h3 id="解决方案">解决方案</h3>
 <p>如果问题是由于发送方引起的，那么就会使用前文中提到 <code>Nagle 算法</code> 来解决。</p>
 <p>如果问题是由于接收方引起的，那么就会使用 <code>Clark’s算法</code> 来解决，该算法主要思路如下: 接收方在发送窗口更新时，只有当接收窗口的增加量达到一定的阈值（如 MSS 大小）, 或者接收缓冲区空闲超过一半大小时，再发送窗口更新报文。这样就可以避免接收方频繁发送小窗口更新报文，确保发送方等到数据包较大时再发送。</p>
@@ -281,6 +337,10 @@ $$</p>
 <p><img src="https://dbwu.tech/images/network/epub_729216_113.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
 <p>如图所示，10.32.106.159 声明它的接收窗口为 “Window size value: 183”，183 乘以 32 得到 5856，所以 Wireshark 就显示出“Win=5856”了。</p>
 <p>需要注意的是， Wireshark 是根据 Shift count 计算出这个结果的，如果抓包时没有抓到三次握手，Wireshark 就不知道该如何计算，所以有时候会很莫名地看到一些极小的接收窗口值，还有的场景中，防火墙识别不了 Window Scale，因此对方无法获得 Shift count，最终导致严重的 TCP 性能问题。</p>
+<h3 id="为什么延迟过高会影响性能">为什么延迟过高会影响性能？</h3>
+<p>因为高延迟会造成长时间的空等待，发完一个窗口的数据后，发送方必须停下来等待接收方确认，延迟越高，发送方等待的时间越长。</p>
+<p><img src="https://dbwu.tech/images/network/epub_729216_113.png" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p>发送窗口相同的情况下，延迟越低，发送的数据量越多。</p>
 <h3 id="-更多思考">❓ 更多思考</h3>
 <p>每个 TCP 连接都是独立的，如果一个服务器中运行多个网络应用，而且每个应用不知道其他应用的存在，那么如何统筹规划对于网卡带宽的高效利用？</p>
 <hr>
@@ -330,7 +390,7 @@ $$</p>
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="TCP 可靠传输实现原理 - 2.滑动窗口"
+        data-term="TCP 可靠传输实现原理 - 2.滑动窗口 (流量控制)"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"

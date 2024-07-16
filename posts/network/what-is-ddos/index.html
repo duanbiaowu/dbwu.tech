@@ -168,7 +168,9 @@
 <p>半连接是指还没有完成 TCP 三次握手的连接，连接只进行了一半，也就是服务端收到了客户端的 SYN 控制报文之后，服务端会把这个连接放入半连接队列中，然后再向客户端发送 SYN + ACK 控制报文。</p>
 <p>和全连接队列一样，半连接队列也有溢出处理机制，默认情况下，如果半连接队列已满，客户端发送的 SYN 报文会被直接丢掉。</p>
 <h3 id="syn-flood-洪泛-攻击">SYN Flood (洪泛) 攻击</h3>
-<p>SYN Flood (洪泛) 攻击就是针对半连接队列的，攻击方不停地向服务端发起连接建立请求，但是建立连接时只完成第一步，第二步中，当攻击方收到服务端的 SYN + ACK 之后，故意丢掉报文，然后什么也不做，这样重复执行执行攻击过程，服务端的半连接队列很快就会被打满，这时其它正常的请求也无法和服务建立连接，攻击者的目的就达到了。</p>
+<p>SYN Flood (洪泛) 攻击就是针对半连接队列的，攻击方不停地向服务端发起连接建立请求 (可以伪造 <code>源 IP 地址</code> 或者直接操作 “僵尸网络”)，但是建立连接时只完成第一步，第二步中，当攻击方收到服务端的 SYN + ACK 之后，故意丢掉报文，然后什么也不做。但是服务端会等待客户端的 ACK 包，如果等待时间内未收到，服务端会进行首次重传，然后是第二次重传 &hellip;，直到重传次数超过上限制，操作系统会将该连接从半连接队列中删除。</p>
+<p>这样重复执行执行攻击过程，如果操作系统删除速度小于半连接队列的增长速度，服务端的半连接队列很快就会被打满，这时其它正常的请求也无法和服务建立连接，攻击者的目的就达到了。</p>
+<p>此外，SYN Flood 会导致软中断，CPU 使用率（softirq）飙升。</p>
 <p><img src="https://dbwu.tech/images/network/ddos.png" alt="SYN Flood (洪泛)攻击示例"></p>
 <h4 id="hping3">hping3</h4>
 <p><code>hping3</code> (Redis 作者开发的另外一个工具) 可以构造 TCP/IP 协议数据包，对系统进行安全审计、防火墙测试、DDoS 攻击测试等。</p>
@@ -203,9 +205,10 @@
 <p><img src="https://dbwu.tech/images/network/ddos_2.png" alt="SYN Flood (洪泛) 攻击 半连接队列"></p>
 <ol>
 <li>服务端的 TCP 连接，会处于 SYN_RECEIVED 状态</li>
-<li>查看 TCP 半开连接的方法，关键在于 SYN_RECEIVED 状态的连接</li>
+<li>查看 TCP 半开连接的方法，关键看 SYN_RECEIVED 状态的连接</li>
 </ol>
-<h4 id="1-手动处理">1. 手动处理</h4>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>$ netstat -n -p | grep SYN_RECV
+</span></span></code></pre></div><h4 id="1-手动处理">1. 手动处理</h4>
 <p>手动处理包的核心思路: 先找到状态异常的包，然后手动进行限制或设置直接丢包处理。</p>
 <p>首先，我们通过 <code>netstat</code> 命令找出状态为 <code>SYN_RECEIVED</code> 的数据包，然后分析其中异常的数据包。</p>
 <div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># -n 表示不解析名字</span>
@@ -257,7 +260,7 @@
 </span></span></code></pre></div><h4 id="5-tcp-syn-cookies">5. TCP SYN Cookies</h4>
 <p>在默认的 TCP 三次握手过程中，客户端向服务端发送 SYN 数据包，服务端收到之后应该回复一个 SYN + ACK 数据包，并进入 SYN_RECV 状态等待客户端的 ACK 确认，但是，如果攻击者向服务端发送大量的 SYN 数据包而不回复 ACK 确认，服务端的半连接队列就会被打满，无法接受正常的新连接。</p>
 <p><strong>TCP SYN Cookies</strong> 是一种专门防御 SYN Flood 攻击的方法，SYN Cookies 基于 TCP 连接四元组（包括源地址、源端口、目的地址、目的端口）以及一个加密种子（如系统启动时间），计算出一个哈希值（SHA1），这个哈希值称为 Cookie。</p>
-<p>Cookie 就被用作序列号，来应答 SYN + ACK 包，并释放连接状态，当客户端发送完三次握手的最后一次 ACK 后，服务端就会再次计算（反向）这个哈希值，确认是上次返回的 SYN + ACK 的应答包，然后才会进入 TCP 的连接状态。</p>
+<p>Cookie 就被用作 ISN (Initial Sequence Number)，来应答 SYN + ACK 报文，并释放连接状态，当客户端发送完三次握手的最后一次 ACK 后，服务端就会再次计算（反向）这个哈希值，确认是上次返回的 SYN + ACK 的应答报文，然后才会进入 TCP 的连接状态。</p>
 <blockquote>
 <p>开启 TCP SYN Cookies 之后，就不需要维护半连接状态了，自然也就不存在半连接队列的容量限制问题了。</p>
 </blockquote>

@@ -123,7 +123,12 @@
 
     
 
-    <h2 id="头部格式">头部格式</h2>
+    <h2 id="概述">概述</h2>
+<p>TCP 是面向连接的，提供可靠交付、流量控制，拥塞控制，提供全双工通信，面向字节流（把应用层的数据看成字节流，然后根据 MSS 把字节流组织成大小不等的数据段，最后添加 TCP 首部），每个 TCP 连接只能是点对点（一对一）通信。</p>
+<p>UDP 是无连接的，尽最大可能交付 (网络 IP 层)，不提供流量控制，拥塞控制，面向报文（对于应用程序的数据不合并也不拆分，直接添加 UDP 首部），支持一对一、一对多、多对一和多对多 (也就是多播和广播) 通信。</p>
+<p><img src="https://dbwu.tech/images/network/TCP-vs-UDP.png" alt=""></p>
+<p>上面这张图已经概括地很好了，下面就一些细节问题，结合自己的理解进行补充。</p>
+<h2 id="头部格式">头部格式</h2>
 <h3 id="tcp-头部格式">TCP 头部格式</h3>
 <p><img src="https://dbwu.tech/images/network/MJB-TCP-Header-800x564.png" alt="图片来源: https://nmap.org/book/tcpip-ref.html"></p>
 <h3 id="udp-头部格式">UDP 头部格式</h3>
@@ -178,6 +183,7 @@ $$</p>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://www.spiceworks.com/tech/networking/articles/tcp-vs-udp/">Differences Between TCP and UDP</a></li>
+<li><a href="https://www.geeksforgeeks.org/differences-between-tcp-and-udp/">Differences between TCP and UDP 2</a></li>
 <li><a href="https://stackoverflow.com/questions/47903/udp-vs-tcp-how-much-faster-is-it">UDP vs TCP, how much faster is it?</a></li>
 </ul>
 

@@ -3,12 +3,12 @@
 <html lang="en">
 
 <head>
-  <title>IO 模型 - 蛮荆</title>
+  <title>I/O 模型的阻塞/非阻塞, 同步/异步 - 蛮荆</title>
   <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="" />
 <meta name="author" content="" />
-<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="IO 模型" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="I/O 模型的阻塞/非阻塞, 同步/异步" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://dbwu.tech/posts/network/io-model/" /><meta property="article:section" content="posts" />
@@ -17,7 +17,7 @@
 
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="IO 模型"/>
+<meta name="twitter:title" content="I/O 模型的阻塞/非阻塞, 同步/异步"/>
 <meta name="twitter:description" content=""/>
 
 <meta name="generator" content="Hugo 0.120.3">
@@ -104,7 +104,7 @@
 
 <article>
 
-    <h1>IO 模型</h1>
+    <h1>I/O 模型的阻塞/非阻塞, 同步/异步</h1>
 
     
       
@@ -188,7 +188,7 @@
 </span></span><span style="display:flex;"><span>        ...
 </span></span></code></pre></div><h3 id="3-io-多路复用">3. I/O 多路复用</h3>
 <p><img src="https://dbwu.tech/images/os/io_2.png" alt=""></p>
-<p>使用 select, poll, epoll 等待多个套接字 (文件描述符) 中的任何一个变为就绪，等待过程会阻塞，当某一个套接字就绪后，再把数据从内核空间 (缓冲期) 复制数据到用户空间 (进程) 。当然，epoll 的工作方式和 select, poll 有些差异，不过这里先不做细节上的深究，统一当作 I/O 多路复用的实现来看待。</p>
+<p>使用 select, poll, epoll 等待多个套接字 (文件描述符) 中的任何一个或多个变为就绪，等待过程会阻塞，当某一个套接字就绪后，再把数据从内核空间 (缓冲期) 复制数据到用户空间 (进程) 。当然，epoll 的工作方式和 select, poll 有些差异，不过这里先不做细节上的深究，统一当作 I/O 多路复用的实现来看待。</p>
 <p>这种模型可以让单个 进程/线程 具有处理多个 I/O 事件的能力，也称为事件驱动 I/O。</p>
 <p>如果一个 Web Server 没有 I/O 多路复用，那么每一个 Socket 连接都需要创建一个线程去处理，如果同时有几万个连接，那么就需要创建相同数量的线程 (可能导致的后果就是操作系统直接崩溃)，相比之下，I/O 多路复用不需要多个进程/线程创建、上下文切换的开销，系统负载更小。</p>
 <p>下面将 I/O 多路复用 工作流程翻译为简单的伪代码。</p>
@@ -366,7 +366,7 @@
         data-category="Announcements"
         data-category-id="DIC_kwDOIkkjj84CV78j"
         data-mapping="specific"
-        data-term="IO 模型"
+        data-term="I/O 模型的阻塞/非阻塞, 同步/异步"
         data-strict="0"
         data-reactions-enabled="1"
         data-emit-metadata="1"

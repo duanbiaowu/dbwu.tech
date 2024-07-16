@@ -152,6 +152,7 @@
 <li><a href="#%E9%99%84%E5%BD%95">附录</a>
 <ul>
 <li><a href="#%E7%AC%AC%E4%B8%80%E6%AC%A1%E6%8F%A1%E6%89%8B%E6%97%B6%E5%8F%AF%E4%BB%A5%E6%90%BA%E5%B8%A6%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E5%90%97">第一次握手时可以携带应用数据吗？</a></li>
+<li><a href="#%E7%AC%AC%E4%BA%8C%E6%AC%A1%E6%8F%A1%E6%89%8B%E6%97%B6%E5%8F%AF%E4%BB%A5%E6%90%BA%E5%B8%A6%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E5%90%97">第二次握手时可以携带应用数据吗？</a></li>
 <li><a href="#%E7%AC%AC%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E6%97%B6%E5%8F%AF%E4%BB%A5%E6%90%BA%E5%B8%A6%E5%BA%94%E7%94%A8%E6%95%B0%E6%8D%AE%E5%90%97">第三次握手时可以携带应用数据吗？</a></li>
 <li><a href="#tcp-%E8%BF%9E%E6%8E%A5%E5%A4%B1%E8%B4%A5%E6%8A%93%E5%8C%85">TCP 连接失败抓包</a>
 <ul>
@@ -219,8 +220,8 @@ $$</p>
 <p>下面是一个典型的三次握手示例图。</p>
 <p><img src="https://dbwu.tech/images/network/TCP_3_way_handshaking.png" alt="图片来源: https://coolshell.cn/articles/11564.html"></p>
 <ol>
-<li>第一次握手：客户端发起连接请求，设置请求报文控制位 <code>SYN = 1</code>, 同时初始化一个随机序列号 <code>Seq = x</code>, 发送请求报文 <code>SYN</code> 后，客户端进入 <code>SYN-SENT</code> 状态</li>
-<li>第二次握手：服务端收到客户端的连接请求后，初始化一个随机序列号 <code>Seq = y</code>, 同时设置应答报文控制位 <code>SYN = 1</code>, 确认控制位 <code>ACK = x + 1</code>, 发送应答报文 <code>SYN-ACK</code> 后，服务端进入 <code>SYN-RECEIVED</code> 状态</li>
+<li>第一次握手：客户端发起连接请求，设置请求报文控制位 <code>SYN = 1</code>, 同时初始化一个随机序列号 (ISN) <code>Seq = x</code>, 发送请求报文 <code>SYN</code> 后，客户端进入 <code>SYN-SENT</code> 状态</li>
+<li>第二次握手：服务端收到客户端的连接请求后，初始化一个随机序列号 (ISN) <code>Seq = y</code>, 同时设置应答报文控制位 <code>SYN = 1</code>, 确认控制位 <code>ACK = x + 1</code>, 发送应答报文 <code>SYN-ACK</code> 后，服务端进入 <code>SYN-RECEIVED</code> 状态</li>
 <li>第三次握手：客户端收到服务端的应答后，设置应答确认控制位 <code>ACK = x + 1</code>, 发送应答报文 <code>ACK</code> 后，客户端进入 <code>ESTABLISHED</code> 状态，服务端收到客户端的 <code>ACK = y + 1</code> 报文后，进入 <code>ESTABLISHED</code> 状态，TCP 连接建立完成</li>
 </ol>
 <p>在整个连接过程中，客户端和服务端的状态变化如下图所示:</p>
@@ -386,7 +387,7 @@ $$</p>
 <p><strong>如果 TCP 只有两次握手，服务器上此时就建立了一个无效的 (过期的重复) 连接</strong>。</p>
 <p>但是在 TCP 三次握手的机制下，客户端收到服务器的回复后，发现这个 (已经超时的) 连接不是它想要的，所以就应答一个 <code>RST</code> 数据包，服务器收到 <code>RST</code> 数据后，同时关闭连接。</p>
 <blockquote>
-<p>重点: 三次握手，到底握的是什么？发送方和接收方的初始化 Seq 值 (Initial Sequence Number，ISN）, 通过这个值就可以区分当前的本次连接和历史旧连接。</p>
+<p>重点: 三次握手，到底握的是什么？发送方和接收方的初始化 Seq 值 (ISN, Initial Sequence Number）, 通过这个值就可以区分当前的本次连接和历史旧连接。</p>
 </blockquote>
 <hr>
 <h2 id="结论">结论</h2>
@@ -432,6 +433,8 @@ $$</p>
 <p>不行，因为此时连接还没有建立。</p>
 <p>是否可以由接收方将应用数据缓存起来，等到三次握手完成，连接建立之后，再由接收方交给上层应用呢？</p>
 <p>也不行，这样会放大 <code>TCP SYN Flood</code> 攻击，如果攻击者伪造了大量的携带数据报文，那么接收方就需要大量的内存来临时存储应用数据，最终导致内存耗尽。</p>
+<h3 id="第二次握手时可以携带应用数据吗">第二次握手时可以携带应用数据吗？</h3>
+<p>第二次握手是接收方向发送方发送数据，虽然可以携带数据，但是没有任何实质意义。</p>
 <h3 id="第三次握手时可以携带应用数据吗">第三次握手时可以携带应用数据吗？</h3>
 <p>可以。</p>
 <p>发送第三次握手之前，发送方此时已经进入 <code>ESTABLISHED</code> 状态，所以只要第三次握手的报文到达接收方，那么接收方的状态也会进入 <code>ESTABLISHED</code> 状态，连接就算建立完成了。</p>

@@ -147,6 +147,7 @@
 <li><a href="#%E4%B8%8D%E8%B6%B3-%E5%B1%80%E9%99%90%E6%80%A7">不足 (局限性)</a></li>
 </ul>
 </li>
+<li><a href="#%E6%85%A2%E5%90%AF%E5%8A%A8%E5%92%8C%E5%BF%AB%E9%80%9F%E6%81%A2%E5%A4%8D%E5%88%B0%E5%BA%95%E6%8C%87%E4%BB%80%E4%B9%88">慢启动和快速恢复到底指什么？</a></li>
 </ul>
 </li>
 <li><a href="#%E5%B0%8F%E7%BB%93">小结</a></li>
@@ -163,9 +164,10 @@
 <p>本文主要讲解三个核心中的第一点: <strong>拥塞控制</strong>。</p>
 <blockquote>
 <p>滑动窗口主要关注发送方到接收方的流量控制</p>
-<p>拥塞控制更多地关注网络层面的流量控制</p>
+<p>拥塞控制更多地关注整个网络 (链路) 层面的流量控制</p>
 </blockquote>
 <p>拥塞控制的视角更为全面，会对整个网络链路中的所有主机、路由器，以及降低网络传输性能的有关因素进行综合考量。</p>
+<p><img src="https://dbwu.tech/images/network/Pi81I2.png" alt=""></p>
 <h3 id="前置知识点">前置知识点</h3>
 <p>在讲解 TCP 的拥塞控制之前，先来复习几个基本知识点。</p>
 <h4 id="1-丢包">1. 丢包</h4>
@@ -217,6 +219,9 @@
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#define TCP_INIT_CWND		10</span>
 </span></span></code></pre></div><h3 id="2-拥塞避免">2. 拥塞避免</h3>
+<blockquote>
+<p>不同拥塞控制算法的核心差异主要在 拥塞避免 阶段。</p>
+</blockquote>
 <p><code>拥塞避免</code> 并非指完全能够避免网络拥塞，而是指在拥塞避免阶段，将拥塞窗口控制为按线性规律增长，使网络尽可能避免出现拥塞。</p>
 <blockquote>
 <p>Typically, ssthresh starts at 65535 bytes.</p>
@@ -234,8 +239,8 @@
 <p>网络拥塞的特征是连续丢包，丢包会引起重传，Wireshark 能够标识出重传的数据包，因此可以先从 Wireshark 中找到一连串重传包中的第一个，再根据该重传包的 Seq 值找到其原始包，最后计算该原始包发送时刻的在途字节数。由于网络拥塞就是在该原始数据包发出去的时刻发生的，所以这个在途字节数就大致代表了 <code>网络拥塞点</code> 的大小。</p>
 <p>可以根据这个结果，多次采样进行参考，然后选定一个合适的值作为该连接的拥塞点。例如根据采样结果取一个偏小的 (类似接口响应的 95 分位) 数值。</p>
 <h3 id="3-拥塞发生">3. 拥塞发生</h3>
-<p>传统的 TCP 流量控制认为，一旦发生丢包，就是网络链路发生了拥塞，所以发送方会急剧地减小发送窗口，甚至进入短暂的等待状态（超时重传）。
-所以，<code>1%</code> 的丢包率并不只是降低 <code>1%</code> 的传输性能，而是可能降低 <code>50%</code> 以上。</p>
+<p>传统 (基于丢包) 的 TCP 流量控制认为，一旦发生丢包，就是网络链路发生了拥塞，所以发送方会急剧地减小发送窗口，甚至进入短暂的等待状态（超时重传）。
+所以，<code>1%</code> 的丢包率并不只是降低 <code>1%</code> 的传输性能，而是可能降低 <code>50%</code> 甚至更多 (取决于具体的 TCP 实现)。</p>
 <p><img src="https://dbwu.tech/images/network/epub_729216_115.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
 <p>拥塞发生之后，又有两种常用的主流算法来解决:</p>
 <p><strong>1. TCP Tahoe 算法</strong></p>
@@ -246,7 +251,7 @@
 <li>进入慢启动过程</li>
 </ul>
 <p><img src="https://dbwu.tech/images/network/epub_729216_116.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
-<p>这是一种较为保守的算法。</p>
+<p>因为拥塞窗口大小直接变为 1，然后重新开始慢启动，所以这是一种极为保守的算法。</p>
 <p><strong>2. TCP Reno 算法</strong></p>
 <p>该算法工作过程如下:</p>
 <ul>
@@ -255,6 +260,11 @@
 <li>进入快速恢复 (下文中会提到)</li>
 </ul>
 <p><img src="https://dbwu.tech/images/network/epub_729216_121.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<p><strong>3. TCP Cubic 算法</strong></p>
+<p>Cubic 是一种改进的拥塞控制算法 (Linux 2.6.18 之后默认使用)，是基于丢包机制的拥塞控制算法中表现最好的。</p>
+<p>Cubic 和 Reno 算法一样，发生拥塞后也是采用加法线性增加，但是每次不是加 1, 而是根据一个特定的公式来决定窗口增加的大小，从而到达更快地收敛 cwnd。</p>
+<p><img src="https://dbwu.tech/images/network/Congestion-window-dynamics-of-TCP-BIAD-BIC-TCP-CUBIC-and-TCP-Reno.png" alt=""></p>
+<p>如图所示，相比于 Reno 算法发生拥塞后的 “大起大落”，Cubic 算法要相对 “顺滑” 一些。</p>
 <p>由此可见，没有网络拥塞时，发送窗口越大，性能越好，此时应该尽量增大接收窗口 (例如 LAN 环境中)。如果经常发生拥塞，那限制发送窗口反而能提高性能，因为丢包 + 重传是绝对的性能杀手。</p>
 <h3 id="4-快速恢复">4. 快速恢复</h3>
 <p>在重传数据包之后，发送方不会立即进入慢启动阶段，而是通过调整 cwnd 来快速恢复到丢包前的传输速率。</p>
@@ -272,14 +282,18 @@
 <li>超时一个数据包，sshthresh 就锐减一半</li>
 <li>超时多个数据包，sshthresh 就会减少到 1, 并且不会触发快速恢复算法了</li>
 </ul>
+<h3 id="慢启动和快速恢复到底指什么">慢启动和快速恢复到底指什么？</h3>
+<p>慢启动和快速恢复针对的目标是同一个: <code>cwnd 初始值大小</code>，慢启动设置 cwnd 初始值为 1, 快速恢复设置 cwnd 初始值为 ssthresh。</p>
 <hr>
 <h2 id="小结">小结</h2>
 <p>下面这张图，将慢启动、拥塞控制、拥塞发生、快速重传和超时重传各个不同的状态值，很好地展示了出来。</p>
-<p><img src="https://dbwu.tech/images/network/Imagereedit.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
+<!-- raw HTML omitted -->
+<p><img src="https://dbwu.tech/images/network/Imagereedit2.jpg" alt=""></p>
 <hr>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
 <li><a href="https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/36640.pdf">An Argument for Increasing TCP’s Initial Congestion Window</a></li>
+<li><a href="https://ieeexplore.ieee.org/document/1095152">Flow Control Power is Nondecentralizable</a></li>
 <li><a href="https://www.cs.cmu.edu/~prs/15-441-F14/lectures/rec05-congestion.pdf">TCP CongestionControl</a></li>
 <li><a href="https://hpbn.co/building-blocks-of-tcp/#three-way-handshake">Building Blocks of TCP</a></li>
 <li><a href="https://coolshell.cn/articles/11609.html">TCP 那些事儿 (下)</a></li>
@@ -304,7 +318,7 @@
     <ul>
         <li>
         
-            <a href="https://dbwu.tech/posts/network/what-is-tcp-sliding-window/"><i class="fa fa-chevron-circle-left"></i> TCP 可靠传输实现原理 - 2.滑动窗口</a>
+            <a href="https://dbwu.tech/posts/network/what-is-tcp-sliding-window/"><i class="fa fa-chevron-circle-left"></i> TCP 可靠传输实现原理 - 2.滑动窗口 (流量控制)</a>
         
         </li>
         <li>
