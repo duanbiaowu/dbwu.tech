@@ -13,6 +13,15 @@
    
    
      <item>
+       <title>如何获取更多的免费服务器</title>
+       <link>https://dbwu.tech/posts/other/free-cloud-services/</link>
+       <pubDate>Mon, 01 Apr 2024 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/other/free-cloud-services/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>Kubernetes 调度器队列 - 设计与实现</title>
        <link>https://dbwu.tech/posts/k8s/source_code/scheduler_queue/</link>
        <pubDate>Tue, 23 Jan 2024 00:00:00 +0000</pubDate>
@@ -1319,19 +1328,19 @@
    
      <item>
        <title>为什么 TCP 需要 TIME_WAIT 状态</title>
-       <link>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</link>
+       <link>https://dbwu.tech/posts/network/why-tcp-does-needs-time-wait/</link>
        <pubDate>Tue, 11 Dec 2018 00:00:00 +0000</pubDate>
        
-       <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-time-wait/</guid>
+       <guid>https://dbwu.tech/posts/network/why-tcp-does-needs-time-wait/</guid>
        <description></description>
      </item>
    
      <item>
        <title>为什么 TCP 建立连接需要三次握手</title>
-       <link>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</link>
+       <link>https://dbwu.tech/posts/network/why-tcp-does-needs-three-way-handshake/</link>
        <pubDate>Sat, 08 Dec 2018 00:00:00 +0000</pubDate>
        
-       <guid>https://dbwu.tech/posts/network/why-does-tcp-needs-three-way-handshake/</guid>
+       <guid>https://dbwu.tech/posts/network/why-tcp-does-needs-three-way-handshake/</guid>
        <description></description>
      </item>
    

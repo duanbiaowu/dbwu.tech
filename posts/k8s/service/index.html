@@ -129,6 +129,7 @@
     <h2 id="service-概述">Service 概述</h2>
 <p>Service 被抽象为一组或多组 Pod 的静态 IP 地址 (也可以将 Service 看作是一个代理)，任何到达 Service 的请求都会被转发到属于该服务背后的某个 Pod 中的应用。</p>
 <p>与 Service 紧密关联的两个概念是 Pod 和 EndPoint, 其中，Pod 是 Kubernetes 中应用运行的最小单位，而 EndPoint 是 Service 指向的实际地址，定义了 Service 所指向的具体 Pod 的 IP 地址和端口。</p>
+<p>TCP 使用 IP + Port 来表示 EndPoint，两个 EndPoint 构成一个 Socket, 也就是 TCP 四元组。EndPoint 同样采用了这个设计。</p>
 <blockquote>
 <p>EndPoint 二元组 = Pod IP + Pod Port</p>
 </blockquote>
