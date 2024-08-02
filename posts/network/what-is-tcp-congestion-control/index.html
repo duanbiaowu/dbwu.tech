@@ -138,7 +138,7 @@
 <li><a href="#1-%E6%85%A2%E5%90%AF%E5%8A%A8">1. 慢启动</a></li>
 <li><a href="#2-%E6%8B%A5%E5%A1%9E%E9%81%BF%E5%85%8D">2. 拥塞避免</a>
 <ul>
-<li><a href="#%E4%BC%B0%E7%AE%97%E7%BD%91%E7%BB%9C%E6%8B%A5%E5%A1%9E%E7%82%B9">估算网络拥塞点</a></li>
+<li><a href="#%E5%88%A9%E7%94%A8-wireshark-%E4%BC%B0%E7%AE%97%E7%BD%91%E7%BB%9C%E6%8B%A5%E5%A1%9E%E7%82%B9">利用 Wireshark 估算网络拥塞点</a></li>
 </ul>
 </li>
 <li><a href="#3-%E6%8B%A5%E5%A1%9E%E5%8F%91%E7%94%9F">3. 拥塞发生</a></li>
@@ -157,11 +157,11 @@
 <p>TCP 实现可靠传输层的核心有三点：</p>
 <ol>
 <li>确认与重传 (已经可以满足 “可靠性”，但是可能存在性能问题)</li>
-<li>滑动窗口 (为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
+<li>滑动窗口 (也就是流量控制，为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
 <li>拥塞控制 (防止网络链路过载造成丢包，避免发送方发的太快)</li>
 </ol>
 <p>滑动窗口和拥塞控制相互制约，使发送方可以从网络链路的全局角度来自动调整发送速率，从这个角度来看，TCP 对于整个网络的意义已经超过 “传输层”。</p>
-<p>本文主要讲解三个核心中的第一点: <strong>拥塞控制</strong>。</p>
+<p>本文主要讲解三个核心中的第三点: <strong>拥塞控制</strong>。</p>
 <blockquote>
 <p>滑动窗口主要关注发送方到接收方的流量控制</p>
 <p>拥塞控制更多地关注整个网络 (链路) 层面的流量控制</p>
@@ -205,7 +205,7 @@
 <ul>
 <li>初始状态下，cwnd 设置为一个较小的值（例如 2 个 MSS）</li>
 <li>每收到一个 Ack，cwnd 加 1 (cwnd += 1)</li>
-<li>每经过一个 RTT, cwnd 翻倍 (cwnd *= 2)</li>
+<li>所以当前的 cwnd, 每经过一个 RTT, cwnd 翻倍 (cwnd *= 2)</li>
 <li>直到 cwnd &gt;= ssthresh (预定义的慢启动阈值) 或者检测到丢包，cwnd 增长结束 (进入拥塞避免阶段)</li>
 </ul>
 <blockquote>
@@ -230,19 +230,19 @@
 <p><img src="https://dbwu.tech/images/network/epub_729216_131.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
 <p>当 <code>cwnd &gt;= ssthresh</code> 时，进入拥塞避免阶段，此时 cwnd 的增长方式变化为:</p>
 <ul>
-<li>每收到一个 Ack，cwnd = cwnd + 1/cwnd (主要考虑 cwnd = 1 时的边界情况)</li>
+<li>每收到一个 Ack，cwnd = cwnd + 1/cwnd (使用 cwnd 自己的倒数作为增长值，cwnd 越大，增长值越小，反之 cwnd 越小，增长值越大)</li>
 <li>每经过一个 RTT, cwnd = cwnd + 1</li>
 </ul>
 <p><img src="https://dbwu.tech/images/network/epub_655484_284.jpeg" alt=""></p>
 <p>从算法的变化过程可以看出，进入拥塞避免后，cwnd 由指数型增长变化为线性增长。</p>
-<h4 id="估算网络拥塞点">估算网络拥塞点</h4>
-<p>网络拥塞的特征是连续丢包，丢包会引起重传，Wireshark 能够标识出重传的数据包，因此可以先从 Wireshark 中找到一连串重传包中的第一个，再根据该重传包的 Seq 值找到其原始包，最后计算该原始包发送时刻的在途字节数。由于网络拥塞就是在该原始数据包发出去的时刻发生的，所以这个在途字节数就大致代表了 <code>网络拥塞点</code> 的大小。</p>
+<h4 id="利用-wireshark-估算网络拥塞点">利用 Wireshark 估算网络拥塞点</h4>
+<p>网络拥塞的特征是连续丢包，丢包会引起重传，Wireshark 能够标识出重传的数据包，因此可以先从 Wireshark 中找到一连串重传包中的第 1 个，再根据该重传包的 Seq 值找到其原始包，最后计算该原始包发送时刻的在途字节数。由于网络拥塞就是在该原始数据包发出去的时刻发生的，所以这个在途字节数就大致代表了 <code>网络拥塞点</code> 的大小。</p>
 <p>可以根据这个结果，多次采样进行参考，然后选定一个合适的值作为该连接的拥塞点。例如根据采样结果取一个偏小的 (类似接口响应的 95 分位) 数值。</p>
 <h3 id="3-拥塞发生">3. 拥塞发生</h3>
 <p>传统 (基于丢包) 的 TCP 流量控制认为，一旦发生丢包，就是网络链路发生了拥塞，所以发送方会急剧地减小发送窗口，甚至进入短暂的等待状态（超时重传）。
 所以，<code>1%</code> 的丢包率并不只是降低 <code>1%</code> 的传输性能，而是可能降低 <code>50%</code> 甚至更多 (取决于具体的 TCP 实现)。</p>
 <p><img src="https://dbwu.tech/images/network/epub_729216_115.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
-<p>拥塞发生之后，又有两种常用的主流算法来解决:</p>
+<p>拥塞发生之后，又有几种常用的算法来解决:</p>
 <p><strong>1. TCP Tahoe 算法</strong></p>
 <p>该算法和超时重传机制一样，工作过程如下:</p>
 <ul>
@@ -257,7 +257,7 @@
 <ul>
 <li>修改 cwnd = cwnd / 2</li>
 <li>修改 sshthresh = cwnd</li>
-<li>进入快速恢复 (下文中会提到)</li>
+<li>进入快速恢复过程 (下文中会提到)</li>
 </ul>
 <p><img src="https://dbwu.tech/images/network/epub_729216_121.jpg" alt="图片来源: Wireshark 网络分析就是这么简单"></p>
 <p><strong>3. TCP Cubic 算法</strong></p>
@@ -268,8 +268,11 @@
 <p>由此可见，没有网络拥塞时，发送窗口越大，性能越好，此时应该尽量增大接收窗口 (例如 LAN 环境中)。如果经常发生拥塞，那限制发送窗口反而能提高性能，因为丢包 + 重传是绝对的性能杀手。</p>
 <h3 id="4-快速恢复">4. 快速恢复</h3>
 <p>在重传数据包之后，发送方不会立即进入慢启动阶段，而是通过调整 cwnd 来快速恢复到丢包前的传输速率。</p>
-<p>拥塞发生之后，如果出发了快速重传 (收到 3 个及以上 Dup Ack), 说明此时网络拥塞并没有很严重，所以只要保证接下来降低发送速率就可以了，完全不需要像超时重传一样那么保守，此时就可以进入到快速恢复阶段了。</p>
-<p>快速恢复 (Fast Recovery) 算法如下:</p>
+<p>拥塞发生之后，如果发生了快速重传 (收到 3 个及以上 Dup Ack), 说明此时网络拥塞并没有很严重，所以只要保证接下来降低发送速率就可以了，完全不需要像超时重传一样那么保守，此时就可以进入到快速恢复阶段了。</p>
+<p>进入 快速恢复 阶段之前，cwnd 和 sshthresh 已经被修改过了，例如 TCP Reno 算法修改如下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#40ffff">cwnd</span> = cwnd / <span style="color:#3677a9">2</span>
+</span></span><span style="display:flex;"><span><span style="color:#40ffff">sshthresh</span> = cwnd
+</span></span></code></pre></div><p>快速恢复 (Fast Recovery) 算法如下:</p>
 <ul>
 <li>cwnd = sshthresh + 3 * MSS（收到 3 个 Ack）</li>
 <li>重传 Dup Ack 指定的数据包</li>

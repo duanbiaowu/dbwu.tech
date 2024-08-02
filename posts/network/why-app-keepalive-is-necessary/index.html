@@ -1,0 +1,355 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+  <title>为什么应用层心跳检测是必要的 - 蛮荆</title>
+  <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="shortcut icon" href="https://dbwu.tech/favicon.ico" type="image/x-icon" /><meta property="og:title" content="为什么应用层心跳检测是必要的" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://dbwu.tech/posts/network/why-app-keepalive-is-necessary/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2020-10-17T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-10-17T00:00:00+00:00" />
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="为什么应用层心跳检测是必要的"/>
+<meta name="twitter:description" content=""/>
+
+<meta name="generator" content="Hugo 0.120.3">
+    
+    <script src="https://dbwu.tech/js/mathjax-config.js" defer></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-CZMGTTFLNY"></script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3261056100776781" crossorigin="anonymous"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CZMGTTFLNY');
+  </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/contrib/auto-render.min.js" integrity="sha384-mll67QQFJfxn0IYznZYonOWZ644AWYC+Pt2cHqMaRhXVrursRwvLnLaebdGIlYNa" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/normalize.min.css" />
+  <link rel="stylesheet" href="https://dbwu.tech/fontawesome/css/all.min.css" />
+  
+    
+    <link href="//fonts.googleapis.com/css?family=Staatliches" rel="stylesheet">
+  
+  
+  <link rel="stylesheet" type="text/css" href="https://dbwu.tech/css/styles-light.css" />
+  </head>
+
+<body>
+  <div id="container">
+    <header>
+      
+      <h1>
+        <a href="https://dbwu.tech/">蛮荆</a>
+      </h1>
+
+      <ul id="social-media">
+      </ul>
+      
+    </header>
+
+    
+<nav>
+    <ul>
+        
+        <li>
+            <a class="active" href="https://dbwu.tech/posts/">
+                <i class="fa-li fa  fa-lg"></i><span>归档</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/tags/">
+                <i class="fa-li fa  fa-lg"></i><span>标签</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://github.com/duanbiaowu">
+                <i class="fa-li fa  fa-lg"></i><span>Github</span>
+            </a>
+        </li>
+        
+        <li>
+            <a class="" href="https://dbwu.tech/index.xml">
+                <i class="fa-li fa  fa-lg"></i><span>RSS</span>
+            </a>
+        </li>
+        
+    </ul>
+</nav>
+
+
+    <main>
+
+
+
+
+<article>
+
+    <h1>为什么应用层心跳检测是必要的</h1>
+
+    
+      
+<p>
+    <span>2020-10-17</span>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C">计算机网络</a>
+    
+    
+    <a class="article-tag" href="https://dbwu.tech/tags/%E7%BD%91%E7%BB%9C%E7%BC%96%E7%A8%8B">网络编程</a>
+    
+</p>
+
+    
+
+    
+      
+
+    
+
+    <ul>
+<li><a href="#tcp-%E5%BF%83%E8%B7%B3">TCP 心跳</a>
+<ul>
+<li><a href="#%E5%8E%9F%E7%90%86%E7%AE%80%E8%BF%B0">原理简述</a></li>
+<li><a href="#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0">相关参数</a></li>
+<li><a href="#%E5%B1%80%E9%99%90%E6%80%A7">局限性</a></li>
+</ul>
+</li>
+<li><a href="#%E5%BA%94%E7%94%A8%E5%B1%82%E5%BF%83%E8%B7%B3">应用层心跳</a>
+<ul>
+<li><a href="#%E5%BF%85%E8%A6%81%E6%80%A7">必要性</a></li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F">实现方式</a></li>
+</ul>
+</li>
+<li><a href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82">实现细节</a>
+<ul>
+<li><a href="#1-%E4%B8%8D%E8%A6%81%E5%8D%95%E7%8B%AC%E5%AE%9E%E7%8E%B0-%E5%BF%83%E8%B7%B3%E7%BA%BF%E7%A8%8B">1. 不要单独实现 “心跳线程”</a></li>
+<li><a href="#2-%E4%B8%8D%E8%A6%81%E5%8D%95%E7%8B%AC%E5%AE%9E%E7%8E%B0-%E5%BF%83%E8%B7%B3%E8%BF%9E%E6%8E%A5">2. 不要单独实现 “心跳连接”</a></li>
+</ul>
+</li>
+<li><a href="#%E6%89%A9%E5%B1%95%E9%98%85%E8%AF%BB">扩展阅读</a></li>
+</ul>
+<h2 id="tcp-心跳">TCP 心跳</h2>
+<p>TCP Keepalive 是一种用于检测 TCP 连接是否活跃的机制，通过定期发送探测数据包来确定连接的状态，主要用于检测空闲 (僵尸) 连接、保持 NAT 映射 (NAT 设备、防火墙设备) 等。</p>
+<h3 id="原理简述">原理简述</h3>
+<ol>
+<li>要启用 TCP Keepalive 自动检测机制，需要通信双方都开启 Keepalive 选项</li>
+<li>如果在一定时间（默认 2 小时）内没有数据传输，TCP 会发送一个 Keepalive 探测数据包</li>
+<li>如果通信的对方仍然活跃，就会对该探测数据包进行响应，如果对方没有响应，TCP 将重试发送探测数据包</li>
+<li>在达到最大重试次数（默认 10 次）后，如果仍然未收到响应，TCP 将认为连接已断开，关闭连接</li>
+</ol>
+<p>下面是根据 TCP Keepalive 工作原理，转换后的逻辑伪代码 (针对单个 TCP 连接)。</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># TCP Keepalive 控制参数</span>
+</span></span><span style="display:flex;"><span>KEEPALIVE_INTERVAL = <span style="color:#3677a9">7200</span>  <span style="color:#999;font-style:italic"># 默认 2 小时</span>
+</span></span><span style="display:flex;"><span>KEEPALIVE_PROBES = <span style="color:#3677a9">10</span>   <span style="color:#999;font-style:italic"># 默认 10 次</span>
+</span></span><span style="display:flex;"><span>KEEPALIVE_TIMEOUT = <span style="color:#3677a9">75</span>  <span style="color:#999;font-style:italic"># 默认 75 秒</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 开启 TCP Keepalive 机制</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 初始化各项控制参数</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">enable_keepalive</span>(socket):
+</span></span><span style="display:flex;"><span>    socket.setsockopt(..., socket.SO_KEEPALIVE, <span style="color:#3677a9">1</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    socket.setsockopt(..., KEEPALIVE_INTERVAL)
+</span></span><span style="display:flex;"><span>    socket.setsockopt(..., KEEPALIVE_PROBES)
+</span></span><span style="display:flex;"><span>    socket.setsockopt(... KEEPALIVE_TIMEOUT)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果连接在 Keepalive 间隔时间内处于空闲状态</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 发送 Keepalive 探测包并启动探测计时器</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">send_keepalive_probe</span>(socket):
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> is_idle(socket, KEEPALIVE_INTERVAL):
+</span></span><span style="display:flex;"><span>        send_probe_packet(socket)
+</span></span><span style="display:flex;"><span>        start_probe_timer(socket)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 处理 Keepalive 响应</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果收到探测包的 ACK 确认，则重置空闲计时器</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 否则增加探测次数</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic">#   如果超过最大探测次数，则关闭连接</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Function to handle keepalive response</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">handle_keepalive_response</span>(socket):
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> received_probe_ack(socket):
+</span></span><span style="display:flex;"><span>        reset_idle_timer(socket)
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">else</span>:
+</span></span><span style="display:flex;"><span>        increment_probe_count(socket)
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#6ab825;font-weight:bold">if</span> probe_count(socket) &gt; KEEPALIVE_PROBES:
+</span></span><span style="display:flex;"><span>            close_connection(socket)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 检查Keepalive超时</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 如果探测计时器过期，则处理 Keepalive 响应</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">check_keepalive_timeout</span>(socket):
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">if</span> probe_timer_expired(socket):
+</span></span><span style="display:flex;"><span>        handle_keepalive_response(socket)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 核心主循环管理 Keepalive</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 1. 启用 Keepalive 选项</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 2. 在连接打开时定期发送探测包和检查超时</span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># Main loop to manage keepalive</span>
+</span></span><span style="display:flex;"><span><span style="color:#6ab825;font-weight:bold">def</span> <span style="color:#447fcf">manage_keepalive</span>(socket):
+</span></span><span style="display:flex;"><span>    enable_keepalive(socket)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#6ab825;font-weight:bold">while</span> is_open(socket):
+</span></span><span style="display:flex;"><span>        send_keepalive_probe(socket)
+</span></span><span style="display:flex;"><span>        check_keepalive_timeout(socket)
+</span></span><span style="display:flex;"><span>        time.sleep(KEEPALIVE_TIMEOUT) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="相关参数">相关参数</h3>
+<p>Linux 内核中和 TCP Keepalive 机制相关的几个参数如下:</p>
+<ul>
+<li>tcp_keepalive_time：首次探测之前的空闲时间（默认 2 小时）</li>
+<li>tcp_keepalive_intvl：重试探测的时间间隔（默认 75 秒）</li>
+<li>tcp_keepalive_probes：最大重试次数（默认 10 次）</li>
+</ul>
+<p>当然，这些参数都可以通过修改系统配置文件进行修改，尤其在优化高并发场景和移动场景为主的后端服务器时，这几个参数需要着重优化一下:</p>
+<div class="highlight"><pre tabindex="0" style="color:#d0d0d0;background-color:#202020;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置首次探测之前的空闲时间为 10 分钟</span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">echo</span> <span style="color:#3677a9">600</span> &gt; /proc/sys/net/ipv4/tcp_keepalive_time
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置重试探测的时间间隔为 15 秒</span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">echo</span> <span style="color:#3677a9">15</span> &gt; /proc/sys/net/ipv4/tcp_keepalive_intvl
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#999;font-style:italic"># 设置最大重试次数为 3 次</span>
+</span></span><span style="display:flex;"><span><span style="color:#24909d">echo</span> <span style="color:#3677a9">3</span> &gt; /proc/sys/net/ipv4/tcp_keepalive_probes
+</span></span></code></pre></div><p>运行 <code>sysctl -p</code> 命令生效，重启之后仍然有效。</p>
+<h3 id="局限性">局限性</h3>
+<p>TCP Keepalive 机制由内核 (操作系统) 负责执行，当进程退出后，内核会针对进程中未关闭的连接逐个进行关闭 (向连接的通信对方发送 FIN 报文)，这样就保证了每个连接的通信双方都可以知道通信的状态，并根据状态来完成不同的具体业务逻辑。</p>
+<p>表面上看，不论进程是运行还是退出，TCP Keepalive 机制都可以通过内核很好地完成，但是在一些极端场景中，内核无法保证 TCP 协议栈正常工作，例如：</p>
+<ul>
+<li>操作系统异常导致重启，TCP 协议栈没有机会发送 FIN 报文</li>
+<li>服务器硬件故障、基础设置故障 (如断电、断网、地理不可抗力因素)，TCP 协议栈同样没有机会发送 FIN 报文</li>
+<li>海量并发连接数，操作系统或进程重启时，TCP 协议栈可能无法断开所有连接，也就是 FIN 报文出现丢包后，没有更多的时间进行重试</li>
+<li>网络链路故障，只能等到 TCP Keepalive 检测超时，通信双方才能确认这种情况，此时距离发生故障可能已经过去了一段时间</li>
+</ul>
+<hr>
+<h2 id="应用层心跳">应用层心跳</h2>
+<h3 id="必要性">必要性</h3>
+<p>前文中讲到了 TCP Keepalive 机制 (内核实现) 的局限性，除此之外，结合到应用层一起来看的话，<strong>TCP Keepalive 机制无法确认应用层的心跳检测目标：应用程序还在正常工作</strong>。具体来说，TCP Keepalive 检测结果正常，只能说明两件事情：</p>
+<ol>
+<li>应用程序 (进程) 还存在</li>
+<li>网络链路正常</li>
+</ol>
+<p>但是 <strong>当应用程序进程运行中发生异常时</strong>，例如死锁、Bug 导致的无限循环、无限阻塞 等，虽然此时操作系统依然可以正常执行 TCP Keepalive 机制，但是对于应用程序的异常情况，通信对方是无法得知的。</p>
+<p>此外，应用层心跳检测具有更好的灵活性，例如可以控制检测时间、间隔、异常处理机制、附加额外数据等。</p>
+<p>综上所述，应用层心跳检测是必须实现的。</p>
+<h3 id="实现方式">实现方式</h3>
+<p>常见的应用层心跳实现方式有:</p>
+<ul>
+<li>HTTP: 访问指定 URL, 根据响应码或者响应数据来判定应用是否正常</li>
+<li>Exec: 执行指定 (Shell) 命令 (例如文件检查、网络检查)，并检查命令的退出状态码，如果状态码为 0，说明应用正常运行</li>
+<li>WebSocket: 和 HTTP 检测方式类似</li>
+<li>其他自定义检测方式</li>
+</ul>
+<p>其中业界主流的检测方式是 HTTP (长连接方式), 主要是因为:</p>
+<ol>
+<li>HTTP 实现简单，基于长连接的方式避免了连接的建立和释放带来的开销</li>
+<li>HTTP 对于 (异构) 环境的要求很低，而且大多数应用中都使用 HTTP 作为 API 主要通信协议，心跳检测并不会带来多少额外的工作量</li>
+</ol>
+<h2 id="实现细节">实现细节</h2>
+<h3 id="1-不要单独实现-心跳线程">1. 不要单独实现 “心跳线程”</h3>
+<p>使用单独的线程来实现 “心跳检测”，虽然可以将心跳检测应用代码和具体的业务逻辑代码隔离，但是当 “业务线程” 发生死锁或者 Bug 崩溃时，心跳线程检测不到。</p>
+<p>所以应该将心跳检测直接实现在 “业务线程” 中。</p>
+<h3 id="2-不要单独实现-心跳连接">2. 不要单独实现 “心跳连接”</h3>
+<p>对于网络 (例如 TCP) 编程的场景，心跳检测应该在 “业务连接” 直接实现，而不是使用单独的连接，这样当业务连接出现异常时，通信对方可以第一时间感知到 (没有及时收到心跳响应)。</p>
+<p>此外，大多数网络防火墙会定时监测空闲 (僵尸) 连接并清除，如果心跳检测使用额外的连接，那么当 “业务连接” 长时间没有要发送的数据时，就已经被防火墙断开了，但是此时心跳检测连接还在正常工作，这会影响通信对方的判断，以为 “业务连接” 还在正常工作。</p>
+<p>所以应该将心跳检测直接实现在 “业务连接” 中。</p>
+<h2 id="扩展阅读">扩展阅读</h2>
+<ul>
+<li><a href="https://dbwu.tech/posts/k8s/best_practice/probe/">Kubernetes 探针检测最佳实践</a></li>
+</ul>
+
+
+</article>
+
+<article>
+    <img src="https://dbwu.tech/images/wechat.png">
+</article>
+
+<article>
+    <h3>转载申请</h3>
+
+    <p>
+        本作品采用 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">知识共享署名 4.0 国际许可协议</a> 进行许可，转载时请注明原文链接，图片在使用时请保留全部内容，商业转载请联系作者获得授权。
+    </p>
+</article>
+
+<section class="post-nav">
+    <ul>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/php_summary/"><i class="fa fa-chevron-circle-left"></i> PHP 边边角角</a>
+        
+        </li>
+        <li>
+        
+            <a href="https://dbwu.tech/posts/engineering/agile_with_tdd/">TDD 和敏捷开发 <i class="fa fa-chevron-circle-right"></i> </a>
+        
+        </li>
+    </ul>
+</section>
+  
+    
+    
+  
+
+
+<script src="https://giscus.app/client.js"
+        data-repo="duanbiaowu/dbwu.tech"
+        data-repo-id="R_kgDOIkkjjw"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOIkkjj84CV78j"
+        data-mapping="specific"
+        data-term="为什么应用层心跳检测是必要的"
+        data-strict="0"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="light"
+        data-lang="zh-CN"
+        crossorigin="anonymous" async>
+</script>
+
+
+
+
+</main>
+    <footer>
+        <ul>
+            <li>
+                <h6><a href="mailto:codean.net@gmail.com">codean.net@gmail.com</a> | 
+                    <img src="https://dbwu.tech/images/%E5%A4%87%E6%A1%88%E5%9B%BE%E6%A0%87.png" />
+                    <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=61011302001681" target="_blank">陕公网安备 61011302001681 号</a> |
+                    <a href="https://beian.miit.gov.cn" target="_blank">陕ICP备2023004378号-1</a> |
+                    Rendered by <a href="https://themes.gohugo.io" title="Hugo" target="_blank">Hugo</a>
+                </h6>
+            </li>
+            
+            
+        </ul>
+    </footer>
+</div>
+<script src="https://dbwu.tech/js/scripts.js"></script>
+
+
+</body>
+
+</html>
+

@@ -1255,6 +1255,15 @@
      </item>
    
      <item>
+       <title>为什么应用层心跳检测是必要的</title>
+       <link>https://dbwu.tech/posts/network/why-app-keepalive-is-necessary/</link>
+       <pubDate>Sat, 17 Oct 2020 00:00:00 +0000</pubDate>
+       
+       <guid>https://dbwu.tech/posts/network/why-app-keepalive-is-necessary/</guid>
+       <description></description>
+     </item>
+   
+     <item>
        <title>PHP 边边角角</title>
        <link>https://dbwu.tech/posts/php_summary/</link>
        <pubDate>Sun, 09 Feb 2020 00:00:00 +0000</pubDate>

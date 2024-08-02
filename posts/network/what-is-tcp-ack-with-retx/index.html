@@ -133,7 +133,7 @@
 <li><a href="#3-rto-retransmission-timeout">3. RTO (Retransmission Timeout)</a></li>
 <li><a href="#4-%E4%B9%B1%E5%BA%8F%E9%87%8D%E7%BB%84%E4%B8%8E%E4%B8%A2%E5%8C%85">4. 乱序重组与丢包</a></li>
 <li><a href="#5-%E5%8F%91%E9%80%81%E7%BC%93%E5%86%B2%E5%8C%BA">5. 发送缓冲区</a></li>
-<li><a href="#6-%E5%9C%A8%E9%80%94%E5%AD%97%E8%8A%82%E6%95%B0">6. 在途字节数</a></li>
+<li><a href="#6-inflight-%E5%9C%A8%E9%80%94-%E5%AD%97%E8%8A%82%E6%95%B0">6. inflight (在途) 字节数</a></li>
 <li><a href="#7-%E6%A0%A1%E9%AA%8C%E5%92%8C">7. 校验和</a></li>
 </ul>
 </li>
@@ -181,7 +181,7 @@
 <p>TCP 实现可靠传输层的核心有三点：</p>
 <ol>
 <li>确认与重传 (已经可以满足 “可靠性”，但是可能存在性能问题)</li>
-<li>滑动窗口 (为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
+<li>滑动窗口 (也就是流量控制，为了提高吞吐量，充分利用链路带宽，避免发送方发的太慢)</li>
 <li>拥塞控制 (防止网络链路过载造成丢包，避免发送方发的太快)</li>
 </ol>
 <p>滑动窗口和拥塞控制相互制约，使发送方可以从网络链路的全局角度来自动调整发送速率，从这个角度来看，TCP 对于整个网络的意义已经超过 “传输层”。</p>
@@ -218,7 +218,7 @@ $$</p>
 <li>网络带宽每秒发送字节数 = 1024, RTT = 1 秒，缓冲区 = 1024 字节</li>
 <li>网络带宽每秒发送字节数 = 4096, RTT = 0.5 秒，缓冲区 = 2048 字节</li>
 </ul>
-<h4 id="6-在途字节数">6. 在途字节数</h4>
+<h4 id="6-inflight-在途-字节数">6. inflight (在途) 字节数</h4>
 <p>$$
 在途字节数 = Seq + Len - Ack
 $$</p>
@@ -387,7 +387,7 @@ $$</p>
 <p>$$
 RTO=RTTs+4*RTT_d
 $$</p>
-<p>其中 RTTd 为偏差的加权平均值。</p>
+<p>其中 RTT_d 为偏差的加权平均值。</p>
 <h3 id="为什么-ack-报文不需要-ack-确认">为什么 ACK 报文不需要 ACK 确认?</h3>
 <p>很显然，为了避免 “无限循环”。</p>
 <h3 id="为什么-rst-报文不需要-ack-确认">为什么 RST 报文不需要 ACK 确认?</h3>
@@ -413,7 +413,8 @@ $$</p>
 <hr>
 <h2 id="扩展阅读">扩展阅读</h2>
 <ul>
-<li><a href="https://www.ietf.org/rfc/rfc2883.txt"> An Extension to the Selective Acknowledgement (SACK) Option for TCP</a></li>
+<li><a href="https://www.ietf.org/rfc/rfc2883.txt">An Extension to the Selective Acknowledgement (SACK) Option for TCP</a></li>
+<li><a href="https://book.douban.com/subject/26710788/">Wireshark 网络分析的艺术</a></li>
 </ul>
 
 
